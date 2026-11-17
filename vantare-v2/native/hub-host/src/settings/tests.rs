@@ -432,6 +432,28 @@ fn old_document_defaults_recording_on_and_next_save_writes_it_without_version_ch
 #[test]
 fn recording_choice_round_trips_through_settings_wire_and_store() {
     let root = Root::new();
+    let document = store::Document {
+        general: Preferences {
+            onboarding_completed: true,
+            density: Density::Compact,
+            minimized: true,
+            updates: false,
+            launcher: false,
+            toasts: false,
+            ..Default::default()
+        },
+        appearance: AppearanceSettings {
+            contrast: 110,
+            ..Default::default()
+        },
+        zoom: 125,
+        ..Default::default()
+    };
+    fs::write(
+        root.0.join(store::FILE),
+        serde_json::to_vec(&document).unwrap(),
+    )
+    .unwrap();
     let mut settings = root.settings();
     assert!(settings.view().general.grabacion);
     for enabled in [false, true] {
@@ -449,6 +471,7 @@ fn recording_choice_round_trips_through_settings_wire_and_store() {
         expected["general"]["grabacion"] = enabled.into();
         expected["revision"] = wire["revision"].clone();
         assert_eq!(wire, expected, "only the choice and CAS revision change");
+        assert_eq!(serde_json::to_value(root.settings().view()).unwrap(), wire);
     }
 }
 

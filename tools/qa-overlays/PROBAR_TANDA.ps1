@@ -105,7 +105,7 @@ $state=Read-TandaJson (Join-Path $outputLifecycle 'estado.json')
 if($state.status -ne 'aborted' -or $state.measurements.Count -ne 0 -or $env:TEMP -cne $beforeTemp){throw 'Lifecycle fallido no abortó/restauró entorno'}
 if(-not(Test-Path (Join-Path $outputLifecycle 'lifecycle/resultado.json'))){throw 'Falta evidencia de lifecycle fallido'}
 # La GPU ausente debe abortar sin pasar a GPUI/mediciones.
-function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession) @{code=4;stderr='GPU_UNAVAILABLE detalle';stdout=''}}
+function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession) if($Image -like '*rune.exe'){@{code=4;stderr='GPU_UNAVAILABLE detalle';stdout=''}}else{@{code=0;stderr='';stdout=''}}}
 $outputNoGpu=Join-Path $sandbox 'sin-gpu'
 Invoke-TandaWorker $root $outputNoGpu
 $state=Read-TandaJson (Join-Path $outputNoGpu 'estado.json')

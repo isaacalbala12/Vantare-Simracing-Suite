@@ -1,8 +1,9 @@
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
 import type { MockContext } from "./context";
 import { create } from "./modules/analysis";
+export const analysisQaNow = Date.UTC(2026, 10, 17, 12);
 /** QA-only fixture adapter. Keeps the contract mock untouched for C3. */
-export function analysisScene(context: MockContext) {
+export function analysisScene(context: MockContext, clock = Date.now) {
   if (!context.sceneName.startsWith("analysis-qa-")) return undefined;
   const name = context.sceneName.slice("analysis-qa-".length);
   context.core.access = {
@@ -51,10 +52,11 @@ export function analysisScene(context: MockContext) {
                       [14, 19, 40],
                       [14, 19, 40],
                     ][index];
-                    const date = new Date();
-                    date.setDate(date.getDate() - days);
-                    date.setHours(hour, minute, 0, 0);
-                    if (index === 9) date.setFullYear(date.getFullYear() - 1);
+                    const date = new Date(clock());
+                    date.setUTCDate(date.getUTCDate() - days);
+                    date.setUTCHours(hour, minute, 0, 0);
+                    if (index === 9)
+                      date.setUTCFullYear(date.getUTCFullYear() - 1);
                     return date.getTime();
                   })(),
                   sizeBytes: 22400000 - index * 1000000,

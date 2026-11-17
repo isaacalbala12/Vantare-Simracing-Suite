@@ -4,11 +4,12 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
+import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
 import { writeAnalysisSheet } from "./analysis-sheet.ts";
 import { checkAnalysisDensity } from "./check-analysis-density.ts";
 import { webQaPreview } from "./web-qa.ts";
 
-const output = "D:/VantareServer/evidence/analisis/p1/p1a/revision-visual";
+const output = "D:/VantareServer/evidence/analisis/p1/p1a/dst-fix";
 await mkdir(output, { recursive: true });
 const server = await webQaPreview();
 const browser = await chromium.launch({
@@ -20,8 +21,11 @@ try {
   const context = await browser.newContext({
     reducedMotion: "reduce",
     deviceScaleFactor: 1,
+    timezoneId: "UTC",
+    locale: "es-ES",
   });
   const page = await context.newPage();
+  await page.clock.setFixedTime(analysisQaNow);
   const reference = await context.newPage();
   await reference.setViewportSize({ width: 1400, height: 1000 });
   const base = server.resolvedUrls?.local[0];
@@ -49,6 +53,15 @@ try {
           .waitFor();
         if (["catalog", "recording", "disabled"].includes(scene)) {
           await page.getByText("Completa", { exact: true }).first().waitFor();
+          for (const label of ["Hoy", "Ayer", "Esta semana", "Antes"])
+            await page
+              .getByRole("rowgroup")
+              .getByText(label, { exact: true })
+              .waitFor();
+          await page
+            .locator("time")
+            .getByText("18:42", { exact: true })
+            .waitFor();
           await checkAnalysisDensity(page);
         } else if (scene === "loading")
           await page

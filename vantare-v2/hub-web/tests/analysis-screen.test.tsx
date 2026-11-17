@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import type { AnalysisRequest } from "../src/contract/generated/analysis";
 import type { Reply } from "../src/contract/generated/contract";
+import { analysisQaNow } from "../src/mock/analysis-scenes";
 import { createMockHost } from "../src/mock/host";
 import { AnalysisController } from "../src/renderer/app/AnalysisController";
 import * as host from "../src/renderer/app/Host";
@@ -44,7 +45,11 @@ vi.stubGlobal(
   },
 );
 function bridge(scene = "catalog") {
-  const mock = createMockHost(`analysis-qa-${scene}`);
+  const mock = createMockHost(
+    `analysis-qa-${scene}`,
+    undefined,
+    () => analysisQaNow,
+  );
   let id = 0;
   return vi.fn(async (request: AnalysisRequest): Promise<Reply> => {
     const r = mock({ kind: "request", id: ++id, request });
@@ -53,7 +58,13 @@ function bridge(scene = "catalog") {
     throw Error("fixture has no response");
   });
 }
-function mount(request = bridge(), analysis = true, enabled = true) {
+function mount(
+  request = bridge(),
+  analysis = true,
+  enabled = true,
+  clock = () => analysisQaNow,
+  timeZone = "UTC",
+) {
   vi.spyOn(host, "useHost").mockReturnValue({
     client: { request } as unknown as Client,
   });
@@ -73,7 +84,7 @@ function mount(request = bridge(), analysis = true, enabled = true) {
         <TooltipProvider>
           <SectionChromeProvider>
             <SectionTabsSlot />
-            <Analysis />
+            <Analysis clock={clock} timeZone={timeZone} />
           </SectionChromeProvider>
         </TooltipProvider>
       </UiProvider>
@@ -141,6 +152,32 @@ it("renders the four relative groups, concise dates and unidentified fallback te
   expect(screen.getByRole("columnheader", { name: "Abrir" })).toBeTruthy();
   expect(screen.queryByRole("columnheader", { name: "—" })).toBeNull();
 });
+it.each([
+  ["UTC", "Ayer", "23:30"],
+  ["Europe/Madrid", "Hoy", "00:30"],
+])(
+  "groups the same recording with injected clock and zone %s",
+  async (zone, label, time) => {
+    const real = bridge();
+    const request = vi.fn(async (r: AnalysisRequest) => {
+      const reply = await real(r);
+      return reply.method === "analysis.catalog"
+        ? {
+            ...reply,
+            recordings: [
+              {
+                ...reply.recordings[0],
+                startedAtMs: Date.parse("2026-11-16T23:30:00Z"),
+              },
+            ],
+          }
+        : reply;
+    });
+    mount(request, true, true, () => Date.parse("2026-11-17T00:30:00Z"), zone);
+    expect(await screen.findByText(label)).toBeTruthy();
+    expect(screen.getByText(time, { selector: "time" })).toBeTruthy();
+  },
+);
 it("keeps Laps and Map visible, keyboard reachable and inert before opening", async () => {
   const request = bridge();
   mount(request);

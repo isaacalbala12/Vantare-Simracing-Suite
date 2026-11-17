@@ -35,6 +35,7 @@ export function helloForScene(name?: string): typeof hello {
 export function createMockHost(
   sceneName = "ajustes-base",
   emit: (message: HostToUi) => void = () => {},
+  analysisClock = Date.now,
 ) {
   const requestedScene = sceneName;
   const visual =
@@ -78,7 +79,7 @@ export function createMockHost(
     },
   };
   const handlers = mockModules.map((module) => module.create(context));
-  const analysis = analysisScene(context);
+  const analysis = analysisScene(context, analysisClock);
   return (value: unknown): HostToUi | null => {
     if (!isUiMessage(value)) return null;
     if (value.kind === "hello")

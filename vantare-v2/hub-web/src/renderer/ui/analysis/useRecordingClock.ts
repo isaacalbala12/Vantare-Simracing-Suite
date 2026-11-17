@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
-export function useRecordingClock(clock: () => number) {
+import { nextRecordingDay, recordingZone } from "../../app/analysis-dates";
+export function useRecordingClock(
+  clock: () => number,
+  timeZone = recordingZone(),
+) {
   const [now, setNow] = useState(clock);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
     const update = () => {
       const value = clock();
       setNow(value);
-      const midnight = new Date(value);
-      midnight.setHours(24, 0, 0, 0);
-      timer = setTimeout(update, midnight.getTime() - value);
+      timer = setTimeout(update, nextRecordingDay(value, timeZone) - value);
     };
     update();
     return () => clearTimeout(timer);
-  }, [clock]);
+  }, [clock, timeZone]);
   return now;
 }

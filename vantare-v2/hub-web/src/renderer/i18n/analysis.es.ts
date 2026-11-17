@@ -1,4 +1,4 @@
-import { recordingGroup } from "../app/analysis-dates";
+import { recordingGroup, recordingZone } from "../app/analysis-dates";
 export const analysisText = {
   title: "Análisis",
   recordings: "Grabaciones",
@@ -65,16 +65,23 @@ export function lapTime(ms: number | null | undefined) {
 export const decimal = (n: number) =>
   n.toLocaleString("es-ES", { maximumFractionDigits: 1 });
 export const size = (bytes: number) => `${decimal(bytes / 1_000_000)} MB`;
-export const date = (ms: number) =>
+export const date = (ms: number, timeZone = recordingZone()) =>
   new Date(ms).toLocaleString("es-ES", {
+    timeZone,
     dateStyle: "medium",
     timeStyle: "short",
   });
-export function recordingDate(ms: number, nowMs: number) {
+export function recordingDate(
+  ms: number,
+  nowMs: number,
+  timeZone = recordingZone(),
+) {
   const value = new Date(ms);
-  const group = recordingGroup(ms, nowMs);
-  const otherYear = value.getFullYear() !== new Date(nowMs).getFullYear();
+  const group = recordingGroup(ms, nowMs, timeZone);
+  const year = new Intl.DateTimeFormat("es-ES", { timeZone, year: "numeric" });
+  const otherYear = year.format(ms) !== year.format(nowMs);
   const time = value.toLocaleTimeString("es-ES", {
+    timeZone,
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
@@ -82,6 +89,7 @@ export function recordingDate(ms: number, nowMs: number) {
   if (!otherYear && (group === "today" || group === "yesterday")) return time;
   const prefix = value
     .toLocaleDateString("es-ES", {
+      timeZone,
       weekday: group === "week" && !otherYear ? "short" : undefined,
       day: "numeric",
       month: group === "week" && !otherYear ? undefined : "short",

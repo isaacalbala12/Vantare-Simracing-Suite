@@ -4,7 +4,11 @@ import type {
   AnalysisController,
   AnalysisSnapshot,
 } from "../../app/AnalysisController";
-import { recordingGroup, recordingGroups } from "../../app/analysis-dates";
+import {
+  recordingGroup,
+  recordingGroups,
+  recordingZone,
+} from "../../app/analysis-dates";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import {
   date,
@@ -63,11 +67,13 @@ function RecordingRow({
   state,
   controller,
   now,
+  timeZone,
 }: {
   row: AnalysisRow;
   state: AnalysisSnapshot;
   controller?: AnalysisController;
   now: number;
+  timeZone: string;
 }) {
   const ref = useRef<HTMLTableRowElement>(null);
   useEffect(() => {
@@ -101,9 +107,9 @@ function RecordingRow({
       <td>
         <time
           dateTime={new Date(row.startedAtMs).toISOString()}
-          title={date(row.startedAtMs)}
+          title={date(row.startedAtMs, timeZone)}
         >
-          {recordingDate(row.startedAtMs, now)}
+          {recordingDate(row.startedAtMs, now, timeZone)}
         </time>
       </td>
       <td>
@@ -151,14 +157,16 @@ export function AnalysisCatalog({
   enabled,
   settings,
   clock = Date.now,
+  timeZone = recordingZone(),
 }: {
   state: AnalysisSnapshot;
   controller?: AnalysisController;
   enabled: boolean;
   settings: () => void;
   clock?: () => number;
+  timeZone?: string;
 }) {
-  const now = useRecordingClock(clock);
+  const now = useRecordingClock(clock, timeZone);
   const [search, setSearch] = useState("");
   const [how, setHow] = useState(false);
   const [showLoading, setShowLoading] = useState(false);
@@ -172,12 +180,14 @@ export function AnalysisCatalog({
   }, [state.loading]);
   const needle = search.trim().toLocaleLowerCase("es");
   const rows = state.rows.filter((row) =>
-    `${t.track} ${t.car} ${date(row.startedAtMs)}`
+    `${t.track} ${t.car} ${date(row.startedAtMs, timeZone)}`
       .toLocaleLowerCase("es")
       .includes(needle),
   );
   const groups = recordingGroups.filter((group) =>
-    rows.some((row) => recordingGroup(row.startedAtMs, now) === group),
+    rows.some(
+      (row) => recordingGroup(row.startedAtMs, now, timeZone) === group,
+    ),
   );
   return (
     <div className="v-an-layout">
@@ -281,7 +291,10 @@ export function AnalysisCatalog({
                   </th>
                 </tr>
                 {rows
-                  .filter((r) => recordingGroup(r.startedAtMs, now) === group)
+                  .filter(
+                    (r) =>
+                      recordingGroup(r.startedAtMs, now, timeZone) === group,
+                  )
                   .map((row) => (
                     <RecordingRow
                       key={row.id}
@@ -289,6 +302,7 @@ export function AnalysisCatalog({
                       state={state}
                       controller={controller}
                       now={now}
+                      timeZone={timeZone}
                     />
                   ))}
               </tbody>

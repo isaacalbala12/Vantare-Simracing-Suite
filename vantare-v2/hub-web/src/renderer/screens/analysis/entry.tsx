@@ -11,7 +11,13 @@ import {
 } from "../../ui/analysis/Analysis";
 import { Button } from "../../ui/Button";
 import { SectionPageHeader } from "../../ui/Frame";
-export default function Analysis() {
+export default function Analysis({
+  clock = Date.now,
+  timeZone,
+}: {
+  clock?: () => number;
+  timeZone?: string;
+}) {
   const state = useAnalysis();
   const settings = useSettings();
   const navigate = useUi((s) => s.navigate);
@@ -70,6 +76,8 @@ export default function Analysis() {
           </>
         ) : (
           <AnalysisCatalog
+            clock={clock}
+            timeZone={timeZone}
             state={state}
             controller={state.controller}
             enabled={enabled}

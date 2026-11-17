@@ -8,6 +8,7 @@ $qa=Assert-BuildPath $QaRoot
 if(-not ($qa.StartsWith('D:\VantareServer\qa\',[StringComparison]::OrdinalIgnoreCase) -or ($env:RUNNER_TEMP -and $qa.StartsWith(([IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\')+'\'),[StringComparison]::OrdinalIgnoreCase)))){throw 'Test exige raíz QA'}
 $root=Join-Path $qa ('build-tooling-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root)|Out-Null
+& (Join-Path $PSScriptRoot 'build-forwarding-tests.ps1') -QaRoot $root
 & (Join-Path $PSScriptRoot 'hub-inventory-tests.ps1') -QaRoot $root
 & (Join-Path $PSScriptRoot 'build-zip-tests.ps1') -QaRoot $root
 & (Join-Path $PSScriptRoot 'build-package-capacity-tests.ps1') -QaRoot $root

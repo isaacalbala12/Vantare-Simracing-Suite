@@ -165,9 +165,16 @@ vecinos caracteriza la retirada de campos anidados sin recortar texto JSON.
 Los servidores de tests acotan accept, lectura/escritura y espera de finalización
 con una guarda de cinco segundos. El join se hace solo tras is_finished; los
 sondeos acotados suplen la ausencia de accept/join con plazo en std. El test de
-servidor parado mantiene Client::new y sus 750 ms reales: exige petición recibida
-y que el servidor espere liberación explícita después del resultado None. Si
-vence la guarda del servidor, el test falla; cerrar por guarda no puede hacerlo pasar.
+servidor parado mantiene Client::new y sus 750 ms reales y exige que el servidor
+espere liberación explícita después del resultado None. Si vence la guarda del
+servidor, el test falla; cerrar por guarda no puede hacerlo pasar.
+
+Desde #2514 ese test no exige haber leído la línea GET: el plazo global del
+cliente cubre conectar y enviar, así que un hilo sin CPU más de 750 ms hace que
+ureq venza antes de escribir y el servidor lea EOF. El banco exige conexión
+aceptada por el servidor, socket mudo y abierto durante la espera, resultado
+None y plazo agotado; la petición GET la comprueban los bancos de respuesta,
+que no llevan plazo global.
 
 
 ## Diagnóstico de frescura — #1868, paso 5

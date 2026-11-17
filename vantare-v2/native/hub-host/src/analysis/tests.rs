@@ -423,7 +423,10 @@ mod real {
             };
             let elapsed = start.elapsed();
             assert_eq!(failure.code, ErrorCode::Deadline);
-            assert!(elapsed >= timeout && elapsed < timeout * 2, "{elapsed:?}");
+            // Solo cota inferior: fallar por plazo no puede ocurrir antes de agotarlo.
+            // Una cota superior de reloj mediría además matar y recoger el helper y
+            // unir el hilo, cuyo coste depende de la CPU; bajo carga lo hacía frágil.
+            assert!(elapsed >= timeout, "{elapsed:?}");
             assert!(reader.child.try_wait().unwrap().is_some());
             assert!(reader.pump.is_none());
         }

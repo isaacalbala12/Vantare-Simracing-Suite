@@ -83,6 +83,7 @@ export function useCatalogPhotos(
 
   useEffect(
     () => () => {
+      session.current?.photos.clear();
       session.current = undefined;
     },
     [],
@@ -139,7 +140,7 @@ export function useCatalogPhotos(
     };
     advance.current = pump;
     const settle = () => {
-      if (!valid() || scrolling) return;
+      if (disposed || !valid() || scrolling) return;
       state.candidates = cards
         .filter((card) => visible.has(card))
         .map((card) => card.dataset.kind as WidgetKind);

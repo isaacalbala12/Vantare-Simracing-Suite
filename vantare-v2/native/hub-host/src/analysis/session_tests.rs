@@ -1,6 +1,7 @@
 #![allow(clippy::unwrap_used)]
 use super::real::{exe, inject, inject_with_delay, status};
 use super::*;
+use std::os::windows::process::CommandExt;
 
 struct Writer {
     child: Child,
@@ -14,7 +15,6 @@ impl Writer {
             .arg(mode)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped());
-        use std::os::windows::process::CommandExt;
         command.creation_flags(0x0800_0000);
         let mut child = command.spawn().unwrap();
         let output = BufReader::new(child.stdout.take().unwrap());
@@ -27,13 +27,13 @@ impl Writer {
         self.output.read_line(&mut line).unwrap();
         serde_json::from_str(&line).unwrap()
     }
-    fn request(&mut self, value: Value) -> Value {
+    fn request(&mut self, value: &Value) -> Value {
         writeln!(self.child.stdin.as_mut().unwrap(), "{value}").unwrap();
         self.response()
     }
     fn stop(mut self, finish: bool) {
         if finish {
-            assert_eq!(self.request(json!(["finish", 0]))[0], "finished");
+            assert_eq!(self.request(&json!(["finish", 0]))[0], "finished");
         }
         drop(self.child.stdin.take());
         assert!(self.child.wait().unwrap().success());
@@ -69,11 +69,11 @@ fn lap_row(lap: u32) -> Value {
 }
 fn metadata_fixture(path: &Path) {
     let mut writer = Writer::open(path, "--create");
-    assert_eq!(writer.request(open_event(1))[0], "ack-session");
-    assert_eq!(writer.request(close_event(1))[0], "ack-session");
-    assert_eq!(writer.request(open_event(2))[0], "ack-session");
+    assert_eq!(writer.request(&open_event(1))[0], "ack-session");
+    assert_eq!(writer.request(&close_event(1))[0], "ack-session");
+    assert_eq!(writer.request(&open_event(2))[0], "ack-session");
     assert_eq!(
-        writer.request(json!(["lap",{"epoch":u64::MAX,"session":2,"car":7,"lap":0,
+        writer.request(&json!(["lap",{"epoch":u64::MAX,"session":2,"car":7,"lap":0,
         "officialMs":null,"sectorMs":null}]))[0],
         "ack-lap"
     );
@@ -109,7 +109,10 @@ fn real_v2_sessions_keep_unsigned_keys_nulls_and_unsealed_laps() {
     assert_eq!(laps.len(), 1);
     assert_eq!(laps[0].official_ms, None);
     assert_eq!(laps[0].sector_ms, None);
-    assert!(reader.lap_times(u64::MAX, 99).unwrap().is_empty());
+    assert_eq!(
+        reader.lap_times(u64::MAX, 99).unwrap(),
+        Vec::<LapTime>::new()
+    );
     assert!(!reader.closed);
 }
 #[test]
@@ -118,14 +121,14 @@ fn real_v1_is_supported_without_summaries_or_lap_times() {
     fs::write(dir.db(), include_bytes!("fixtures/session-v1.duckdb")).unwrap();
     let mut probe = Writer::open(&dir.db(), "--resume");
     assert_eq!(
-        probe.request(json!(["session-summaries"])),
+        probe.request(&json!(["session-summaries"])),
         json!(["unsupported", "meta"])
     );
     probe.stop(false);
     let original = fs::read(dir.db()).unwrap();
     let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
-    assert!(reader.sessions().unwrap().is_empty());
-    assert!(reader.lap_times(1, 1).unwrap().is_empty());
+    assert_eq!(reader.sessions().unwrap(), Vec::<SessionSummary>::new());
+    assert_eq!(reader.lap_times(1, 1).unwrap(), Vec::<LapTime>::new());
     assert!(!reader.closed);
     drop(reader);
     assert_eq!(original, fs::read(dir.db()).unwrap());
@@ -134,11 +137,11 @@ fn real_v1_is_supported_without_summaries_or_lap_times() {
 fn six_hundred_real_laps_cross_pages_and_cars_without_loss_or_duplicates() {
     let dir = Directory::new();
     let mut writer = Writer::open(&dir.db(), "--create");
-    writer.request(open_event(1));
+    writer.request(&open_event(1));
     for index in 0..600 {
         let mut row = lap_row(index % 350);
         row["car"] = (7 + index / 350).into();
-        assert_eq!(writer.request(json!(["lap", row]))[0], "ack-lap");
+        assert_eq!(writer.request(&json!(["lap", row]))[0], "ack-lap");
     }
     writer.stop(true);
     let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
@@ -381,7 +384,7 @@ fn index_reuses_cache_invalidates_file_changes_and_exposes_only_file_names() {
     let refreshed = index.refresh(&exe(), &dir.0, cancel()).unwrap();
     assert_ne!(refreshed[0].modified, row.modified);
     let mut writer = Writer::open(&dir.db(), "--resume");
-    writer.request(open_event(3));
+    writer.request(&open_event(3));
     writer.stop(false);
     let refreshed = index.refresh(&exe(), &dir.0, cancel()).unwrap();
     assert_eq!(refreshed[0].sessions.len(), 3);
@@ -396,7 +399,7 @@ fn index_marks_live_writers_locked_even_after_cache_and_does_not_cache_failures(
     let rows = index.refresh(&exe(), &dir.0, cancel()).unwrap();
     assert!(rows[0].locked);
     assert!(!rows[0].readable);
-    assert!(rows[0].sessions.is_empty());
+    assert_eq!(rows[0].sessions, Vec::<SessionSummary>::new());
     writer.stop(false);
     let rows = index.refresh(&exe(), &dir.0, cancel()).unwrap();
     assert!(rows[0].readable);
@@ -417,7 +420,7 @@ fn index_marks_live_writers_locked_even_after_cache_and_does_not_cache_failures(
 fn unfinished_recordings_are_not_cached_and_cancelled_index_does_not_start_work() {
     let dir = Directory::new();
     let mut writer = Writer::open(&dir.db(), "--create");
-    writer.request(open_event(1));
+    writer.request(&open_event(1));
     writer.stop(false);
     let mut index = SessionIndex::default();
     let rows = index.refresh(&exe(), &dir.0, cancel()).unwrap();
@@ -437,6 +440,9 @@ fn unfinished_recordings_are_not_cached_and_cancelled_index_does_not_start_work(
         ErrorCode::Cancelled
     );
     let empty = dir.0.join("absent");
-    assert!(index.refresh(&exe(), &empty, cancel()).unwrap().is_empty());
+    assert_eq!(
+        index.refresh(&exe(), &empty, cancel()).unwrap(),
+        Vec::<RecordingSessions>::new()
+    );
     assert!(!empty.exists());
 }

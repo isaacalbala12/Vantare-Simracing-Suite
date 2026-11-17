@@ -1,6 +1,14 @@
 //! Índice propiedad del worker del Calendario; ninguna instancia global ni DB simultáneas.
-use super::*;
-use std::collections::BTreeMap;
+use super::{
+    Cancel, ErrorCode, Reader, Result, SessionSummary, error, invalid, recordings, reparse, stamp,
+};
+use std::{
+    collections::BTreeMap,
+    fs,
+    path::{Path, PathBuf},
+    sync::atomic::Ordering,
+    time::{Duration, Instant, SystemTime},
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RecordingSessions {
@@ -103,6 +111,7 @@ impl SessionIndex {
         check(&cancel, deadline)?;
         self.directory = Some(directory);
         self.cache = cache;
+        drop(cancel); // El token es propiedad de este trabajo, no de la caché.
         Ok(results)
     }
 }

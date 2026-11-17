@@ -8,6 +8,17 @@ use std::{
     path::Path,
 };
 
+fn compressed_capacity(bytes: u64) -> Result<()> {
+    ensure(bytes <= 256 * 1024 * 1024, "ZIP comprimido supera el límite")
+}
+
+fn expanded_capacity(member: u64, total: u64) -> Result<()> {
+    ensure(
+        member <= 256 * 1024 * 1024 && total <= 768 * 1024 * 1024,
+        "ZIP supera el límite de extracción",
+    )
+}
+
 pub fn expand(
     zip_path: &Path,
     expected_sha: &str,
@@ -28,10 +39,7 @@ pub fn expand(
         options.share_mode(1);
     }
     let mut input = options.open(zip_path)?;
-    ensure(
-        input.metadata()?.len() <= 128 * 1024 * 1024,
-        "ZIP comprimido supera el límite",
-    )?;
+    compressed_capacity(input.metadata()?.len())?;
     let mut hash = Sha256::new();
     io::copy(&mut input, &mut hash)?;
     ensure(
@@ -83,10 +91,7 @@ pub fn expand(
         total = total
             .checked_add(member.size())
             .ok_or_else(|| super::WriteError::new(1, "Tamaño ZIP fuera de rango"))?;
-        ensure(
-            member.size() <= 256 * 1024 * 1024 && total <= 512 * 1024 * 1024,
-            "ZIP supera el límite de extracción",
-        )?;
+        expanded_capacity(member.size(), total)?;
         // Exact names forbid traversal, ADS, directory entries and .env.
         let mode = member.unix_mode().unwrap_or_default();
         ensure(

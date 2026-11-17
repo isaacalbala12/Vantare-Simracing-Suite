@@ -182,12 +182,23 @@ fn download_requires_exact_signed_length_and_hash() {
             loop {
                 match listener.accept() {
                     Ok((mut stream, _)) => {
+                        // Winsock accept inherits the listener's nonblocking mode.
+                        stream
+                            .set_nonblocking(false)
+                            .expect("blocking test connection");
                         stream
                             .set_read_timeout(Some(Duration::from_secs(3)))
                             .expect("valid test fixture");
-                        let mut request = [0; 1024];
-                        let _ = stream.read(&mut request);
-                        let _=stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\nConnection: close\r\n\r\nhello");
+                        // Consume the complete GET headers before replying/closing;
+                        // unread request bytes at close can reset a Windows connection.
+                        let mut request = Vec::new();
+                        while !request.ends_with(b"\r\n\r\n") {
+                            assert!(request.len() < 4096, "bounded test request headers");
+                            let mut byte = [0];
+                            stream.read_exact(&mut byte).expect("read test GET headers");
+                            request.push(byte[0]);
+                        }
+                        stream.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\nConnection: close\r\n\r\nhello").expect("write complete test response");
                         break;
                     }
                     Err(error) if error.kind() == io::ErrorKind::WouldBlock => {

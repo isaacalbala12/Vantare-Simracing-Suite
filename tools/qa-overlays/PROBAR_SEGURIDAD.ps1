@@ -10,6 +10,8 @@ Assert-TandaWindow $start $end
 foreach($bad in @(' '+$start,$start+' ', $start.Replace('Z','+00:00'),$start+"';shutdown /s",'2026-99-01T00:00:00Z')){
  $rejected=$false;try {Assert-TandaWindow $bad $end} catch {$rejected=$true}
  Require $rejected 'Invalid/injectable UTC accepted'
+ $rejected=$false;try {Assert-TandaWindow $start $bad} catch {$rejected=$true}
+ Require $rejected 'Invalid/injectable deadline accepted'
 }
 foreach($name in @('iRacingSim64DX11','AC2-Win64-Shipping','AssettoCorsaEVO','AMS2','rFactor2','SimHub','Le Mans Ultimate')){
  Require (@(Find-TandaGameActivity @(@{Name=$name;CommandLine=''})).Count -eq 1) "Game omitted: $name"
@@ -38,6 +40,9 @@ $output=Join-Path $base 'evidence';$null=New-Item -ItemType Directory -Path $out
 Set-Content (Join-Path $output 'one.txt') 'evidence'
 Write-TandaEvidenceHashes $output
 Require ((Test-Path (Join-Path $output 'evidence-hashes.json')) -and -not(Test-Path (Join-Path $output 'evidence-hashes.json.tmp'))) 'Non-atomic manifest'
+$manifestBefore=(Get-FileHash (Join-Path $output 'evidence-hashes.json')).Hash
+$rejected=$false;try {Write-TandaEvidenceHashes $output} catch {$rejected=$true}
+Require ($rejected -and (Get-FileHash (Join-Path $output 'evidence-hashes.json')).Hash -eq $manifestBefore) 'Existing manifest overwritten'
 $script:realWrite=${function:Write-TandaJson}
 function Write-TandaJson {param($Value,$Path) & $script:realWrite $Value $Path;throw 'interrupted write'}
 $partial=Join-Path $base 'partial';$null=New-Item -ItemType Directory -Path $partial

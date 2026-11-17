@@ -3385,3 +3385,105 @@ mod online_compatibility_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod draft_cas_tests {
+    use super::*;
+    #[test]
+    fn blind_second_writer_cannot_replace_the_first_hubs_text() {
+        let (root, store) = crate::test_store("draft-cas-blind");
+        let mut app = App::new(BuildConfig::load(), root.clone());
+        app.reports = Some(crate::report::Reports::restore(&store, 0).expect("reports"));
+        app.report_store = Some(store);
+        let command = |text: &str| serde_json::from_value(serde_json::json!({
+            "command":"DraftSave", "fields": {
+                "actionText":text,"expectedText":"expected","observedText":"observed",
+                "contextText":"","module":"unknown"
+            }
+        })).expect("legacy fields, no revision means absent");
+        app.draft_reply(command("A")).expect("first writer");
+        let second = app.draft_reply(command("B")).expect("closed response");
+        assert_ne!(serde_json::to_value(second).expect("reply")["result"], "Draft");
+        let current = crate::report::load_draft(app.report_store.as_ref().expect("store"))
+            .expect("load").expect("draft");
+        assert_eq!(current.fields.action_text,"A");
+        drop(app);
+        crate::cleanup_store(&root,"draft-cas-blind", &["report-draft"]);
+    }
+    fn save(text: &str, revision: Option<&str>) -> Command {
+        serde_json::from_value(serde_json::json!({"command":"DraftSave", "expected_revision":revision,"fields":{"actionText":text,"expectedText":"expected","observedText":"observed","contextText":"","module":"unknown"}})).expect("closed save")
+    }
+    fn discard(revision: Option<&str>) -> Command {
+        serde_json::from_value(serde_json::json!({"command":"DraftDiscard","expected_revision":revision})).expect("closed discard")
+    }
+    fn loaded(app: &mut App) -> serde_json::Value {
+        serde_json::to_value(app.draft_reply(Command::DraftLoad).expect("load")).expect("reply")
+    }
+    fn fixture(context: &str) -> (PathBuf, App) {
+        let (root,store)=crate::test_store(context);
+        let mut app=App::new(BuildConfig::load(),root.clone());
+        app.reports=Some(crate::report::Reports::restore(&store,0).expect("reports"));
+        app.report_store=Some(store);
+        (root,app)
+    }
+    #[test]
+    fn two_hubs_load_before_commit_stale_save_and_discard_preserve_the_winner() {
+        use std::sync::{Arc,Barrier,Mutex,mpsc};
+        let (root,mut app)=fixture("draft-cas-hubs");
+        app.draft_reply(save("r0",None)).expect("seed");
+        let shared=Mutex::new(app);
+        let both_loaded=Arc::new(Barrier::new(2));
+        let (committed,wait_commit)=mpsc::channel();
+        std::thread::scope(|scope| {
+            let shared=&shared;
+            let gate=both_loaded.clone();
+            scope.spawn(move || {
+                let r0=loaded(&mut shared.lock().expect("A"))["revision"].as_str().expect("revision").to_owned();
+                gate.wait();
+                let mut app=shared.lock().expect("A commit");
+                app.draft_reply(save("A",Some(&r0))).expect("A saves");
+                let r1=loaded(&mut app)["revision"].as_str().expect("r1").to_owned();
+                assert_ne!(r0,r1);
+                committed.send(r1).expect("notify B");
+            });
+            let gate=both_loaded.clone();
+            scope.spawn(move || {
+                let r0=loaded(&mut shared.lock().expect("B"))["revision"].as_str().expect("revision").to_owned();
+                gate.wait();
+                let r1=wait_commit.recv().expect("A committed");
+                let mut app=shared.lock().expect("B commit");
+                for command in [save("lost B",Some(&r0)),discard(Some(&r0)),save("blind",None)] {
+                    let result=serde_json::to_value(app.draft_reply(command).expect("conflict reply")).expect("wire");
+                    assert_eq!(result["result"],"DraftConflict");
+                    assert_eq!(result["draft"]["fields"]["actionText"],"A");
+                    assert_eq!(loaded(&mut app)["revision"],r1);
+                }
+                let current=loaded(&mut app);
+                app.draft_reply(save("B reconciled",current["revision"].as_str())).expect("explicit retry");
+                assert_eq!(loaded(&mut app)["draft"]["fields"]["actionText"],"B reconciled");
+            });
+        });
+        drop(shared);
+        crate::cleanup_store(&root,"draft-cas-hubs", &["report-draft"]);
+    }
+    #[test]
+    fn identical_fields_keep_revision_and_malformed_input_never_mutates() {
+        let (root,mut app)=fixture("draft-cas-input");
+        assert_eq!(loaded(&mut app)["revision"],serde_json::Value::Null);
+        app.draft_reply(save("A",None)).expect("create from absence");
+        let before=loaded(&mut app);
+        let revision=before["revision"].as_str().expect("revision");
+        app.draft_reply(save("A",Some(revision))).expect("same fields");
+        assert_eq!(loaded(&mut app),before);
+        for invalid in ["", "short", &"g".repeat(32), &"a".repeat(33)] {
+            assert!(matches!(app.draft_reply(save("bad",Some(invalid))),Err(Error::Protocol)));
+            assert!(matches!(app.draft_reply(discard(Some(invalid))),Err(Error::Protocol)));
+            assert_eq!(loaded(&mut app),before);
+        }
+        app.draft_reply(discard(Some(revision))).expect("discard current");
+        assert_eq!(loaded(&mut app)["revision"],serde_json::Value::Null);
+        drop(app);
+        crate::cleanup_store(&root,"draft-cas-input", &[]);
+    }
+
+}

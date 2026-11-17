@@ -987,3 +987,37 @@ mod tests {
         }));
     }
 }
+
+#[cfg(test)]
+mod draft_cas_tests {
+    use super::*;
+    fn saved() -> report_document::Draft {
+        report_document::Draft { schema_version:1, idempotency_key:format!("draft_{}", "a".repeat(64)),
+            fields:ReportFields { action_text:"A".into(),module:"hub".into(),..Default::default() }.core(),screenshots:vec![] }
+    }
+    #[test]
+    fn typed_conflict_returns_current_text_and_fingerprint_without_the_private_key() {
+        let saved=saved();
+        for operation in [Operation::Save,Operation::Discard] {
+            let Err(HostError::DraftConflict { current })=complete(operation,core::Reply::DraftConflict {draft:Some(saved.clone()),message:String::new()}) else {panic!("typed conflict")};
+            assert_eq!(current.fields.action_text,"A");
+            assert_eq!(current.revision,Some(vantare_services::content_hash(saved.idempotency_key.as_bytes())[..32].into()));
+            let json=serde_json::to_string(&current).expect("projection");
+            assert!(!json.contains(&saved.idempotency_key));
+            assert!(!json.contains("idempotency"));
+        }
+        for operation in [Operation::Load,Operation::Send] {
+            assert_eq!(complete(operation,core::Reply::DraftConflict{draft:Some(saved.clone()),message:String::new()}),Err(HostError::Rejected));
+        }
+        assert_eq!(complete(Operation::Save,core::Reply::Error{message:"conflicto de revisión".into()}),Err(HostError::Rejected));
+    }
+    #[test]
+    fn draft_revision_must_be_exactly_32_lowercase_hex_before_forwarding() {
+        let access=AccessView{verified:true,..Default::default()};
+        for revision in ["", "a", &"a".repeat(31), &"a".repeat(33), &"G".repeat(32)] {
+            for request in [crate::protocol::Request::DraftSave {fields:ReportFields{module:"hub".into(),..Default::default()},expected_revision:Some(revision.into())},crate::protocol::Request::DraftDiscard{expected_revision:Some(revision.into())}] {
+                assert!(matches!(intent(&request,&access),Err(HostError::Rejected)));
+            }
+        }
+    }
+}

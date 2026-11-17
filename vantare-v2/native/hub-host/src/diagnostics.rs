@@ -134,6 +134,7 @@ mod tests {
                 calendar: true,
                 engineer: true,
                 strategy: true,
+                analysis: true,
             },
             live: true,
         };

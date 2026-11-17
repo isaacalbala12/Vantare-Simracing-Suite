@@ -67,7 +67,7 @@ impl State {
         Ok(rows)
     }
 }
-/// C1's Limit means reader size; catalog translates it to TooMany at its call site.
+/// C1's Limit means reader size; catalog translates it to `TooMany` at its call site.
 /// C1's filesystem Io and malformed input both expose Unreadable, without diagnostics.
 pub fn map_error(code: crate::analysis::ErrorCode) -> HostError {
     use crate::analysis::ErrorCode;

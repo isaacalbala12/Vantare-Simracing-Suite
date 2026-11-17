@@ -39,8 +39,8 @@ pub(crate) fn corpus() -> serde_json::Value {
         Reply::AnalysisCatalog {
             recordings: vec![AnalysisRow {
                 id: "a".repeat(64),
-                started_at_ms: 1700000000000,
-                size_bytes: 9007199254740991,
+                started_at_ms: 1_700_000_000_000,
+                size_bytes: 9_007_199_254_740_991,
             }],
             max: 256,
         },
@@ -57,7 +57,7 @@ pub(crate) fn corpus() -> serde_json::Value {
                 sealed: true,
                 gap: false,
                 samples: 13,
-                lap_time_approx_ms: Some(111600),
+                lap_time_approx_ms: Some(111_600),
                 speed: signal.clone(),
                 throttle: signal.clone(),
                 brake: signal,
@@ -87,7 +87,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         host.push(sample_response(Reply::AnalysisInspect {
             state,
             laps: 1,
-            best_lap_approx_ms: Some(111600),
+            best_lap_approx_ms: Some(111_600),
         }));
     }
     host.push(sample_response(Reply::AnalysisInspect {

@@ -420,9 +420,11 @@ describe("Studio Foco interactions", () => {
     const suggestion = within(
       await screen.findByRole("group", { name: t.kit }),
     ).getAllByRole("button")[0];
+    // The card name is the first fragment of "Añadir <name>, <card text>".
     const name = suggestion
       .getAttribute("aria-label")
-      ?.slice(t.addShort.length + 1);
+      ?.slice(t.addShort.length + 1)
+      .split(", ")[0];
     if (!name) throw new Error("Missing suggestion name");
     fireEvent.click(suggestion);
     await screen.findByRole("button", {
@@ -654,9 +656,11 @@ describe("Studio Foco interactions", () => {
     const suggestion = within(
       await screen.findByRole("group", { name: t.kit }),
     ).getAllByRole("button")[0];
+    // The card name is the first fragment of "Añadir <name>, <card text>".
     const name = suggestion
       .getAttribute("aria-label")
-      ?.slice(t.addShort.length + 1);
+      ?.slice(t.addShort.length + 1)
+      .split(", ")[0];
     if (!name) throw new Error("Missing suggestion name");
     await user.click(suggestion);
     await screen.findByText(t.addedName(name));

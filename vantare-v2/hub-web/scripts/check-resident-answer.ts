@@ -108,16 +108,23 @@ export async function checkResidentAnswer(owner: Page, base: string) {
         exact: true,
       });
       assert.equal(await reuse.getAttribute("aria-disabled"), "false");
+      // Base UI queues the popup's initial focus on a microtask plus an
+      // animation frame, and that queued focus only yields when the focus is
+      // already inside the popup. If a caption control takes the focus first,
+      // the dialog takes it back and the script never asks again. Focus inside
+      // the observation so each control is checked against a settled page
+      // (#2550, #2276).
       for (const control of await page
         .locator(".v-window-controls button")
         .all()) {
-        await control.focus();
         await until(
-          () =>
-            control.evaluate(
+          async () => {
+            await control.focus();
+            return control.evaluate(
               (node) =>
                 node === document.activeElement && !node.closest("[inert]"),
-            ),
+            );
+          },
           5000,
           "caption controls remain keyboard reachable",
         );

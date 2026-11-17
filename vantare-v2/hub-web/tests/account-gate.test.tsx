@@ -725,14 +725,38 @@ it("keeps typed secrets when an existing send blocks another form submission", a
       ([r]) => r.method === "account.email" && r.action.action === "begin",
     ),
   ).toHaveLength(0);
+  // Hold the recovery read the busy failure triggers: the form must stay
+  // "waiting" until the host confirms the session, so the test awaits that reply
+  // instead of polling the button label with Testing Library's 1 s default
+  // (#2480, #2486).
+  let releaseRecovery: (() => void) | undefined;
+  const inner = calls.getMockImplementation();
+  if (!inner) throw new Error("intercept must install an implementation");
+  calls.mockImplementation(function (
+    this: Client,
+    request: Intent,
+    onSent?: () => void,
+  ) {
+    const result = inner.call(this, request, onSent);
+    if (request.method !== "account.get") return result;
+    return new Promise<void>((resolve) => {
+      releaseRecovery = resolve;
+    }).then(() => result);
+  });
   await act(async () => rejectMode?.(new HostFailure({ kind: "busy" })));
   await screen.findByText(text.busy);
   expect(password.value).toBe(marker);
-  // The busy callout lands before AccountState's recovery read settles, so the
-  // submit button still says "waiting" for a moment: wait for the form (#2480).
-  await user.click(
-    await screen.findByRole("button", { name: text.submit.enter }),
-  );
+  expect(
+    releaseRecovery,
+    "busy failure must re-read the account",
+  ).toBeDefined();
+  expect(
+    screen.getByRole("button", { name: text.submit.waiting }),
+  ).toBeTruthy();
+  await act(async () => {
+    releaseRecovery?.();
+  });
+  await user.click(screen.getByRole("button", { name: text.submit.enter }));
   await screen.findByText(text.consent);
   expect(password.value).toBe("");
 });

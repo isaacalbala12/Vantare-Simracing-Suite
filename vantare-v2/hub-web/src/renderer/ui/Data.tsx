@@ -87,11 +87,28 @@ export function SettingRow({
 export function Badge({
   children,
   tone = "beta",
+  dot = false,
 }: {
   children: ReactNode;
-  tone?: "beta" | "tester" | "pro" | "locked" | "live" | "count";
+  tone?:
+    | "beta"
+    | "tester"
+    | "pro"
+    | "locked"
+    | "live"
+    | "count"
+    | "ok"
+    | "warn"
+    | "err"
+    | "neutral";
+  dot?: boolean;
 }) {
-  return <span className={`v-badge v-badge--${tone}`}>{children}</span>;
+  return (
+    <span className={`v-badge v-badge--${tone}${dot ? " v-badge--dot" : ""}`}>
+      {dot && <span className="v-badge-dot" aria-hidden="true" />}
+      {children}
+    </span>
+  );
 }
 export const Chip = Badge;
 export const Pill = Badge;

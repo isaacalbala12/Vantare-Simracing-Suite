@@ -38,7 +38,25 @@ export function analysisScene(context: MockContext) {
               ? []
               : Array.from({ length: 10 }, (_, index) => ({
                   id: String(index).padStart(64, "0"),
-                  startedAtMs: 1794912000000 - index * 9_000_000,
+                  startedAtMs: (() => {
+                    const [days, hour, minute] = [
+                      [0, 18, 42],
+                      [0, 16, 5],
+                      [0, 15, 20],
+                      [1, 21, 10],
+                      [1, 20, 31],
+                      [3, 17, 30],
+                      [3, 16, 2],
+                      [5, 22, 15],
+                      [14, 19, 40],
+                      [14, 19, 40],
+                    ][index];
+                    const date = new Date();
+                    date.setDate(date.getDate() - days);
+                    date.setHours(hour, minute, 0, 0);
+                    if (index === 9) date.setFullYear(date.getFullYear() - 1);
+                    return date.getTime();
+                  })(),
                   sizeBytes: 22400000 - index * 1000000,
                   recording: index === 0,
                 })),
@@ -57,13 +75,17 @@ export function analysisScene(context: MockContext) {
               "complete",
               "complete",
               "unconfirmed",
+              "complete",
               "unreadable",
+              "complete",
               "locked",
+              "complete",
               "incompatible",
+              "complete",
             ] as const
-          )[index % 6],
+          )[index % 10],
           laps: 14,
-          bestLapApproxMs: index % 6 < 3 ? 111600 : null,
+          bestLapApproxMs: [1, 2, 3, 5, 7, 9].includes(index) ? 111600 : null,
         },
       };
     }

@@ -66,6 +66,7 @@
   background: var(--hover);
 }
 .v-an-table .v-an-day th {
+  text-transform: uppercase;
   position: static;
   background: transparent;
   color: var(--accent-bright);
@@ -84,25 +85,14 @@
   color: var(--text-1);
   font: inherit;
 }
-.v-an-open span {
-  color: var(--text-2);
+.v-an-open em {
+  color: var(--text-3);
+  font-weight: 400;
+  font-style: italic;
 }
-.v-an-state {
-  display: inline-block;
-  border: 1px solid var(--line-3);
-  border-radius: var(--radius-xs);
-  padding: var(--space-1);
-  color: var(--text-1);
-}
-.v-an-state[data-state="complete"] {
-  border-color: var(--ok);
-}
-.v-an-state[data-state="unconfirmed"] {
-  border-color: var(--warn);
-}
-.v-an-state[data-state="recording"],
-.v-an-state[data-state="unreadable"] {
-  border-color: var(--err);
+.v-an-catalog td:first-child {
+  white-space: nowrap;
+  padding-inline: var(--space-3);
 }
 .v-an-number {
   font-family: var(--font-mono);

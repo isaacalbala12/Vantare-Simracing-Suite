@@ -25,3 +25,9 @@ export async function checkAnalysisDensity(page: Page) {
     "The table must fit its content container",
   );
 }
+for (const cell of await table.locator("tbody time").all())
+  assert.equal(
+    await cell.evaluate((el) => el.getBoundingClientRect().height < 24),
+    true,
+    "Recording dates stay on one line",
+  );

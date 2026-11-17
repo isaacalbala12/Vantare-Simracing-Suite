@@ -128,6 +128,48 @@ it("filters locally and clears search by keyboard", async () => {
   expect(screen.getAllByText("Coche sin identificar")).toHaveLength(10);
   expect(request.mock.calls.length).toBe(before);
 });
+it("renders the four relative groups, concise dates and unidentified fallback text", async () => {
+  mount();
+  await screen.findAllByText("Coche sin identificar");
+  for (const label of ["Hoy", "Ayer", "Esta semana", "Antes"])
+    expect(screen.getByText(label)).toBeTruthy();
+  expect(screen.getByText("18:42", { selector: "time" })).toBeTruthy();
+  expect(screen.getByText("21:10", { selector: "time" })).toBeTruthy();
+  expect(
+    screen.getAllByText("Circuito sin identificar", { selector: "em" }),
+  ).toHaveLength(10);
+  expect(screen.getByRole("columnheader", { name: "Abrir" })).toBeTruthy();
+  expect(screen.queryByRole("columnheader", { name: "—" })).toBeNull();
+});
+it("keeps Laps and Map visible, keyboard reachable and inert before opening", async () => {
+  const request = bridge();
+  mount(request);
+  await screen.findAllByText("Coche sin identificar");
+  const laps = screen.getByRole("tab", { name: "Vueltas" });
+  expect(laps.getAttribute("aria-disabled")).toBe("true");
+  expect(laps.hasAttribute("disabled")).toBe(false);
+  expect(
+    document.getElementById(laps.getAttribute("aria-describedby") ?? "")
+      ?.textContent,
+  ).toBe("Abre una grabación para ver sus vueltas");
+  await userEvent.click(screen.getByRole("tab", { name: "Grabaciones" }));
+  await userEvent.keyboard("{ArrowRight}{Enter} ");
+  expect(document.activeElement).toBe(laps);
+  expect(
+    screen
+      .getByRole("tab", { name: "Grabaciones" })
+      .getAttribute("aria-selected"),
+  ).toBe("true");
+  expect(
+    screen
+      .getByRole("tab", { name: "Mapa · Próximamente" })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  expect(screen.queryByRole("tab", { name: "Comparar" })).toBeNull();
+  expect(request.mock.calls.some(([r]) => r.method === "analysis.open")).toBe(
+    false,
+  );
+});
 it("inspects visible rows in series, retries Busy after 500ms, and cancels the queue on exit", async () => {
   vi.useFakeTimers();
   const real = bridge();

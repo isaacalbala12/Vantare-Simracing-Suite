@@ -27,7 +27,17 @@ export default function Analysis() {
     <>
       <SectionChrome
         title={t.title}
-        tabs={[{ id: "recordings", etiqueta: t.recordings, visible: true }]}
+        tabs={[
+          { id: "recordings", etiqueta: t.recordings, visible: true },
+          {
+            id: "laps",
+            etiqueta: t.laps,
+            visible: true,
+            ariaDisabled: true,
+            description: t.openFirst,
+          },
+          { id: "map", etiqueta: t.map, visible: true, ariaDisabled: true },
+        ]}
         activeTab="recordings"
         rail={
           <AnalysisRail

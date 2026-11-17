@@ -1,7 +1,14 @@
+import { recordingGroup } from "../app/analysis-dates";
 export const analysisText = {
   title: "Análisis",
   recordings: "Grabaciones",
   laps: "Vueltas",
+  openFirst: "Abre una grabación para ver sus vueltas",
+  today: "Hoy",
+  yesterday: "Ayer",
+  week: "Esta semana",
+  older: "Antes",
+  open: "Abrir",
   map: "Mapa · Próximamente",
   intro: "Tus sesiones grabadas en este PC. Abre una para ver sus vueltas.",
   track: "Circuito sin identificar",
@@ -63,9 +70,23 @@ export const date = (ms: number) =>
     dateStyle: "medium",
     timeStyle: "short",
   });
-export const day = (ms: number) =>
-  new Date(ms).toLocaleDateString("es-ES", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
+export function recordingDate(ms: number, nowMs: number) {
+  const value = new Date(ms);
+  const group = recordingGroup(ms, nowMs);
+  const otherYear = value.getFullYear() !== new Date(nowMs).getFullYear();
+  const time = value.toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
   });
+  if (!otherYear && (group === "today" || group === "yesterday")) return time;
+  const prefix = value
+    .toLocaleDateString("es-ES", {
+      weekday: group === "week" && !otherYear ? "short" : undefined,
+      day: "numeric",
+      month: group === "week" && !otherYear ? undefined : "short",
+      year: otherYear ? "numeric" : undefined,
+    })
+    .replaceAll(".", "");
+  return `${prefix}, ${time}`;
+}

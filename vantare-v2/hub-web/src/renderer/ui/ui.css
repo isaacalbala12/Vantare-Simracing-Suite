@@ -1373,3 +1373,39 @@ textarea.v-input:read-only {
 .v-select-popup .v-option {
   min-height: 38px;
 }
+
+.v-section-tab[aria-disabled="true"] {
+  color: var(--text-3);
+  cursor: default;
+}
+.v-badge--dot {
+  border: 0;
+  border-radius: var(--radius-pill);
+  color: var(--text-1);
+  background: var(--surface-2);
+}
+.v-badge-dot {
+  inline-size: var(--space-2);
+  block-size: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--text-3);
+  flex: none;
+}
+.v-badge--ok.v-badge--dot {
+  background: color-mix(in srgb, var(--ok) 12%, var(--surface-1));
+}
+.v-badge--warn.v-badge--dot {
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface-1));
+}
+.v-badge--err.v-badge--dot {
+  background: color-mix(in srgb, var(--err) 12%, var(--surface-1));
+}
+.v-badge--ok .v-badge-dot {
+  background: var(--ok);
+}
+.v-badge--warn .v-badge-dot {
+  background: var(--warn);
+}
+.v-badge--err .v-badge-dot {
+  background: var(--err);
+}

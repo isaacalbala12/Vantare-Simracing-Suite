@@ -42,3 +42,9 @@ El valor predeterminado, `undefined` o `null`, conserva el contexto habitual;
 un nodo React sustituye el contenido del carril como antes. Ajustes, Launcher,
 Testing Center e Inicio no cambian. Una página de serie puede usar `rail={false}`
 y volver a pasar su nodo de contexto al regresar a Próximas.
+
+Las pestañas pueden declarar `ariaDisabled: true` y `description` (texto i18n).
+Conservan el botón nativo habilitado y el recorrido con flechas de Base UI, pero
+no cambian la pestaña activa al recibir foco, pulsar Intro/Espacio o hacer clic.
+La descripción queda asociada mediante `aria-describedby`. Análisis usa este
+estado para «Vueltas» hasta seleccionar una grabación, por decisión de la raíz.

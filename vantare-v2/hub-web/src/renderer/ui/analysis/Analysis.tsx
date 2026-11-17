@@ -4,19 +4,21 @@ import type {
   AnalysisController,
   AnalysisSnapshot,
 } from "../../app/AnalysisController";
+import { recordingGroup, recordingGroups } from "../../app/analysis-dates";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import {
   date,
-  day,
   lapTime,
+  recordingDate,
   size,
   analysisText as t,
 } from "../../i18n/analysis.es";
 import { Button } from "../Button";
-import { Callout, Skeleton } from "../Data";
+import { Badge, Callout, Skeleton } from "../Data";
 import { SearchInput } from "../Forms";
 import { RailBlock, SectionPageHeader } from "../Frame";
 import "./analysis.css";
+import { useRecordingClock } from "./useRecordingClock";
 export function AnalysisRail({
   enabled,
   recording,
@@ -60,10 +62,12 @@ function RecordingRow({
   row,
   state,
   controller,
+  now,
 }: {
   row: AnalysisRow;
   state: AnalysisSnapshot;
   controller?: AnalysisController;
+  now: number;
 }) {
   const ref = useRef<HTMLTableRowElement>(null);
   useEffect(() => {
@@ -94,11 +98,18 @@ function RecordingRow({
             : t.dash;
   return (
     <tr ref={ref}>
-      <td>{date(row.startedAtMs)}</td>
+      <td>
+        <time
+          dateTime={new Date(row.startedAtMs).toISOString()}
+          title={date(row.startedAtMs)}
+        >
+          {recordingDate(row.startedAtMs, now)}
+        </time>
+      </td>
       <td>
         <span className="v-an-open">
-          <strong>{t.track}</strong>
-          <span>{t.car}</span>
+          <em>{t.track}</em>
+          <em>{t.car}</em>
         </span>
       </td>
       <td className="v-an-secondary">{readable ? inspection.laps : t.dash}</td>
@@ -107,12 +118,20 @@ function RecordingRow({
       </td>
       <td className="v-an-number">{size(row.sizeBytes)}</td>
       <td>
-        <span
-          className="v-an-state"
-          data-state={row.recording ? "recording" : inspection?.state}
+        <Badge
+          dot
+          tone={
+            row.recording || status === t.unreadable
+              ? "err"
+              : status === t.complete
+                ? "ok"
+                : status === t.unconfirmed
+                  ? "warn"
+                  : "neutral"
+          }
         >
           {status}
-        </span>
+        </Badge>
       </td>
       <td>
         <Icon
@@ -131,12 +150,15 @@ export function AnalysisCatalog({
   controller,
   enabled,
   settings,
+  clock = Date.now,
 }: {
   state: AnalysisSnapshot;
   controller?: AnalysisController;
   enabled: boolean;
   settings: () => void;
+  clock?: () => number;
 }) {
+  const now = useRecordingClock(clock);
   const [search, setSearch] = useState("");
   const [how, setHow] = useState(false);
   const [showLoading, setShowLoading] = useState(false);
@@ -154,7 +176,9 @@ export function AnalysisCatalog({
       .toLocaleLowerCase("es")
       .includes(needle),
   );
-  const days = [...new Set(rows.map((r) => day(r.startedAtMs)))];
+  const groups = recordingGroups.filter((group) =>
+    rows.some((row) => recordingGroup(row.startedAtMs, now) === group),
+  );
   return (
     <div className="v-an-layout">
       <SectionPageHeader
@@ -249,21 +273,22 @@ export function AnalysisCatalog({
           <table className="v-table v-an-table v-an-catalog">
             <caption className="v-sr-only">{t.recordings}</caption>
             <CatalogColumns />
-            {days.map((d) => (
-              <tbody key={d}>
+            {groups.map((group) => (
+              <tbody key={group}>
                 <tr className="v-an-day">
                   <th colSpan={2} scope="rowgroup">
-                    {d}
+                    {t[group]}
                   </th>
                 </tr>
                 {rows
-                  .filter((r) => day(r.startedAtMs) === d)
+                  .filter((r) => recordingGroup(r.startedAtMs, now) === group)
                   .map((row) => (
                     <RecordingRow
                       key={row.id}
                       row={row}
                       state={state}
                       controller={controller}
+                      now={now}
                     />
                   ))}
               </tbody>
@@ -279,14 +304,14 @@ function CatalogColumns() {
   return (
     <thead>
       <tr>
-        {[t.date, t.vehicle, t.laps, t.best, t.size, t.state, t.dash].map(
+        {[t.date, t.vehicle, t.laps, t.best, t.size, t.state, t.open].map(
           (label, i) => (
             <th
               scope="col"
               key={label}
               className={i === 2 || i === 3 ? "v-an-secondary" : undefined}
             >
-              {label}
+              {i === 6 ? <span className="v-sr-only">{label}</span> : label}
             </th>
           ),
         )}

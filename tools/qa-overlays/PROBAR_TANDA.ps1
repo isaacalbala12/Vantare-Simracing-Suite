@@ -194,6 +194,10 @@ $script:events.Clear()
 Invoke-TandaWorker $root (Join-Path $sandbox 'visual-worker')
 $visualState=Read-TandaJson (Join-Path $sandbox 'visual-worker/estado.json')
 if($visualState.status -ne 'complete' -or $visualState.captures.Count -ne 3 -or $visualState.measurements.Count -ne 0 -or $visualState.lifecycle -ne '4 passed; 0 failed'){throw 'El trabajador visual no completó exclusivamente captura/lifecycle'}
+$script:fakeArchive=Join-Path $sandbox 'visual.tar'
+& tar -cf $script:fakeArchive -C (Join-Path $sandbox 'visual-worker') .
+if($LASTEXITCODE){throw 'Tar local visual falso falló'}
+$script:fakeHash=(Get-FileHash $script:fakeArchive).Hash
 $script:transfer.Clear()
 $script:tamper=$false
 $script:DestinoServidor=Join-Path $sandbox 'visual-copy'

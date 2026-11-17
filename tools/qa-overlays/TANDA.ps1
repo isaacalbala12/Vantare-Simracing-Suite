@@ -461,6 +461,7 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
   $captureEnvironment[$name]=$qa
  }
  $state=@{source_sha=$manifest.source_sha;status='running';completed_without_error=$false;captures=@();measurements=@()}
+ if($SoloVisual){$state.scope='visual-lifecycle'}
  try {
   $python=Invoke-TandaPython @('-c','import sys, PIL, numpy; print(sys.version); print(PIL.__version__); print(numpy.__version__)') (Join-Path $Output 'logs/python-preflight') 30
   if($python.code -ne 0){throw 'BLOCKED_PYTHON: faltan Python/Pillow/numpy ya instalados; no instalar durante la tanda'}
@@ -565,6 +566,9 @@ function Invoke-TandaServer([string]$Root){
   }
   $state=Read-TandaJson (Join-Path $destination 'estado.json')
   if($state.status -ne 'complete' -or -not $state.completed_without_error){throw 'Tanda abortada: evidencia copiada, no apagar'}
+  if($SoloVisual -and ($state.scope -cne 'visual-lifecycle' -or $state.source_sha -cne $manifest.source_sha -or $state.measurements.Count -ne 0 -or $state.lifecycle -cne '4 passed; 0 failed' -or $state.captures.Count -ne (3*$manifest.captures.Count))){
+   throw 'Evidencia visual/lifecycle incompleta o de otra tanda: no apagar'
+  }
   # ACK solo tras verificar archivo y hashes de CADA fichero en servidor.
   $hash=(Get-FileHash -LiteralPath (Join-Path $destination 'evidence-hashes.json') -Algorithm SHA256).Hash
   $null=Invoke-TandaSsh $Pc "if(Test-Path '$remote/evidence/copia-servidor.json'){throw 'ACK ya existe'};@{verified=`$true;hash_manifest='$hash';destination='$destination'}|ConvertTo-Json|Set-Content '$remote/evidence/copia-servidor.json' -Encoding utf8"

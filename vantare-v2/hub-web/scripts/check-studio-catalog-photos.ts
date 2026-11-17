@@ -46,6 +46,7 @@ export async function checkStudioCatalogPhotos(
           ({ png, theme, mode }) => {
             const send = MessagePort.prototype.postMessage;
             const catalogIds = new Set<number>();
+            let released = false;
             const requests: unknown[] = [];
             Reflect.set(window, "catalogPhotoRequests", requests);
             MessagePort.prototype.postMessage = function (message, options) {
@@ -99,6 +100,18 @@ export async function checkStudioCatalogPhotos(
                 };
                 if (mode === "noDemo") message = failure;
                 else message = response;
+                if (!released) {
+                  const first = message;
+                  Reflect.set(window, "releaseCatalogFirst", () => {
+                    released = true;
+                    send.call(
+                      this,
+                      first,
+                      options as StructuredSerializeOptions,
+                    );
+                  });
+                  return;
+                }
               }
               return send.call(
                 this,
@@ -137,12 +150,23 @@ export async function checkStudioCatalogPhotos(
           () =>
             page.evaluate(
               () =>
-                (Reflect.get(window, "catalogPhotoRequests") as unknown[])
-                  .length > 0,
+                typeof Reflect.get(window, "releaseCatalogFirst") ===
+                "function",
             ),
           10000,
           "catalog observer sends first visible photo",
         );
+        assert.equal(
+          await dialog.locator(".v-studio-catalog-photo").count(),
+          0,
+          "drawings before the held photo",
+        );
+        assert.equal(
+          await dialog.locator(".v-studio-catalog-photo-wait").count(),
+          1,
+          "one decorative pending dot",
+        );
+        await page.evaluate(() => Reflect.get(window, "releaseCatalogFirst")());
         await until(
           () =>
             dialog

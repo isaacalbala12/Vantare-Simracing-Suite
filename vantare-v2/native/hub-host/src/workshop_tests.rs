@@ -34,13 +34,17 @@ fn real_fixtures_are_grouped_and_resolved_without_exposing_paths() {
         .find(|scene| scene.id == "standings-default")
         .unwrap();
     assert_eq!((scene.frames, scene.frame_ms), (1, Some(1200)));
-    let original = fs::read_to_string(fixtures().join("standings-default.scene.json")).unwrap();
+    let original = fs::read_to_string(fixtures().join("standings-vantare.scene.json")).unwrap();
     let source: Source<'_> = serde_json::from_str(&original).unwrap();
+    assert_ne!(
+        source.frames[0].snapshot.get(),
+        source.frames[2].snapshot.get()
+    );
     assert_eq!(
         scenes
-            .snapshot(WidgetKind::Standings, "standings-default", 0)
+            .snapshot(WidgetKind::Standings, "standings-vantare", 2)
             .unwrap(),
-        source.frames[0].snapshot.get().as_bytes()
+        source.frames[2].snapshot.get().as_bytes(),
     );
     assert_eq!(
         scenes

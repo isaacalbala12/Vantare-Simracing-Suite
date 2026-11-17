@@ -20,6 +20,7 @@ if([Text.Encoding]::UTF8.GetByteCount($Notes) -gt 8192){throw 'Notas demasiado g
 Assert-NativeDistributionConfigFile 'beta' $ConfigFile
 $output=Assert-BuildPath $OutputDirectory
 $artifacts=& (Join-Path $PSScriptRoot 'build-candidate.ps1') -Version $Version -Channel beta -OutputDirectory $output -BuildProfile $BuildProfile -ConfigFile $ConfigFile -AllowDirty:$AllowDirty
+Assert-LegacyFeedCapacity (Join-Path $output 'vantare-native-amd64-package.zip')
 $repository='isaacalbala12/Vantare-Downloads'
 $manifest=[ordered]@{
     schema=1;product='vantare-native';channel='beta';version=$Version

@@ -6,6 +6,8 @@ rust-version.workspace = true
 publish.workspace = true
 
 [features]
+# Isolated update authority for QA only; forbidden in distribution.
+hub-update-qa = []
 # Inert in distribution; deterministic transport faults in consumer tests.
 test-support = ["vantare-ipc/test-support"]
 qa-e2e = ["network", "vantare-ipc/qa-e2e"]

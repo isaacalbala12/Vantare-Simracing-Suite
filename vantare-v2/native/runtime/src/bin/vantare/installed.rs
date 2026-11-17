@@ -396,7 +396,7 @@ pub(super) fn apply(root: &Path) -> io::Result<ExitCode> {
     if bytes.len() > 65536 {
         return Err(io_error("Oferta pendiente demasiado grande"));
     }
-    let offer = super::update_feed::Offer::verify(&bytes)?;
+    let offer = super::hub_update_feed::Offer::verify(&bytes)?;
     let (view, _) = active(root)?;
     let current = view.manifest.as_ref().expect("active manifest");
     if pending_obsolete(
@@ -408,6 +408,7 @@ pub(super) fn apply(root: &Path) -> io::Result<ExitCode> {
         return Ok(ExitCode::SUCCESS);
     }
     let archive = root.join("staging").join(format!("{}.zip", offer.sha256));
+    offer.verify_archive_length(&archive)?;
     let package = operations::Package {
         archive: &archive,
         sha256: &offer.sha256,
@@ -447,7 +448,7 @@ pub(super) fn stage(root: &Path, cancelled: &AtomicBool) -> io::Result<()> {
         .map_err(io_error)?
         .and_then(|status| status["rejectedVersion"].as_str().map(str::to_owned));
     let found =
-        super::update_feed::check(&current.version, &staging, cancelled, rejected.as_deref())?;
+        super::hub_update_feed::check(&current.version, &staging, cancelled, rejected.as_deref())?;
     if cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
@@ -476,7 +477,11 @@ pub(super) fn stage(root: &Path, cancelled: &AtomicBool) -> io::Result<()> {
         &check,
         "beta",
     )
-    .map_err(io_error);
+    .map_err(io_error)
+    .and_then(|manifest| {
+        download.offer.verify_expanded(&check, &manifest)?;
+        Ok(manifest)
+    });
     let _ = disk::remove_owned_tree(root, &check);
     let validated = validated?;
     if validated.version != download.offer.version || validated.engine() != 2 {

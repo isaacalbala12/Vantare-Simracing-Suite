@@ -227,3 +227,5 @@ function Assert-PublicBins([string[]]$Available,[object]$Inventory) {
 }
 
 . (Join-Path $PSScriptRoot 'hub-package-tooling.ps1')
+
+. (Join-Path $PSScriptRoot 'hub-feed-tooling.ps1')

@@ -49,6 +49,10 @@ it.each(Object.entries(controlEdges))(
     expect(light["control-edge"]).toBe(edge);
     expect(light["warn-text"]).toBe("#8a4c00");
     expect(light.warn).toBe("#f59e0b");
+    // Calendar badges still use the bright warning on the opaque dark tint.
+    expect(contrast(light.warn, light["warn-tint"])).toBeGreaterThanOrEqual(
+      4.5,
+    );
     for (const surface of ["bg-base", "surface-1", "surface-2"]) {
       expect(
         contrast(light["control-edge"], light[surface]),

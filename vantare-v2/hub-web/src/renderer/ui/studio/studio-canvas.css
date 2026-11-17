@@ -590,7 +590,7 @@
   background: var(--surface-1);
 }
 .v-studio-canvas-position[data-outside="true"] {
-  color: var(--warn);
+  color: var(--warn-text);
 }
 .v-studio-canvas-tools .v-button[aria-pressed="true"] {
   background: var(--accent-tint);

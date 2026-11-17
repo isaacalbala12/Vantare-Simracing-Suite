@@ -54,7 +54,7 @@
   color: var(--text-2);
 }
 .v-focus-save[data-readonly="true"] {
-  color: var(--warn);
+  color: var(--warn-text);
 }
 .v-focus-layout-icon {
   display: none;

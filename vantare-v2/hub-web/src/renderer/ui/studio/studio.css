@@ -310,6 +310,9 @@
   border: 1px solid var(--line-1);
   color: var(--text-1);
 }
+[data-scheme="light"] .v-studio .v-button--neutral {
+  border-color: var(--control-edge);
+}
 .v-studio-topbar .v-button:disabled {
   opacity: 1;
 }

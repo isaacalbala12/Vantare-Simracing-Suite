@@ -78,6 +78,8 @@
   --color-ill-classic-placeholder: var(--ill-classic-placeholder);
   --color-ill-classic-text: var(--ill-classic-text);
   --color-ill-classic-line: var(--ill-classic-line);
+  --color-control-edge: var(--control-edge);
+  --color-warn-text: var(--warn-text);
   --spacing-1: 4px;
   --spacing-2: 6px;
   --spacing-3: 8px;

@@ -39,7 +39,7 @@ button:disabled,
   min-height: calc(var(--control-h) * var(--density));
   min-width: var(--chip-h);
   padding: 0 var(--space-5);
-  border: 1px solid var(--line-3);
+  border: 1px solid var(--control-edge);
   border-radius: var(--radius-sm);
   color: var(--text-1);
   background: var(--surface-1);
@@ -1462,7 +1462,7 @@ textarea.v-input:read-only {
   height: 14px;
 }
 .v-preview-seal[data-warning="true"] > span:first-child {
-  color: var(--warn);
+  color: var(--warn-text);
 }
 .v-preview-seal .v-preview-reason {
   color: var(--text-caption);

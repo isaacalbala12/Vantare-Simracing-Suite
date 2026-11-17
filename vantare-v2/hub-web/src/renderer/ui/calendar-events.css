@@ -278,7 +278,7 @@
   width: 16px;
   height: 16px;
   flex: none;
-  color: var(--warn);
+  color: var(--warn-text);
 }
 .v-calendar-event-udp p {
   margin: 0;

@@ -30,7 +30,7 @@
   min-height: 36px;
 }
 .v-launcher-warning p {
-  color: var(--warn);
+  color: var(--warn-text);
   font-size: 12px;
   margin: 0;
 }
@@ -48,6 +48,9 @@
   gap: 10px;
   min-height: 318px;
   box-sizing: border-box;
+}
+[data-scheme="light"] .v-launcher-hero .v-button--neutral {
+  border-color: var(--text-3);
 }
 .v-launcher-hero::before {
   content: "";

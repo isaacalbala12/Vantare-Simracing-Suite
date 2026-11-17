@@ -13,3 +13,6 @@
 /vantare-v2/native/hub-host/build_support.rs @isaacalbala12
 /vantare-v2/native/hub-host/src/protocol/modules/ @isaacalbala12
 /vantare-v2/hub-web/src/contract/ @isaacalbala12
+
+# Public distribution allowlist
+/vantare-v2/native/packaging/public-inventory.json @isaacalbala12

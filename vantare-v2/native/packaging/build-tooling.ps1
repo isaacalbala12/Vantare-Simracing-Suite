@@ -161,6 +161,11 @@ function Assert-PublicInventory([string]$Payload,[object]$Inventory,$HubFiles=@(
 
 function Get-PublicArtifact([string]$Name,[object]$Inventory) {
     $overrides=$Inventory.PSObject.Properties['artifact_overrides']
+    if($overrides){
+        foreach($entry in $overrides.Value.PSObject.Properties){
+            if($entry.Name -cnotmatch '^vantare(-[a-z0-9]+)*\.exe\z' -or $entry.Name -cnotin $Inventory.executables -or $entry.Value -isnot [string] -or $entry.Value -cnotmatch '^vantare(-[a-z0-9]+)*\.exe\z'){throw 'Override de artefacto inválido'}
+        }
+    }
     $override=if($overrides){$overrides.Value.PSObject.Properties[$Name]}else{$null}
     if($override){$override.Value}else{$Name}
 }

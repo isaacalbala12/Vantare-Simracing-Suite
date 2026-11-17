@@ -19,7 +19,7 @@ foreach($name in @('react','react-dom','scheduler')){
         $body=[IO.File]::ReadAllText($file.FullName).Replace("`r`n","`n")
         $suffix=[regex]::Escape($name+'/'+$file.Name)
         if(-not $body.Trim() -or -not $text.Contains($body) -or -not [regex]::IsMatch($text,'(?m)^--- (?:.*/)?'+$suffix+' ---$')){throw "Real Bun license omitted from notices: $name"}
-        $checked+=@{package=$name;file=$file.Name;sha256=(Get-NativeHash $file.FullName)}
+        $checked+=@{package=$name;file=$file.Name;sha256=((Get-FileHash -LiteralPath $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant())}
     }
 }
 Write-BuildJson (Join-Path $evidence 'distribution-hub-notices.json') @{checked=$checked;bytes=(Get-Item -LiteralPath $output).Length;real_bun_dependencies=$true;graphics=$false}

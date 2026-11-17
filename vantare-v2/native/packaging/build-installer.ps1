@@ -5,7 +5,6 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateSet('Debug','Release')][string]$BuildProfile = 'Release',
     [switch]$TestInstaller,
-    [switch]$InBuildSlot,
     [string]$ConfigFile,
     [ValidateSet('nightly','testers','master','beta')][string]$Channel='beta',
     [Parameter(ValueFromRemainingArguments)][string[]]$Defines = @()
@@ -21,6 +20,8 @@ foreach ($define in $Defines) { if ($define -ceq '/DTEST_INSTALLER') { $TestInst
 if ($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$' -or @($Version.Split('.') | Where-Object { [int]$_ -gt 65535 }).Count) { throw 'Versión inválida.' }
 Assert-NativeDistributionConfigFile $Channel $ConfigFile
 $output=Assert-BuildPath $OutputDirectory
+$inBuildSlot=$env:VANTARE_INTERNAL_SETUP_STAGE -ceq $output
+Remove-Item Env:VANTARE_INTERNAL_SETUP_STAGE -ErrorAction SilentlyContinue
 if ($TestInstaller) {
     . (Join-Path $PSScriptRoot 'matrix/guard.ps1')
     $null=Assert-MatrixRoot $output
@@ -34,14 +35,18 @@ try {
 if($Channel -ieq 'beta'){Assert-NativeDistributionLicenseRegistry $env:VANTARE_LICENSE_PUBLIC_KEYS -Required}
 
 if(-not $InBuildSlot){
-    $forward=@('-Version',$Version,'-OutputDirectory',$output,'-BuildProfile',$BuildProfile,'-Channel',$Channel,'-InBuildSlot')
+    $forward=@('-Version',$Version,'-OutputDirectory',$output,'-BuildProfile',$BuildProfile,'-Channel',$Channel)
     if($ConfigFile){$forward+=@('-ConfigFile',([IO.Path]::GetFullPath($ConfigFile)))}
     if($TestInstaller){$forward+='-TestInstaller'}
-    if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath -Version $Version -OutputDirectory $output -BuildProfile $BuildProfile -Channel $Channel -InBuildSlot -ConfigFile $ConfigFile -TestInstaller:$TestInstaller}
-    else{
-        & pwsh -NoProfile -File (Join-Path $PSScriptRoot '../scripts/compilar.ps1') pwsh -NoProfile -File $PSCommandPath @forward
-        if($LASTEXITCODE){throw 'Falló Setup dentro del slot'}
-    }
+    $priorStage=$env:VANTARE_INTERNAL_SETUP_STAGE
+    try{
+        $env:VANTARE_INTERNAL_SETUP_STAGE=$output
+        if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath -Version $Version -OutputDirectory $output -BuildProfile $BuildProfile -Channel $Channel -ConfigFile $ConfigFile -TestInstaller:$TestInstaller}
+        else{
+            & pwsh -NoProfile -File (Join-Path $PSScriptRoot '../scripts/compilar.ps1') pwsh -NoProfile -File $PSCommandPath @forward
+            if($LASTEXITCODE){throw 'Falló Setup dentro del slot'}
+        }
+    }finally{$env:VANTARE_INTERNAL_SETUP_STAGE=$priorStage}
     return
 }
 if(-not $env:VANTARE_CARGO_QUEUE_OWNER -or -not $env:CARGO_TARGET_DIR){throw 'Setup exige el slot de compilación'}

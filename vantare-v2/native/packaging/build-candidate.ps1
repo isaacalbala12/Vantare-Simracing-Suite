@@ -7,8 +7,7 @@ param(
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateSet('Debug','Release')][string]$BuildProfile='Release',
     [string]$ConfigFile,
-    [switch]$AllowDirty,
-    [switch]$RustStage
+    [switch]$AllowDirty
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
@@ -20,6 +19,9 @@ if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]
 if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión fuera de rango'}
 Assert-NativeDistributionConfigFile $Channel $ConfigFile
 $destination=Assert-BuildPath $OutputDirectory
+# Private, one-use handoff from this process to its queued child, bound to output.
+$rustStage=$env:VANTARE_INTERNAL_CANDIDATE_STAGE -ceq $destination
+Remove-Item Env:VANTARE_INTERNAL_CANDIDATE_STAGE -ErrorAction SilentlyContinue
 if(-not $RustStage -and (Test-Path -LiteralPath $destination) -and @(Get-ChildItem -LiteralPath $destination -Force).Count){throw 'La salida debe estar vacía'}
 $native=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $sourceSha=(& git -C $native rev-parse HEAD).Trim()
@@ -50,14 +52,18 @@ try{
             if($LASTEXITCODE){throw 'Falló package Electron'}
         }finally{Pop-Location}
         # Build and copy before releasing the shared target's lease.
-        $forward=@('-Version',$Version,'-Channel',$Channel,'-OutputDirectory',$destination,'-BuildProfile',$BuildProfile,'-RustStage')
+        $forward=@('-Version',$Version,'-Channel',$Channel,'-OutputDirectory',$destination,'-BuildProfile',$BuildProfile)
         if($ConfigFile){$forward+=@('-ConfigFile',([IO.Path]::GetFullPath($ConfigFile)))}
         if($AllowDirty){$forward+='-AllowDirty'}
-        if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath -Version $Version -Channel $Channel -OutputDirectory $destination -BuildProfile $BuildProfile -RustStage -ConfigFile $ConfigFile -AllowDirty:$AllowDirty}
-        else{
-            & pwsh -NoProfile -File (Join-Path $native 'scripts/compilar.ps1') pwsh -NoProfile -File $PSCommandPath @forward
-            if($LASTEXITCODE){throw 'Falló el candidato dentro del slot'}
-        }
+        $priorStage=$env:VANTARE_INTERNAL_CANDIDATE_STAGE
+        try{
+            $env:VANTARE_INTERNAL_CANDIDATE_STAGE=$destination
+            if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath -Version $Version -Channel $Channel -OutputDirectory $destination -BuildProfile $BuildProfile -ConfigFile $ConfigFile -AllowDirty:$AllowDirty}
+            else{
+                & pwsh -NoProfile -File (Join-Path $native 'scripts/compilar.ps1') pwsh -NoProfile -File $PSCommandPath @forward
+                if($LASTEXITCODE){throw 'Falló el candidato dentro del slot'}
+            }
+        }finally{$env:VANTARE_INTERNAL_CANDIDATE_STAGE=$priorStage}
         return
     }
     if(-not $env:VANTARE_CARGO_QUEUE_OWNER -or -not $env:CARGO_TARGET_DIR){throw 'La fase Rust exige el slot de compilación'}

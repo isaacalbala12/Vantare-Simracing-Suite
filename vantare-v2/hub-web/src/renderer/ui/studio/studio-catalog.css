@@ -162,7 +162,8 @@
   top: 14px;
   font-size: 11px;
   font-weight: 400;
-  color: var(--text-caption);
+  /* text-2, not text-caption: keeps the pill above 4.5:1. */
+  color: var(--text-2);
   padding: 3px 8px;
   border-radius: var(--radius-pill);
   background: var(--surface-elevated);

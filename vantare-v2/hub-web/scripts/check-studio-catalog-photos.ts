@@ -273,6 +273,92 @@ export async function checkStudioCatalogPhotos(
             "scrolled catalogue photos settled",
           );
         }
+        if (mode === "photos") {
+          const badges = await dialog.evaluate((node) => {
+            const rgba = (value: string) => {
+              const [r, g, b, a = 1] = (value.match(/[\d.]+/g) ?? []).map(
+                Number,
+              );
+              return { r, g, b, a };
+            };
+            const channel = (value: number) => {
+              const part = value / 255;
+              return part <= 0.03928
+                ? part / 12.92
+                : ((part + 0.055) / 1.055) ** 2.4;
+            };
+            const luminance = (color: { r: number; g: number; b: number }) =>
+              0.2126 * channel(color.r) +
+              0.7152 * channel(color.g) +
+              0.0722 * channel(color.b);
+            const scroll = node
+              .querySelector(".v-studio-catalog-body")
+              ?.getBoundingClientRect();
+            const found: {
+              kind: string | null;
+              opaque: boolean;
+              ratio: number;
+              above: boolean | null;
+            }[] = [];
+            for (const badge of node.querySelectorAll(".v-studio-owned")) {
+              const card = badge.closest(".v-studio-catalog-widget");
+              if (!card?.querySelector(".v-studio-catalog-photo img")) continue;
+              const style = getComputedStyle(badge);
+              const front = luminance(rgba(style.color));
+              const back = rgba(style.backgroundColor);
+              const box = badge.getBoundingClientRect();
+              const x = box.x + box.width / 2;
+              const y = box.y + box.height / 2;
+              const onScreen =
+                !!scroll &&
+                y >= scroll.top &&
+                y <= scroll.bottom &&
+                x >= scroll.left &&
+                x <= scroll.right;
+              found.push({
+                kind: card.getAttribute("data-kind"),
+                opaque: back.a === 1,
+                ratio:
+                  (Math.max(front, luminance(back)) + 0.05) /
+                  (Math.min(front, luminance(back)) + 0.05),
+                above: onScreen
+                  ? (() => {
+                      const stack = document.elementsFromPoint(x, y);
+                      const badgeAt = stack.indexOf(badge);
+                      const photoAt = stack.findIndex(
+                        (element) =>
+                          element.tagName === "IMG" ||
+                          element.classList.contains("v-studio-catalog-photo"),
+                      );
+                      return (
+                        badgeAt >= 0 && (photoAt === -1 || badgeAt < photoAt)
+                      );
+                    })()
+                  : null,
+              });
+            }
+            return found;
+          });
+          assert(
+            badges.length > 0,
+            "positive control: an owned badge sits over a catalogue photo",
+          );
+          for (const badge of badges) {
+            assert.equal(
+              badge.opaque,
+              true,
+              `${badge.kind} badge stays opaque over its photo`,
+            );
+            assert.ok(
+              badge.ratio >= 4.5,
+              `${badge.kind} badge contrast over its photo ${badge.ratio.toFixed(2)}:1`,
+            );
+          }
+          assert(
+            badges.some((badge) => badge.above === true),
+            "an owned badge paints above its catalogue photo",
+          );
+        }
         const report = await new AxeBuilder({ page }).analyze();
         results.push({
           theme,

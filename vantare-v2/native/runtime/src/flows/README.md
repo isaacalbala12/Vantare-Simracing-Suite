@@ -95,7 +95,7 @@ retención, cola rota y reproducción desde cursor.
 
 ## Series por vuelta del jugador — esquema v1
 
-`core.series().active()` expone el bloque durante la vuelta y `sealed()` el
+Solo con suscriptor, `core.series().active()` expone el bloque durante la vuelta y `sealed()` el
 último cerrado, por referencia inmutable. Cada foto aceptada aporta una
 muestra si contador, distancia y tiempo de vuelta son `Reliable`. Se conserva
 la calidad original de velocidad y pedales; ausencia no equivale a cero.

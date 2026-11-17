@@ -10,6 +10,18 @@ use vantare_domain::{Adapter, Snapshot};
 use vantare_ipc::{Error, Publisher};
 
 use crate::core::Core;
+mod series;
+pub use series::{SeriesRecording, drive_core_recorded};
+
+/// Helper instalado junto al ejecutable del Core, con extensión explícita en Windows.
+pub fn storage_helper_path() -> std::io::Result<std::path::PathBuf> {
+    let image = if cfg!(windows) {
+        "vantare-storage.exe"
+    } else {
+        "vantare-storage"
+    };
+    Ok(std::env::current_exe()?.with_file_name(image))
+}
 
 /// Espera cuando una vuelta no ha producido nada nuevo.
 const IDLE: Duration = Duration::from_millis(2);
@@ -58,6 +70,7 @@ pub fn run_with_events(
         stop,
         Options {
             recording,
+            series_dir: None,
             engineer_image,
             rights_nonce: None,
         },
@@ -67,6 +80,7 @@ pub fn run_with_events(
 #[cfg(windows)]
 pub struct Options<'a> {
     pub recording: Option<&'a std::path::Path>,
+    pub series_dir: Option<&'a std::path::Path>,
     pub engineer_image: std::path::PathBuf,
     pub rights_nonce: Option<String>,
 }
@@ -114,12 +128,22 @@ pub fn run_controlled(
     }
     let mut publisher = Publisher::new(pipe, |_| true)?;
     let demand = publisher.demand_source();
-    drive_core_demanded(&mut core, adapter, speed, stop, Some(&demand), |core| {
-        let snapshot = core.snapshot();
-        rights.publish(Arc::clone(&snapshot));
-        events.publish(Arc::clone(&snapshot), core.events());
-        publisher.publish(snapshot)
-    })
+    let recording =
+        SeriesRecording::start(&mut core, options.series_dir, epoch, storage_helper_path);
+    drive_core_recorded(
+        &mut core,
+        adapter,
+        speed,
+        stop,
+        Some(&demand),
+        recording,
+        |core| {
+            let snapshot = core.snapshot();
+            rights.publish(Arc::clone(&snapshot));
+            events.publish(Arc::clone(&snapshot), core.events());
+            publisher.publish(snapshot)
+        },
+    )
 }
 
 /// El bucle sin transporte: hasta que `stop` se levante, hace avanzar `core`
@@ -234,6 +258,17 @@ fn check_measurement_support(requested: bool) -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn storage_helper_is_beside_core_with_the_platform_extension() {
+        let path = storage_helper_path().expect("ruta del helper");
+        let executable = std::env::current_exe().expect("ejecutable actual");
+        assert_eq!(path.parent(), executable.parent());
+        #[cfg(windows)]
+        assert_eq!(path.file_name().expect("nombre"), "vantare-storage.exe");
+        #[cfg(not(windows))]
+        assert_eq!(path.file_name().expect("nombre"), "vantare-storage");
+    }
 
     #[test]
     fn waits_follow_the_source_clock_without_delaying_stop_or_legacy_sources() {

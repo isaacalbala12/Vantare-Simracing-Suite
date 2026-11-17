@@ -362,7 +362,7 @@ fn undrained_full_queue_has_durable_tail_loss_even_without_a_following_chunk() {
     acquire(&mut core, 6_000);
     let publication = core.series().publication_status().unwrap();
     assert!(publication.dropped > 0);
-    let worker = SeriesWorker::start(
+    let worker = SeriesWorker::start_new(
         Path::new(env!("CARGO_BIN_EXE_vantare-storage")),
         &db.0,
         receiver,
@@ -657,4 +657,339 @@ fn create_requires_the_owner_to_create_the_parent_directory() {
     assert_eq!(output.status.code(), Some(1));
     assert_eq!(output.stdout, [] as [u8; 0]);
     assert!(!parent.exists());
+}
+
+#[test]
+fn new_worker_retries_collision_without_touching_original_and_finishes_feed() {
+    let db = Database::new();
+    std::fs::write(&db.0, b"foreign database").unwrap();
+    let mut core = Core::new(1);
+    let receiver = core.series_mut().subscribe(32).unwrap();
+    let worker = SeriesWorker::start_new(
+        Path::new(env!("CARGO_BIN_EXE_vantare-storage")),
+        &db.0,
+        receiver,
+    )
+    .unwrap();
+    acquire(&mut core, 128);
+    let attempted = core.series().publication_status().unwrap().attempted;
+    let (state, _) = worker.finish(attempted, Duration::from_secs(10)).unwrap();
+    assert!(state.finished);
+    assert_eq!(state.attempted, attempted);
+    assert_eq!(state.watermark, attempted);
+    assert_eq!(std::fs::read(&db.0).unwrap(), b"foreign database");
+    let paths: Vec<_> = std::fs::read_dir(db.0.parent().unwrap())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p != &db.0 && p.extension().is_some_and(|e| e == "duckdb"))
+        .collect();
+    assert_eq!(paths.len(), 1);
+    let reader =
+        SeriesReader::open(Path::new(env!("CARGO_BIN_EXE_vantare-storage")), &paths[0]).unwrap();
+    assert_eq!(reader.state(), state);
+}
+
+#[test]
+fn recorded_drive_finishes_even_when_publication_returns_error() {
+    use std::sync::atomic::AtomicBool;
+    use vantare_domain::{Adapter, AdapterError};
+    struct Replay(u32);
+    impl Adapter for Replay {
+        fn poll(&mut self, _: Duration) -> Result<Option<Observation>, AdapterError> {
+            self.0 += 1;
+            Ok(Some(photo(self.0, 128)))
+        }
+    }
+    let db = Database::new();
+    let dir = db.0.parent().unwrap().join("new-dir");
+    let mut core = Core::new(9);
+    let recording =
+        vantare_runtime::service::SeriesRecording::start(&mut core, Some(&dir), 9, || {
+            Ok(PathBuf::from(env!("CARGO_BIN_EXE_vantare-storage")))
+        });
+    let path = dir.join(format!("series-9-{}.duckdb", std::process::id()));
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while !path.exists() {
+        assert!(Instant::now() < deadline, "helper no publicó la DB nueva");
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    let result = vantare_runtime::service::drive_core_recorded(
+        &mut core,
+        &mut Replay(0),
+        1.0,
+        &AtomicBool::new(false),
+        None,
+        recording,
+        |core| {
+            if core.snapshot().sequence >= 70 {
+                Err(vantare_ipc::Error::TooLarge { len: 123 })
+            } else {
+                Ok(())
+            }
+        },
+    );
+    assert!(matches!(
+        result,
+        Err(vantare_ipc::Error::TooLarge { len: 123 })
+    ));
+    let path = dir.join(format!("series-9-{}.duckdb", std::process::id()));
+    let reader =
+        SeriesReader::open(Path::new(env!("CARGO_BIN_EXE_vantare-storage")), &path).unwrap();
+    assert!(reader.state().finished);
+    assert_eq!(
+        reader.state().attempted,
+        core.series().publication_status().unwrap().attempted
+    );
+    assert_eq!(reader.state().watermark, reader.state().attempted);
+}
+
+#[cfg(windows)]
+mod core_recording_process {
+    use super::*;
+    use vantare_ipc::Subscriber;
+
+    fn powershell(script: &str) -> String {
+        use std::os::windows::process::CommandExt;
+        let output = Command::new("pwsh")
+            .args(["-NoProfile", "-Command", script])
+            .creation_flags(0x0800_0000)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8(output.stdout).unwrap()
+    }
+
+    struct Running(Child);
+    impl Drop for Running {
+        fn drop(&mut self) {
+            if self.0.try_wait().unwrap().is_none() {
+                self.0.kill().unwrap();
+                self.0.wait().unwrap();
+            }
+        }
+    }
+
+    fn spawn(dir: Option<&Path>) -> (Running, Subscriber, u32) {
+        use std::os::windows::process::CommandExt;
+        let helper = Path::new(env!("CARGO_BIN_EXE_vantare-storage"));
+        let core = helper.with_file_name("vantare-core.exe");
+        assert!(
+            core.exists(),
+            "el gate debe preparar runtime y storage juntos"
+        );
+        let fixture = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../testdata/rust-port/lmu47-high-rate-60s.tar.gz");
+        let pipe = format!(
+            "series-g3-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        );
+        let mut command = Command::new(core);
+        command.arg("--replay").arg(fixture).args(["--pipe", &pipe]);
+        if let Some(dir) = dir {
+            command.arg("--series-dir").arg(dir);
+        }
+        let child = command
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::inherit())
+            .creation_flags(0x0800_0000)
+            .spawn()
+            .unwrap();
+        let running = Running(child);
+        let mut subscriber = Subscriber::connect(&pipe, |_| true).unwrap();
+        let deadline = Instant::now() + Duration::from_secs(20);
+        while subscriber.next(Duration::from_millis(100)).is_none() {
+            assert!(Instant::now() < deadline, "Core no publica");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let pid = if dir.is_some() {
+            let script = format!(
+                "$p = Get-CimInstance Win32_Process -Filter 'ParentProcessId = {}' | Where-Object Name -eq 'vantare-storage.exe'; if (@($p).Count -ne 1) {{ exit 1 }}; $p.ProcessId",
+                running.0.id()
+            );
+            powershell(&script).trim().parse().unwrap()
+        } else {
+            0
+        };
+        if let Some(directory) = dir {
+            // Publicación del nombre final = esquema inicial confirmado y cerrado.
+            // Esta barrera solo pertenece al test, nunca a adquisición.
+            let deadline = Instant::now() + Duration::from_secs(10);
+            while !std::fs::read_dir(directory).unwrap().any(|entry| {
+                entry
+                    .unwrap()
+                    .path()
+                    .extension()
+                    .is_some_and(|ext| ext == "duckdb")
+            }) {
+                assert!(Instant::now() < deadline, "helper no creó la DB");
+                std::thread::sleep(Duration::from_millis(10));
+            }
+        }
+        (running, subscriber, pid)
+    }
+
+    fn exited(pid: u32) {
+        powershell(&format!(
+            "$p = Get-Process -Id {pid} -ErrorAction SilentlyContinue; if ($p) {{ if (-not $p.WaitForExit(10000)) {{ Stop-Process -Id {pid} -Force; exit 1 }} }}; exit 0"
+        ));
+    }
+
+    #[test]
+    fn killing_core_closes_helper_stdin_and_leaves_no_orphan() {
+        let db = Database::new();
+        let (mut core, _subscriber, helper) = spawn(Some(db.0.parent().unwrap()));
+        core.0.kill().unwrap();
+        core.0.wait().unwrap();
+        exited(helper);
+        let path = std::fs::read_dir(db.0.parent().unwrap())
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .find(|p| p.extension().is_some_and(|e| e == "duckdb"))
+            .unwrap();
+        let reader =
+            SeriesReader::open(Path::new(env!("CARGO_BIN_EXE_vantare-storage")), &path).unwrap();
+        assert!(!reader.state().finished);
+    }
+
+    #[test]
+    fn writer_crash_does_not_stop_core_and_eof_still_stops_core_cleanly() {
+        let db = Database::new();
+        let (mut core, mut subscriber, helper) = spawn(Some(db.0.parent().unwrap()));
+        powershell(&format!("Stop-Process -Id {helper} -Force"));
+        exited(helper);
+        assert!(core.0.try_wait().unwrap().is_none());
+        let before = subscriber.next(Duration::from_secs(5)).unwrap().sequence;
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            if subscriber
+                .next(Duration::from_millis(100))
+                .is_some_and(|photo| photo.sequence > before)
+            {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "fotos detenidas tras caída del writer"
+            );
+        }
+        drop(core.0.stdin.take());
+        let deadline = Instant::now() + Duration::from_secs(3);
+        loop {
+            if let Some(status) = core.0.try_wait().unwrap() {
+                assert!(status.success());
+                break;
+            }
+            assert!(Instant::now() < deadline, "Core no cerró");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    #[test]
+    fn replay_recording_finishes_and_without_flag_does_not_create_database() {
+        for enabled in [false, true] {
+            let db = Database::new();
+            let dir = db.0.parent().unwrap();
+            let (mut core, _subscriber, helper) = spawn(enabled.then_some(dir));
+            drop(core.0.stdin.take());
+            let deadline = Instant::now() + Duration::from_secs(3);
+            loop {
+                if let Some(status) = core.0.try_wait().unwrap() {
+                    assert!(status.success());
+                    break;
+                }
+                assert!(Instant::now() < deadline);
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            if enabled {
+                exited(helper);
+                let path = std::fs::read_dir(dir)
+                    .unwrap()
+                    .map(|e| e.unwrap().path())
+                    .find(|p| p.extension().is_some_and(|e| e == "duckdb"))
+                    .unwrap();
+                let reader =
+                    SeriesReader::open(Path::new(env!("CARGO_BIN_EXE_vantare-storage")), &path)
+                        .unwrap();
+                assert!(reader.state().finished);
+                assert!(reader.state().watermark > 0);
+                assert!(reader.state().attempted >= reader.state().watermark);
+            } else {
+                assert_eq!(std::fs::read_dir(dir).unwrap().count(), 0);
+            }
+        }
+    }
+}
+
+#[test]
+fn new_writer_timeout_after_ack_reaps_child_and_keeps_unfinished_prefix() {
+    let db = Database::new();
+    let (sender, receiver) = mpsc::sync_channel(1);
+    let worker = SeriesWorker::start_new(
+        Path::new(env!("CARGO_BIN_EXE_vantare-storage")),
+        &db.0,
+        receiver,
+    )
+    .unwrap();
+    sender
+        .send(SeriesChunk::from_bytes(&serde_json::to_vec(&payload()).unwrap()).unwrap())
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while worker.watermark() != 1 {
+        assert!(!worker.failed());
+        assert!(Instant::now() < deadline);
+        std::thread::yield_now();
+    }
+    assert_eq!(
+        worker.finish(1, Duration::ZERO).unwrap_err().kind(),
+        std::io::ErrorKind::TimedOut
+    );
+    drop(sender);
+    let reader =
+        SeriesReader::open(Path::new(env!("CARGO_BIN_EXE_vantare-storage")), &db.0).unwrap();
+    assert_eq!(reader.state().watermark, 1);
+    assert!(!reader.state().finished);
+}
+
+#[test]
+fn missing_helper_or_invalid_directory_degrades_without_stopping_photos() {
+    use std::sync::atomic::AtomicBool;
+    let db = Database::new();
+    for directory in [
+        db.0.parent().unwrap().join("missing-helper"),
+        db.0.clone(),
+        db.0.join("child"),
+    ] {
+        std::fs::write(&db.0, b"occupied").unwrap();
+        let mut core = Core::new(1);
+        let recording = vantare_runtime::service::SeriesRecording::start(
+            &mut core,
+            Some(&directory),
+            1,
+            || Ok(PathBuf::from("nonexistent-storage-helper.exe")),
+        );
+        assert!(
+            vantare_runtime::service::drive_core_recorded(
+                &mut core,
+                &mut vantare_runtime::adapter::open_replay(
+                    &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../testdata/lmu-fixture.bin"),
+                    Some("1.3.0.0")
+                )
+                .unwrap(),
+                1.0,
+                &AtomicBool::new(true),
+                None,
+                recording,
+                |_| Ok(())
+            )
+            .is_ok()
+        );
+        acquire(&mut core, 128);
+        assert_eq!(core.snapshot().sequence, 129);
+    }
 }

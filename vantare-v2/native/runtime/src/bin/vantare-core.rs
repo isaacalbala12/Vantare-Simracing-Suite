@@ -9,7 +9,7 @@
 //! `vantare-core (--replay <fixture.bin|corpus.tar.gz> [--build <versión>] [--velocidad 1.0] | --live) [--simulator lmu|acc] [--pipe <nombre>]`
 
 const USAGE: &str = "uso: vantare-core (--replay <fixture.bin|corpus.tar.gz> [--build <versión de LMU>] \
-                     [--velocidad 1.0] | --live) [--simulator lmu|acc] [--pipe <nombre>] [--recording <JSONL>] [--engineer-image <EXE>]";
+                     [--velocidad 1.0] | --live) [--simulator lmu|acc] [--pipe <nombre>] [--recording <JSONL>] [--series-dir <DIR>] [--engineer-image <EXE>]";
 
 #[derive(Debug, PartialEq)]
 enum Input {
@@ -27,6 +27,7 @@ struct Args {
     pipe: Option<String>,
     simulator: String,
     recording: Option<std::path::PathBuf>,
+    series_dir: Option<std::path::PathBuf>,
     engineer_image: Option<std::path::PathBuf>,
     managed_rights: bool,
 }
@@ -36,6 +37,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
     let (mut build, mut speed, mut pipe) = (None, None, None);
     let mut simulator = "lmu".to_owned();
     let (mut recording, mut engineer_image) = (None, None);
+    let mut series_dir = None;
     let mut managed_rights = false;
     let mut args = args.iter();
     while let Some(flag) = args.next() {
@@ -58,6 +60,13 @@ fn parse(args: &[String]) -> Result<Args, String> {
                 );
             }
             "--pipe" => pipe = Some(value()?),
+            "--series-dir" if series_dir.is_none() => {
+                let dir = value()?;
+                if dir.is_empty() || dir.starts_with("--") {
+                    return Err("--series-dir necesita un directorio".into());
+                }
+                series_dir = Some(dir.into());
+            }
             "--recording" => recording = Some(value()?.into()),
             "--engineer-image" => engineer_image = Some(value()?.into()),
             "--managed-rights" if !managed_rights => managed_rights = true,
@@ -86,6 +95,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
         pipe,
         simulator,
         recording,
+        series_dir,
         engineer_image,
         managed_rights,
     })
@@ -229,6 +239,7 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         stop,
         service::Options {
             recording: args.recording.as_deref(),
+            series_dir: args.series_dir.as_deref(),
             engineer_image: image,
             rights_nonce,
         },
@@ -285,12 +296,19 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         stop_on_eof.store(true, Ordering::Release);
     });
 
-    vantare_runtime::service::drive_core_demanded(
+    let recording = vantare_runtime::service::SeriesRecording::start(
+        &mut core,
+        args.series_dir.as_deref(),
+        epoch,
+        vantare_runtime::service::storage_helper_path,
+    );
+    vantare_runtime::service::drive_core_recorded(
         &mut core,
         adapter.as_mut(),
         speed,
         &stop,
         Some(&demand),
+        recording,
         |core| {
             let snapshot = core.snapshot();
             events.publish(Arc::clone(&snapshot), core.events());
@@ -373,6 +391,35 @@ mod tests {
                 "acc",
                 "--build",
                 "1.7"
+            ])
+            .is_err()
+        );
+    }
+}
+
+#[cfg(test)]
+mod series_args_tests {
+    use super::*;
+    #[test]
+    fn series_directory_is_optional_and_valid_for_both_sources() {
+        for source in [vec!["--live"], vec!["--replay", "fixture.bin"]] {
+            let args: Vec<String> = source.iter().map(|v| (*v).into()).collect();
+            assert!(parse(&args).unwrap().series_dir.is_none());
+            let mut args = args;
+            args.extend(["--series-dir".into(), "recordings".into()]);
+            assert_eq!(parse(&args).unwrap().series_dir, Some("recordings".into()));
+            args.push("--series-dir".into());
+            assert!(parse(&args).is_err());
+            args.push("other".into());
+            assert!(parse(&args).is_err());
+        }
+        assert!(parse(&["--live".into(), "--series-dir".into()]).is_err());
+        assert!(
+            parse(&[
+                "--live".into(),
+                "--series-dir".into(),
+                "--pipe".into(),
+                "p".into()
             ])
             .is_err()
         );

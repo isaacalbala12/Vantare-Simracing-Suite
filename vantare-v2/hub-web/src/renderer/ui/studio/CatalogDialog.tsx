@@ -204,7 +204,7 @@ export function CatalogDialog({
                               aria-label={label}
                               aria-disabled={!!block}
                               aria-describedby={
-                                block
+                                block && reason !== notice
                                   ? `studio-catalog-${widget.kind}-reason`
                                   : undefined
                               }

@@ -141,7 +141,7 @@ export async function checkStudioPreview(
         await stage.getByText(title, { exact: true }).waitFor();
         if (mode === "photo") await stage.locator(".v-preview-photo").waitFor();
         if (mode === "studioConflict")
-          await stage.getByText(text.conflictTitle, { exact: true }).waitFor();
+          await page.getByText(text.conflictTitle, { exact: true }).waitFor();
         if (mode === "generating")
           assert.equal(
             await stage

@@ -90,6 +90,7 @@ export function Stage({
                   : p.announcements.failed;
   const info = useRef<HTMLButtonElement>(null);
   const root = useRef<HTMLElement>(null);
+  const source = useRef<HTMLSpanElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
   const retryFocused = useRef(false);
   const description = useId();
@@ -117,197 +118,208 @@ export function Stage({
     return () => observer.disconnect();
   }, [photo.image]);
   return (
-    <section
-      ref={root}
-      className="v-focus-stage v-preview-stage"
-      data-photo={real}
-    >
-      <header>
-        <div className="v-preview-source">
-          <span
-            className="v-preview-seal"
-            data-warning={
-              failed ||
-              photo.status === "timeout" ||
-              photo.status === "tooLarge"
-            }
-          >
-            <span className={preparing ? "v-preview-spinner" : undefined}>
-              <Icon
-                name={
-                  preparing
-                    ? "refresh"
-                    : real
-                      ? "v-camera"
-                      : failed || photo.status === "tooLarge"
-                        ? "alert"
-                        : photo.status === "timeout" || photo.status === "busy"
-                          ? "clock"
-                          : photo.status === "denied"
-                            ? "lock"
-                            : "pencil"
-                }
-              />
-            </span>
-            <b>{title}</b>
-            {reason && <span className="v-preview-reason">{reason}</span>}
-          </span>
-          <Popover.Root modal={false}>
-            <Popover.Trigger
-              ref={info}
-              aria-label={p.info}
-              className="v-preview-info"
-            >
-              <Icon name="info" />
-            </Popover.Trigger>
-            <Popover.Portal container={root}>
-              <Popover.Positioner
-                className="v-positioner"
-                align="start"
-                sideOffset={6}
-              >
-                <Popover.Popup className="v-preview-help" initialFocus={false}>
-                  <div role="note">
-                    <b>{p.helpTitle}</b>
-                    <p>{real ? p.photoHelp : p.drawingHelp}</p>
-                    {real && (
-                      <ul>
-                        {p.photoFacts.map((fact) => (
-                          <li key={fact}>{fact}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </Popover.Popup>
-              </Popover.Positioner>
-            </Popover.Portal>
-          </Popover.Root>
-          {retry && (
-            <Button
-              ref={retryButton}
-              className="v-preview-regenerate"
-              aria-label={preparing ? p.generatingLabel : p.retryLabel}
-              aria-disabled={preparing}
-              onClick={() => {
-                if (preparing) return;
-                retryFocused.current =
-                  document.activeElement === retryButton.current;
-                photo.regenerate();
-              }}
-              onBlur={() => {
-                retryFocused.current = false;
-              }}
-            >
-              <Icon name="refresh" />
-              {preparing ? p.generating : p.retry}
-            </Button>
-          )}
-        </div>
-        <div className="v-studio-stage-actions">
-          {actions}
-          <fieldset aria-label={t.dataLabel}>
-            <span>{t.dataLabel}</span>
-            <Button size="sm" variant="ghost" aria-pressed="true">
-              {t.example}
-            </Button>
-            <DisabledHint label={t.liveHelp}>
-              <Button size="sm" variant="ghost" disabled>
-                {t.live}
-              </Button>
-            </DisabledHint>
-          </fieldset>
-        </div>
-      </header>
-      <div
-        className="v-focus-drawing"
-        role="img"
-        aria-label={real ? p.photoLabel(name) : p.drawingLabel(name)}
-        aria-describedby={description}
-      >
-        {real && photo.image ? (
-          <div className="v-preview-fit" ref={fit}>
-            <img
-              alt={""}
-              className="v-preview-photo"
-              src={photo.src}
-              style={{
-                width: `${(photo.image.width * percent) / 100}px`,
-                height: `${(photo.image.height * percent) / 100}px`,
-                maxWidth: "100%",
-                maxHeight: "100%",
-              }}
-            />
-          </div>
-        ) : (
-          <div aria-hidden="true">
-            <WidgetPreview
-              kind={item.kind}
-              opacity={item.opacity}
-              visible={item.visible}
-              locked={item.locked}
-              unverified={blocked}
-              stage
-            />
-          </div>
-        )}
-      </div>
-      <span className="v-sr-only" id={description}>
-        {real ? p.photoHelp : p.drawingHelp}
-      </span>
-      <span className="v-sr-only" role="status" aria-atomic="true">
-        {announcement}
-      </span>
-      {real && photo.image && (
-        <div className="v-preview-metadata">
-          <span>{p.size(photo.image.width, photo.image.height, percent)}</span>
-          <span>
-            <i />
-            {p.transparent}
-          </span>
-        </div>
-      )}
+    <>
       {photo.status === "studioConflict" && (
         <Callout title={p.conflictTitle}>{p.conflictBody}</Callout>
       )}
-      {canvasPreview}
-      {!item.visible && (
-        <div className="v-focus-hidden">
-          <span>
-            <VisibilityIcon visible={false} />
-            {t.hiddenStage}
-          </span>
-          <Button
-            size="sm"
-            variant="neutral"
-            disabled={blocked || item.locked}
-            aria-disabled={pending}
-            onClick={() => {
-              if (!pending) onShow();
-            }}
-          >
-            <VisibilityIcon visible />
-            {t.showNow}
-          </Button>
-        </div>
-      )}
-      <footer>
-        <span>{t.sceneLabel}</span>
-        <DisabledHint label={t.scenesSoon}>
-          <fieldset aria-label={t.sceneLabel}>
-            {t.scenes.map((scene) => (
-              <Button
-                key={scene}
-                size="sm"
-                variant="ghost"
-                disabled
-                aria-pressed={scene === "Boxes"}
+      <section
+        ref={root}
+        className="v-focus-stage v-preview-stage"
+        data-photo={real}
+      >
+        <header>
+          <div className="v-preview-source">
+            <span
+              ref={source}
+              className="v-preview-seal"
+              data-warning={
+                failed ||
+                photo.status === "timeout" ||
+                photo.status === "tooLarge"
+              }
+            >
+              <span className={preparing ? "v-preview-spinner" : undefined}>
+                <Icon
+                  name={
+                    preparing
+                      ? "refresh"
+                      : real
+                        ? "v-camera"
+                        : failed || photo.status === "tooLarge"
+                          ? "alert"
+                          : photo.status === "timeout" ||
+                              photo.status === "busy"
+                            ? "clock"
+                            : photo.status === "denied"
+                              ? "lock"
+                              : "pencil"
+                  }
+                />
+              </span>
+              <b>{title}</b>
+              {reason && <span className="v-preview-reason">{reason}</span>}
+            </span>
+            <Popover.Root modal={false}>
+              <Popover.Trigger
+                ref={info}
+                aria-label={p.info}
+                className="v-preview-info"
               >
-                {scene}
+                <Icon name="info" />
+              </Popover.Trigger>
+              <Popover.Portal container={root}>
+                <Popover.Positioner
+                  className="v-positioner"
+                  anchor={source}
+                  align="start"
+                  sideOffset={6}
+                >
+                  <Popover.Popup
+                    className="v-preview-help"
+                    aria-label={p.helpTitle}
+                    initialFocus={false}
+                  >
+                    <div role="note">
+                      <b>{p.helpTitle}</b>
+                      <p>{real ? p.photoHelp : p.drawingHelp}</p>
+                      {real && (
+                        <ul>
+                          {p.photoFacts.map((fact) => (
+                            <li key={fact}>{fact}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </Popover.Popup>
+                </Popover.Positioner>
+              </Popover.Portal>
+            </Popover.Root>
+            {retry && (
+              <Button
+                ref={retryButton}
+                className="v-preview-regenerate"
+                aria-label={preparing ? p.generatingLabel : p.retryLabel}
+                aria-disabled={preparing}
+                onClick={() => {
+                  if (preparing) return;
+                  retryFocused.current =
+                    document.activeElement === retryButton.current;
+                  photo.regenerate();
+                }}
+                onBlur={() => {
+                  retryFocused.current = false;
+                }}
+              >
+                <Icon name="refresh" />
+                {preparing ? p.generating : p.retry}
               </Button>
-            ))}
-          </fieldset>
-        </DisabledHint>
-      </footer>
-    </section>
+            )}
+          </div>
+          <div className="v-studio-stage-actions">
+            {actions}
+            <fieldset aria-label={t.dataLabel}>
+              <span>{t.dataLabel}</span>
+              <Button size="sm" variant="ghost" aria-pressed="true">
+                {t.example}
+              </Button>
+              <DisabledHint label={t.liveHelp}>
+                <Button size="sm" variant="ghost" disabled>
+                  {t.live}
+                </Button>
+              </DisabledHint>
+            </fieldset>
+          </div>
+        </header>
+        <div
+          className="v-focus-drawing"
+          role="img"
+          aria-label={real ? p.photoLabel(name) : p.drawingLabel(name)}
+          aria-describedby={description}
+        >
+          {real && photo.image ? (
+            <div className="v-preview-fit" ref={fit}>
+              <img
+                alt={""}
+                className="v-preview-photo"
+                src={photo.src}
+                style={{
+                  width: `${(photo.image.width * percent) / 100}px`,
+                  height: `${(photo.image.height * percent) / 100}px`,
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                }}
+              />
+            </div>
+          ) : (
+            <div aria-hidden="true">
+              <WidgetPreview
+                kind={item.kind}
+                opacity={item.opacity}
+                visible={item.visible}
+                locked={item.locked}
+                unverified={blocked}
+                stage
+              />
+            </div>
+          )}
+        </div>
+        <span className="v-sr-only" id={description}>
+          {real ? p.photoHelp : p.drawingHelp}
+        </span>
+        <span className="v-sr-only" role="status" aria-atomic="true">
+          {announcement}
+        </span>
+        {real && photo.image && (
+          <div className="v-preview-metadata">
+            <span>
+              {p.size(photo.image.width, photo.image.height, percent)}
+            </span>
+            <span>
+              <i />
+              {p.transparent}
+            </span>
+          </div>
+        )}
+        {canvasPreview}
+        {!item.visible && (
+          <div className="v-focus-hidden">
+            <span>
+              <VisibilityIcon visible={false} />
+              {t.hiddenStage}
+            </span>
+            <Button
+              size="sm"
+              variant="neutral"
+              disabled={blocked || item.locked}
+              aria-disabled={pending}
+              onClick={() => {
+                if (!pending) onShow();
+              }}
+            >
+              <VisibilityIcon visible />
+              {t.showNow}
+            </Button>
+          </div>
+        )}
+        <footer>
+          <span>{t.sceneLabel}</span>
+          <DisabledHint label={t.scenesSoon}>
+            <fieldset aria-label={t.sceneLabel}>
+              {t.scenes.map((scene) => (
+                <Button
+                  key={scene}
+                  size="sm"
+                  variant="ghost"
+                  disabled
+                  aria-pressed={scene === "Boxes"}
+                >
+                  {scene}
+                </Button>
+              ))}
+            </fieldset>
+          </DisabledHint>
+        </footer>
+      </section>
+    </>
   );
 }

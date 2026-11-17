@@ -129,3 +129,51 @@ fn failed_question_publication_rejects_answers_without_waiting_or_leaving_a_pend
         Err(AnswerError::StaleQuestion)
     );
 }
+
+#[test]
+fn review_text_changes_preserve_the_legacy_fingerprint_and_options_invalidate_it() {
+    let mut document = Document::default();
+    document.apps.push(crate::App {
+        id: "custom:1".into(),
+        name: "Aplicación de prueba".into(),
+        executable: None,
+        args: vec!["--sample".into()],
+        favorite: false,
+    });
+    let mut profile = Profile::new("fixture".into(), "Perfil QA".into());
+    profile.imported = true;
+    profile.steps.push(Step {
+        app_id: "custom:1".into(),
+        delay_seconds: 0,
+        args_override: None,
+    });
+    let mut discovery = Discovery::default();
+    discovery.apps.push(discovery::Detected {
+        id: "custom:1".into(),
+        executable: Some("QA/app.exe".into()),
+        availability: discovery::Availability::default(),
+    });
+    let (legacy, message) = review_content(&document, &profile, &discovery).unwrap();
+    // SHA-256 of the original tuple serialized by review_content before the text changed.
+    assert_eq!(
+        legacy,
+        "8d3feeb9425862c9edfe3968e9e6c17e6e43721fc251d075cbe4e271c81d541b"
+    );
+    assert!(message.contains("Aplicación de prueba"));
+    assert!(message.contains("QA/app.exe"));
+    let mutations: [fn(&mut Profile); 5] = [
+        |p| p.steps[0].delay_seconds = 5,
+        |p| p.first_step_delay = 5,
+        |p| p.launch_on_windows_startup = true,
+        |p| p.hotkey = "ctrl+l".into(),
+        |p| p.max_retries = 2,
+    ];
+    for mutate in mutations {
+        let mut changed = profile.clone();
+        mutate(&mut changed);
+        assert_ne!(
+            review_content(&document, &changed, &discovery).unwrap().0,
+            legacy
+        );
+    }
+}

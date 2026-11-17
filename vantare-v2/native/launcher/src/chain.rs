@@ -6,7 +6,6 @@ use super::{
     policy::{Close, Failure, Running},
     processes,
 };
-use std::fmt::Write as _;
 use std::{
     process::{Child, Command, Stdio},
     sync::{
@@ -772,10 +771,7 @@ fn review_content(
 ) -> Result<(String, String), String> {
     // Contenido y comandos efectivos: también invalida la confianza si cambia discovery.
     let mut commands = Vec::new();
-    let mut message = format!(
-        "Este perfil viene de fuera. Revisa lo que abrirá antes de continuar:\n{}\n",
-        profile.name
-    );
+    let mut review_steps = Vec::new();
     for step in &profile.steps {
         let app = document
             .apps
@@ -786,9 +782,14 @@ fn review_content(
             .app(&app.id)
             .and_then(|app| app.executable.as_ref())
             .ok_or("Ruta de aplicación no encontrada")?;
-        let (command, args, _) = effective_command(app, step, discovery)?;
-        write!(message, "\n{}\nArgumentos: {args:?}\n", command.display())
-            .map_err(|e| format!("Revisar argumentos: {e}"))?;
+        let (command, args, steam) = effective_command(app, step, discovery)?;
+        review_steps.push(serde_json::json!({
+            "app": app.name,
+            "path": command.to_str(),
+            "args": args,
+            "steam": steam,
+            "delay": step.delay_seconds,
+        }));
         commands.push((executable, command, args));
     }
     let mut content = profile.clone();
@@ -798,6 +799,16 @@ fn review_content(
     content.avg_chain_duration_ms = 0;
     let bytes = serde_json::to_vec(&(content, commands, &discovery.steam_executable))
         .map_err(|e| format!("Revisar perfil: {e}"))?;
+    let policy = profile.effective_policy();
+    let message = serde_json::json!({
+        "name": profile.name,
+        "startup": profile.launch_on_windows_startup,
+        "hotkey": profile.hotkey,
+        "firstDelay": policy.first_step_delay,
+        "retries": policy.max_retries,
+        "steps": review_steps,
+    })
+    .to_string();
     Ok((vantare_services::content_hash(&bytes), message))
 }
 

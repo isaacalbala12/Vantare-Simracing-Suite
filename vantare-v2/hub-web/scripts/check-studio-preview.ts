@@ -195,6 +195,15 @@ export async function checkStudioPreview(
           mode === "protected" ? 0 : mode === "generating" ? 2 : 1,
           `${mode}: no automatic retry`,
         );
+      } catch (error) {
+        await writeFile(
+          resolve(evidence, `preview-${mode}-${theme}-failure.html`),
+          await page.content(),
+        );
+        await page.screenshot({
+          path: resolve(evidence, `preview-${mode}-${theme}-failure.png`),
+        });
+        throw error;
       } finally {
         await page.close();
       }

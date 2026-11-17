@@ -15,6 +15,7 @@ import {
 import { Client } from "../bridge/client";
 import { es } from "../i18n/es";
 export const coreKey = ["core"] as const;
+export const homePhotosKey = ["home", "photos"] as const;
 export const settingsKey = ["settings"] as const;
 export const offline = coreFixture as CoreStatus;
 type Hello = Extract<HostToUi, { kind: "hello" }>;
@@ -57,14 +58,27 @@ export function HostProvider({ children }: { children: ReactNode }) {
               setHost({ client: connection, hello: message });
               disposers.push(connection.subscribe("core"));
             }
-            if (message.kind === "event" && message.event.topic === "core")
-              query.setQueryData(coreKey, message.event.value);
-            if (message.kind === "failure" && message.id === 0)
+            if (message.kind === "event" && message.event.topic === "core") {
+              const next = message.event.value;
+              const previous = query.getQueryData<CoreStatus>(coreKey);
+              if (
+                next.accountGeneration !== previous?.accountGeneration ||
+                next.live ||
+                next.rights !== "connected" ||
+                !next.access.verified ||
+                next.access.blocked
+              )
+                query.removeQueries({ queryKey: homePhotosKey, exact: true });
+              query.setQueryData(coreKey, next);
+            }
+            if (message.kind === "failure" && message.id === 0) {
+              query.removeQueries({ queryKey: homePhotosKey, exact: true });
               setHost((previous) => ({
                 ...previous,
                 client,
                 issue: es.unavailable,
               }));
+            }
           }),
         );
         connection.start();
@@ -82,6 +96,7 @@ export function HostProvider({ children }: { children: ReactNode }) {
       });
     return () => {
       active = false;
+      query.removeQueries({ queryKey: homePhotosKey, exact: true });
       for (const dispose of disposers) dispose();
       client?.close();
     };

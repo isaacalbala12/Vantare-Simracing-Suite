@@ -13,6 +13,7 @@ import { useUi } from "../../app/UiState";
 import { homeText as t } from "../../i18n/home";
 import { HomeLayout, HomeRail } from "../../ui/home/HomeLayout";
 import { profileChoice } from "../../ui/home/model";
+import { useHomePhotos } from "../../ui/home/useHomePhotos";
 import { useVisibleNow } from "../../ui/useVisibleNow";
 import { snapshot } from "../launcher/editor-state";
 import { useNotifications } from "../notifications/NotificationsState";
@@ -26,6 +27,11 @@ export default function Home() {
     queryFn: skipToken,
   });
   const [view, setView] = useState<HomeView>();
+  const photos = useHomePhotos(
+    view && (view.profiles.length || view.sim.connected)
+      ? view.layout
+      : undefined,
+  );
   const appsAllowed =
     !!view?.favorite &&
     !view.protected &&
@@ -182,6 +188,7 @@ export default function Home() {
       />
       <HomeLayout
         view={view}
+        photos={photos}
         core={core}
         favoriteApps={appsAllowed ? favoriteApps(view, applications.data) : []}
         appsError={appsAllowed && applications.isError}

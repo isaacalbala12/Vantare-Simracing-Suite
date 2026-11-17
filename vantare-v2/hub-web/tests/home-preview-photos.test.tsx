@@ -434,6 +434,11 @@ it("invalidates the retained composition when the instance list changes", async 
     baseRevision: snapshot.revision,
   });
 });
+function HomePreview(props: HomeProps) {
+  const photos = useHomePhotos(props.view?.layout);
+  return <HomeLayout {...props} photos={photos} />;
+}
+
 it("announces one completed composition, keeps widget names and retains the drawing seal until all photos arrive", async () => {
   const pending = held();
   request.mockImplementation(async (value) =>
@@ -455,7 +460,7 @@ it("announces one completed composition, keeps widget names and retains the draw
     commands: vi.fn(),
     retry: vi.fn(),
   };
-  const ui = render(<HomeLayout {...props} />, {
+  const ui = render(<HomePreview {...props} />, {
     wrapper: ({ children }) => (
       <QueryClientProvider client={cache}>
         <HostProvider>{children}</HostProvider>
@@ -478,7 +483,7 @@ it("announces one completed composition, keeps widget names and retains the draw
     exact: true,
   });
   expect(announced.getAttribute("role")).toBe("status");
-  ui.rerender(<HomeLayout {...props} />);
+  ui.rerender(<HomePreview {...props} />);
   expect(
     screen.getAllByText("Vista previa del layout lista.", { exact: true }),
   ).toHaveLength(1);

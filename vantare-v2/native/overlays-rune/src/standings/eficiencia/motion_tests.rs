@@ -53,6 +53,16 @@ fn shared_tween_matches_gpui_bisection_and_retargets_without_a_jump() {
         t.retarget(0.0, 0.5, 1.0);
         close(t.value(0.5), before);
     }
+    // Oráculos fijos de GPUI, independientes de la bisección copiada arriba.
+    for (curve, x, expected) in [
+        ([0.22, 0.9, 0.3, 1.0], 0.25, 0.748_086),
+        ([0.22, 0.9, 0.3, 1.0], 0.75, 0.992_917),
+        ([0.0, 0.0, 0.58, 1.0], 0.5, 0.684_643),
+    ] {
+        let mut t = Tween::fixed(0.0).with_curve(curve);
+        t.retarget(1.0, 0.0, 1.0);
+        assert!((t.value(x) - expected).abs() < 0.000001);
+    }
     // Inventario decía ≈0,93; la curva literal de GPUI da 0,94859246.
     close(gpui_bezier([0.22, 0.9, 0.3, 1.0], 0.5), 0.948_592_5);
 }
@@ -315,6 +325,7 @@ fn real_controller_emits_only_during_flip_and_stops_waking_at_313_ms() {
     assert!(rt.wake_deadline().is_none());
     swap(&mut photo);
     assert!(rt.update_if(|s, _| s.update(&photo, 0.0).build));
+    // Runtime::frame recibe un delta en segundos, no un instante absoluto.
     rt.frame(0.1);
     assert!(rt.wake_deadline().is_some());
     let frame = rt.state.visual.frame.clone();

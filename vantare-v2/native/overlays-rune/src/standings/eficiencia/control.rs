@@ -2,6 +2,9 @@
 #[cfg(test)]
 #[path = "review_e3_tests.rs"]
 mod review_e3_tests;
+#[cfg(test)]
+#[path = "review_e5_tests.rs"]
+mod review_e5_tests;
 use super::{
     Visual,
     model::{Config, ContentPlan},

@@ -218,6 +218,20 @@ el reloj acaba exactamente al final de sus canales y reducido nunca lo arma.
 No se modifica Motion de Vantare ni sus tests. E6 sigue pendiente (efectos y PIT).
 La entrada de handoff de E5 se entrega en el cuerpo del futuro PR, por orden de Isaac.
 
+Seguimientos de revisión E5: GPUI sigue alimentando Motion::update con las
+fotos recibidas durante reducido; Rune lo descarta al activar la política y
+resiembra con la última ContentPlan al salir de reducido, sin FLIP/fundido.
+Tween::active exige from!=to, frente a running de GPUI que solo comprueba la
+duración: un fantasma con alfa0→0 desaparece inmediatamente en Rune; GPUI lo
+retiene invisible durante200 ms. Los fantasmas Rune se ordenan por id para
+estabilizar Scene; GPUI recorre el HashMap sin orden garantizado.
+En E5 el fundido se aplica por grupo mediante El::opacity, mientras GPUI
+multiplica el alfa por primitiva con with_opacity. E6 cambia esa aplicación a
+El::dim después de añadir los hijos para conservar la mezcla literal de GPUI.
+Los tests fijan FLIP(0,25)=0,748086, FLIP(0,75)=0,992917 y
+EASE_OUT(0,5)=0,684643, además de política false→true→false, pausa y cambio de
+pestaña con movimiento. Runtime::frame recibe deltas en segundos.
+
 ## Erratas numéricas del plan/inventario E5
 
 - Inventario decía FLIP(0,5)≈0,93; GPUI da 0,94859246 con [0,22;0,9;0,3;1] y la bisección de motion.rs:27–53.

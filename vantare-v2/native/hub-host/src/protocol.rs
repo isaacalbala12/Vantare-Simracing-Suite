@@ -50,6 +50,7 @@ pub struct AccessView {
     pub calendar: bool,
     pub engineer: bool,
     pub strategy: bool,
+    pub analysis: bool,
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

@@ -13,7 +13,8 @@
       "tester": false,
       "calendar": false,
       "engineer": false,
-      "strategy": false
+      "strategy": false,
+      "analysis": false
     },
     "live": false
   },

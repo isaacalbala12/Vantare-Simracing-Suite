@@ -62,6 +62,7 @@ export function createMockHost(
       calendar: true,
       engineer: true,
       strategy: true,
+      analysis: true,
     };
 
   const notes: MockContext["notes"] = [];

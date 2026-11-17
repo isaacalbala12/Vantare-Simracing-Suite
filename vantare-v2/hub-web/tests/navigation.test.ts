@@ -9,6 +9,7 @@ const anonymous: AccessView = {
   calendar: false,
   engineer: false,
   strategy: false,
+  analysis: false,
 };
 describe("navigation from core access", () => {
   it("keeps settings usable, hides restricted routes, and locks product sections without a fresh grant", () => {
@@ -35,6 +36,7 @@ describe("navigation from core access", () => {
       ...anonymous,
       verified: true,
       strategy: true,
+      analysis: true,
       engineer: true,
     };
     expect(lock("strategy", owner)).toBeTruthy();

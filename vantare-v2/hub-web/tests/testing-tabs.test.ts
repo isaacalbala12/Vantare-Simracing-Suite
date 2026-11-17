@@ -10,6 +10,7 @@ it("derives visible sections from verified core rights", () => {
     calendar: false,
     engineer: false,
     strategy: false,
+    analysis: false,
   };
   const visible = (rights: AccessView) =>
     testingTabs(rights)

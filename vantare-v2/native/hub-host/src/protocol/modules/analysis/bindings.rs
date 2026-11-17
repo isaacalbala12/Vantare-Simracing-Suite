@@ -2,10 +2,24 @@ use crate::analysis::catalog::{AnalysisLap, AnalysisRow, AnalysisSignal, Analysi
 use crate::analysis::projection::{
     AnalysisGaps, AnalysisPoint, AnalysisRange, AnalysisSeries, DeltaUnavailable,
 };
+use crate::analysis::status::{
+    AnalysisLastPrune, AnalysisPruneItem, AnalysisPruneReason, AnalysisPruneResult,
+    AnalysisRecordingCause, AnalysisRecordingLimits, AnalysisRecordingState,
+    AnalysisRecordingStatus, PRUNE_MAX,
+};
 use crate::protocol::bindings::{constants, declare, sample_response};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
+    declare::<AnalysisRecordingStatus>(&mut text);
+    declare::<AnalysisRecordingState>(&mut text);
+    declare::<AnalysisRecordingCause>(&mut text);
+    declare::<AnalysisRecordingLimits>(&mut text);
+    declare::<AnalysisLastPrune>(&mut text);
+    declare::<AnalysisPruneItem>(&mut text);
+    declare::<AnalysisPruneReason>(&mut text);
+    declare::<AnalysisPruneResult>(&mut text);
+
     declare::<AnalysisRow>(&mut text);
     declare::<AnalysisState>(&mut text);
     declare::<AnalysisSignal>(&mut text);
@@ -61,6 +75,7 @@ pub(crate) fn typescript() -> String {
             AnalysisState::Unreadable
         ]
     );
+    status_constants(&mut text);
     text
 }
 pub(crate) fn corpus() -> serde_json::Value {
@@ -149,11 +164,16 @@ pub(crate) fn corpus() -> serde_json::Value {
         host.push(HostToUi::Failure { id: 1, error });
     }
     compare_corpus(&mut host);
+    host.push(sample_response(Reply::AnalysisStatus { status: None }));
+    host.push(sample_response(Reply::AnalysisStatus {
+        status: Some(status_sample()),
+    }));
     serde_json::json!({"host": host, "ui": requests()})
 }
 
 fn requests() -> Vec<UiToHost> {
     [
+        Request::AnalysisStatus {},
         Request::AnalysisCatalog {},
         Request::AnalysisInspect { id: "a".repeat(64) },
         Request::AnalysisOpen { id: "a".repeat(64) },
@@ -201,4 +221,93 @@ fn compare_corpus(host: &mut Vec<HostToUi>) {
             },
         }));
     }
+}
+
+pub(crate) fn status_sample() -> AnalysisRecordingStatus {
+    AnalysisRecordingStatus {
+        state: AnalysisRecordingState::Recording,
+        cause: None,
+        row_id: Some("b".repeat(64)),
+        started_at_ms: 1_700_000_120_000,
+        durable_watermark: Some(u64::MAX.to_string()),
+        attempted: Some(u64::MAX.to_string()),
+        limits: AnalysisRecordingLimits {
+            max_recordings: 200,
+            max_bytes: 5_368_709_120,
+        },
+        last_prune: AnalysisLastPrune {
+            at_ms: 1_700_000_100_000,
+            items: [
+                (
+                    "series-1-2.duckdb",
+                    AnalysisPruneReason::Count,
+                    AnalysisPruneResult::Deleted,
+                ),
+                (
+                    "series-3-4.duckdb",
+                    AnalysisPruneReason::Bytes,
+                    AnalysisPruneResult::SkippedInUse,
+                ),
+                (
+                    "series-5-6.duckdb.creating-7-8",
+                    AnalysisPruneReason::Orphan,
+                    AnalysisPruneResult::Error,
+                ),
+            ]
+            .into_iter()
+            .map(|(name, reason, result)| AnalysisPruneItem {
+                name: name.into(),
+                size_bytes: 4096,
+                modified_at_ms: 1_700_000_000_000,
+                reason,
+                result,
+            })
+            .collect(),
+        },
+    }
+}
+
+fn status_constants(text: &mut String) {
+    constants!(
+        text,
+        "analysisRecordingStates",
+        [
+            AnalysisRecordingState::Recording,
+            AnalysisRecordingState::Degraded,
+            AnalysisRecordingState::Stopped
+        ]
+    );
+    constants!(
+        text,
+        "analysisRecordingCauses",
+        [
+            AnalysisRecordingCause::InvalidDirectory,
+            AnalysisRecordingCause::HelperMissing,
+            AnalysisRecordingCause::VolumeWithoutHardLinks,
+            AnalysisRecordingCause::WriterDown,
+            AnalysisRecordingCause::FinishTimeout,
+            AnalysisRecordingCause::QuotaUnmet,
+            AnalysisRecordingCause::PruneIncomplete,
+            AnalysisRecordingCause::Unknown
+        ]
+    );
+    constants!(
+        text,
+        "analysisPruneReasons",
+        [
+            AnalysisPruneReason::Count,
+            AnalysisPruneReason::Bytes,
+            AnalysisPruneReason::Orphan
+        ]
+    );
+    constants!(
+        text,
+        "analysisPruneResults",
+        [
+            AnalysisPruneResult::Deleted,
+            AnalysisPruneResult::SkippedInUse,
+            AnalysisPruneResult::Error
+        ]
+    );
+    constants!(text, "analysisPruneMax", PRUNE_MAX);
 }

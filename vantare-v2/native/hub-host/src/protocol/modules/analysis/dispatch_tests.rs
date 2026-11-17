@@ -15,6 +15,7 @@ fn analysis_rights_are_checked_on_every_request() {
         session.current.access.blocked = blocked;
         session.current.access.analysis = analysis;
         for request in [
+            Request::AnalysisStatus {},
             Request::AnalysisCatalog {},
             Request::AnalysisInspect { id: "a".repeat(64) },
             Request::AnalysisOpen { id: "a".repeat(64) },
@@ -33,6 +34,14 @@ fn analysis_rights_are_checked_on_every_request() {
                     HostToUi::Failure {
                         id: 7,
                         error: HostError::Denied
+                    }
+                );
+            } else if matches!(request, Request::AnalysisStatus {}) {
+                assert_eq!(
+                    reply,
+                    HostToUi::Response {
+                        id: 7,
+                        result: Reply::AnalysisStatus { status: None }
                     }
                 );
             } else if matches!(request, Request::AnalysisCatalog {}) {
@@ -179,5 +188,45 @@ fn active_work_is_answered_on_revocation_feed_loss_and_host_close() {
                 .start(8, &Request::AnalysisOpen { id: old }, now),
             Err(HostError::AnalysisNotFound)
         );
+    }
+}
+
+#[test]
+fn status_resolves_catalog_id_without_rotating_tokens() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.rights = crate::protocol::LinkState::Connected;
+    session.current.access.verified = true;
+    session.current.access.analysis = true;
+    let root = fixture.0.join("hub/recordings");
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(root.join("series-123-456.duckdb"), []).unwrap();
+    let v = serde_json::json!({"schema":"vantare.recording-status.v1","state":"recording","file":"series-123-456.duckdb","cause":null,"startedAtMs":42,"durableWatermark":"1","attempted":"2","limits":{"maxRecordings":200,"maxBytes":5_368_709_120_u64},"counts":{"recordings":1,"bytes":0},"lastPrune":{"atMs":0,"items":[]}});
+    std::fs::write(
+        root.join("recording-status.json"),
+        serde_json::to_vec(&v).unwrap(),
+    )
+    .unwrap();
+    let mut expected = None;
+    for i in 0..3 {
+        if i == 1 {
+            expected = Some(session.analysis_state.catalog().unwrap()[0].id.clone());
+        }
+        let mut pipe = Pipe::new(Vec::new());
+        session
+            .request(&mut pipe, 7, &Request::AnalysisStatus {})
+            .unwrap();
+        pipe.set_position(0);
+        let reply: HostToUi = frame::Reader::default().next(&mut pipe).unwrap().unwrap();
+        let HostToUi::Response {
+            result: Reply::AnalysisStatus {
+                status: Some(status),
+            },
+            ..
+        } = reply
+        else {
+            panic!("status response")
+        };
+        assert_eq!(status.row_id, expected);
     }
 }

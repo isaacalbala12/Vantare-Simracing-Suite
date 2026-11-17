@@ -59,6 +59,9 @@ pub(super) fn dispatch(
         return publish(session, pipe, id, Err(HostError::Denied));
     }
     let result = match request {
+        Request::AnalysisStatus {} => Ok(Some(Reply::AnalysisStatus {
+            status: session.analysis_state.status(),
+        })),
         Request::AnalysisCatalog {} => session.analysis_state.catalog().map(|recordings| {
             Some(Reply::AnalysisCatalog {
                 recordings,

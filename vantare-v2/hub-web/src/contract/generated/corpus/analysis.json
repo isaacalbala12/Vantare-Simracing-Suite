@@ -428,9 +428,69 @@
           "b": []
         }
       }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "analysis.status",
+        "status": null
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "analysis.status",
+        "status": {
+          "attempted": "18446744073709551615",
+          "cause": null,
+          "durableWatermark": "18446744073709551615",
+          "lastPrune": {
+            "atMs": 1700000100000,
+            "items": [
+              {
+                "modifiedAtMs": 1700000000000,
+                "name": "series-1-2.duckdb",
+                "reason": "count",
+                "result": "deleted",
+                "sizeBytes": 4096
+              },
+              {
+                "modifiedAtMs": 1700000000000,
+                "name": "series-3-4.duckdb",
+                "reason": "bytes",
+                "result": "skippedInUse",
+                "sizeBytes": 4096
+              },
+              {
+                "modifiedAtMs": 1700000000000,
+                "name": "series-5-6.duckdb.creating-7-8",
+                "reason": "orphan",
+                "result": "error",
+                "sizeBytes": 4096
+              }
+            ]
+          },
+          "limits": {
+            "maxBytes": 5368709120,
+            "maxRecordings": 200
+          },
+          "rowId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "startedAtMs": 1700000120000,
+          "state": "recording"
+        }
+      }
     }
   ],
   "ui": [
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "analysis.status"
+      }
+    },
     {
       "id": 1,
       "kind": "request",

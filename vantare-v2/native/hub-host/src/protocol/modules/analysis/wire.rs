@@ -5,6 +5,8 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "analysis.status")]
+    AnalysisStatus {},
     #[serde(rename = "analysis.catalog")]
     AnalysisCatalog {},
     #[serde(rename = "analysis.inspect")]
@@ -23,6 +25,10 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", rename_all = "camelCase", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "analysis.status")]
+    AnalysisStatus {
+        status: Option<crate::analysis::status::AnalysisRecordingStatus>,
+    },
     #[serde(rename = "analysis.catalog")]
     AnalysisCatalog {
         recordings: Vec<crate::analysis::catalog::AnalysisRow>,

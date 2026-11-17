@@ -50,6 +50,7 @@ describe("analysis contract", () => {
       "-1",
       "01",
       "1e3",
+      "1\n",
       "",
     ])
       expect(decimal(value)).toBe(false);
@@ -253,4 +254,96 @@ it("rejects compare request paths and non-index numbers", () => {
     { ...base, raw: [] },
   ])
     expect(isRequest(bad)).toBe(false);
+});
+
+it("strictly validates recording status and prune names", () => {
+  const sample = corpus.host.find(
+    (v) =>
+      v.kind === "response" &&
+      v.result?.method === "analysis.status" &&
+      v.result.status !== null,
+  );
+  expect(sample).toBeDefined();
+  const reply = JSON.parse(JSON.stringify(sample)).result;
+  expect(isReply(reply)).toBe(true);
+  expect(isReply({ method: "analysis.status", status: null })).toBe(true);
+  for (const name of [
+    "",
+    "..",
+    "C:x",
+    "a/b.duckdb",
+    "a\\b.duckdb",
+    "other.duckdb",
+    "series-1-2.duckdb\n",
+  ]) {
+    const bad = structuredClone(reply);
+    bad.status.lastPrune.items[0].name = name;
+    expect(isReply(bad)).toBe(false);
+  }
+  for (const [key, value] of [
+    ["startedAtMs", -1],
+    ["startedAtMs", 2 ** 53],
+    ["state", "other"],
+    ["attempted", 1],
+    ["cause", "other"],
+    ["file", "secret"],
+  ]) {
+    expect(
+      isReply({
+        ...reply,
+        status: { ...reply.status, [key as string]: value },
+      }),
+    ).toBe(false);
+  }
+  const items = Array.from(
+    { length: 51 },
+    () => reply.status.lastPrune.items[0],
+  );
+  expect(
+    isReply({
+      ...reply,
+      status: {
+        ...reply.status,
+        lastPrune: { ...reply.status.lastPrune, items },
+      },
+    }),
+  ).toBe(false);
+});
+
+it("mock status preserves catalog ids and supports missing status", () => {
+  for (const sceneName of ["analysis", "analysis-status-null"]) {
+    const core = structuredClone(offline);
+    core.rights = "connected";
+    core.access.verified = true;
+    core.access.analysis = true;
+    const mock = create({ core, sceneName } as MockContext);
+    mock({ kind: "request", id: 1, request: { method: "analysis.catalog" } });
+    const message = {
+      kind: "request" as const,
+      id: 2,
+      request: { method: "analysis.status" as const },
+    };
+    const response = mock(message);
+    expect(response && isHostMessage(response)).toBe(true);
+    expect(response).toMatchObject({
+      kind: "response",
+      result: {
+        method: "analysis.status",
+        status:
+          sceneName === "analysis-status-null"
+            ? null
+            : {
+                state: "recording",
+                rowId: "b".repeat(64),
+                lastPrune: { items: expect.any(Array) },
+              },
+      },
+    });
+    expect(mock(message)).toEqual(response);
+    core.access.analysis = false;
+    expect(mock(message)).toMatchObject({
+      kind: "failure",
+      error: { kind: "denied" },
+    });
+  }
 });

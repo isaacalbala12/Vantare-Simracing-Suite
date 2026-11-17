@@ -1,7 +1,7 @@
 //! Cliente de proceso: todo I/O fuera de adquisición; `DuckDB` no se enlaza aquí.
 
 use std::io::{self, BufRead, BufReader, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
@@ -249,6 +249,7 @@ pub struct SeriesWorker {
     analysis: Arc<ArcSwap<RecordedSeriesSummary>>,
     failed: Arc<AtomicBool>,
     cancelled: Arc<AtomicBool>,
+    pub(crate) database: Arc<ArcSwap<PathBuf>>,
 }
 
 impl SeriesWorker {
@@ -292,6 +293,8 @@ impl SeriesWorker {
         let failure = Arc::clone(&failed);
         let cancelled = Arc::new(AtomicBool::new(false));
         let cancellation = Arc::clone(&cancelled);
+        let current_database = Arc::new(ArcSwap::from_pointee(database.clone()));
+        let recording_database = current_database.clone();
         let task = thread::Builder::new()
             .name("series-storage".into())
             .spawn(move || {
@@ -304,6 +307,7 @@ impl SeriesWorker {
                             &executable,
                             &database,
                             &cancellation,
+                            &recording_database,
                             ready,
                         );
                     }
@@ -323,6 +327,7 @@ impl SeriesWorker {
             analysis,
             failed,
             cancelled,
+            database: current_database,
         })
     }
 
@@ -337,6 +342,16 @@ impl SeriesWorker {
 
     pub fn failed(&self) -> bool {
         self.failed.load(Ordering::Acquire)
+    }
+
+    #[cfg(all(test, windows))]
+    pub(crate) fn kill_for_test(&self) {
+        self.process
+            .lock()
+            .expect("proceso")
+            .child
+            .kill()
+            .expect("matar helper real");
     }
 
     pub fn finish(
@@ -474,6 +489,7 @@ fn retry_creation(
     executable: &Path,
     database: &Path,
     cancellation: &AtomicBool,
+    current_database: &ArcSwap<PathBuf>,
     mut ready: io::Result<SeriesStorageState>,
 ) -> io::Result<SeriesStorageState> {
     for attempt in 1..=MAX_CREATE_RETRIES {
@@ -516,6 +532,7 @@ fn retry_creation(
             std::process::id()
         ));
         *process = Process::spawn(executable, &path, Some("--create"))?;
+        current_database.store(Arc::new(path));
         *pipe = process
             .pipe
             .take()

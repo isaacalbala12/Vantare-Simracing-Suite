@@ -73,16 +73,24 @@ export async function checkHomePhotos(
                 calls.push("preview.render");
               }
             }
-            if (message?.kind === "response") {
-              if (message.result.method === "settings.get")
-                message.result.value.appearance.scheme = scheme;
-              if (message.result.method === "home.get" && mode === "limite") {
-                const view = message.result.value as HomeView;
+            if (mode === "limite") {
+              const view: HomeView | undefined =
+                message?.kind === "event" && message.event.topic === "home"
+                  ? message.event.value
+                  : message?.kind === "response" &&
+                      message.result.method === "home.get"
+                    ? message.result.value
+                    : undefined;
+              if (view) {
                 view.layout.widgets = Array.from(
                   { length: 9 },
                   () => view.layout.widgets[0],
                 );
               }
+            }
+            if (message?.kind === "response") {
+              if (message.result.method === "settings.get")
+                message.result.value.appearance.scheme = scheme;
               if (
                 message.result.method === "studio.get" &&
                 mode !== "catalogo"

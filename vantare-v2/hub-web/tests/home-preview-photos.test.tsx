@@ -242,17 +242,20 @@ it("keeps at most one request pending and exposes no partial composition", async
   await act(async () => pending.resolve(image));
   await ready();
 });
-it("keeps the drawing for more than eight widgets without asking Rune", async () => {
-  snapshot.instances = Array.from({ length: 9 }, (_, index) => ({
-    ...structuredClone(snapshot.instances[0]),
-    id: `widget-${index}`,
-  }));
-  layout = readLayout();
-  mount();
-  await act(async () => {});
-  expect(photos()).toHaveLength(0);
-  expect(screen.queryAllByRole("img")).toHaveLength(0);
-});
+it.each(["limit", "missing", "protected"] as const)(
+  "skips every photo request including studio.get when Home is ineligible: %s",
+  async (mode) => {
+    if (mode === "limit") {
+      layout.widgets = Array.from({ length: 9 }, () => layout.widgets[0]);
+    } else {
+      layout.state = mode;
+    }
+    mount();
+    await act(async () => {});
+    expect(request).not.toHaveBeenCalled();
+    expect(screen.queryAllByRole("img")).toHaveLength(0);
+  },
+);
 it.each(["noDemo", "busy", "tooLarge", "denied", "captureFailed"])(
   "is all-or-nothing for %s and never retries in the same visit",
   async (mode) => {

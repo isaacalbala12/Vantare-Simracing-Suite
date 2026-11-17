@@ -33,6 +33,7 @@ export async function checkAnalysisComparison(
   references?: Page,
 ) {
   await mkdir(output, { recursive: true });
+  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.clock.setFixedTime(analysisQaNow);
   const results: { name: string; violations: unknown[] }[] = [];
   const figures: string[] = [];
@@ -244,6 +245,7 @@ export async function checkAnalysisComparison(
       output,
       `<!doctype html><html lang="es"><meta charset="utf-8"><title>VANTA-133 · P1e-1</title><style>body{font:16px system-ui;margin:24px}section>div{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0}img{width:100%}section{margin-block:40px}</style><h1>P1e-1 frente a las maquetas 03 y 03b</h1>${figures.join("")}</html>`,
     );
+  await page.emulateMedia({ reducedMotion: null });
   assert.ok(
     results.every((r) => r.violations.length === 0),
     "Every comparison state must have zero axe violations",

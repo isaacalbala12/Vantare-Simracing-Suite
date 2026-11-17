@@ -524,3 +524,36 @@ it("reactivates regeneration after another failure without retrying by itself", 
   ).toBeTruthy();
 });
 
+it("clears the current photo when Live starts, without another request", async () => {
+  await mount();
+  await photoReady();
+  await act(async () =>
+    cache.setQueryData<CoreStatus>(coreKey, (old) => {
+      if (!old) throw Error("Missing core");
+      return { ...old, live: true };
+    }),
+  );
+  expect(
+    stage().queryByRole("img", { name: /Vista previa real de/ }),
+  ).toBeNull();
+  expect(photos()).toHaveLength(1);
+});
+it("does not steal focus if the user leaves the regeneration button before success", async () => {
+  await mount("preview-timeout");
+  const retry = await screen.findByRole("button", {
+    name: "Volver a generar la vista previa real",
+  });
+  const gate = deferred();
+  intercept = () => gate.promise;
+  await userEvent.setup().click(retry);
+  const example = stage().getByRole("button", { name: "Ejemplo", exact: true });
+  example.focus();
+  await act(async () =>
+    gate.resolve({
+      method: "preview.render",
+      value: { width: 1, height: 1, pngBase64: previewTransparentPng },
+    }),
+  );
+  await photoReady();
+  expect(document.activeElement).toBe(example);
+});

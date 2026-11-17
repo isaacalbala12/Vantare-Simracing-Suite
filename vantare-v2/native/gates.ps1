@@ -63,6 +63,14 @@ try {
     $storage = @($members | Where-Object name -CEQ 'vantare-storage')
     if ($storage.Count -ne 1 -or @($storage[0].features.default).Count -ne 1 -or
         $storage[0].features.default[0] -cne 'bundled-duckdb') { throw 'El default de storage cambió: revisar gates.ps1 antes de desactivar bundled-duckdb.' }
+    # Preserve the selected lifecycle scope when adding executable prerequisites.
+    $lifecyclePackages = $Packages
+    # Storage's process tests launch the actual Core executable, not its rlib.
+    # Include that package in the same test build and archive target.
+    if ($Gate -in @('test', 'completa', 'archive') -and
+        'vantare-storage' -cin $Packages -and 'vantare-runtime' -cnotin $Packages) {
+        $Packages += 'vantare-runtime'
+    }
     # Runtime's process tests launch the actual Services executable, not its rlib.
     if ($Gate -in @('test', 'telemetria', 'completa', 'archive') -and
         'vantare-runtime' -cin $Packages -and 'vantare-services' -cnotin $Packages) {
@@ -141,12 +149,13 @@ try {
         $decoded | Where-Object reason -EQ 'compiler-message' | ForEach-Object { Write-Host $_.message.rendered }
         # Engineer and Runtime both have a target named lifecycle. Preserve both
         # original harnesses, keyed by package rather than choosing the first name.
-        $artifacts = @($decoded | Where-Object {
-            $_.reason -eq 'compiler-artifact' -and $_.target.name -eq 'lifecycle' -and $_.executable
-        })
         $expected = @($members | Where-Object {
-            (-not $Packages.Count -or $_.name -cin $Packages) -and
+            (-not $lifecyclePackages.Count -or $_.name -cin $lifecyclePackages) -and
             @($_.targets | Where-Object name -CEQ 'lifecycle').Count
+        })
+        $artifacts = @($decoded | Where-Object {
+            $_.reason -eq 'compiler-artifact' -and $_.target.name -eq 'lifecycle' -and $_.executable -and
+            $_.package_id -cin @($expected | ForEach-Object id)
         })
         if ($artifacts.Count -ne $expected.Count) { throw 'Falta algún ejecutable lifecycle de la selección.' }
         $lifecycle = Join-Path $TargetDirectory 'debug/ci-lifecycle'

@@ -119,7 +119,7 @@ export function CatalogDialog({
               {text.photo}
             </span>
             <span>
-              <span className="v-a11y-separator">{text.photo}: </span>
+              <span className="v-a11y-separator">{text.photoLegendLead}</span>
               {text.photoHelp}
             </span>
           </p>
@@ -246,7 +246,7 @@ export function CatalogDialog({
                                     aria-hidden="true"
                                   >
                                     <img
-                                      alt=""
+                                      alt={""}
                                       src={photos.photos.get(widget.kind)?.src}
                                       width={
                                         photos.photos.get(widget.kind)?.width

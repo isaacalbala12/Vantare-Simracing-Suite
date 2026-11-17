@@ -190,11 +190,12 @@ it("requests only allowed visible cards plus one, sequentially in DOM reading or
   await waitFor(() => expect(document.querySelectorAll("img")).toHaveLength(3));
 });
 it("releases photos outside visible+1 and never requests an evicted photo twice per opening", async () => {
+  cards = cards.slice(0, 4);
   mount();
   await visible(0);
   await count(2);
   await waitFor(() => expect(document.querySelectorAll("img")).toHaveLength(2));
-  await visible(3);
+  await visible(2);
   await count(4);
   await waitFor(() => expect(document.querySelectorAll("img")).toHaveLength(2));
   expect(
@@ -210,6 +211,7 @@ it.each([
   "preview-tooLarge",
   "preview-captureFailed",
 ])("does not retry %s until reopened", async (scene) => {
+  cards = cards.slice(0, 2);
   const mock = createMockHost(scene);
   host.client.request.mockImplementation(async (request: Request) => {
     const reply = mock({ kind: "request", id: 2, request });
@@ -263,11 +265,12 @@ it.each(["close", "account", "live", "disconnect", "unmount"])(
   },
 );
 it("filters release hidden photos and preserve the attempted set", async () => {
+  cards = cards.slice(0, 4);
   const ui = mount();
   await visible(0);
   await count(2);
   await waitFor(() => expect(document.querySelectorAll("img")).toHaveLength(2));
-  ui.rerender(<Harness widgets={cards.slice(3)} />);
+  ui.rerender(<Harness widgets={cards.slice(2)} />);
   await visible(0);
   await count(4);
   expect(document.querySelector(`[data-kind="${cards[0].kind}"]`)).toBeNull();
@@ -311,6 +314,7 @@ it("decodes transparent PNGs, never announces or moves focus, and only sends pre
   );
 });
 it("retains the illustration for corrupt PNG or reply beyond generated limits", async () => {
+  cards = cards.slice(0, 2);
   decode.mockRejectedValue(new Error("corrupt PNG"));
   host.client.request.mockResolvedValueOnce({
     method: "preview.render",

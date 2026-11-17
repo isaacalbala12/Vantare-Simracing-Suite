@@ -1,5 +1,6 @@
 export const studioCatalogText = {
   photo: "Foto",
+  photoLegendLead: "Foto: ",
   photoHelp:
     "el widget real con datos y ajustes de ejemplo. Sin esa marca, es un dibujo orientativo.",
   moreMark: "⋯",

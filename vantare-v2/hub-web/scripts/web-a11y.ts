@@ -29,6 +29,7 @@ import { checkResidentResults } from "./check-resident-results.ts";
 import { checkMainScreens } from "./check-screens-a11y.ts";
 import { checkStudioCanvas } from "./check-studio-canvas.ts";
 import { checkStudioCatalogDrop } from "./check-studio-catalog-drop.ts";
+import { checkStudioCatalogPhotos } from "./check-studio-catalog-photos";
 import { checkStudioPreview } from "./check-studio-preview";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { checkTestingDensity } from "./check-testing-density.ts";
@@ -208,6 +209,11 @@ try {
       mode,
     );
   await checkStudioPreview(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  await checkStudioCatalogPhotos(
+    page,
+    server.resolvedUrls?.local[0] ?? "",
+    evidence,
+  );
   await checkStudioStates(page, server.resolvedUrls?.local[0] ?? "", evidence);
   const studioResults = [];
   for (const scheme of ["light", "dark"]) {

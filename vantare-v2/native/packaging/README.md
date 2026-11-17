@@ -106,6 +106,8 @@ El cliente nuevo verifica firma y límites antes del GET, longitud/SHA al descar
 y total expandido tras verificar la extracción. Rechaza versiones <= instalada.
 El manifiesto interno de instalación mantiene schema1/product `vantare-native`.
 `update_feed.rs` queda intacto; el nuevo módulo no selecciona native-beta.
+Decisión de raíz: nightly solo genera Hub; sus builds ya no consultan `native-beta-v…`.
+La última generación antigua se compila desde master o testers; retirada futura: [#2533](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2533).
 El publicador heredado rechaza ZIP>128MiB antes de firmar o crear Setup.
 `hub-update-qa` habilita exclusivamente la autoridad TEST ya usada por la matriz;
 no es un override runtime ni cambia el verificador antiguo. La distribución

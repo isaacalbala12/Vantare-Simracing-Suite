@@ -2,7 +2,7 @@
 //! supervisa y los cierra en orden (ADR 0099 §3, ciclo de vida).
 //!
 //! ```text
-//! vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N]
+//! vantare [--core-bin R] [--overlays-bin R] [--overlays-engine gpui|rune] [--plazo MS] [--reinicios N]
 //!         [--instancia S] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS]]
 //! vantare --parar [--instancia S]
 //! ```
@@ -25,6 +25,8 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod background;
+mod engine;
+use engine::Engine;
 #[cfg(test)]
 mod engine_tests;
 mod child_shutdown;
@@ -68,7 +70,7 @@ use std::{env, io};
 #[cfg(windows)]
 use win::{Instance, Stop};
 
-const USAGE: &str = "uso: vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N] \
+const USAGE: &str = "uso: vantare [--core-bin R] [--overlays-bin R] [--overlays-engine gpui|rune] [--plazo MS] [--reinicios N] \
 [--instancia S] [--launcher-file R] [--launch PERFIL] [--engineer CURSOR] [--engineer-bin R] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS [-- ARGS-DE-ENGINEER]]]\n     vantare --parar [--instancia S]";
 const DEFAULT_GRACE: Duration = Duration::from_secs(3);
 const DEFAULT_RESTARTS: u32 = 5;
@@ -111,13 +113,24 @@ fn value<'a>(
 }
 
 fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
+    let engine_env = env::var_os("VANTARE_OVERLAYS_ENGINE");
+    parse_with_engine_env(args, bin_dir, engine_env.as_deref())
+}
+
+fn parse_with_engine_env(
+    args: &[String],
+    bin_dir: &Path,
+    engine_env: Option<&std::ffi::OsStr>,
+) -> Result<Config, String> {
+    let mut overlays_bin: Option<PathBuf> = None;
+    let mut overlays_engine = None;
     let mut config = Config {
         core: Program {
             path: bin_dir.join(binary_name("vantare-core")),
             args: Vec::new(),
         },
         overlays: Program {
-            path: bin_dir.join(binary_name("vantare-overlays")),
+            path: PathBuf::new(),
             args: Vec::new(),
         },
         engineer: None,
@@ -135,7 +148,11 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--core-bin" => config.core.path = value(&mut args, arg)?.into(),
-            "--overlays-bin" => config.overlays.path = value(&mut args, arg)?.into(),
+            "--overlays-bin" => overlays_bin = Some(value(&mut args, arg)?.into()),
+            "--overlays-engine" => {
+                overlays_engine = Some(Engine::parse(value(&mut args, arg)?)
+                    .map_err(|error| format!("{arg}: {error}"))?);
+            }
             "--engineer-bin" => engineer_bin = value(&mut args, arg)?.into(),
             "--engineer" => {
                 config.engineer = Some(Program {
@@ -172,6 +189,23 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
                 engineer_args = groups.next().unwrap_or_default().to_vec();
             }
             other => return Err(format!("argumento desconocido: {other}")),
+        }
+    }
+    if let Some(path) = overlays_bin {
+        config.overlays.path = path;
+    } else {
+        let engine = match overlays_engine {
+            Some(engine) => engine,
+            None => match engine_env {
+                Some(value) => Engine::parse(value.to_str().ok_or(
+                    "VANTARE_OVERLAYS_ENGINE: texto inválido; se espera gpui|rune",
+                )?).map_err(|error| format!("VANTARE_OVERLAYS_ENGINE: {error}"))?,
+                None => Engine::default(),
+            },
+        };
+        config.overlays.path = bin_dir.join(binary_name(engine.binary_stem()));
+        if !config.stop_only && engine == Engine::Rune && !config.overlays.path.is_file() {
+            return Err(format!("Falta el ejecutable de overlays Rune: {}", config.overlays.path.display()));
         }
     }
     validate_core_pipe(&config.core.args)?;

@@ -379,6 +379,48 @@ export async function checkStudioCatalogPhotos(
             badges.some((badge) => badge.above === true),
             "an owned badge paints above its catalogue photo",
           );
+          const fits = await dialog.evaluate((node) =>
+            Array.from(node.querySelectorAll(".v-studio-catalog-photo")).map(
+              (photo) => {
+                const img = photo.querySelector("img");
+                if (!img) throw Error("Missing catalogue photo");
+                const frame = photo.getBoundingClientRect();
+                const box = img.getBoundingClientRect();
+                return {
+                  kind: img.closest("[data-kind]")?.getAttribute("data-kind"),
+                  inside:
+                    box.left >= frame.left - 0.5 &&
+                    box.right <= frame.right + 0.5 &&
+                    box.top >= frame.top - 0.5 &&
+                    box.bottom <= frame.bottom + 0.5,
+                  aspect:
+                    Math.abs(
+                      box.width / box.height -
+                        img.naturalWidth / img.naturalHeight,
+                    ) < 0.02,
+                  grew:
+                    box.width > img.naturalWidth + 0.5 ||
+                    box.height > img.naturalHeight + 0.5,
+                  natural: [img.naturalWidth, img.naturalHeight],
+                  painted: [Math.round(box.width), Math.round(box.height)],
+                };
+              },
+            ),
+          );
+          assert(fits.length > 0, "positive control: catalogue photos mounted");
+          for (const fit of fits) {
+            assert.equal(
+              fit.inside,
+              true,
+              `${fit.kind} photo fits inside the 92px zone (${fit.natural.join("x")} -> ${fit.painted.join("x")})`,
+            );
+            assert.equal(
+              fit.aspect,
+              true,
+              `${fit.kind} photo keeps its aspect ratio`,
+            );
+            assert.equal(fit.grew, false, `${fit.kind} photo is not upscaled`);
+          }
         }
         const report = await new AxeBuilder({ page }).analyze();
         results.push({

@@ -22,6 +22,13 @@ use windows_sys::Win32::{
 #[path = "tray_actions.rs"]
 mod tray_actions;
 
+#[path = "rune.rs"]
+mod rune;
+
+pub(super) fn rune_scenario(name: &str) -> ExitCode {
+    rune::run(name)
+}
+
 pub(super) fn tray_hub_process(args: &[String]) -> ExitCode {
     tray_actions::hub_process(args)
 }

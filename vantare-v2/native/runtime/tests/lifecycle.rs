@@ -57,6 +57,8 @@ fn main() -> ExitCode {
         Some("manual-tray") => characterization::manual_tray(),
         #[cfg(windows)]
         Some("fake-hub") => characterization::fake_hub(&args[1..]),
+        #[cfg(windows)]
+        Some("rune-lifecycle") => characterization::rune_scenario(&args[1]),
         _ if args.iter().any(|arg| arg == "fake-engineer") => fake_engineer(&args),
         _ => run_scenarios(&args),
     }

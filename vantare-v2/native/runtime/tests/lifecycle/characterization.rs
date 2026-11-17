@@ -112,15 +112,28 @@ impl Real {
         // Es el núcleo sintético existente, no un overlays que finja leer stdin.
         fs::copy(env::current_exe().unwrap(), bin.join("vantare-core.exe")).unwrap();
         let rune = rune_image.is_some();
-        let image_name = if rune { "vantare-overlays-rune.exe" } else { "vantare-overlays.exe" };
+        let image_name = if rune {
+            "vantare-overlays-rune.exe"
+        } else {
+            "vantare-overlays.exe"
+        };
         let overlays = rune_image.unwrap_or_else(|| {
-            let variant = if tag == "tray-open-quit" { "qa" } else { "normal" };
+            let variant = if tag == "tray-open-quit" {
+                "qa"
+            } else {
+                "normal"
+            };
             PathBuf::from(env!("CARGO_BIN_EXE_vantare"))
-                .parent().unwrap().join("lifecycle").join(variant).join(image_name)
+                .parent()
+                .unwrap()
+                .join("lifecycle")
+                .join(variant)
+                .join(image_name)
         });
         assert!(
             overlays.is_file(),
-            "preparar la imagen real de overlays: {}", overlays.display()
+            "preparar la imagen real de overlays: {}",
+            overlays.display()
         );
         fs::copy(overlays, bin.join(image_name)).unwrap();
         fs::copy(env::current_exe().unwrap(), bin.join("vantare-hub.exe")).unwrap();
@@ -153,7 +166,11 @@ impl Real {
             .stderr(File::create(scenario.file("launcher.log")).unwrap())
             .creation_flags(0x0800_0000);
         let launcher = Launcher(command.spawn().unwrap());
-        let real = Self { launcher, scenario, rune };
+        let real = Self {
+            launcher,
+            scenario,
+            rune,
+        };
         real.ready();
         real
     }
@@ -184,12 +201,23 @@ impl Real {
     }
 
     fn ready(&self) -> Process {
-        self.scenario
-            .wait_for(if self.rune { "superficie Rune real creada y oculta" } else { "bandeja del overlays REAL creada por GPUI" }, LONG, || {
+        self.scenario.wait_for(
+            if self.rune {
+                "superficie Rune real creada y oculta"
+            } else {
+                "bandeja del overlays REAL creada por GPUI"
+            },
+            LONG,
+            || {
                 let process = self.overlay()?;
-                let window = if self.rune { rune_window(process.pid) } else { tray(process.pid) };
+                let window = if self.rune {
+                    rune_window(process.pid)
+                } else {
+                    tray(process.pid)
+                };
                 window.map(|_| process)
-            })
+            },
+        )
     }
 
     fn hub(&self, marker: &str, restart: bool) -> Launcher {
@@ -233,8 +261,13 @@ impl Real {
             "{log:?}"
         );
         if self.rune {
-            assert_eq!(log.iter().filter(|line| line.starts_with("overlays-rune: proceso ")).count(),
-                1, "Rune cerró el host una vez: {log:?}");
+            assert_eq!(
+                log.iter()
+                    .filter(|line| line.starts_with("overlays-rune: proceso "))
+                    .count(),
+                1,
+                "Rune cerró el host una vez: {log:?}"
+            );
             return;
         }
         assert_eq!(
@@ -254,7 +287,10 @@ fn tray(pid: u32) -> Option<HWND> {
 fn rune_window(pid: u32) -> Option<HWND> {
     let window = overlay_window(pid, true)?;
     // SAFETY: HWND observado por PID. El layout vacío y --start-hidden no muestran ventanas.
-    assert_eq!(unsafe { windows_sys::Win32::UI::WindowsAndMessaging::IsWindowVisible(window) }, 0);
+    assert_eq!(
+        unsafe { windows_sys::Win32::UI::WindowsAndMessaging::IsWindowVisible(window) },
+        0
+    );
     Some(window)
 }
 
@@ -275,12 +311,20 @@ fn overlay_window(pid: u32, rune: bool) -> Option<HWND> {
         if owner == search.pid {
             let len = unsafe {
                 if search.rune {
-                    windows_sys::Win32::UI::WindowsAndMessaging::GetWindowTextW(window, class.as_mut_ptr(), 64)
+                    windows_sys::Win32::UI::WindowsAndMessaging::GetWindowTextW(
+                        window,
+                        class.as_mut_ptr(),
+                        64,
+                    )
                 } else {
                     GetClassNameW(window, class.as_mut_ptr(), 64)
                 }
             };
-            let expected = if search.rune { "Vantare · Overlays Rune" } else { "VantareOverlaysTray" };
+            let expected = if search.rune {
+                "Vantare · Overlays Rune"
+            } else {
+                "VantareOverlaysTray"
+            };
             if String::from_utf16_lossy(&class[..usize::try_from(len).unwrap()]) == expected {
                 search.window = window;
                 return 0;

@@ -1,12 +1,20 @@
 //! Escenarios opt-in del proceso Rune real. Nunca se añaden a la tanda GPUI.
-use super::{Real, LONG, alive, kill};
-use std::{env, ffi::OsStr, process::{Command, ExitCode}, time::{Duration, Instant}};
+use super::{LONG, Real, alive, kill};
 use std::os::windows::process::CommandExt;
+use std::{
+    env,
+    ffi::OsStr,
+    process::{Command, ExitCode},
+    time::{Duration, Instant},
+};
 use windows_sys::Win32::UI::WindowsAndMessaging::{PostMessageW, WM_CLOSE};
 
 pub(super) fn run(name: &str) -> ExitCode {
-    assert_ne!(env::var_os("VANTARE_SIN_GRAFICOS").as_deref(), Some(OsStr::new("1")),
-        "prohibido ejecutar gráficos en el servidor");
+    assert_ne!(
+        env::var_os("VANTARE_SIN_GRAFICOS").as_deref(),
+        Some(OsStr::new("1")),
+        "prohibido ejecutar gráficos en el servidor"
+    );
     match name {
         "eof" => eof(),
         "restart" => restart(),
@@ -37,7 +45,12 @@ fn restart() {
         assert_ne!(overlay, next);
         assert!(began.elapsed() >= Duration::from_millis(delay));
         let expected = format!("overlays: reinicio en {delay}ms");
-        assert!(real.scenario.lines("launcher.log").iter().any(|line| line.contains(&expected)));
+        assert!(
+            real.scenario
+                .lines("launcher.log")
+                .iter()
+                .any(|line| line.contains(&expected))
+        );
         assert_eq!(real.scenario.starts("core"), core);
         overlay = next;
     }
@@ -57,7 +70,13 @@ fn exit_zero() {
     real.assert_clean_shutdown();
     assert!(!alive(overlay));
     assert!(!alive(core));
-    assert!(!real.scenario.lines("launcher.log").iter().any(|line| line.contains("overlays: reinicio")));
+    assert!(
+        !real
+            .scenario
+            .lines("launcher.log")
+            .iter()
+            .any(|line| line.contains("overlays: reinicio"))
+    );
 }
 
 fn single() {
@@ -69,11 +88,19 @@ fn single() {
         .arg(real.scenario.dir.join("bin/vantare-overlays-rune.exe"))
         .env("VANTARE_NATIVE_DATA_ROOT", &real.scenario.dir)
         .env("LOCALAPPDATA", &real.scenario.dir)
-        .creation_flags(0x0800_0000).status().unwrap();
+        .creation_flags(0x0800_0000)
+        .status()
+        .unwrap();
     assert!(status.success());
     assert_eq!(real.ready(), overlay);
     assert_eq!(real.scenario.starts("core"), core);
-    assert_eq!(real.scenario.lines("launcher.log").iter()
-        .filter(|line| line.starts_with("vantare: overlays en marcha (pid ")).count(), 1);
+    assert_eq!(
+        real.scenario
+            .lines("launcher.log")
+            .iter()
+            .filter(|line| line.starts_with("vantare: overlays en marcha (pid "))
+            .count(),
+        1
+    );
     real.stop();
 }

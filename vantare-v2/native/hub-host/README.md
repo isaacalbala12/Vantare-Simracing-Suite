@@ -702,21 +702,21 @@ No se confÃ­a en las ACL de --data-dir: no se heredan grants a otros usuarios.
 Si no se puede fijar la DACL, devuelve Io sin lanzar el hijo. API reutilizada
 mediante pub use cfg(windows), autorizada por raÃ­z; sin algoritmo Win32 nuevo.
 
-## Grabación activa y bloqueo de analysis (C2b-2)
+## GrabaciÃ³n activa y bloqueo de analysis (C2b-2)
 
-El catálogo marca `AnalysisRow.recording=true` cuando `recording-status.json`
+El catÃ¡logo marca `AnalysisRow.recording=true` cuando `recording-status.json`
 del mismo directorio contiene `state: "recording"` y `file` coincide con esa DB.
 Un estado obsoleto tras morir el Core conserva esa fila marcada y bloqueada:
-el Hub la muestra «Grabando ahora». No se deduce la vida del Core ni se ignora
-la marca por antigüedad. `state: "stopped"`, un archivo de estado ilegible o un
+el Hub la muestra Â«Grabando ahoraÂ». No se deduce la vida del Core ni se ignora
+la marca por antigÃ¼edad. `state: "stopped"`, un archivo de estado ilegible o un
 `file` que no corresponde a la fila no la marcan.
 
 `analysis.inspect` sobre una fila `recording` responde al error
 `analysisLocked`, igual que `analysis.open`. Un archivo bloqueado por otro
-programa responde a inspect con éxito y `state: "locked"`; el Hub debe tratar
-ambas formas de bloqueo. Esto no añade campos ni modifica la versión del wire.
+programa responde a inspect con Ã©xito y `state: "locked"`; el Hub debe tratar
+ambas formas de bloqueo. Esto no aÃ±ade campos ni modifica la versiÃ³n del wire.
 
-`analysis.cancel` sin trabajo activo conserva la sesión abierta y devuelve
+`analysis.cancel` sin trabajo activo conserva la sesiÃ³n abierta y devuelve
 `cancelled: false`. Cancelar o agotar el plazo de un inspect cancela su lector
-temporal y conserva el Reader de la sesión; cancelar un open cierra esa apertura.
-La pérdida de derecho/feed y el cierre del host siguen invalidando todo.
+temporal y conserva el Reader de la sesiÃ³n; cancelar un open cierra esa apertura.
+La pÃ©rdida de derecho/feed y el cierre del host siguen invalidando todo.

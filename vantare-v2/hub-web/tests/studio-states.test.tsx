@@ -32,6 +32,7 @@ import { studioText as t } from "../src/renderer/i18n/studio";
 import { canvasText } from "../src/renderer/i18n/studio-canvas";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
+import { catalogCardName } from "../src/renderer/ui/studio/catalogName";
 import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
 
 const caches: QueryClient[] = [];
@@ -605,10 +606,12 @@ it("explains conserved widgets once, keeps their settings and never offers to ad
   fireEvent.click(screen.getByRole("button", { name: t.add }));
   const dialog = await screen.findByRole("dialog", { name: t.catalog });
   expect(
-    within(dialog).getByRole("button", { name: /^Añadir Standings/ }),
+    within(dialog).getByRole("button", { name: catalogCardName("Standings") }),
   ).toBeTruthy();
   expect(
-    within(dialog).queryByRole("button", { name: /^Añadir Daños detallados/ }),
+    within(dialog).queryByRole("button", {
+      name: catalogCardName("Daños detallados"),
+    }),
   ).toBeNull();
   expect(
     requests.mock.calls.filter(([request]) => request.method === "studio.add"),

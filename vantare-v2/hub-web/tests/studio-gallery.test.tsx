@@ -29,6 +29,7 @@ import { studioText as t } from "../src/renderer/i18n/studio";
 import { studioCatalogText as catalogText } from "../src/renderer/i18n/studio-catalog";
 import { StudioProvider } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
+import { catalogCardName } from "../src/renderer/ui/studio/catalogName";
 import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
 
 const caches: QueryClient[] = [];
@@ -189,7 +190,7 @@ describe("Studio Foco interactions", () => {
     fireEvent.click(screen.getAllByRole("button", { name: t.add })[0]);
     const catalogButton = within(
       await screen.findByRole("dialog", { name: t.catalog }),
-    ).getByRole("button", { name: /^Añadir Standings/ });
+    ).getByRole("button", { name: catalogCardName("Standings") });
     fireEvent.click(catalogButton);
     await screen.findByText(t.addedName("Standings"));
     const addedRow = await screen.findByRole("button", {
@@ -228,11 +229,11 @@ describe("Studio Foco interactions", () => {
     const search = await screen.findByRole("searchbox", { name: t.search });
     fireEvent.change(search, { target: { value: "clasificacion" } });
     expect(
-      screen.getByRole("button", { name: /^Añadir Standings/ }),
+      screen.getByRole("button", { name: catalogCardName("Standings") }),
     ).toBeTruthy();
     fireEvent.change(search, { target: { value: "telemetria de entrada" } });
     const widget = screen.getByRole("button", {
-      name: /^Añadir Telemetría de entrada/,
+      name: catalogCardName("Telemetría de entrada"),
     });
     expect(widget.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(widget);
@@ -433,7 +434,7 @@ describe("Studio Foco interactions", () => {
     fireEvent.click(screen.getByRole("button", { name: t.add }));
     await screen.findByText(t.addedName(name));
     const catalog = screen.getByRole("button", {
-      name: new RegExp(`^${t.addShort} ${name}(?:,|$)`),
+      name: catalogCardName(name),
     });
     expect(
       catalog.querySelector(".v-studio-owned")?.getAttribute("data-label"),

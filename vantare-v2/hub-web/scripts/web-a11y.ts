@@ -14,6 +14,7 @@ import { checkCommandPalette } from "./check-command-palette.ts";
 import { checkDialogSafety } from "./check-dialog-safety.ts";
 import { checkHomeDensity } from "./check-home-density";
 import { checkLauncherDensity } from "./check-launcher-density.ts";
+import { checkLightContrast } from "./check-light-contrast.ts";
 import { checkNativeAccessLayer } from "./check-native-access-layer.ts";
 import { checkNotificationFocus } from "./check-notification-focus.ts";
 import {
@@ -240,6 +241,7 @@ try {
     );
   }
   await checkMainScreens(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  await checkLightContrast(page, server.resolvedUrls?.local[0] ?? "", evidence);
   const { checkAnalysisComparison } = await import("./analysis-compare-web.ts");
   const comparisonContext = await browser.newContext({
     timezoneId: "UTC",

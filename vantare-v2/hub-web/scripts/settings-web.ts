@@ -3,6 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
+import { t } from "../src/renderer/i18n/es";
 import { until } from "./wait-for.ts";
 import { webQaPreview } from "./web-qa";
 
@@ -29,6 +30,35 @@ try {
     await page.evaluate(() => document.fonts.ready);
   }
   await open("ajustes-base");
+  const search = page.getByRole("searchbox", { name: t("settings.search") });
+  for (const query of ["", "Interfaz y sistema"]) {
+    await search.fill(query);
+    assert.equal(
+      await page
+        .getByRole("tab", { name: t("settings.updates"), exact: true })
+        .count(),
+      query ? 0 : 1,
+    );
+    await page
+      .getByRole("button", { name: t("settings.updates"), exact: true })
+      .click();
+    assert.equal(await search.inputValue(), "");
+    assert.equal(
+      await page
+        .getByRole("tab", { name: t("settings.updates"), exact: true })
+        .getAttribute("aria-selected"),
+      "true",
+    );
+    await page
+      .getByRole("region", { name: t("updates.installed"), exact: true })
+      .waitFor();
+    await page
+      .getByRole("tab", { name: t("settings.general"), exact: true })
+      .click();
+    await page
+      .getByRole("switch", { name: "Empezar minimizado", exact: true })
+      .waitFor();
+  }
   const minimized = page.getByRole("switch", {
     name: "Empezar minimizado",
     exact: true,

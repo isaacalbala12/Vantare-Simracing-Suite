@@ -274,6 +274,7 @@ export function Comparison({
                 coordinate={coordinate}
                 time={time}
                 window={axis.distance}
+                position={((plotLeft + fraction * plotWidth) / 800) * 100}
               />
             </div>
             {state.comparing && (

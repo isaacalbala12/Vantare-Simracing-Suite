@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { type CSSProperties, useId } from "react";
 import type { Compared } from "../../app/AnalysisController";
 import {
   type DistanceWindow,
@@ -62,14 +62,19 @@ export function ComparisonValues({
   coordinate,
   time,
   window,
+  position,
 }: {
   data: Compared;
   coordinate: number;
   time: boolean;
   window?: DistanceWindow;
+  position?: number;
 }) {
   return (
-    <div className="v-an-cursor-values">
+    <div
+      className="v-an-cursor-values"
+      style={{ "--cursor-position": `${position ?? 50}%` } as CSSProperties}
+    >
       <p>{time ? axisLabel(coordinate, true) : metres(coordinate)}</p>
       <dl>
         {valuesAt(data, coordinate, time, window).map(

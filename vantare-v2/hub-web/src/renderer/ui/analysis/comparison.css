@@ -230,7 +230,11 @@
 .v-an-cursor-values {
   position: absolute;
   inset-block-start: var(--space-5);
-  inset-inline-end: var(--space-9);
+  inset-inline-start: clamp(
+    var(--space-3),
+    calc(var(--cursor-position) + var(--space-5)),
+    calc(100% - var(--field-w) - var(--space-9) * 2 - var(--space-3))
+  );
   z-index: 3;
   pointer-events: none;
   inline-size: calc(var(--field-w) + var(--space-9) * 2);
@@ -288,4 +292,24 @@
 }
 .v-an-compare-loss {
   color: var(--analysis-a);
+}
+
+.v-an-cursor-values dt {
+  color: var(--text-3);
+}
+.v-an-cursor-values dt:is(.v-an-series-a, .v-an-series-b)::before {
+  content: "";
+  display: inline-block;
+  inline-size: var(--space-3);
+  margin-inline-end: var(--space-2);
+  border-top: 2px solid var(--analysis-a);
+}
+.v-an-cursor-values dt.v-an-series-b::before {
+  border-color: var(--analysis-b);
+  border-top-style: dashed;
+}
+.v-an-cursor-values dl > div:last-child {
+  border-top: 1px solid var(--line-2);
+  margin-block-start: var(--space-1);
+  padding-block-start: var(--space-1);
 }

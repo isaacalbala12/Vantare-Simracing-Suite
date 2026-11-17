@@ -1,4 +1,58 @@
 export const studioText = {
+  preview: {
+    preparing: "Preparando vista previa real…",
+    photo: "Vista previa real",
+    drawing: "Dibujo orientativo",
+    failed: "No se pudo generar la foto",
+    timeout: "La foto ha tardado demasiado",
+    tooLarge: "La foto es demasiado grande",
+    busy: "Hay otra vista previa en curso",
+    example: "· datos de ejemplo",
+    noDemo: "· este widget aún no tiene foto real",
+    unavailable: "· la foto real no está disponible en este equipo",
+    fallback: "· se muestra el dibujo",
+    protected: "· sin foto mientras el diseño esté protegido",
+    changed: "· foto retirada porque el diseño cambió",
+    retry: "Volver a generar",
+    retryLabel: "Volver a generar la vista previa real",
+    generating: "Generando…",
+    generatingLabel: "Generando la vista previa real",
+    info: "Qué estoy viendo",
+    helpTitle: "Qué estás viendo",
+    photoHelp:
+      "Una foto fija de este widget hecha por el mismo motor que lo pinta en pista, con datos inventados.",
+    photoFacts: [
+      "No es el juego ni tus datos.",
+      "No se mueve: se rehace al guardar un cambio.",
+      "Los cuadros grises son zonas transparentes: ahí se verá el juego.",
+    ],
+    drawingHelp:
+      "Un dibujo que indica la forma del widget. Los colores, textos y tamaños exactos pueden ser distintos en pista.",
+    transparent: "Transparente",
+    photoLabel: (name: string) =>
+      `Vista previa real de ${name}, foto con datos de ejemplo`,
+    drawingLabel: (name: string) => `Dibujo orientativo de ${name}`,
+    size: (width: number, height: number, percent: number) =>
+      `${width} × ${height} px · al ${percent} %${percent < 100 ? " para que quepa" : ""}`,
+    saved: "Se guarda solo · la foto se rehace al guardar cada cambio",
+    conflictTitle: "El diseño ha cambiado en otro proceso.",
+    conflictBody:
+      "Se ha cargado la versión actual y se ha retirado la foto anterior, que ya no correspondía.",
+    announcements: {
+      photo: "Vista previa real lista.",
+      noDemo:
+        "Se muestra el dibujo orientativo: este widget aún no tiene foto real.",
+      unavailable:
+        "Se muestra el dibujo orientativo: la foto real no está disponible en este equipo.",
+      failed:
+        "No se pudo generar la vista previa real. Se muestra el dibujo orientativo.",
+      timeout:
+        "La vista previa real ha tardado demasiado. Se muestra el dibujo orientativo.",
+      tooLarge:
+        "La vista previa real supera el tamaño permitido. Se muestra el dibujo orientativo.",
+      busy: "Hay otra vista previa en curso. Se muestra el dibujo orientativo.",
+    },
+  },
   conservedWidgets:
     "Este diseño tiene widgets que ya no están en el catálogo. Se conservan con sus ajustes, pero no se pueden añadir desde el catálogo.",
   damageNumbersName: "Daños detallados",

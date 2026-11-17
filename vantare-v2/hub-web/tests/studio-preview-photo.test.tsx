@@ -498,7 +498,7 @@ it("does not steal focus when an initial photo arrives", async () => {
   intercept = () => gate.promise;
   await mount();
   await waitFor(() => expect(photos()).toHaveLength(1));
-  const example = stage().getByRole("button", { name: "Ejemplo", exact: true });
+  const example = stage().getByRole("button", { name: "Ejemplo" });
   example.focus();
   await act(async () =>
     gate.resolve({
@@ -546,7 +546,7 @@ it("does not steal focus if the user leaves the regeneration button before succe
   const gate = deferred();
   intercept = () => gate.promise;
   await userEvent.setup().click(retry);
-  const example = stage().getByRole("button", { name: "Ejemplo", exact: true });
+  const example = stage().getByRole("button", { name: "Ejemplo" });
   example.focus();
   await act(async () =>
     gate.resolve({

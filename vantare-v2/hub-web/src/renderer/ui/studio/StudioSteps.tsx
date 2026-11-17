@@ -121,7 +121,10 @@ function Steps({
               t.lockedWidget
             )
           ) : (
-            t.autoSaved
+            <>
+              <span className="v-step-save-drawing">{t.autoSaved}</span>
+              <span className="v-step-save-photo">{t.preview.saved}</span>
+            </>
           )}
         </div>
         {!readOnly && step === "appearance" && (

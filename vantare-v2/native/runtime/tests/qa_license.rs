@@ -166,6 +166,7 @@ mod windows {
         let text = binding["credential"].as_str().expect("signed credential");
         let credential: CredentialV1 =
             serde_json::from_str(text).expect("decode signed credential");
+        assert_eq!(credential.claims.capabilities[0].key, OWNER);
         let subject = &credential.claims.subject;
         let verifier = Verifier::public_keys(&public).expect("QA registry");
         assert!(verifier.v1(&credential, subject, DEVICE).is_ok());
@@ -222,7 +223,7 @@ mod windows {
                 None,
                 now(),
                 deadline,
-                Duration::from_secs(86_400),
+                Duration::from_hours(24),
             )
             .expect("policy at paid_through");
         assert!(!expired.tester && !expired.engineer);

@@ -71,7 +71,9 @@ fn install_paths(options: &[OsString]) -> Option<(&Path, &Path)> {
     }
     let value = |flag| {
         options
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .find(|pair| pair[0] == flag)
             .map(|pair| pair[1].as_os_str())
     };

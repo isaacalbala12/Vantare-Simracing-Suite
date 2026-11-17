@@ -40,7 +40,7 @@ const laps: AnalysisLap[] = lapTimes.map((lapTimeApproxMs, index) => ({
   throttle: { ...quality, min: 0, mean: 0.7, max: 1 },
   brake: { ...quality, min: 0, mean: 0.2, max: 1 },
 }));
-export function create({ core }: MockContext): MockHandler {
+export function create({ core, sceneName }: MockContext): MockHandler {
   let session: string | undefined;
   let catalogued = false;
   let generation = 0;
@@ -73,6 +73,52 @@ export function create({ core }: MockContext): MockHandler {
       return fail("denied");
     }
     switch (request.method) {
+      case "analysis.status":
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: request.method,
+            status:
+              sceneName === "analysis-status-null"
+                ? null
+                : {
+                    state: "recording",
+                    cause: null,
+                    rowId: catalogued ? (rows[1]?.id ?? null) : null,
+                    startedAtMs: 1700000120000,
+                    durableWatermark: "1200",
+                    attempted: "1200",
+                    limits: { maxRecordings: 200, maxBytes: 5368709120 },
+                    lastPrune: {
+                      atMs: 1700000100000,
+                      items: [
+                        {
+                          name: "series-1-2.duckdb",
+                          sizeBytes: 1048576,
+                          modifiedAtMs: 1700000000000,
+                          reason: "count",
+                          result: "deleted",
+                        },
+                        {
+                          name: "series-3-4.duckdb",
+                          sizeBytes: 524288,
+                          modifiedAtMs: 1700000010000,
+                          reason: "bytes",
+                          result: "skippedInUse",
+                        },
+                        {
+                          name: "series-5-6.duckdb.creating-7-8",
+                          sizeBytes: 4096,
+                          modifiedAtMs: 1700000020000,
+                          reason: "orphan",
+                          result: "error",
+                        },
+                      ],
+                    },
+                  },
+          },
+        };
       case "analysis.catalog":
         catalogued = true;
         return {

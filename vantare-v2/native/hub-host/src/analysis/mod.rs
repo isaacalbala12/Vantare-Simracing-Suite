@@ -474,3 +474,5 @@ mod tests;
 pub mod catalog;
 
 pub mod projection;
+
+pub mod status;

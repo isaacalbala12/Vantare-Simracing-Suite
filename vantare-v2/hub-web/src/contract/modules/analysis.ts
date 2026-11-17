@@ -1,4 +1,11 @@
-import { comparison, decimal, lap, row, token } from "../analysis-validation";
+import {
+  comparison,
+  decimal,
+  lap,
+  recordingStatus,
+  row,
+  token,
+} from "../analysis-validation";
 import {
   analysisErrors,
   analysisMax,
@@ -9,6 +16,7 @@ import { exact, integer, oneOf } from "../validation-common";
 export { analysisMethods as methods } from "../generated/analysis";
 export function isRequest(v: Record<string, unknown>): boolean {
   switch (v.method) {
+    case "analysis.status":
     case "analysis.catalog":
     case "analysis.cancel":
       return exact(v, ["method"]);
@@ -31,6 +39,8 @@ export function isRequest(v: Record<string, unknown>): boolean {
 }
 export function isReply(v: Record<string, unknown>): boolean {
   switch (v.method) {
+    case "analysis.status":
+      return exact(v, ["method", "status"]) && recordingStatus(v.status);
     case "analysis.catalog":
       return (
         exact(v, ["method", "recordings", "max"]) &&

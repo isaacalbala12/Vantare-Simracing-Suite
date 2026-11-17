@@ -67,6 +67,9 @@ impl State {
             pause_next: None,
         }
     }
+    pub fn status(&self) -> Option<crate::analysis::status::AnalysisRecordingStatus> {
+        crate::analysis::status::read(&self.root, &self.paths)
+    }
     pub fn clear(&mut self) {
         self.paths.clear();
         self.stamps.clear();

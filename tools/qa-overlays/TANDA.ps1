@@ -3,6 +3,8 @@
 param(
  [ValidateSet('Validar','Ensayo','Servidor','Trabajador','Apagar')][string]$Modo='Validar',
  [string]$Kit=$PSScriptRoot,
+ [string]$PythonExe='',
+ [string]$SamplerTaskPrefix='',
  [string]$Pc='isaac@100.83.142.118',
  [string]$Usuario='isaac',
  [int]$Sesion=-1,
@@ -14,6 +16,7 @@ param(
 )
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot 'SEGURIDAD_TANDA.ps1')
 
 function Read-TandaJson([string]$Path){ Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -AsHashtable -NoEnumerate }
 function Write-TandaJson($Value,[string]$Path){ConvertTo-Json -InputObject $Value -Depth 30|Set-Content -LiteralPath $Path -Encoding utf8}
@@ -112,7 +115,9 @@ function Read-TandaPngSize([string]$Path){
  @($width,$height)
 }
 function Assert-TandaWindow([string]$Start,[string]$End){
- if(-not $Start -or -not $End){throw 'Falta ventana horaria autorizada'}
+ $pattern='^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,7})?Z$'
+ if($Start -notmatch $pattern -or $End -notmatch $pattern){throw 'INVALID_WINDOW: usar UTC ISO estricta terminada en Z'}
+ if([DateTimeOffset]::Parse($End) -le [DateTimeOffset]::Parse($Start)){throw 'INVALID_WINDOW: fin anterior al inicio'}
  $now=[DateTimeOffset]::UtcNow
  if($now -lt [DateTimeOffset]::Parse($Start) -or $now -ge [DateTimeOffset]::Parse($End)){throw 'Fuera de la ventana autorizada'}
 }
@@ -124,7 +129,7 @@ function Assert-TandaSession([int]$Expected,[string]$ExpectedUser){
  if(-not $computer.UserName -or ($computer.UserName -split '\\')[-1] -ine $ExpectedUser){throw 'Usuario inesperado o sesión cerrada'}
  $explorers=@(Get-Process explorer -ErrorAction SilentlyContinue)
  if($explorers.Count -eq 0 -or @($explorers|Where-Object SessionId -ne $Expected).Count){throw 'Sesión adicional o escritorio ausente'}
- if(@(Get-Process -Name 'Le Mans Ultimate','LMU','rFactor2','AC2-Win64-Shipping' -ErrorAction SilentlyContinue).Count){throw 'Juego en uso'}
+ Assert-TandaNoGames
  if(@(Get-Process -Name 'vantare','vantare-core','vantare-overlays','vantare-overlays-rune','vantare-hub' -ErrorAction SilentlyContinue).Count){throw 'Vantare de Isaac está abierto; no cerrar ni compartir su núcleo/datos con la tanda'}
  $gpus=@(Get-CimInstance Win32_VideoController|Where-Object {$_.Name -notmatch 'Basic|Virtual|Remote|Meta'})
  if(-not $gpus.Count){throw 'GPU_UNAVAILABLE: sin controlador físico visible'}
@@ -153,7 +158,7 @@ public static class TandaIdle {
  }
  Assert-TandaUnattended
  $principal=[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
- if(-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Se requiere token elevado para PresentMon; no instalar ni solicitar contraseña'}
+ if($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Capturas/lifecycle/hosts requieren token limitado; elevar solo el sampler preautorizado'}
 }
 function Assert-TandaUnattended {
  Assert-TandaWindow $NoAntesUtc $LimiteUtc
@@ -162,6 +167,7 @@ function Assert-TandaUnattended {
 }
 function Invoke-TandaDryRun([string]$Root,[string]$Output){
  $env:VANTARE_SIN_GRAFICOS='1'
+ Assert-TandaPython $PythonExe
  $manifest=Assert-TandaInputs $Root -DryValidation
  if(Test-Path -LiteralPath $Output){throw 'La salida del ensayo debe ser nueva'}
  $null=New-Item -ItemType Directory -Path $Output
@@ -174,7 +180,9 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  if($fake.code -ne 0){throw 'El ensayo del controlador falso falló'}
  $round=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_RONDA.ps1')) (Join-Path $Output 'ronda-falsa') 30
  if($round.code -ne 0){throw 'El ensayo de la ronda real con procesos falsos falló'}
- $csv=Invoke-TandaProcess 'python' @('-m','unittest','discover','-s',(Join-Path $Root 'tools/qa-overlays'),'-p','test_*.py') (Join-Path $Output 'csv-falsos') 60
+ $security=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_SEGURIDAD.ps1')) (Join-Path $Output 'seguridad-falsa') 60
+ if($security.code -ne 0){throw 'Regresiones de seguridad fallaron'}
+ $csv=Invoke-TandaPython @('-m','unittest','discover','-s',(Join-Path $Root 'tools/qa-overlays'),'-p','test_*.py') (Join-Path $Output 'csv-falsos') 180
  if($csv.code -ne 0){throw 'Las regresiones de CSV falsos fallaron'}
  Write-TandaJson @{source_sha=$manifest.source_sha;production_rights_configured=$manifest.production_rights_configured;guard_code=6;guard_token='GRAPHICS_DISABLED';input_hashes='PASS';captures=$manifest.captures.Count;measurements=$manifest.measurements.Count;gpu_executed=$false;shutdown_executed=$false;utc=[DateTime]::UtcNow.ToString('o')} (Join-Path $Output 'ensayo.json')
 }
@@ -298,8 +306,8 @@ function Read-TandaPolicy([string]$Root,[string]$PhotoPipe,[string]$Log){
   $nonce=$null
   if($response.version -ne 20 -or $response.sequence -ne 1 -or $response.reply.result -ne 'License'){throw 'Respuesta de Services incompatible; no degradar a lectura de archivos'}
   $policy=$response.reply.policy
+  Write-TandaJson (Convert-TandaPolicyEvidence $policy) $Log
   Assert-TandaPolicy $policy
-  Write-TandaJson $policy $Log
   $policy
  } finally {
   if($pipe){$pipe.Dispose()}
@@ -320,17 +328,20 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
  Copy-Item -LiteralPath $layout -Destination (Join-Path $round 'layout-inicial.json')
  $pipe='vantare-tanda-'+[guid]::NewGuid().ToString('N')
  $core=$null;$hostRun=$null;$sampler=$null
+ $profileRoots=@(Get-TandaProfileRoots)
+ $profileBefore=@(Get-TandaProfileSnapshot $profileRoots)
+ Write-TandaJson $profileBefore (Join-Path $round 'perfil-antes.json')
+ $hostEnvironment=New-TandaQaEnvironment (Join-Path $round 'qa-host')
  try {
   # Preparar ETW/Add-Type ANTES del replay, sin consumir sus cinco segundos.
   $rootInfo=Join-Path $round 'root-info.json'
   if($Case.state -eq 'replay'){
-   $sampler=Start-TandaOwned (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'vantare-v2/native/pruebas-rune/muestreador/MUESTREAR.ps1'),'-RootInfoFile',$rootInfo,'-PresentMon',(Join-Path $Root 'bin/PresentMon-2.6.0-x64.exe'),'-OutputDirectory',(Join-Path $round 'muestreo'),'-Seconds','65','-ProcessOnly') (Join-Path $round 'sampler')
-   $sampler.stderr=$sampler.process.StandardError.ReadToEndAsync()
+   $sampler=Start-TandaSampler $Root $round $Case
    $ready=Join-Path $round 'muestreo/CAPTURA-LISTA.json'
    $deadline=[DateTime]::UtcNow.AddSeconds(20)
    while(-not(Test-Path -LiteralPath $ready)){
     Assert-TandaUnattended
-    if($sampler.process.HasExited -or [DateTime]::UtcNow -ge $deadline){throw 'Sampler/ETW no está listo; no arrancar replay ni host'}
+    if((Test-TandaSamplerFinished $sampler) -or [DateTime]::UtcNow -ge $deadline){throw 'Sampler/ETW no está listo; no arrancar replay ni host'}
     Start-Sleep -Milliseconds 50
    }
    if(-not (Read-TandaJson $ready).ready){throw 'Sampler no confirmó ETW listo'}
@@ -344,27 +355,31 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
   Assert-TandaUnattended
   $image=if($Case.motor -eq 'rune'){'vantare-overlays-rune.exe'}else{'vantare-overlays.exe'}
   $hostStartQpc=[Diagnostics.Stopwatch]::GetTimestamp()
-  $hostRun=Start-TandaOwned (Join-Path $Root ('bin/'+$image)) @('--layout',$layout,'--fuente',('pipe:'+$pipe),'--control-stdin') (Join-Path $round 'overlay')
+  $hostRun=Start-TandaOwned (Join-Path $Root ('bin/'+$image)) @('--layout',$layout,'--fuente',('pipe:'+$pipe),'--control-stdin') (Join-Path $round 'overlay') $hostEnvironment
   $hostRun.stderr=$hostRun.process.StandardError.ReadToEndAsync()
   $identity=Get-VantareObservedIdentity $hostRun.process.Id
   Write-TandaJson $identity (Join-Path $round 'identidad.json')
-  if($Case.state -eq 'replay'){
-   $rootData=@{};foreach($key in $identity.Keys){$rootData[$key]=$identity[$key]};$rootData.start_qpc=$hostStartQpc
-   Write-TandaJson $rootData ($rootInfo+'.tmp')
-   [IO.File]::Move($rootInfo+'.tmp',$rootInfo)
-  } else {
-   # Waiting no tiene límite de corpus: conserva cinco segundos de host caliente
-   # desde CAPTURA-LISTA, sin pasar un ReplayStartQpc artificial.
-   $sampler=Start-TandaOwned (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'vantare-v2/native/pruebas-rune/muestreador/MUESTREAR.ps1'),'-RootProcessId',[string]$hostRun.process.Id,'-PresentMon',(Join-Path $Root 'bin/PresentMon-2.6.0-x64.exe'),'-OutputDirectory',(Join-Path $round 'muestreo'),'-Seconds','60','-ProcessOnly') (Join-Path $round 'sampler')
-   $sampler.stderr=$sampler.process.StandardError.ReadToEndAsync()
+  if($Case.state -eq 'waiting'){
+   $sampler=Start-TandaSampler $Root $round $Case
+   $ready=Join-Path $round 'muestreo/CAPTURA-LISTA.json'
+   $deadline=[DateTime]::UtcNow.AddSeconds(20)
+   while(-not(Test-Path -LiteralPath $ready)){
+    Assert-TandaUnattended
+    if((Test-TandaSamplerFinished $sampler) -or [DateTime]::UtcNow -ge $deadline){throw 'Sampler Waiting no está listo'}
+    Start-Sleep -Milliseconds 50
+   }
   }
+  $rootData=@{};foreach($key in $identity.Keys){$rootData[$key]=$identity[$key]};$rootData.start_qpc=$hostStartQpc
+  Write-TandaJson $rootData ($rootInfo+'.tmp')
+  [IO.File]::Move($rootInfo+'.tmp',$rootInfo)
   $until=[DateTime]::UtcNow.AddSeconds(100)
-  while(-not $sampler.process.WaitForExit(500)){
+  while(-not(Test-TandaSamplerFinished $sampler)){
+   Start-Sleep -Milliseconds 500
    # No lanzar consultas CIM/PDH en cada muestra de rendimiento.
    Assert-TandaUnattended
    if([DateTime]::UtcNow -ge $until){throw 'Timeout sampler'}
   }
-  if($sampler.process.ExitCode -ne 0){throw 'Sampler inválido; conservar CSV'}
+  if((Get-TandaSamplerExitCode $sampler) -ne 0){throw 'Sampler inválido; conservar CSV'}
   $after=Get-VantareObservedIdentity $hostRun.process.Id
   Write-TandaJson $after (Join-Path $round 'identidad-despues.json')
   foreach($field in @('process_id','created_utc','image_name','image_sha256')){if($identity[$field] -cne $after[$field]){throw "Cambió identidad: $field"}}
@@ -377,17 +392,22 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
    origin=if($Case.state -eq 'replay'){'Primer span observe del núcleo (paint-stats, idéntico en ambos motores)'}else{'Waiting: CAPTURA-LISTA del sampler, después del arranque del host'};
    core_launch_to_first_observe_s=if($anchor){($anchor-$launchQpc)/[Diagnostics.Stopwatch]::Frequency}else{$null};
    limitations='No es el reloj normalizado del inventario. Traza solo del núcleo, buffered; no se añade instrumentación ni E/S por frame al overlay.'} (Join-Path $round 'origen.json')
-  $analysis=Invoke-TandaProcess 'python' @((Join-Path $Root 'tools/qa-overlays/medidas.py'),(Join-Path $round 'muestreo'),(Join-Path $round 'identidad.json'),(Join-Path $round 'resultado.json'),[string]$anchor) (Join-Path $round 'analisis') 30
-  if($analysis.code -ne 0){throw 'Ventana QPC/CSV inválida; no fabricar números'}
  } finally {
   # Retirar ventanas inmediatamente si aparece actividad; no dejarlas visibles
   # mientras PresentMon completa su cierre temporizado y StopOwned.
-  Close-TandaOwned $hostRun
-  Close-TandaOwned $core
-  # PresentMon es temporizado; dejar completar su finally/StopOwned en un aborto.
-  if($sampler -and -not $sampler.process.HasExited){$null=$sampler.process.WaitForExit(100000)}
-  Close-TandaOwned $sampler
+  try {
+   Close-TandaOwned $hostRun
+   Close-TandaOwned $core
+   # El sampler elevado termina su finally/StopOwned incluso tras aborto del host.
+   Close-TandaSampler $sampler
+  } finally {
+   $profileAfter=@(Get-TandaProfileSnapshot $profileRoots)
+   Write-TandaJson $profileAfter (Join-Path $round 'perfil-despues.json')
+   Assert-TandaProfileUnchanged $profileBefore $profileAfter
+  }
  }
+  $analysis=Invoke-TandaPython @((Join-Path $Root 'tools/qa-overlays/medidas.py'),(Join-Path $round 'muestreo'),(Join-Path $round 'identidad.json'),(Join-Path $round 'resultado.json'),[string]$anchor) (Join-Path $round 'analisis') 30
+  if($analysis.code -ne 0){throw 'Ventana QPC/CSV inválida; no fabricar números'}
 }
 function Invoke-TandaLifecycle([string]$Root,[string]$Output){
  Assert-TandaUnattended
@@ -418,6 +438,7 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
  Assert-TandaWindow $NoAntesUtc $LimiteUtc
  Assert-TandaSession $Sesion $Usuario
  $manifest=Assert-TandaInputs $Root
+ Assert-TandaPython $PythonExe
  if(Test-Path -LiteralPath $Output){throw 'Salida ya existe'}
  $null=New-Item -ItemType Directory -Path $Output
  foreach($dir in @('logs','gpui','rune','diff','perf','pares','texto')){$null=New-Item -ItemType Directory -Path (Join-Path $Output $dir)}
@@ -427,9 +448,9 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
   $qa=Join-Path $Output ('capture-data/'+$name);$null=New-Item -ItemType Directory -Path $qa -Force
   $captureEnvironment[$name]=$qa
  }
- $state=@{source_sha=$manifest.source_sha;status='running';cleaned=$false;captures=@();measurements=@()}
+ $state=@{source_sha=$manifest.source_sha;status='running';completed_without_error=$false;captures=@();measurements=@()}
  try {
-  $python=Invoke-TandaProcess 'python' @('-c','import sys, PIL, numpy; print(sys.version); print(PIL.__version__); print(numpy.__version__)') (Join-Path $Output 'logs/python-preflight') 30
+  $python=Invoke-TandaPython @('-c','import sys, PIL, numpy; print(sys.version); print(PIL.__version__); print(numpy.__version__)') (Join-Path $Output 'logs/python-preflight') 30
   if($python.code -ne 0){throw 'BLOCKED_PYTHON: faltan Python/Pillow/numpy ya instalados; no instalar durante la tanda'}
   foreach($case in $manifest.captures){
    Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
@@ -449,9 +470,9 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
    if($gpui.code -ne 0){throw 'CAPTURE_FAILED: GPUI no produjo la captura, abortar sin apagado'}
    if($gpui.code -eq 0){$state.captures[-1].actual_png_size=Read-TandaPngSize (Join-Path $Output "gpui/$id.png")}
    if($rune.code -eq 0 -and $gpui.code -eq 0){
-    $diff=Invoke-TandaProcess 'python' @((Join-Path $Root 'diff.py'),(Join-Path $Output "rune/$id.png"),(Join-Path $Output "gpui/$id.png"),'--threshold','8','--max-percent','4.9999','--json','--out',(Join-Path $Output "diff/$id.png")) (Join-Path $Output "diff/$id") 90
+    $diff=Invoke-TandaPython @((Join-Path $Root 'diff.py'),(Join-Path $Output "rune/$id.png"),(Join-Path $Output "gpui/$id.png"),'--threshold','8','--max-percent','4.9999','--json','--out',(Join-Path $Output "diff/$id.png")) (Join-Path $Output "diff/$id") 90
     $state.captures+=@{id=$id;motor='diff';code=$diff.code;text_review='PENDIENTE revisión humana de PNG/pareja al 100 %; no aprobar solo por porcentaje'}
-    $pair=Invoke-TandaProcess 'python' @((Join-Path $Root 'tools/qa-overlays/pareja_tanda.py'),(Join-Path $Output "gpui/$id.png"),(Join-Path $Output "rune/$id.png"),(Join-Path $Output "pares/$id.png"),(Join-Path $Output "texto/$id.txt")) (Join-Path $Output "logs/$id-pareja") 60
+    $pair=Invoke-TandaPython @((Join-Path $Root 'tools/qa-overlays/pareja_tanda.py'),(Join-Path $Output "gpui/$id.png"),(Join-Path $Output "rune/$id.png"),(Join-Path $Output "pares/$id.png"),(Join-Path $Output "texto/$id.txt")) (Join-Path $Output "logs/$id-pareja") 60
     if($pair.code -ne 0){throw 'No se pudo guardar la pareja/revisión separada de texto'}
    }
   }
@@ -466,12 +487,11 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
  } catch {$state.status='aborted';$state.error=$_.Exception.Message}
  finally {
   $state.cleanup_attempted=$true
-  $state.cleaned=($state.status -eq 'complete')
+  $state.completed_without_error=($state.status -eq 'complete')
   $state.text_review='PENDIENTE; ejecución completa no equivale a paridad aprobada'
   @('# Revisión de texto — PENDIENTE','','Revisar parejas a tamaño real: mismo contenido/elipsis, baseline, tracking, sombra y recorte. No excluir texto del diff ni aprobar solo por <5 %.','') + @($manifest.captures|ForEach-Object {"- [ ] $($_.id): [GPUI](../gpui/$($_.id).png) | [Rune](../rune/$($_.id).png) | [pareja](../pares/$($_.id).png). Puede faltar PNG si falló la CLI; consultar estado/logs."}) | Set-Content -LiteralPath (Join-Path $Output 'texto/REVISION.md') -Encoding utf8
   Write-TandaJson $state (Join-Path $Output 'estado.json')
-  $files=@(Get-ChildItem -LiteralPath $Output -File -Recurse|ForEach-Object {@{path=[IO.Path]::GetRelativePath($Output,$_.FullName);sha256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash}})
-  Write-TandaJson $files (Join-Path $Output 'evidence-hashes.json')
+  Write-TandaEvidenceHashes $Output
  }
 }
 function Invoke-TandaSsh([string]$Target,[string]$Code){
@@ -483,6 +503,7 @@ function Invoke-TandaSsh([string]$Target,[string]$Code){
 function Invoke-TandaServer([string]$Root){
  Assert-TandaWindow $NoAntesUtc $LimiteUtc
  Assert-TandaMachineRegistry
+ Assert-TandaPython $PythonExe -SyntaxOnly
  $manifest=Assert-TandaInputs $Root
  if($Pc -notmatch '^isaac@100\.83\.142\.118$' -or $Usuario -ne 'isaac'){throw 'Destino/usuario fuera de autorización'}
  $sessionInfo=Invoke-TandaSsh $Pc '$ErrorActionPreference="Stop";$u=(Get-CimInstance Win32_ComputerSystem).UserName;$e=@(Get-Process explorer -ErrorAction SilentlyContinue|Select-Object -ExpandProperty SessionId -Unique);@{user=$u;sessions=$e}|ConvertTo-Json -Compress'|ConvertFrom-Json -AsHashtable
@@ -497,11 +518,15 @@ function Invoke-TandaServer([string]$Root){
  if($LASTEXITCODE){throw 'Copia del kit falló; no apagar'}
  $task="Vantare-tanda-$stamp"
  $start=$NoAntesUtc;$end=$LimiteUtc
- $action="-NoProfile -WindowStyle Hidden -File $remote/kit/TANDA.ps1 -Modo Trabajador -Kit $remote/kit -Salida $remote/evidence -Sesion $Sesion -Usuario isaac -NoAntesUtc $start -LimiteUtc $end"
- $registered=$false
+ $action="-NoProfile -WindowStyle Hidden -File $remote/kit/TANDA.ps1 -Modo Trabajador -Kit $remote/kit -Salida $remote/evidence -Sesion $Sesion -Usuario isaac -NoAntesUtc $start -LimiteUtc $end -SamplerTaskPrefix $task -PythonExe `"$PythonExe`""
+ $registered=@()
  try {
-  $null=Invoke-TandaSsh $Pc "`$ErrorActionPreference='Stop';`$a=New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument '$action';`$p=New-ScheduledTaskPrincipal -UserId 'isaac' -LogonType Interactive -RunLevel Highest;Register-ScheduledTask -TaskName '$task' -Action `$a -Principal `$p|Out-Null;Start-ScheduledTask -TaskName '$task'"
-  $registered=$true
+  foreach($definition in @(Get-TandaSamplerDefinitions ($remote+'/kit') ($remote+'/evidence') $task $manifest.measurements)){
+   $null=Invoke-TandaSsh $Pc "`$a=New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument '$($definition.arguments)';`$p=New-ScheduledTaskPrincipal -UserId 'isaac' -LogonType Interactive -RunLevel Highest;Register-ScheduledTask -TaskName '$($definition.name)' -Action `$a -Principal `$p|Out-Null"
+   $registered+= $definition.name
+  }
+  $null=Invoke-TandaSsh $Pc "`$ErrorActionPreference='Stop';`$a=New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument '$action';`$p=New-ScheduledTaskPrincipal -UserId 'isaac' -LogonType Interactive -RunLevel Limited;Register-ScheduledTask -TaskName '$task' -Action `$a -Principal `$p|Out-Null;Start-ScheduledTask -TaskName '$task'"
+  $registered+=$task
   do {
    if([DateTimeOffset]::UtcNow -ge [DateTimeOffset]::Parse($LimiteUtc)){throw 'Fin de ventana: no apagar'}
    Start-Sleep -Seconds 10
@@ -517,22 +542,19 @@ function Invoke-TandaServer([string]$Root){
   if(Test-Path -LiteralPath $temp){throw 'Descarga temporal ya existe'}
   & scp -q "${Pc}:$archive" $temp
   if($LASTEXITCODE -or (Get-FileHash -LiteralPath $temp -Algorithm SHA256).Hash -ine $expected.Trim()){throw 'Copia de evidencia no verificada: no apagar'}
-  foreach($name in (& tar -tf $temp)){if($name -match '(^[/\\]|(^|[/\\])\.\.([/\\]|$)|:)'){throw 'Ruta insegura en archivo de evidencia'}}
-  $null=New-Item -ItemType Directory -Path $destination
-  & tar -xf $temp -C $destination
-  if($LASTEXITCODE){throw 'Extracción falló: no apagar'}
+  Expand-TandaEvidence $temp $destination
   foreach($file in (Read-TandaJson (Join-Path $destination 'evidence-hashes.json'))){
    $path=Resolve-TandaPath $destination $file.path
    if((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ine $file.sha256){throw 'Hash de evidencia incorrecto: no apagar'}
   }
   $state=Read-TandaJson (Join-Path $destination 'estado.json')
-  if($state.status -ne 'complete' -or -not $state.cleaned){throw 'Tanda abortada: evidencia copiada, no apagar'}
+  if($state.status -ne 'complete' -or -not $state.completed_without_error){throw 'Tanda abortada: evidencia copiada, no apagar'}
   # ACK solo tras verificar archivo y hashes de CADA fichero en servidor.
   $hash=(Get-FileHash -LiteralPath (Join-Path $destination 'evidence-hashes.json') -Algorithm SHA256).Hash
   $null=Invoke-TandaSsh $Pc "if(Test-Path '$remote/evidence/copia-servidor.json'){throw 'ACK ya existe'};@{verified=`$true;hash_manifest='$hash';destination='$destination'}|ConvertTo-Json|Set-Content '$remote/evidence/copia-servidor.json' -Encoding utf8"
   $finish=$action.Replace('-Modo Trabajador','-Modo Apagar')
   $null=Invoke-TandaSsh $Pc "`$a=New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument '$finish';Set-ScheduledTask -TaskName '$task' -Action `$a|Out-Null;Start-ScheduledTask -TaskName '$task'"
-  $until=[DateTime]::UtcNow.AddSeconds(30)
+  $until=[DateTime]::UtcNow.AddSeconds(75)
   do {
    Start-Sleep -Seconds 1
    $ack=Invoke-TandaSsh $Pc "if(Test-Path '$remote/evidence/apagado.json'){Get-Content '$remote/evidence/apagado.json' -Raw}"
@@ -540,20 +562,27 @@ function Invoke-TandaServer([string]$Root){
   if(-not $ack){throw 'No hay confirmación interactiva de apagado; evidencia preservada'}
   $ack|Set-Content -LiteralPath (Join-Path $destination 'apagado.json') -Encoding utf8
   if(-not ($ack|ConvertFrom-Json -AsHashtable).accepted){throw 'Apagado rechazado por la comprobación interactiva'}
- } finally { if($registered){$null=Invoke-TandaSsh $Pc "Unregister-ScheduledTask -TaskName '$task' -Confirm:`$false -ErrorAction SilentlyContinue"} }
+ } finally { foreach($name in $registered){$null=Invoke-TandaSsh $Pc "Unregister-ScheduledTask -TaskName '$name' -Confirm:`$false -ErrorAction SilentlyContinue"} }
 }
 function Invoke-TandaShutdown([string]$Root,[string]$Output){
+ if($env:VANTARE_SIN_GRAFICOS -eq '1' -or $env:COMPUTERNAME -ieq 'SAPPHIREOS'){throw 'GRAPHICS_DISABLED: nunca apagar el servidor'}
  $result=@{accepted=$false;utc=[DateTime]::UtcNow.ToString('o')}
  try {
   Assert-TandaWindow $NoAntesUtc $LimiteUtc
   Assert-TandaSession $Sesion $Usuario
-  $ack=Read-TandaJson (Join-Path $Output 'copia-servidor.json')
-  $state=Read-TandaJson (Join-Path $Output 'estado.json')
-  $hash=(Get-FileHash -LiteralPath (Join-Path $Output 'evidence-hashes.json') -Algorithm SHA256).Hash
-  if(-not $ack.verified -or $ack.hash_manifest -ine $hash -or $state.status -ne 'complete' -or -not $state.cleaned){throw 'Falta copia verificada/limpieza; no apagar'}
-  & shutdown /s /t 60
-  if($LASTEXITCODE){throw 'shutdown rechazado'}
-  $result.accepted=$true;$result.delay_s=60
+  Assert-TandaShutdownEvidence $Output
+  $result=Invoke-TandaShutdownCountdown {
+   param($Arguments) & shutdown @Arguments
+   if($LASTEXITCODE){throw 'shutdown rechazado'}
+  } {
+   & shutdown /a
+   if($LASTEXITCODE){throw 'No se pudo cancelar shutdown'}
+  } {
+   Assert-TandaUnattended
+   Assert-TandaNoGames
+  } {param($Milliseconds) Start-Sleep -Milliseconds $Milliseconds} {
+   [Diagnostics.Stopwatch]::GetTimestamp()/[double][Diagnostics.Stopwatch]::Frequency
+  }
  } catch {$result.error=$_.Exception.Message}
  Write-TandaJson $result (Join-Path $Output 'apagado.json')
 }

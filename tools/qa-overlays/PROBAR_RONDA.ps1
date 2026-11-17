@@ -3,7 +3,12 @@ $ErrorActionPreference='Stop'
 . "$PSScriptRoot/TANDA.ps1" -SoloFunciones
 $env:VANTARE_SIN_GRAFICOS='1'
 $base=Join-Path ([IO.Path]::GetTempPath()) ('vantare-round-test-'+[guid]::NewGuid().ToString('N'))
+$null=New-Item -ItemType Directory -Path $base
 $root=Join-Path $base 'kit';$output=Join-Path $base 'evidence'
+$script:PythonExe=Join-Path $base 'python.exe';Set-Content $script:PythonExe 'FAKE NEVER EXECUTE'
+$script:fakeProfile=Join-Path $base 'profile';$null=New-Item -ItemType Directory -Path $script:fakeProfile
+Set-Content (Join-Path $script:fakeProfile 'settings.json') 'original'
+function Get-TandaProfileRoots {@($script:fakeProfile)}
 foreach($dir in @('tools/qa-overlays','inputs','bin')){$null=New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force}
 $null=New-Item -ItemType Directory -Path (Join-Path $output 'perf') -Force
 Write-TandaJson @{version=1;instances=@()} (Join-Path $root 'inputs/layout.json')
@@ -16,6 +21,7 @@ $script:events=[Collections.Generic.List[string]]::new();$script:deny=$false;$sc
 function Assert-TandaUnattended {}
 function Start-TandaOwned {param($Image,$Arguments,$Log,$Environment=@{})
  $name=Split-Path $Log -Leaf;$script:events.Add('start:'+ $name)
+ if($name -eq 'overlay'){foreach($key in @('VANTARE_NATIVE_DATA_ROOT','LOCALAPPDATA','APPDATA')){if(-not $Environment[$key]){throw 'Host no aislado'}}}
  if($name -eq 'sampler'){
   $i=[array]::IndexOf($Arguments,'-OutputDirectory');$dir=$Arguments[$i+1]
   $null=New-Item -ItemType Directory -Path $dir
@@ -28,6 +34,15 @@ function Start-TandaOwned {param($Image,$Arguments,$Log,$Environment=@{})
  $process|Add-Member ScriptMethod WaitForExit {param($Milliseconds) $true}
  @{process=$process;stderr=$null;log=$Log;closed=$false}
 }
+function Start-TandaSampler {param($Root,$Round,$Case)
+ $script:events.Add('start:sampler')
+ $null=New-Item -ItemType Directory -Path (Join-Path $Round 'muestreo')
+ Write-TandaJson @{ready=$true} (Join-Path $Round 'muestreo/CAPTURA-LISTA.json')
+ @{round=$Round;closed=$false}
+}
+function Test-TandaSamplerFinished {param($Handle) $true}
+function Get-TandaSamplerExitCode {param($Handle) 0}
+function Close-TandaSampler {param($Handle) if($Handle -and -not $Handle.closed){$Handle.closed=$true;$script:events.Add('close:sampler')}}
 function Get-TandaLiveClock {param($Handle) $Handle.stderr=$true;[Diagnostics.Stopwatch]::GetTimestamp()}
 function Read-TandaPolicy {param($Root,$PhotoPipe,$Log)
  if($script:deny){throw 'DENIED_FAKE'}
@@ -36,6 +51,7 @@ function Read-TandaPolicy {param($Root,$PhotoPipe,$Log)
 function Close-TandaOwned {param($Handle)
  if(-not $Handle -or $Handle.closed){return};$Handle.closed=$true
  $script:events.Add('close:'+(Split-Path $Handle.log -Leaf))
+ if($Handle.log -like '*profile-change*core'){Set-Content (Join-Path $script:fakeProfile 'settings.json') 'changed'}
  if($Handle.log.EndsWith('core')){
   $f=[Diagnostics.Stopwatch]::Frequency;$q=[Diagnostics.Stopwatch]::GetTimestamp()
   Set-Content -LiteralPath ($Handle.log+'.stderr.txt') "trace frequency=$f overflow=0`ntrace`tspan`tobserve`t$q`t$q`t0`t0`t0`ntrace_end events=1"
@@ -57,4 +73,7 @@ if((@($script:events|Select-Object -First 3) -join ',') -ne 'start:core,start:ov
 $script:events.Clear();$script:mode='replay';$script:deny=$true;$denied=$false
 try {Invoke-TandaMeasurement $root $output @{id='denied';state='replay';motor='gpui';layout='inputs/layout.json'}} catch {$denied=$_.Exception.Message -eq 'DENIED_FAKE'}
 if(-not $denied -or $script:events.Contains('start:overlay') -or $script:events.Contains('analyze') -or -not $script:events.Contains('close:sampler') -or -not $script:events.Contains('close:core')){throw 'Denial failed to clean up before host/analysis'}
+$script:events.Clear();$script:mode='waiting';$script:deny=$false;$changed=$false
+try {Invoke-TandaMeasurement $root $output @{id='profile-change';state='waiting';motor='rune';layout='inputs/layout.json'}} catch {$changed=$_.Exception.Message -like 'PROFILE_CHANGED*'}
+if(-not $changed -or $script:events.Contains('analyze')){throw 'Real profile modification produced a measurement'}
 "PASS: ETW ready before replay, deferred identity, cleanup and denial; no GPU; sandbox=$base"

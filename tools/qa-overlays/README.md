@@ -135,8 +135,8 @@ La ausencia de esa configuración impide lanzar/apagar el PC, pero permite el
 ensayo gráfico deshabilitado, que queda rotulado como NO listo para derechos.
 
 El coordinador copia a una carpeta QA nueva y registra una tarea /IT con el
-usuario ya conectado, sin contraseña. El trabajador exige sesión única esperada,
-token elevado, GPU física, diez minutos de inactividad y ningún juego/Vantare
+usuario ya conectado, sin contraseña. Solo los samplers fijos preautorizados usan Highest; trabajador y capturas/lifecycle usan Limited. El trabajador exige sesión única esperada,
+token limitado, GPU física, diez minutos de inactividad y ningún juego/Vantare
 ajeno abierto. Nunca cierra procesos de Isaac. Crear ventanas/capturar no está
 autorizado hasta la cita; el modo Trabajador se rechaza en el servidor incluso
 si alguien olvida VANTARE_SIN_GRAFICOS. Una sesión bloqueada puede impedir la
@@ -157,8 +157,7 @@ LicenseStatus/Read local antes/después de cada ronda: política vigente Pro o
 Founders, nunca renovación/login ni transferencia de credenciales. El nonce de
 ese enlace efímero vive solo en memoria y no se registra. Unconfigured,
 NoCredential, caducidad o versión incompatible invalidan la ronda. Esto impide
-medir en silencio una capa vacía por derechos. Core/Services usan la sesión Owner
-legítima del PC; el ensayo de denegación usa un almacén QA vacío aislado.
+medir en silencio una capa vacía por derechos. El núcleo necesita además el binding con la credencial legítima: la clave pública verifica, no concede Owner. El host y Services quedan en QA. El fallback del núcleo conserva una foto de los directorios Vantare/VantareNative reales (solo nombres y hashes) antes/después: cualquier cambio fuera de logs aborta ANTES del análisis y sin apagar. El núcleo normal persiste authority fuera de logs; ese límite NO se ignora ni se revierte su reloj. El ensayo de denegación usa un almacén QA vacío aislado.
 
 Capturas: todas usan fotos explícitas; NO_DEMO no tiene fallback. GPUI recibe
 exactamente el mismo prefijo que Rune. Para el modo asentado, el TSV entrega
@@ -271,3 +270,29 @@ que usa exclusivamente la autoridad Owner legítima del núcleo. Las bases de
 Relative/Standings/Fuel/Delta fijan contentVersion=1 para medir el producto
 actual y no activar por omisión el Eficiencia heredado; los escenarios del
 catálogo conservan sus ajustes y sus omisiones originales documentadas.
+
+### Revisión de seguridad de #2525
+
+TANDA exige -PythonExe con ruta absoluta al Python del PC; cada invocación
+lleva -I, también análisis/diff y ensayos. No se busca ni ejecuta python por
+PATH. Para el ensayo servidor usar C:/Program Files/Python313/python.exe.
+Capturas/lifecycle/host/núcleo trabajan con token Limited. El coordinador
+preautoriza una tarea Highest por ronda, con acción fija SAMPLER_TANDA.ps1;
+solo ejecuta MUESTREAR/PresentMon, nunca Python ni ventanas. Al abortar se
+cierran hosts de inmediato y se espera el finally temporizado del sampler
+para que cierre su ETW; si no termina, no se afirma cierre ni se apaga.
+
+GetLastInputInfo NO detecta de forma fiable un volante/DirectInput. La
+constante TandaGameProcesses añade iRacing, ACC/EVO, AMS2, rF2, SimHub y otros
+simuladores; Steam se bloquea solo con modo gamepadui/bigpicture/tenfoot. No
+se cierra ninguna aplicación. Shutdown lleva el comentario «Tanda QA de
+Vantare: apagado automático» y vigila los 60 s: entrada/juego/cambio de sesión
+provoca shutdown /a y accepted=false. El servidor siempre lanza
+GRAPHICS_DISABLED antes de cualquier intento de apagar.
+
+Los horarios requieren UTC ISO terminada en Z, sin espacios ni código. La
+evidencia solo conserva estado.kind y catálogo de los derechos, sin sujetos
+ni identificadores. evidence-hashes.json se publica por .tmp+rename. La
+extracción tar valida todos los headers primero y rechaza enlaces duros,
+simbólicos y tipos no regulares antes de crear salida. completed_without_error
+indica fin sin errores; no pretende certificar una limpieza no observada.

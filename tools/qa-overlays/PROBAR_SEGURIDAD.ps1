@@ -1,0 +1,74 @@
+# CPU only. All process/input/shutdown actions are supplied as fakes.
+$ErrorActionPreference='Stop'
+. "$PSScriptRoot/TANDA.ps1" -SoloFunciones
+$env:VANTARE_SIN_GRAFICOS='1'
+function Require($Value,[string]$Message){if(-not $Value){throw $Message}}
+$base=Join-Path ([IO.Path]::GetTempPath()) ('vantare-security-'+[guid]::NewGuid().ToString('N'))
+$null=New-Item -ItemType Directory -Path $base
+$start=[DateTime]::UtcNow.AddMinutes(-1).ToString('o');$end=[DateTime]::UtcNow.AddMinutes(5).ToString('o')
+Assert-TandaWindow $start $end
+foreach($bad in @(' '+$start,$start+' ', $start.Replace('Z','+00:00'),$start+"';shutdown /s",'2026-99-01T00:00:00Z')){
+ $rejected=$false;try {Assert-TandaWindow $bad $end} catch {$rejected=$true}
+ Require $rejected 'Invalid/injectable UTC accepted'
+}
+foreach($name in @('iRacingSim64DX11','AC2-Win64-Shipping','AssettoCorsaEVO','AMS2','rFactor2','SimHub','Le Mans Ultimate')){
+ Require (@(Find-TandaGameActivity @(@{Name=$name;CommandLine=''})).Count -eq 1) "Game omitted: $name"
+}
+Require (@(Find-TandaGameActivity @(@{Name='steam';CommandLine='steam.exe -gamepadui'})).Count -eq 1) 'Big Picture omitted'
+Require (@(Find-TandaGameActivity @(@{Name='steam';CommandLine='steam.exe -silent'},@{Name='notepad';CommandLine=''})).Count -eq 0) 'Launcher falsely identified as game'
+$definitions=@(Get-TandaSamplerDefinitions 'C:/VantareQA/kit' 'C:/VantareQA/evidence' 'Vantare-tanda-20261117T220000Z' @(@{id='one';state='replay'},@{id='two';state='waiting'}))
+Require ($definitions.Count -eq 2 -and @($definitions|Where-Object run_level -ne 'Highest').Count -eq 0) 'Sampler elevation missing'
+Require (@($definitions|Where-Object {$_.arguments -notlike '*SAMPLER_TANDA.ps1*' -or $_.arguments -match 'capture-scene|lifecycle|python'}).Count -eq 0) 'Elevated task can launch UI/Python'
+$profile=Join-Path $base 'profile';$null=New-Item -ItemType Directory -Path (Join-Path $profile 'logs') -Force
+Set-Content (Join-Path $profile 'settings.json') '{"value":1}'
+$before=@(Get-TandaProfileSnapshot @($profile))
+Set-Content (Join-Path $profile 'logs/run.txt') 'log only'
+Assert-TandaProfileUnchanged $before @(Get-TandaProfileSnapshot @($profile))
+Set-Content (Join-Path $profile 'settings.json') '{"value":2}'
+$rejected=$false;try {Assert-TandaProfileUnchanged $before @(Get-TandaProfileSnapshot @($profile))} catch {$rejected=$true}
+Require $rejected 'Real profile change ignored'
+$policy=Convert-TandaPolicyEvidence @{state=@{kind='active';account_id='SECRET-ID'};catalog='founders';subject='SECRET-ID';credential='SECRET-TOKEN'}
+$text=ConvertTo-Json -InputObject $policy -Depth 10
+Require ($text -notmatch 'SECRET|subject|credential|account') 'Policy evidence contains identifiers'
+Require ($policy.state.kind -eq 'active' -and $policy.catalog -eq 'founders') 'Policy status omitted'
+$output=Join-Path $base 'evidence';$null=New-Item -ItemType Directory -Path $output
+Set-Content (Join-Path $output 'one.txt') 'evidence'
+Write-TandaEvidenceHashes $output
+Require ((Test-Path (Join-Path $output 'evidence-hashes.json')) -and -not(Test-Path (Join-Path $output 'evidence-hashes.json.tmp'))) 'Non-atomic manifest'
+$script:realWrite=${function:Write-TandaJson}
+function Write-TandaJson {param($Value,$Path) & $script:realWrite $Value $Path;throw 'interrupted write'}
+$partial=Join-Path $base 'partial';$null=New-Item -ItemType Directory -Path $partial
+try {Write-TandaEvidenceHashes $partial} catch {}
+Require (-not(Test-Path (Join-Path $partial 'evidence-hashes.json'))) 'Partial manifest published'
+Set-Item Function:Write-TandaJson $script:realWrite
+$rejected=$false;try {Invoke-TandaShutdown $base $output} catch {$rejected=$_.Exception.Message -like 'GRAPHICS_DISABLED*'}
+Require $rejected 'Shutdown server guard did not throw'
+# No real shutdown command is reachable from this sequence test.
+$script:time=0.0;$script:requests=@();$script:cancels=0
+$request={param($Arguments) $script:requests=@($Arguments)}
+$cancel={$script:cancels++}
+$check={if($script:time -ge 20){throw 'input changed'}}
+$sleep={param($Milliseconds) $script:time+=10}
+$clock={$script:time}
+$result=Invoke-TandaShutdownCountdown $request $cancel $check $sleep $clock
+Require (-not $result.accepted -and $result.cancelled -and $script:cancels -eq 1) 'Input failed to cancel shutdown'
+Require (($script:requests -join '|') -eq '/s|/t|60|/c|Tanda QA de Vantare: apagado automático') 'Wrong shutdown arguments'
+$script:time=0.0;$script:cancels=0
+$result=Invoke-TandaShutdownCountdown $request $cancel {} $sleep $clock
+Require ($result.accepted -and -not $result.cancelled -and $script:cancels -eq 0 -and $script:time -ge 60) 'Unattended countdown incomplete'
+# Reject symlinks AND hardlinks before creating the extraction destination.
+foreach($type in @([System.Formats.Tar.TarEntryType]::SymbolicLink,[System.Formats.Tar.TarEntryType]::HardLink)){
+ $archive=Join-Path $base ($type.ToString()+'.tar')
+ $stream=[IO.File]::Create($archive);$writer=[System.Formats.Tar.TarWriter]::new($stream)
+ try {$entry=[System.Formats.Tar.PaxTarEntry]::new($type,'link');$entry.LinkName='outside';$writer.WriteEntry($entry)} finally {$writer.Dispose();$stream.Dispose()}
+ $destination=$archive+'.out';$rejected=$false
+ try {Expand-TandaEvidence $archive $destination} catch {$rejected=$true}
+ Require ($rejected -and -not(Test-Path $destination)) 'Archive link accepted or extracted before validation'
+}
+$script:PythonExe=Join-Path $base 'python.exe';Set-Content $script:PythonExe 'FAKE NEVER EXECUTE'
+function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120)
+ Require ([IO.Path]::IsPathFullyQualified($Image) -and $Image -ceq $script:PythonExe -and $Arguments[0] -ceq '-I') 'Python uses PATH or non-isolated mode'
+ @{code=0;stdout='';stderr=''}
+}
+$null=Invoke-TandaPython @('-c','print(1)') (Join-Path $base 'python')
+'PASS: strict UTC, games, profile hashes, redacted rights, atomic manifest, shutdown cancellation, archive links and isolated Python; no GPU'

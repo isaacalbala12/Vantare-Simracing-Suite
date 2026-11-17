@@ -10,6 +10,7 @@ if(-not ('TandaIdle' -as [type])){Add-Type -TypeDefinition $embedded.Groups[1].V
 $sandbox=Join-Path ([IO.Path]::GetTempPath()) ('vantare-tanda-test-'+[guid]::NewGuid().ToString('N'))
 $null=New-Item -ItemType Directory -Path $sandbox
 $root=Join-Path $sandbox 'kit'
+$script:PythonExe=Join-Path $sandbox 'python.exe';Set-Content $script:PythonExe 'FAKE NEVER EXECUTE'
 foreach($dir in @('bin','inputs/case')){$null=New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force}
 foreach($name in @('vantare-overlays-rune.exe','vantare-overlays.exe','vantare-core.exe','vantare-services.exe','vantare.exe','lifecycle-harness.exe','lifecycle-rune-tests.exe','PresentMon-2.6.0-x64.exe')){
  Set-Content (Join-Path $root "bin/$name") 'FAKE NEVER EXECUTE' -Encoding utf8
@@ -92,7 +93,7 @@ function Invoke-TandaMeasurement {param($Root,$Output,$Case)
 $output=Join-Path $sandbox 'worker'
 Invoke-TandaWorker $root $output
 $state=Read-TandaJson (Join-Path $output 'estado.json')
-if($state.status -ne 'complete' -or -not $state.cleaned -or $state.captures.Count -ne 3 -or $state.measurements.Count -ne 1){throw 'Recorrido falso incompleto'}
+if($state.status -ne 'complete' -or -not $state.completed_without_error -or $state.captures.Count -ne 3 -or $state.measurements.Count -ne 1){throw 'Recorrido falso incompleto'}
 if(-not(Test-Path (Join-Path $output 'evidence-hashes.json'))){throw 'No cerró hashes de evidencia'}
 $single=Read-TandaJson (Join-Path $root 'inputs/case/scene.json')
 if($single -isnot [array] -or $single.Count -ne 1){throw 'JSON de una foto perdió el array'}
@@ -114,22 +115,14 @@ $outputNoGpu=Join-Path $sandbox 'sin-gpu'
 Invoke-TandaWorker $root $outputNoGpu
 $state=Read-TandaJson (Join-Path $outputNoGpu 'estado.json')
 if($state.status -ne 'aborted' -or $state.captures.Count -ne 1 -or $state.measurements.Count -ne 0){throw 'GPU ausente no abortó'}
-# Apagar requiere ACK de una copia verificada: sin él no se llama al comando.
-$script:shutdownCalls=0
-function shutdown {$script:shutdownCalls++;$global:LASTEXITCODE=0}
-Invoke-TandaShutdown $root $output
-$ack=Read-TandaJson (Join-Path $output 'apagado.json')
-if($ack.accepted -or $script:shutdownCalls){throw 'Apagó sin copia verificada'}
+# ACK validation remains real; no shutdown command is reachable on the server.
+$rejected=$false
+try {Assert-TandaShutdownEvidence $output} catch {$rejected=$true}
+if(-not $rejected){throw 'ACK ausente aceptado'}
 $hash=(Get-FileHash (Join-Path $output 'evidence-hashes.json')).Hash
 Write-TandaJson @{verified=$true;hash_manifest=$hash;destination='fake-server'} (Join-Path $output 'copia-servidor.json')
-Invoke-TandaShutdown $root $output
-$ack=Read-TandaJson (Join-Path $output 'apagado.json')
-if(-not $ack.accepted -or $script:shutdownCalls -ne 1){throw 'No respetó ACK de copia antes de apagado falso'}
-# Actividad inesperada al finalizar cancela el apagado incluso con ACK.
-function Assert-TandaSession {param($Expected,$ExpectedUser) throw 'Actividad inesperada'}
-Invoke-TandaShutdown $root $output
-$ack=Read-TandaJson (Join-Path $output 'apagado.json')
-if($ack.accepted -or $script:shutdownCalls -ne 1){throw 'Apagó con actividad inesperada'}
+Assert-TandaShutdownEvidence $output
+# Input/countdown and the unconditional server guard are tested in PROBAR_SEGURIDAD.
 # Simulación completa del lado servidor: solo tar/copia LOCALES, nunca SSH real.
 function Assert-TandaSession {param($Expected,$ExpectedUser)}
 function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession,$Environment=@{}) @{code=0;stderr='OK';stdout='4 passed; 0 failed'}}
@@ -163,13 +156,17 @@ function Invoke-TandaSsh {param($Target,$Code)
  }
  if($Code -like '*apagado.json*'){return '{"accepted":true}'}
  if($Code -like '*Unregister-ScheduledTask*'){$script:transfer.Add('unregister');return ''}
- if($Code -like '*Register-ScheduledTask*'){$script:transfer.Add('register');return ''}
+ if($Code -like '*Register-ScheduledTask*'){
+  if($Code -like '*SAMPLER_TANDA.ps1*'){if($Code -notlike '*RunLevel Highest*'){throw 'Sampler no elevado'};$script:transfer.Add('register-sampler')}
+  else {if($Code -notlike '*RunLevel Limited*'){throw 'Capturas/lifecycle elevados'};$script:transfer.Add('register-worker')}
+  return ''
+ }
  return ''
 }
 $script:DestinoServidor=Join-Path $sandbox 'server-copy'
 $null=New-Item -ItemType Directory -Path $script:DestinoServidor
 Invoke-TandaServer $root
-if(($script:transfer -join ',') -ne 'upload,register,download,verified-ack,interactive-finish,unregister'){throw ('Orden de transferencia/apagado incorrecto: '+($script:transfer -join ','))}
+if(($script:transfer -join ',') -ne 'upload,register-sampler,register-worker,download,verified-ack,interactive-finish,unregister,unregister'){throw ('Orden de transferencia/apagado incorrecto: '+($script:transfer -join ','))}
 # Sesión ausente: nada de copiar, registrar tareas o apagar.
 $script:transfer.Clear();$script:fakeUser=$null
 $rejected=$false

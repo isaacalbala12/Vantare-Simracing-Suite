@@ -257,6 +257,7 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
     shutil.copytree(scripts, output / "tools/qa-overlays", ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copytree(repo / "vantare-v2/native/pruebas-rune/muestreador", output / "vantare-v2/native/pruebas-rune/muestreador", ignore=shutil.ignore_patterns("__pycache__"))
     shutil.copyfile(scripts / "TANDA.ps1", output / "TANDA.ps1")
+    shutil.copyfile(scripts / "SEGURIDAD_TANDA.ps1", output / "SEGURIDAD_TANDA.ps1")
     shutil.copyfile(repo / "vantare-v2/native/ui/diff.py", output / "diff.py")
     (output / "vantare-v2/native/ui").mkdir(parents=True, exist_ok=True)
     shutil.copyfile(repo / "vantare-v2/native/ui/diff.py", output / "vantare-v2/native/ui/diff.py")

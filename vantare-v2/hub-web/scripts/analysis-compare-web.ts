@@ -106,19 +106,29 @@ export async function checkAnalysisComparison(
           .getByRole("button", {
             name: t.select(
               t.a,
-              scene.startsWith("gaps") && scene !== "gaps-b" ? 5 : 9,
+              scene === "rail"
+                ? 7
+                : scene.startsWith("gaps") && scene !== "gaps-b"
+                  ? 5
+                  : 9,
             ),
             exact: true,
           })
           .click();
         await page
           .getByRole("button", {
-            name: t.select(t.b, scene === "gaps-b" ? 5 : 7),
+            name: t.select(
+              t.b,
+              scene === "rail" ? 9 : scene === "gaps-b" ? 5 : 7,
+            ),
             exact: true,
           })
           .click();
         const selectedB = page.getByRole("button", {
-          name: t.select(t.b, scene === "gaps-b" ? 5 : 7),
+          name: t.select(
+            t.b,
+            scene === "rail" ? 9 : scene === "gaps-b" ? 5 : 7,
+          ),
           exact: true,
         });
         const hovered = await selectedB.evaluate(
@@ -337,10 +347,47 @@ export async function checkAnalysisComparison(
           (page.viewportSize()?.height ?? 980) - 1,
         );
         if (scene === "table" || scene === "gaps-table") {
-          await page.locator(".v-an-values-table summary").click();
+          const summary = page.locator(".v-an-values-table summary");
+          await page.getByRole("slider", { name: t.cursor }).focus();
+          await page.keyboard.press("Tab");
+          assert.equal(
+            await summary.evaluate((el) => document.activeElement === el),
+            true,
+          );
+          await summary.press("Enter");
+          await page.keyboard.press("Tab");
+          const region = page.getByRole("region", { name: t.table });
+          assert.equal(
+            await region.evaluate((el) => document.activeElement === el),
+            true,
+          );
           const table = page.getByRole("table", { name: t.table });
           assert.equal(await table.getByRole("columnheader").count(), 8);
           assert.equal(await table.getByRole("rowheader").count(), 6);
+          assert.equal(
+            await table
+              .getByRole("columnheader")
+              .evaluateAll((cells) =>
+                cells.every((el) => el.getAttribute("scope") === "col"),
+              ),
+            true,
+          );
+          assert.equal(
+            await table
+              .getByRole("rowheader")
+              .evaluateAll((cells) =>
+                cells.every((el) => el.getAttribute("scope") === "row"),
+              ),
+            true,
+          );
+          if (scene === "gaps-table") {
+            assert.ok(
+              await table
+                .getByRole("cell", { name: t.noData, exact: true })
+                .count(),
+            );
+            assert.ok(await region.getAttribute("aria-describedby"));
+          }
           assert.equal(
             await table.evaluate((el) =>
               el.parentElement
@@ -425,6 +472,81 @@ export async function checkAnalysisComparison(
             "Content resizing must preserve manual rail expansion",
           );
           assert.equal(await page.locator(".v-an-change").count(), 3);
+          const rows = page.locator(".v-an-change");
+          assert.equal(
+            await rows.evaluateAll((nodes) => {
+              const height = Number.parseFloat(
+                getComputedStyle(document.documentElement).getPropertyValue(
+                  "--chip-h",
+                ),
+              );
+              return nodes.every(
+                (node, i) =>
+                  node.getBoundingClientRect().height >= 24 &&
+                  node.getBoundingClientRect().height <= height + 1 &&
+                  (i === 0 ||
+                    node.getBoundingClientRect().top -
+                      nodes[i - 1].getBoundingClientRect().top <=
+                      height + 1),
+              );
+            }),
+            true,
+            "Change rows must be compact and retain a 24 px minimum target",
+          );
+          assert.match((await rows.first().textContent()) ?? "", /−0\.01 s/);
+          assert.equal(await rows.locator(".v-an-compare-gain").count(), 3);
+          assert.equal(
+            await rows
+              .locator(".v-an-compare-gain")
+              .first()
+              .evaluate((node) => {
+                const probe = document.createElement("span");
+                probe.style.color = "var(--analysis-gain)";
+                node.append(probe);
+                const expected = getComputedStyle(probe).color;
+                probe.remove();
+                return getComputedStyle(node).color === expected;
+              }),
+            true,
+            "A gain must use the Hub blue token",
+          );
+          const normal = await rows
+            .first()
+            .evaluate((node) => getComputedStyle(node).backgroundColor);
+          await rows.first().hover();
+          assert.notEqual(
+            await rows
+              .first()
+              .evaluate((node) => getComputedStyle(node).backgroundColor),
+            normal,
+            "Hover must visibly identify the change row",
+          );
+          await rows.first().focus();
+          await page.keyboard.press("Tab");
+          assert.equal(
+            await rows
+              .nth(1)
+              .evaluate(
+                (node) =>
+                  document.activeElement === node &&
+                  node.matches(":focus-visible") &&
+                  getComputedStyle(node).outlineStyle !== "none" &&
+                  Number.parseFloat(getComputedStyle(node).outlineWidth) >= 2,
+              ),
+            true,
+            "Change rows need visible keyboard focus",
+          );
+          await rows.first().hover();
+        }
+        if (scene.startsWith("gaps")) {
+          const side = scene === "gaps-b" ? "B" : "A";
+          const note = page.locator(".v-an-gap-notes");
+          assert.ok(
+            (await note.textContent())?.includes(
+              `Sin datos entre 2 323 m y 2 520 m en ${side}`,
+            ),
+          );
+          assert.equal(await note.evaluate((el) => !el.closest("svg")), true);
         }
         if (scene !== "selection")
           assert.equal(

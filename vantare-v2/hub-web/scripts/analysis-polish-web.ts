@@ -115,6 +115,10 @@ try {
               .getByRole("tab", { name: "Privacidad", exact: true })
               .scrollIntoViewIfNeeded();
             await recording.scrollIntoViewIfNeeded();
+            if (scene !== "settings")
+              await page
+                .getByRole("button", { name: t.undo, exact: true })
+                .scrollIntoViewIfNeeded();
           }
         } else if (scene !== "catalog") {
           await page

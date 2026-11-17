@@ -12,7 +12,7 @@ use std::process::ExitCode;
 use std::thread;
 use std::time::Duration;
 
-use super::{Config, Service, object_name};
+use super::{Config, Service, log, object_name};
 
 const POLL_INTERVAL: Duration = Duration::from_millis(25);
 #[cfg(target_os = "macos")]

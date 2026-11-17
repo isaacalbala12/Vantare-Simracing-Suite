@@ -3,7 +3,11 @@ import type { AnalysisPoint } from "../../../contract/generated/analysis";
 import type { Compared } from "../../app/AnalysisController";
 import { projectedGaps, windowPoints } from "../../app/analysis-comparison";
 import { analysisText, decimal } from "../../i18n/analysis.es";
-import { axisLabel, comparisonText as t } from "../../i18n/comparison.es";
+import {
+  axisLabel,
+  metres,
+  comparisonText as t,
+} from "../../i18n/comparison.es";
 export const plotLeft = 112,
   plotWidth = 640;
 export type PlotAxis = {
@@ -253,9 +257,11 @@ export function ComparisonPlot({
           ) : null;
         })}
       {delta &&
-        (ticks.length ? ticks : axis.range).map((tick) => (
+        (ticks.length >= 2 ? ticks : axis.range).map((tick) => (
           <text key={tick} x={x(tick)} y={height - 2} textAnchor="middle">
-            {axisLabel(tick, axis.time)}
+            {!axis.time && axis.distance[1] - axis.distance[0] < 1000
+              ? metres(tick)
+              : axisLabel(tick, axis.time)}
           </text>
         ))}
     </svg>

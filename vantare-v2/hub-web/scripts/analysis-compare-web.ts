@@ -194,6 +194,15 @@ export async function checkAnalysisComparison(
                   250,
                 );
             }
+            if (scene.startsWith("zoom") && scene !== "zoom-time") {
+              assert.deepEqual(
+                await page
+                  .getByRole("img", { name: t.delta, exact: true })
+                  .locator(":scope > text[text-anchor=middle]")
+                  .allTextContents(),
+                ["0 m", "250 m"],
+              );
+            }
             const priorPaths = await page
               .locator(".v-an-trace-line")
               .evaluateAll((nodes) =>

@@ -166,6 +166,22 @@ describe("analysis contract", () => {
     expect(
       send({ method: "analysis.compare", session, a: 99, b: 0 }),
     ).toMatchObject({ kind: "failure", error: { kind: "analysisNotFound" } });
+    const withGap = send({ method: "analysis.compare", session, a: 0, b: 2 });
+    expect(withGap).toMatchObject({
+      kind: "response",
+      result: {
+        method: "analysis.compare",
+        delta: null,
+        deltaUnavailable: "gapInB",
+      },
+    });
+    expect(withGap && isHostMessage(withGap)).toBe(true);
+    expect(
+      send({ method: "analysis.compare", session, a: 0, b: 3 }),
+    ).toMatchObject({
+      kind: "failure",
+      error: { kind: "analysisIncomparable" },
+    });
     expect(send({ method: "analysis.close", session })).toMatchObject({
       kind: "response",
     });

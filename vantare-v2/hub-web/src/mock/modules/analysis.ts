@@ -27,20 +27,19 @@ const rows: AnalysisRow[] = [
   },
 ];
 const quality = { reliable: 7200, estimated: 0, stale: 0, unavailable: 0 };
-const laps: AnalysisLap[] = [112400, 111600, 111900].map(
-  (lapTimeApproxMs, index) => ({
-    index,
-    lap: index + 1,
-    car: 7,
-    sealed: true,
-    gap: false,
-    samples: 7200,
-    lapTimeApproxMs,
-    speed: { ...quality, min: 35, mean: 51, max: 75 },
-    throttle: { ...quality, min: 0, mean: 0.7, max: 1 },
-    brake: { ...quality, min: 0, mean: 0.2, max: 1 },
-  }),
-);
+const lapTimes = [112400, 111600, 111900, 112200];
+const laps: AnalysisLap[] = lapTimes.map((lapTimeApproxMs, index) => ({
+  index,
+  lap: index + 1,
+  car: index === 3 ? 8 : 7,
+  sealed: true,
+  gap: index === 2,
+  samples: 7200,
+  lapTimeApproxMs: index === 2 ? null : lapTimeApproxMs,
+  speed: { ...quality, min: 35, mean: 51, max: 75 },
+  throttle: { ...quality, min: 0, mean: 0.7, max: 1 },
+  brake: { ...quality, min: 0, mean: 0.2, max: 1 },
+}));
 export function create({ core }: MockContext): MockHandler {
   let session: string | undefined;
   let catalogued = false;
@@ -52,7 +51,13 @@ export function create({ core }: MockContext): MockHandler {
     )
       return undefined;
     const { id, request } = message;
-    const fail = (kind: "denied" | "analysisLocked" | "analysisNotFound") => ({
+    const fail = (
+      kind:
+        | "denied"
+        | "analysisLocked"
+        | "analysisNotFound"
+        | "analysisIncomparable",
+    ) => ({
       kind: "failure" as const,
       id,
       error: { kind },
@@ -111,10 +116,10 @@ export function create({ core }: MockContext): MockHandler {
           result: {
             method: request.method,
             session,
-            watermark: "21600",
+            watermark: "28800",
             finished: true,
-            attempted: "21600",
-            total: "3",
+            attempted: "28800",
+            total: "4",
             laps: structuredClone(laps),
           },
         };
@@ -122,6 +127,8 @@ export function create({ core }: MockContext): MockHandler {
       case "analysis.compare": {
         if (session !== request.session || !laps[request.a] || !laps[request.b])
           return fail("analysisNotFound");
+        if (laps[request.a]?.car !== laps[request.b]?.car)
+          return fail("analysisIncomparable");
         const points = (
           lap: number,
           signal: "speed" | "throttle" | "brake" | "delta",
@@ -131,8 +138,8 @@ export function create({ core }: MockContext): MockHandler {
               wave = (1 + Math.sin(f * 10 * Math.PI)) / 2;
             return {
               distance: f * 5000,
-              elapsed: (f * (laps[lap]?.lapTimeApproxMs ?? 0)) / 1000,
-              segment: 0,
+              elapsed: (f * (lapTimes[lap] ?? 0)) / 1000,
+              segment: lap === 2 && i >= 64 ? 1 : 0,
               value:
                 signal === "speed"
                   ? 125 + wave * 130
@@ -145,7 +152,7 @@ export function create({ core }: MockContext): MockHandler {
                             (laps[request.b]?.lapTimeApproxMs ?? 0))) /
                         1000,
             };
-          });
+          }).filter((_, i) => lap !== 2 || i < 60 || i >= 64);
         const series = (signal: "speed" | "throttle" | "brake") => ({
           a: points(request.a, signal),
           b: points(request.b, signal),
@@ -159,8 +166,26 @@ export function create({ core }: MockContext): MockHandler {
             speed: series("speed"),
             throttle: series("throttle"),
             brake: series("brake"),
-            delta: points(request.a, "delta"),
-            gaps: { a: [], b: [] },
+            delta:
+              request.a === 2 || request.b === 2
+                ? null
+                : points(request.a, "delta"),
+            ...(request.a === 2 || request.b === 2
+              ? {
+                  deltaUnavailable:
+                    request.a === 2 ? ("gapInA" as const) : ("gapInB" as const),
+                }
+              : {}),
+            gaps: {
+              a:
+                request.a === 2
+                  ? [{ from: (59 / 127) * 5000, to: (64 / 127) * 5000 }]
+                  : [],
+              b:
+                request.b === 2
+                  ? [{ from: (59 / 127) * 5000, to: (64 / 127) * 5000 }]
+                  : [],
+            },
           },
         };
       }

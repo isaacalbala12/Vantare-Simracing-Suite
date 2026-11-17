@@ -170,3 +170,26 @@ fn contiguous_gap_ranges_merge_and_missing_distance_is_not_a_recording_gap() {
         assert_ne!(c.speed.a[0].segment, c.speed.a[1].segment);
     }
 }
+
+#[test]
+fn overlapping_ranges_merge_but_disjoint_ranges_stay_separate() {
+    let s = [
+        sample(0.0, 0.0),
+        None,
+        sample(20.0, 2.0),
+        sample(10.0, 1.0),
+        None,
+        sample(30.0, 3.0),
+        sample(40.0, 4.0),
+        None,
+        sample(50.0, 5.0),
+    ];
+    let ranges = gaps(&s).unwrap();
+    assert_eq!(
+        ranges
+            .iter()
+            .map(|r| (r.from.as_f64().unwrap(), r.to.as_f64().unwrap()))
+            .collect::<Vec<_>>(),
+        [(0.0, 30.0), (40.0, 50.0)]
+    );
+}

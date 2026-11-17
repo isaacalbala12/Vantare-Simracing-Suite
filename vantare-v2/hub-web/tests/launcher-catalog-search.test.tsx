@@ -50,7 +50,7 @@ function names() {
     document.querySelectorAll(".v-launcher-app-name"),
     (row) =>
       within(row as HTMLElement).getByText(/./, { selector: "strong" })
-        .textContent,
+        .firstChild?.textContent,
   );
 }
 function search(query: string) {

@@ -228,7 +228,6 @@ fn finish_flushes_pending_before_sealing_and_zero_best_lap_is_absent() {
     assert!(tracker.finish(1000).is_empty());
 }
 
-
 #[test]
 fn a_last_frame_without_the_player_still_sets_the_session_end_clock() {
     let mut tracker = SessionTracker::default();
@@ -272,4 +271,19 @@ fn received_clock_is_used_when_source_clock_is_absent_and_text_is_bounded_utf8()
     let events = commands(&tracker.observe(&frame, 100));
     assert_eq!(events[0][0], "lap");
     assert_eq!(events[0][1]["officialMs"], Value::Null);
+}
+
+
+#[test]
+fn reliable_zero_last_time_and_sectors_remain_values_but_zero_best_is_null() {
+    let mut tracker = SessionTracker::default();
+    tracker.observe(&snapshot(1, 7, 0, 0), 100);
+    let mut next = snapshot(1, 7, 1, 1000);
+    next.state.cars[0].last_lap_s = Quality::Reliable(0.0);
+    next.state.cars[0].last_sectors_s = vec![Quality::Reliable(0.0); 3];
+    next.state.cars[0].best_lap_s = Quality::Reliable(0.0);
+    let events = commands(&tracker.observe(&next, 200));
+    assert_eq!(events[0][1]["officialMs"], 0);
+    assert_eq!(events[0][1]["sectorMs"], json!([0,0,0]));
+    assert_eq!(commands(&tracker.finish(300))[0][1]["bestLapMs"], Value::Null);
 }

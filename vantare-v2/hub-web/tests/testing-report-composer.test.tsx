@@ -651,19 +651,59 @@ it("does not create an untouched draft when the window blurs", async () => {
   expect(reports.fields.contextText).toBe("");
 });
 
-
-it.each(["draftConflict", "denied", "coreUnavailable", "evidencePending", "io"] as const)("shows the approved conflict warning only for %s", async (kind) => {
-  const approved="Otro Hub cambió este borrador. Tu texto sigue aquí; si guardas, sustituirás el suyo.";
+it.each([
+  "draftConflict",
+  "denied",
+  "coreUnavailable",
+  "evidencePending",
+  "io",
+] as const)("shows the approved conflict warning only for %s", async (kind) => {
+  const approved =
+    "Otro Hub cambió este borrador. Tu texto sigue aquí; si guardas, sustituirás el suyo.";
   await mount();
   edit();
-  const original=Client.prototype.request;
-  vi.spyOn(Client.prototype,"request").mockImplementation(function(this:Client,request):Promise<Reply> {
-    if(request.method !== "draft.save") return original.call(this,request);
-    const detail=kind === "draftConflict" ? {kind,current:{legacy:"none" as const,exists:false,revision:null,fields:{module:"unknown",actionText:"",expectedText:"",observedText:"",contextText:""},screenshots:[],message:""}} : {kind};
+  const original = Client.prototype.request;
+  vi.spyOn(Client.prototype, "request").mockImplementation(function (
+    this: Client,
+    request,
+  ): Promise<Reply> {
+    if (request.method !== "draft.save") return original.call(this, request);
+    const detail =
+      kind === "draftConflict"
+        ? {
+            kind,
+            current: {
+              legacy: "none" as const,
+              exists: false,
+              revision: null,
+              fields: {
+                module: "unknown",
+                actionText: "",
+                expectedText: "",
+                observedText: "",
+                contextText: "",
+              },
+              screenshots: [],
+              message: "",
+            },
+          }
+        : { kind };
     return Promise.reject(new HostFailure(detail));
   });
-  fireEvent.click(screen.getByRole("button",{name:text.save}));
-  const expected=kind === "draftConflict" ? approved : kind === "denied" ? text.denied : kind === "coreUnavailable" ? text.offline : kind === "evidencePending" ? text.evidencePending : text.failed;
-  await waitFor(()=>expect(screen.getAllByText(expected).length).toBeGreaterThan(0));
-  if(kind !== "draftConflict") expect(screen.queryAllByText(approved)).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: text.save }));
+  const expected =
+    kind === "draftConflict"
+      ? approved
+      : kind === "denied"
+        ? text.denied
+        : kind === "coreUnavailable"
+          ? text.offline
+          : kind === "evidencePending"
+            ? text.evidencePending
+            : text.failed;
+  await waitFor(() =>
+    expect(screen.getAllByText(expected).length).toBeGreaterThan(0),
+  );
+  if (kind !== "draftConflict")
+    expect(screen.queryAllByText(approved)).toHaveLength(0);
 });

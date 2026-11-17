@@ -30,6 +30,7 @@ import { coreKey, offline, useHost } from "../../app/Host";
 import { HostFailure, ReportCloseDiscarded } from "../../bridge/client";
 import type { CloseDraftSave } from "../../bridge/report-close";
 import { testingQuestionnairesText as questionnaireText } from "../../i18n/testing-questionnaires";
+import { draftConflictText } from "../../i18n/testing-report";
 import {
   CloseReportSaveFailureDialog,
   CloseUnsavedReportDialog,
@@ -170,7 +171,7 @@ function useReportsState() {
     setConsent(false);
     setError(true);
     setFailure("draftConflict");
-    setMessage(text.reviewAgain);
+    setMessage(draftConflictText);
     // Keep this editor's fields. The winning draft is an observation, not consent to resend.
   }
   function request(request: Exclude<Request, { method: "window.close" }>) {
@@ -339,8 +340,14 @@ function useReportsState() {
         unresolvedDraftConflict.current
       )
         return;
-      void saveCurrent.current().catch(() => {
-        if (epoch === generation.current) setMessage(text.autosaveFailed);
+      void saveCurrent.current().catch((error) => {
+        if (epoch === generation.current)
+          setMessage(
+            error instanceof HostFailure &&
+              error.detail.kind === "draftConflict"
+              ? draftConflictText
+              : text.autosaveFailed,
+          );
       });
     }, reportAutosaveMs);
     return () => clearTimeout(timer);
@@ -449,8 +456,14 @@ function useReportsState() {
       )
         return;
       const epoch = generation.current;
-      void saveCurrent.current().catch(() => {
-        if (epoch === generation.current) setMessage(text.autosaveFailed);
+      void saveCurrent.current().catch((error) => {
+        if (epoch === generation.current)
+          setMessage(
+            error instanceof HostFailure &&
+              error.detail.kind === "draftConflict"
+              ? draftConflictText
+              : text.autosaveFailed,
+          );
       });
     };
     const hidden = () => {

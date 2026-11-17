@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { draftConflictText } from "../../i18n/testing-report";
 import { testingSummaryText } from "../../i18n/testing-summary";
 import { Button } from "../../ui/Button";
 import { Callout } from "../../ui/Data";
@@ -110,13 +111,15 @@ export function Reports({
         <Callout
           tone="err"
           title={
-            state.failure === "coreUnavailable"
-              ? text.offline
-              : state.failure === "denied"
-                ? text.denied
-                : state.failure === "evidencePending"
-                  ? text.evidencePending
-                  : text.failed
+            state.failure === "draftConflict"
+              ? draftConflictText
+              : state.failure === "coreUnavailable"
+                ? text.offline
+                : state.failure === "denied"
+                  ? text.denied
+                  : state.failure === "evidencePending"
+                    ? text.evidencePending
+                    : text.failed
           }
           actions={
             <ActionGroup>
@@ -220,11 +223,13 @@ export function ReportsPanel() {
         <Callout
           tone="err"
           title={
-            state.failure === "coreUnavailable"
-              ? text.offline
-              : state.failure === "denied"
-                ? text.denied
-                : text.failed
+            state.failure === "draftConflict"
+              ? draftConflictText
+              : state.failure === "coreUnavailable"
+                ? text.offline
+                : state.failure === "denied"
+                  ? text.denied
+                  : text.failed
           }
         />
       )}

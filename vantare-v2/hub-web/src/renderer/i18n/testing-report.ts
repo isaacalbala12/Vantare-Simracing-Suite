@@ -25,3 +25,6 @@ export const reportText = {
   metadataPending: "Versión y equipo disponibles al revisar el informe.",
   metadata: "versión y equipo incluidos en el informe",
 } as const;
+
+export const draftConflictText =
+  "Otro Hub cambió este borrador. Tu texto sigue aquí; si guardas, sustituirás el suyo.";

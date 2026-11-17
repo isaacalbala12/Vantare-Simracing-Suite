@@ -7,7 +7,10 @@ impl BinDir {
         let mut bytes = [0; 8];
         getrandom::fill(&mut bytes).unwrap();
         let nonce = u64::from_le_bytes(bytes);
-        let root = env::temp_dir().join(format!("vantare-engine-{}-{nonce:016x}", std::process::id()));
+        let root = env::temp_dir().join(format!(
+            "vantare-engine-{}-{nonce:016x}",
+            std::process::id()
+        ));
         fs::create_dir(&root).unwrap();
         fs::write(root.join(binary_name("vantare-overlays")), b"GPUI presente").unwrap();
         if rune {

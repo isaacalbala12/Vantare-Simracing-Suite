@@ -1,10 +1,6 @@
 //! El parse real recibe el entorno heredado por session y registra el fallo
 //! antes de arrancar núcleo/overlays. No se ejecuta ningún motor gráfico.
-use std::{
-    env, fs,
-    path::PathBuf,
-    process::Command,
-};
+use std::{env, fs, path::PathBuf, process::Command};
 struct Sandbox(PathBuf);
 impl Drop for Sandbox {
     fn drop(&mut self) {

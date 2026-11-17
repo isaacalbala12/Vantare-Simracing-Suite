@@ -1,4 +1,4 @@
-//! Hub-only signed feed. Legacy update_feed.rs and installed clients are unchanged.
+//! Hub-only signed feed. Legacy `update_feed.rs` and installed clients are unchanged.
 use serde::{Deserialize, Serialize};
 use sha2::Digest;
 use std::{

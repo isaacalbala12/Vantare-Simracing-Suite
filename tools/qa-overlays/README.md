@@ -197,8 +197,8 @@ expresa de la raíz, el launcher auxiliar se reutiliza del run oficial
 44006217558, SHA 8358fdae1 (descendiente de fb2e2e520), perfil debug de CI;
 sus hashes y los del archivo original constan en builds. No entra en las
 mediciones CPU/memoria. El arnés CI fija con env! una ruta D:/a/... del runner
-que no existe en la carpeta QA: por eso se compila solo su adaptación portátil
-por la cola; no se crean rutas/junctions fuera de C:/VantareQA.
+que no existe en la carpeta QA: se transporta su adaptación portátil solo de pruebas validada por CI; no se
+crean rutas/junctions fuera de C:/VantareQA.
 Los cuatro tests ignorados de #2522 se precompilan aparte desde su fuente
 registrada en lifecycle-binarios.json; no se ejecuta Cargo en el PC. Se invoca
 lifecycle-rune-tests.exe --ignored --test-threads=1 --nocapture, con las rutas
@@ -237,3 +237,10 @@ respecto a fb2e2e520 está vacío. Los tres son debug y quedan fuera de CPU/memo
 La cola local pendiente se canceló sin hijos Rust; no se interrumpió compilación.
 El PATH solo del hijo lifecycle incluye bin/ para encontrar el CRT empaquetado,
 y se restaura en finally; no se cambia ninguna variable Machine/User.
+
+Los layouts QA fijan performance.widgets.qa=15, opción existente común de
+producto. Banderas conserva la excepción de seguridad del producto: 0 (por
+cambio, sin limitar). Se registra el Hz efectivo en cada caso; no se modifica
+el perfil ni layout de Isaac. Las parejas incluyen superposición al 50 % y
+cajas alfa: un PNG transparente se revisa como ocultación esperada, no como
+aprobación de contenido por un diff cero.

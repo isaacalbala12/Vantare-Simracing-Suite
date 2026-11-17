@@ -139,7 +139,7 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
                                "url": "https://github.com/GameTechDev/PresentMon/releases/download/v2.6.0/PresentMon-2.6.0-x64.exe",
                                "sha256": PRESENTMON_SHA}, "files": [],
                 "measurement": {"warmup_seconds": 5, "central_seconds": 50,
-                                "classification": "comparación acotada", "cold_host_each_round": True,
+                                "classification": "comparación acotada", "cold_host_each_round": True, "requested_host_hz": 15, "racing_flags_hz": 0,
                                 "inventory_report": "inputs/INVENTARIO-LMU47-HISTORICO.md",
                                 "inventory_basis_sha": "4625463bc6ad15bb86813b49bd70b7259f935415",
                                 "inventory_origin": "primer evento grabado, distinto del QPC observe de esta tanda",
@@ -227,7 +227,7 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
                 settings_name = f"{directory}/{tag}.settings.json"
                 layout_name = f"{directory}/{tag}.layout.json"
                 write_json(output / settings_name, settings)
-                write_json(output / layout_name, {"version": 1, "instances": [{"id": "qa", "x": 0, "y": 0, "settings": settings}]})
+                write_json(output / layout_name, {"version": 1, "performance": {"level": "balanced", "widgets": {"qa": 15}}, "instances": [{"id": "qa", "x": 0, "y": 0, "settings": settings}]})
                 for count in counts:
                     manifest["captures"].append({"id": f"{kind}-{spec['name']}-{tag}-p{count}", "kind": kind,
                         "look": look, "tone": tone, "settings": settings_name, "layout": layout_name,
@@ -244,7 +244,7 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
                     for state in ("replay", "waiting"):
                         for motor in motors:
                             manifest["measurements"].append({"id": f"{kind}-{look}-{state}-{motor}", "kind": kind,
-                                "look": look, "state": state, "motor": motor, "layout": layout_name})
+                                "look": look, "state": state, "motor": motor, "layout": layout_name, "effective_host_hz": 0 if kind == "racing-flags" else 15})
     # Native constructors recognize these exact photos; retain the selector too.
     penalty = repo / "vantare-v2/native/ui/fixtures/racing-flags-design-system.penalties.json"
     shutil.copyfile(penalty, output / penalty.relative_to(repo))

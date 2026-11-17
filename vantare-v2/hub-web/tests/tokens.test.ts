@@ -119,7 +119,9 @@ describe("exported Vantare tokens", () => {
           contrast(values["ill-ink"], values["ill-panel"]),
         ).toBeGreaterThanOrEqual(3);
         expect(values.edge).toBe(
-          scheme === "dark" ? values["line-2"] : `${values["text-1"]}17`,
+          scheme === "dark" || palette === "vantare"
+            ? values["line-2"]
+            : `${values["text-1"]}17`,
         );
         for (const role of tokens.semantic.filter(
           (role) => role.startsWith("ill-") && !["ill-ground"].includes(role),

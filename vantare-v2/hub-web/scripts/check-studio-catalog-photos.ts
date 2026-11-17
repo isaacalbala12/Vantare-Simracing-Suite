@@ -12,25 +12,41 @@ export async function checkStudioCatalogPhotos(
   base: string,
   evidence: string,
 ) {
-  const svg = await readFile(
-    new URL("../fixtures/preview-stage.svg", import.meta.url),
-    "utf8",
-  );
+  const drawings = JSON.parse(
+    await readFile(
+      new URL("../fixtures/preview-catalog.json", import.meta.url),
+      "utf8",
+    ),
+  ) as Record<string, { svg: string; width: number; height: number }>;
   const painter = await parent.context().newPage();
-  let png: string;
+  let images: Record<
+    string,
+    { width: number; height: number; pngBase64: string }
+  >;
   try {
-    png = await painter.evaluate(async (svg) => {
-      const image = new Image();
-      image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-      await image.decode();
-      const canvas = document.createElement("canvas");
-      canvas.width = 338;
-      canvas.height = 304;
-      const context = canvas.getContext("2d");
-      if (!context) throw Error("QA canvas unavailable");
-      context.drawImage(image, 0, 0);
-      return canvas.toDataURL("image/png").split(",")[1];
-    }, svg);
+    images = await painter.evaluate(async (drawings) => {
+      const images: Record<
+        string,
+        { width: number; height: number; pngBase64: string }
+      > = {};
+      for (const [kind, { svg, width, height }] of Object.entries(drawings)) {
+        const image = new Image();
+        image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext("2d");
+        if (!context) throw Error("QA canvas unavailable");
+        context.drawImage(image, 0, 0);
+        images[kind] = {
+          width,
+          height,
+          pngBase64: canvas.toDataURL("image/png").split(",")[1],
+        };
+      }
+      return images;
+    }, drawings);
   } finally {
     await painter.close();
   }
@@ -43,9 +59,9 @@ export async function checkStudioCatalogPhotos(
         if (mode === "reduced")
           await page.emulateMedia({ reducedMotion: "reduce" });
         await page.addInitScript(
-          ({ png, theme, mode }) => {
+          ({ images, theme, mode }) => {
             const send = MessagePort.prototype.postMessage;
-            const catalogIds = new Set<number>();
+            const catalogIds = new Map<number, string>();
             let released = false;
             const requests: unknown[] = [];
             Reflect.set(window, "catalogPhotoRequests", requests);
@@ -77,20 +93,21 @@ export async function checkStudioCatalogPhotos(
                 message.request?.method === "preview.render" &&
                 message.request.target.kind === "catalog"
               ) {
-                catalogIds.add(message.id);
+                catalogIds.set(message.id, message.request.target.widget);
                 requests.push(message.request);
               }
               if (
                 (message?.kind === "response" || message?.kind === "failure") &&
                 catalogIds.has(message.id)
               ) {
+                const image = images[catalogIds.get(message.id) ?? ""];
                 catalogIds.delete(message.id);
                 const response = {
                   kind: "response",
                   id: message.id,
                   result: {
                     method: "preview.render",
-                    value: { width: 338, height: 304, pngBase64: png },
+                    value: image,
                   },
                 };
                 const failure = {
@@ -98,7 +115,7 @@ export async function checkStudioCatalogPhotos(
                   id: message.id,
                   error: { kind: "previewFailed", reason: "noDemo" },
                 };
-                if (mode === "noDemo") message = failure;
+                if (mode === "noDemo" || !image) message = failure;
                 else message = response;
                 if (!released) {
                   const first = message;
@@ -120,7 +137,7 @@ export async function checkStudioCatalogPhotos(
               );
             };
           },
-          { png, theme, mode },
+          { images, theme, mode },
         );
         await page.goto(`${base}?escena=preview-image`);
         await page

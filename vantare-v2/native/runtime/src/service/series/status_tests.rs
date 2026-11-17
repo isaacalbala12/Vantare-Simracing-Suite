@@ -55,6 +55,34 @@ fn cancelled_degradation_cannot_overwrite_finish_even_when_delayed() {
     fs::remove_dir_all(dir).unwrap();
 }
 
+#[test]
+fn finish_abandons_delayed_one_shot_and_stopped_wins_after_release() {
+    let dir = std::env::temp_dir().join(format!("series-status-timeout-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let mut status = Status::new(&dir, 1, PruneReport::default());
+    status.state = "degraded";
+    let (release, released) = std::sync::mpsc::channel();
+    let task = PendingStatus::delayed(status.clone(), released).unwrap();
+    // La escritura no puede acabar hasta recibir release: finish debe abandonar.
+    let gate = task.finish();
+    status.state = "stopped";
+    status.write_with_gate(Some(&gate));
+    release.send(()).unwrap();
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    while Arc::strong_count(&gate) != 1 {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "hilo abandonado no termina"
+        );
+        std::thread::yield_now();
+    }
+    let value: serde_json::Value =
+        serde_json::from_slice(&fs::read(dir.join("recording-status.json")).unwrap()).unwrap();
+    assert_eq!(value["state"], "stopped");
+    assert_eq!(fs::read_dir(&dir).unwrap().count(), 1);
+    fs::remove_dir_all(dir).unwrap();
+}
+
 #[cfg(windows)]
 #[test]
 fn failed_atomic_replace_keeps_previous_document_and_cleans_temporary() {

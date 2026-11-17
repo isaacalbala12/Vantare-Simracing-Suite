@@ -80,7 +80,10 @@ impl Status {
         }
     }
     pub fn write(&self) {
-        if let Err(error) = self.persist(None) {
+        self.write_with_gate(None);
+    }
+    pub fn write_with_gate(&self, gate: Option<&Mutex<bool>>) {
+        if let Err(error) = self.persist(gate) {
             eprintln!("escribir estado de grabación: {error}");
         }
     }
@@ -102,11 +105,15 @@ impl Status {
             file.write_all(&serde_json::to_vec(self)?)?;
             file.sync_all()?;
             drop(file);
-            let guard = cancelled.map(|gate| {
+            let mut guard = cancelled.map(|gate| {
                 gate.lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner)
             });
-            if guard.as_ref().is_some_and(|cancelled| **cancelled) {
+            if self.state == "stopped" {
+                if let Some(cancelled) = guard.as_mut() {
+                    **cancelled = true;
+                }
+            } else if guard.as_ref().is_some_and(|cancelled| **cancelled) {
                 return Ok(());
             }
             fs::rename(&temporary, path)
@@ -150,16 +157,12 @@ impl PendingStatus {
             let _ = release.recv();
         })
     }
-    pub fn finish(self) {
+    pub fn finish(self) -> Arc<Mutex<bool>> {
         const JOIN_TIMEOUT: Duration = Duration::from_millis(100);
         let deadline = std::time::Instant::now() + JOIN_TIMEOUT;
         while !self.task.is_finished() && std::time::Instant::now() < deadline {
             std::thread::sleep(Duration::from_millis(1));
         }
-        *self
-            .cancelled
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner) = true;
         if self.task.is_finished() {
             if self.task.join().is_err() {
                 eprintln!("hilo de estado de grabación terminó con panic");
@@ -167,6 +170,7 @@ impl PendingStatus {
         } else {
             eprintln!("hilo de estado de grabación excedió plazo; se abandona sin publicar");
         }
+        self.cancelled
     }
 }
 

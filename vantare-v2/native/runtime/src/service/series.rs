@@ -185,12 +185,10 @@ impl SeriesRecording {
                     .map(|name| name.to_string_lossy().into_owned());
             }
         }
-        if let Some(pending) = self.pending_status.take() {
-            pending.finish();
-        }
+        let gate = self.pending_status.take().map(PendingStatus::finish);
         if let Some(status) = self.status.as_mut() {
             status.state = "stopped";
-            status.write();
+            status.write_with_gate(gate.as_deref());
         }
     }
 }

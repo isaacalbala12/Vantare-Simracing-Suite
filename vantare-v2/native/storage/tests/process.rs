@@ -121,6 +121,61 @@ fn another_process_cannot_take_the_live_writer_database() {
 }
 
 #[test]
+fn summaries_emit_elapsed_endpoints_and_null_without_reliable_elapsed() {
+    let db = Database::new();
+    let mut owner = Process::start(&db.0);
+    assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
+    let mut sealed = payload();
+    sealed[4][5] = 3.into();
+    sealed[4][7][0][2][1] = 0.1.into();
+    let mut last = sealed[4][7][0].clone();
+    last[0] = 2.into();
+    last[1][1] = 100.0.into();
+    last[2][1] = 90.0.into();
+    sealed[4][7].as_array_mut().unwrap().push(last);
+    owner.send(&json!(["append", sealed]));
+    assert_eq!(owner.response(), json!(["ack", 1]));
+    let mut unknown = payload();
+    unknown[1] = 2.into();
+    unknown[4][4] = 1.into();
+    unknown[4][7][0][0] = 3.into();
+    unknown[4][7][0][2] = json!([2, 0.1]); // Estimated, no fiable.
+    owner.send(&json!(["append", unknown]));
+    assert_eq!(owner.response(), json!(["ack", 2]));
+    owner.send(&json!(["stop"]));
+    assert!(owner.child.wait().unwrap().success());
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_vantare-storage"))
+        .arg(&db.0)
+        .arg("--read-only")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut reader = Process {
+        input: child.stdin.take().unwrap(),
+        output: BufReader::new(child.stdout.take().unwrap()),
+        child,
+    };
+    assert_eq!(reader.response(), json!(["ready", 2, false, 0]));
+    reader.send(&json!(["summaries"]));
+    let frame = reader.response();
+    assert_eq!(frame[0], "summaries");
+    assert_eq!(frame[1], "series-summary.v1");
+    assert_eq!(frame[2], 2);
+    let laps = frame[3].as_array().unwrap();
+    assert_eq!(laps.len(), 2);
+    assert_eq!(laps[0]["sealed"], true);
+    assert_eq!(laps[0]["gap"], false);
+    assert_eq!(laps[0]["first_elapsed_s"], 0.1);
+    assert_eq!(laps[0]["last_elapsed_s"], 90.0);
+    assert_eq!(laps[0]["observed_span_s"], 89.9);
+    for field in ["first_elapsed_s", "last_elapsed_s"] {
+        assert_eq!(laps[1].get(field), Some(&Value::Null));
+    }
+}
+
+#[test]
 fn killed_after_ack_recovers_the_wal_and_retry_never_duplicates_samples() {
     let db = Database::new();
     {

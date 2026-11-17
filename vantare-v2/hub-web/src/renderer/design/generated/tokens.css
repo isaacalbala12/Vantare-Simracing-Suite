@@ -69,6 +69,9 @@
   --shadow-account: 0 12px 56px #00000059;
   --shadow-account-classic: 0 14px 64px #00000080;
   --stage: var(--grad-stage);
+  --analysis-a: light-dark(#a31928, #f0303e);
+  --analysis-b: light-dark(#5e5759, #a59b9d);
+  --analysis-gain: light-dark(#1759ad, #3d93f0);
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 260ms;

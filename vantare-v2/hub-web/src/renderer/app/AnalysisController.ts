@@ -5,12 +5,27 @@ import type {
 } from "../../contract/generated/analysis";
 import type { HostError, Reply } from "../../contract/generated/contract";
 import { HostFailure } from "../bridge/client";
+import {
+  comparable,
+  initialPair,
+  type Pair,
+  timedLaps,
+} from "./analysis-comparison";
+export type Compared = Extract<
+  AnalysisReply,
+  { method: "analysis.compare" }
+> & { a: number; b: number };
 export type Inspection = Extract<AnalysisReply, { method: "analysis.inspect" }>;
 export type Opened = Omit<
   Extract<AnalysisReply, { method: "analysis.open" }>,
   "session"
 >;
 export type AnalysisSnapshot = {
+  pair?: Pair;
+  comparison?: Compared;
+  comparing?: boolean;
+  compareView?: boolean;
+  compareError?: HostError["kind"];
   rows: AnalysisRow[];
   inspections: Record<string, Inspection>;
   rowErrors: Record<string, HostError["kind"]>;
@@ -108,6 +123,11 @@ export class AnalysisController {
       opened: undefined,
       inspections: {},
       rowErrors: {},
+      pair: undefined,
+      comparison: undefined,
+      comparing: false,
+      compareView: false,
+      compareError: undefined,
     });
     const cancelled = this.interrupt();
     this.enqueue(async () => {
@@ -158,6 +178,11 @@ export class AnalysisController {
       opened: undefined,
       error: row.recording ? "analysisLocked" : undefined,
       opening: !row.recording,
+      pair: undefined,
+      comparison: undefined,
+      comparing: false,
+      compareView: false,
+      compareError: undefined,
     });
     const cancelled = this.interrupt();
     this.enqueue(async () => {
@@ -176,7 +201,11 @@ export class AnalysisController {
           await this.close();
           return;
         }
-        this.publish({ opened, opening: false });
+        this.publish({
+          opened,
+          opening: false,
+          pair: initialPair(opened.laps),
+        });
       } catch (e) {
         if (generation !== this.generation) return;
         if (failure(e) === "analysisCancelled") {
@@ -184,6 +213,115 @@ export class AnalysisController {
           return;
         }
         this.publish({ error: failure(e), opening: false });
+      }
+    });
+  };
+  select = (side: "a" | "b", index: number) => {
+    const lap = this.value.opened?.laps.find((l) => l.index === index);
+    if (!lap || !comparable(lap)) return;
+    const pair = { ...this.value.pair };
+    const other = side === "a" ? "b" : "a";
+    if (pair[other] === index) pair[other] = pair[side];
+    pair[side] = index;
+    this.publish({ pair });
+    if (this.value.compareView) this.compare();
+  };
+  bestPair = () => {
+    const [a, b] = timedLaps(this.value.opened?.laps ?? []);
+    if (!a || !b) return;
+    this.publish({ pair: { a: a.index, b: b.index } });
+    this.compare();
+  };
+  cancelComparison = () => {
+    if (!this.value.comparing) return;
+    ++this.generation;
+    const cancelled = this.interrupt();
+    this.publish({ comparing: false, compareError: "analysisCancelled" });
+    this.enqueue(async () => {
+      await cancelled;
+      await this.close();
+    });
+  };
+  showLaps = () => {
+    if (this.value.comparing) {
+      ++this.generation;
+      const cancelled = this.interrupt();
+      this.enqueue(async () => {
+        await cancelled;
+        await this.close();
+      });
+    }
+    this.publish({
+      compareView: false,
+      comparing: false,
+      compareError: undefined,
+    });
+  };
+  compare = (reopen = false) => {
+    const { selected, pair, opened, comparing } = this.value;
+    const a = opened?.laps.find((lap) => lap.index === pair?.a);
+    const b = opened?.laps.find((lap) => lap.index === pair?.b);
+    if (
+      !selected ||
+      !a ||
+      !b ||
+      a.index === b.index ||
+      !comparable(a) ||
+      !comparable(b)
+    )
+      return;
+    const generation = ++this.generation;
+    this.publish({
+      compareView: true,
+      comparing: true,
+      compareError: undefined,
+    });
+    const cancelled = comparing ? this.interrupt() : Promise.resolve();
+    this.enqueue(async () => {
+      await cancelled;
+      if (comparing || reopen) await this.close();
+      if (generation !== this.generation) return;
+      try {
+        if (!this.session) {
+          const r = await this.request(
+            { method: "analysis.open", id: selected.id },
+            generation,
+          );
+          if (r?.method !== "analysis.open") return;
+          const { session, ...fresh } = r;
+          this.session = session;
+          if (generation !== this.generation || !this.active) {
+            await this.close();
+            return;
+          }
+          this.publish({ opened: fresh });
+        }
+        if (!this.session) return;
+        const result = await this.request(
+          {
+            method: "analysis.compare",
+            session: this.session,
+            a: a.index,
+            b: b.index,
+          },
+          generation,
+        );
+        if (
+          generation === this.generation &&
+          result?.method === "analysis.compare"
+        )
+          this.publish({
+            comparison: { ...result, a: a.index, b: b.index },
+            comparing: false,
+          });
+      } catch (error) {
+        const kind = failure(error);
+        if (kind === "analysisCancelled" || kind === "analysisTimeout") {
+          await this.interrupt();
+          await this.close();
+        }
+        if (generation === this.generation)
+          this.publish({ compareError: kind, comparing: false });
       }
     });
   };

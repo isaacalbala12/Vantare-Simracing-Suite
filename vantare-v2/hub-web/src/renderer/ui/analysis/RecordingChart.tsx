@@ -1,16 +1,20 @@
 import type { CSSProperties } from "react";
 import type { AnalysisLap } from "../../../contract/generated/analysis";
+import type { Pair } from "../../app/analysis-comparison";
 import { validLapTime } from "../../app/analysis-laps";
 import { deltaTime, lapTime, analysisText as t } from "../../i18n/analysis.es";
+import { comparisonText } from "../../i18n/comparison.es";
 import { TrackedCaps } from "../TrackedCaps";
 export function RecordingChart({
   laps,
   bestTime,
   bestLap,
+  pair,
 }: {
   laps: AnalysisLap[];
   bestTime: number | null;
   bestLap?: number;
+  pair?: Pair;
 }) {
   const deltas = laps.map((lap) => {
     const time = validLapTime(lap);
@@ -35,6 +39,12 @@ export function RecordingChart({
           {laps.map((lap, i) => {
             const delta = deltas[i];
             const best = delta === 0;
+            const side =
+              pair?.a === lap.index
+                ? "a"
+                : pair?.b === lap.index
+                  ? "b"
+                  : undefined;
             const height =
               delta === null ? 100 : Math.max(2, (delta / scale) * 100);
             const label = `${t.lap} ${lap.lap} · ${lapTime(validLapTime(lap))} · ${best ? t.fastest : delta === null ? t.dash : deltaTime(delta)}`;
@@ -43,8 +53,11 @@ export function RecordingChart({
                 key={lap.index}
                 style={{ "--an-level": height / 104 } as CSSProperties}
               >
-                <div className="v-an-bar-lane">
+                <div
+                  className={`v-an-bar-lane${side ? ` v-an-series-${side}` : ""}`}
+                >
                   <span>
+                    {side ? `${comparisonText[side]} · ` : ""}
                     {best
                       ? t.fastest
                       : delta === null

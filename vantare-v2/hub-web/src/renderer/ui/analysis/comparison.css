@@ -1,0 +1,206 @@
+.v-an-series-a {
+  color: var(--analysis-a);
+}
+.v-an-series-b {
+  color: var(--analysis-b);
+}
+.v-an-choices {
+  display: flex;
+  gap: var(--space-1);
+}
+.v-an-choice {
+  padding: var(--space-1);
+  min-inline-size: var(--space-9);
+  block-size: var(--space-9);
+  min-block-size: var(--space-9);
+  border-radius: var(--radius-sm);
+}
+.v-an-choice[aria-pressed="false"] {
+  color: var(--text-3);
+}
+.v-an-choices .v-an-choice.v-button[aria-pressed="true"]:not([data-disabled]) {
+  color: var(--bg-base);
+  background: var(--analysis-a);
+}
+.v-an-choices
+  .v-an-choice.v-an-series-b.v-button[aria-pressed="true"]:not(
+    [data-disabled]
+  ) {
+  background: var(--analysis-b);
+}
+.v-an-compare-action {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.v-an-compare-action small {
+  color: var(--text-3);
+}
+.v-an-bar-lane:is(.v-an-series-a, .v-an-series-b) :is(rect, span) {
+  fill: currentColor;
+  color: inherit;
+}
+.v-an-laps :is(td, th):last-child {
+  inline-size: calc(var(--space-9) * 2 + var(--space-5) * 2);
+}
+.v-an-laps :is(td, th):nth-child(8) {
+  inline-size: var(--field-w);
+}
+.v-an-selectors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: calc(var(--control-h) + var(--space-9));
+}
+.v-an-selector {
+  min-inline-size: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-2);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm);
+}
+.v-an-selector strong {
+  background: var(--analysis-a);
+  color: var(--bg-base);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+}
+.v-an-series-b strong {
+  background: var(--analysis-b);
+}
+.v-an-selector .v-field {
+  min-inline-size: 0;
+  flex: 1;
+}
+.v-an-selector .v-select-trigger {
+  min-inline-size: 0;
+  inline-size: 100%;
+  white-space: pre-line;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.v-an-selector .v-select-trigger > span:first-child {
+  flex: 1;
+  text-align: center;
+  font-size: var(--text-small);
+  color: var(--text-3);
+  line-height: 1.5;
+}
+.v-an-selector .v-select-trigger > span:first-child::first-line {
+  font-size: var(--text-body);
+  font-weight: 600;
+  color: var(--text-1);
+}
+.v-an-swap {
+  position: absolute;
+  inset-inline-start: calc(100% + var(--space-7));
+}
+.v-an-trace-card {
+  position: relative;
+  overflow: hidden;
+}
+.v-an-trace-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--line-1);
+}
+.v-an-legend {
+  display: flex;
+  gap: var(--space-5);
+  font-size: var(--text-small);
+}
+.v-an-legend span::before {
+  content: "";
+  display: inline-block;
+  inline-size: var(--space-5);
+  border-top: 2px solid currentColor;
+  margin-inline-end: var(--space-2);
+}
+.v-an-legend .v-an-series-b::before {
+  border-top-style: dashed;
+}
+.v-an-traces {
+  position: relative;
+}
+.v-an-traces[data-updating] {
+  opacity: 0.5;
+}
+.v-an-trace {
+  display: block;
+  inline-size: 100%;
+  border-bottom: 1px solid var(--line-1);
+}
+.v-an-trace text {
+  fill: var(--text-3);
+  font-size: var(--text-micro);
+  font-family: var(--font-mono);
+}
+.v-an-trace .v-an-trace-label {
+  fill: var(--text-1);
+  font: 600 var(--text-small) var(--font-sans);
+}
+.v-an-trace-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+}
+.v-an-trace-line.v-an-series-b {
+  stroke-dasharray: 6 4;
+}
+.v-an-delta-area {
+  fill-opacity: 0.15;
+}
+.v-an-trace text:is(.v-an-series-a, .v-an-series-b) {
+  fill: currentColor;
+}
+.v-an-trace-grid {
+  stroke: var(--line-1);
+}
+.v-an-trace-cursor {
+  stroke: var(--text-3);
+  stroke-dasharray: 3 3;
+}
+.v-an-trace-gap,
+.v-an-empty-delta {
+  fill: color-mix(in srgb, var(--text-3) 10%, transparent);
+  stroke: var(--line-2);
+  stroke-dasharray: 3 3;
+}
+.v-an-delta-reason {
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-small);
+  text-align: center;
+}
+.v-an-loss-stop {
+  stop-color: var(--analysis-a);
+}
+.v-an-gain-stop {
+  stop-color: var(--analysis-gain);
+}
+.v-an-comparing {
+  position: absolute;
+  inset-block-start: calc(var(--topbar-h) + var(--space-5));
+  inset-inline-end: var(--space-5);
+  display: flex;
+  gap: var(--space-3);
+}
+.v-an-common {
+  margin: 0;
+  padding: var(--space-5) var(--space-7);
+  font-size: var(--text-small);
+  color: var(--text-3);
+}
+@container (width < 760px) {
+  .v-an-trace-toolbar {
+    flex-wrap: wrap;
+  }
+}

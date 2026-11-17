@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { AnalysisLap } from "../../../contract/generated/analysis";
 import { validLapTime } from "../../app/analysis-laps";
 import { deltaTime, lapTime, analysisText as t } from "../../i18n/analysis.es";
+import { TrackedCaps } from "../TrackedCaps";
 export function RecordingChart({
   laps,
   bestTime,
@@ -22,7 +23,9 @@ export function RecordingChart({
   return (
     <figure className="v-card v-an-chart">
       <figcaption className="v-card-header">
-        <h2>{t.chartTitle}</h2>
+        <h2>
+          <TrackedCaps>{t.chartTitle}</TrackedCaps>
+        </h2>
         <p className="v-an-chart-help">
           {bestLap === undefined ? t.chartMissing : t.chartHelp(bestLap)}
         </p>

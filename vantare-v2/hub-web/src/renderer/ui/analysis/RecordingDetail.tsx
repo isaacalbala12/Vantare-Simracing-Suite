@@ -26,6 +26,7 @@ import {
 } from "../../i18n/analysis.es";
 import { Button, IconButton } from "../Button";
 import { Badge, Card } from "../Data";
+import { TrackedCaps } from "../TrackedCaps";
 import { AnalysisError, AnalysisNotice, RecordingStrip } from "./Analysis";
 import { RecordingChart } from "./RecordingChart";
 import { useRecordingClock } from "./useRecordingClock";
@@ -168,7 +169,7 @@ export function AnalysisLaps({
     ],
   ];
   return (
-    <div className="v-an-layout">
+    <div className="v-an-layout v-an-recording">
       <header className="v-an-heading">
         {opened && (
           <IconButton label={t.back} onClick={back}>
@@ -225,7 +226,7 @@ export function AnalysisLaps({
             bestLap={summary.best?.lap}
           />
           <div className="v-an-laps-card">
-            <Card title={t.laps}>
+            <Card title={<TrackedCaps>{t.laps}</TrackedCaps>}>
               <div className="v-an-tablewrap">
                 <table className="v-table v-an-table v-an-laps">
                   <caption className="v-sr-only">{`${t.laps} · ${t.approximate} · ${t.speed}`}</caption>

@@ -41,7 +41,7 @@ export function Card({
   footer,
   variant = "neo",
 }: {
-  title: string;
+  title: ReactNode;
   actions?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;

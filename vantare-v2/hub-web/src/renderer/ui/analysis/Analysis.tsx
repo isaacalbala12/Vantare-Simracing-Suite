@@ -185,10 +185,40 @@ export function AnalysisCatalog({
         showLoading ? (
           <>
             <p role="status">{t.loading}</p>
-            <div className="v-card v-an-loading">
-              {["a", "b", "c", "d", "e", "f", "g"].map((id) => (
-                <Skeleton key={id} label={t.loading} />
-              ))}
+            <div className="v-card v-an-tablewrap">
+              <table
+                className="v-table v-an-table v-an-catalog"
+                aria-busy="true"
+              >
+                <caption className="v-sr-only">{t.loading}</caption>
+                <CatalogColumns />
+                <tbody>
+                  {["a", "b", "c", "d", "e", "f", "g"].map((id) => (
+                    <tr key={id}>
+                      {[
+                        "date",
+                        "car",
+                        "laps",
+                        "best",
+                        "size",
+                        "state",
+                        "arrow",
+                      ].map((key) => (
+                        <td
+                          key={key}
+                          className={
+                            key === "laps" || key === "best"
+                              ? "v-an-secondary"
+                              : undefined
+                          }
+                        >
+                          <Skeleton label={t.loading} />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </>
         ) : null
@@ -212,29 +242,7 @@ export function AnalysisCatalog({
         <div className="v-card v-an-tablewrap">
           <table className="v-table v-an-table v-an-catalog">
             <caption className="v-sr-only">{t.recordings}</caption>
-            <thead>
-              <tr>
-                {[
-                  t.date,
-                  t.vehicle,
-                  t.laps,
-                  t.best,
-                  t.size,
-                  t.state,
-                  t.dash,
-                ].map((label, i) => (
-                  <th
-                    scope="col"
-                    key={label}
-                    className={
-                      i === 2 || i === 3 ? "v-an-secondary" : undefined
-                    }
-                  >
-                    {label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+            <CatalogColumns />
             {days.map((d) => (
               <tbody key={d}>
                 <tr className="v-an-day">
@@ -258,5 +266,25 @@ export function AnalysisCatalog({
         </div>
       )}
     </div>
+  );
+}
+
+function CatalogColumns() {
+  return (
+    <thead>
+      <tr>
+        {[t.date, t.vehicle, t.laps, t.best, t.size, t.state, t.dash].map(
+          (label, i) => (
+            <th
+              scope="col"
+              key={label}
+              className={i === 2 || i === 3 ? "v-an-secondary" : undefined}
+            >
+              {label}
+            </th>
+          ),
+        )}
+      </tr>
+    </thead>
   );
 }

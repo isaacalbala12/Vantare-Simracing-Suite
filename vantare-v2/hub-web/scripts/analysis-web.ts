@@ -51,6 +51,7 @@ try {
         } else if (scene === "loading")
           await page
             .getByText("Buscando grabaciones…", { exact: true })
+            .first()
             .waitFor();
         else await page.locator(".v-an-notice h2").waitFor();
         await page.evaluate(async (theme) => {

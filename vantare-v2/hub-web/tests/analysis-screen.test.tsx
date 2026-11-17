@@ -235,7 +235,7 @@ it("shows the loading skeleton after 300ms and cancels on unmount", async () => 
   await act(() => vi.advanceTimersByTimeAsync(299));
   expect(screen.queryByText("Buscando grabaciones…")).toBeNull();
   await act(() => vi.advanceTimersByTimeAsync(1));
-  expect(screen.getByText("Buscando grabaciones…")).toBeTruthy();
+  expect(screen.getAllByText("Buscando grabaciones…")).toHaveLength(2);
   ui.unmount();
   expect(request).toHaveBeenLastCalledWith({ method: "analysis.cancel" });
 });

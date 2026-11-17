@@ -106,11 +106,6 @@
   font-family: var(--font-mono);
   white-space: nowrap;
 }
-.v-an-loading {
-  display: grid;
-  gap: var(--space-9);
-  padding: var(--space-7);
-}
 @container (width < 760px) {
   .v-an-secondary {
     display: none;

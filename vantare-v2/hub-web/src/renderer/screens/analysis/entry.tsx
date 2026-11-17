@@ -10,6 +10,7 @@ import {
   AnalysisRail,
 } from "../../ui/analysis/Analysis";
 import { Button } from "../../ui/Button";
+import { SectionPageHeader } from "../../ui/Frame";
 export default function Analysis() {
   const state = useAnalysis();
   const settings = useSettings();
@@ -38,7 +39,7 @@ export default function Analysis() {
       <SectionPanel activeTab="recordings">
         {denied ? (
           <>
-            <AnalysisCatalogHeading />
+            <SectionPageHeader title={t.recordings} description={t.intro} />
             <AnalysisNotice
               title={
                 state.access.verified && !state.access.blocked
@@ -65,10 +66,4 @@ export default function Analysis() {
       </SectionPanel>
     </>
   );
-}
-
-import { SectionPageHeader } from "../../ui/Frame";
-
-function AnalysisCatalogHeading() {
-  return <SectionPageHeader title={t.recordings} description={t.intro} />;
 }

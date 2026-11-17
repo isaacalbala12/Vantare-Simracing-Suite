@@ -197,6 +197,9 @@ export function ComparisonPlot({
             );
           })}
           {delta &&
+            points.every(
+              (p, i) => i === 0 || p.segment === points[i - 1].segment,
+            ) &&
             (!axis.time || points.every((p) => p.elapsed !== null)) &&
             [...new Set(points.map((p) => p.segment))].map((segment) => {
               const values = points.filter(

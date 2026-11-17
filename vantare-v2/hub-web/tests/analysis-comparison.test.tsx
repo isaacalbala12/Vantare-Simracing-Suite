@@ -32,7 +32,10 @@ import { UiProvider } from "../src/renderer/app/UiState";
 import { type Client, HostFailure } from "../src/renderer/bridge/client";
 import { comparisonText as t } from "../src/renderer/i18n/comparison.es";
 import Analysis from "../src/renderer/screens/analysis/entry";
-import { tracePath } from "../src/renderer/ui/analysis/ComparisonPlot";
+import {
+  ComparisonPlot,
+  tracePath,
+} from "../src/renderer/ui/analysis/ComparisonPlot";
 import { CompareAction } from "../src/renderer/ui/analysis/LapChoices";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 
@@ -362,6 +365,34 @@ it("never bridges segments or missing elapsed; subtracts overlapping gaps withou
     [0, 1000],
     [3000, 5000],
   ]);
+  c.compare();
+  await waitFor(() => expect(c.snapshot().comparison).toBeTruthy());
+  const data = c.snapshot().comparison;
+  if (!data) throw Error("missing comparison");
+  const axis = {
+    time: false,
+    range: [0, 30] as [number, number],
+    distance: [0, 30] as [number, number],
+  };
+  const plot = render(
+    <ComparisonPlot
+      data={{
+        ...data,
+        delta: points.map((p, i) => ({ ...p, segment: i === 1 ? 1 : 0 })),
+      }}
+      signal="delta"
+      axis={axis}
+    />,
+  );
+  expect(plot.container.querySelector(".v-an-delta-area")).toBeNull();
+  plot.rerender(
+    <ComparisonPlot
+      data={{ ...data, delta: points.map((p) => ({ ...p, segment: 0 })) }}
+      signal="delta"
+      axis={{ ...axis, time: true, range: [0, 4] }}
+    />,
+  );
+  expect(plot.container.querySelector(".v-an-delta-area")).toBeNull();
   c.dispose();
 });
 it("explains the unavailable quick comparison without removing it from keyboard order", async () => {

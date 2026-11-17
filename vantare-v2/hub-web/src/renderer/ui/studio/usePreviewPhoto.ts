@@ -68,6 +68,7 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
     !!client &&
     !issue &&
     !core.live &&
+    !!core.accountGeneration &&
     core.rights === "connected" &&
     core.access.verified &&
     !core.access.blocked &&
@@ -109,7 +110,7 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
       client,
       regeneration,
     };
-    if (reconciling.current || !changed) {
+    if ((reconciling.current && last?.id === item.id) || !changed) {
       // Geometry/another widget's revision invalidates pixels, but cannot start Rune.
       setPhoto((old) =>
         old.key === key
@@ -131,6 +132,7 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
     const valid = () =>
       alive.current && serial.current === token && currentKey.current === key;
     const run = async () => {
+      if (!valid()) return;
       active.current = true;
       try {
         const reply = await client.request({
@@ -169,7 +171,7 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
               ? "busy"
               : detail?.kind === "studioConflict"
                 ? "studioConflict"
-                : detail?.kind === "denied"
+                : detail?.kind === "denied" || detail?.kind === "protected"
                   ? "denied"
                   : "unavailable";
         setPhoto({ status, key });
@@ -200,7 +202,18 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
   ]);
 
   return {
-    ...(photo.key === key ? photo : { status: "noDemo" as const, key }),
+    ...(photo.key === key && allowed && !accountChanged.current
+      ? photo
+      : {
+          status:
+            !allowed ||
+            accountChanged.current ||
+            (previous.current &&
+              previous.current.account !== core.accountGeneration)
+              ? ("denied" as const)
+              : ("preparing" as const),
+          key,
+        }),
     regenerate: () => {
       if (!active.current && allowed) regenerate((n) => n + 1);
     },

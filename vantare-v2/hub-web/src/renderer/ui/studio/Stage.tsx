@@ -220,11 +220,12 @@ export function Stage({
         {real && photo.image ? (
           <div className="v-preview-fit" ref={fit}>
             <img
-              alt=""
+              alt={""}
               className="v-preview-photo"
               src={photo.src}
               style={{
-                width: `${photo.image.width}px`,
+                width: `${(photo.image.width * percent) / 100}px`,
+                height: `${(photo.image.height * percent) / 100}px`,
                 maxWidth: "100%",
                 maxHeight: "100%",
               }}

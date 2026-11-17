@@ -54,11 +54,11 @@ use std::io::Write;
 #[cfg(windows)]
 use vantare_launcher as launcher;
 #[cfg(windows)]
+mod hub_update_feed;
+#[cfg(windows)]
 mod resident;
 #[cfg(windows)]
 mod triggers_win;
-#[cfg(windows)]
-mod update_feed;
 
 use vantare_ipc::product;
 

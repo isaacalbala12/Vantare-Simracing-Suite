@@ -95,3 +95,19 @@ Este candidato no autoriza publicación. El feed nuevo queda fuera de P3: usará
 `hub-beta-v<versión>` / `vantare-hub-beta.json`, nunca el publicador heredado
 `publish-beta.ps1` ni su etiqueta/manifiesto `native-beta`. El esquema firmado
 con tamaños y el rechazo antes de descargar siguen pendientes de su paso aprobado.
+
+### Feed Hub firmado (schema2)
+
+`publish-hub-beta.ps1` prepara, sin publicar, `hub-beta-v<versión>` y
+`vantare-hub-beta.json`. El sobre Ed25519 conserva la autoridad de producción;
+el payload cerrado usa product `vantare-hub`, channel `beta`, version/url/sha256,
+notes y compressed_bytes/expanded_bytes medidos del ZIP (máximos256/768MiB).
+El cliente nuevo verifica firma y límites antes del GET, longitud/SHA al descargar
+y total expandido tras verificar la extracción. Rechaza versiones <= instalada.
+El manifiesto interno de instalación mantiene schema1/product `vantare-native`.
+`update_feed.rs` queda intacto; el nuevo módulo no selecciona native-beta.
+El publicador heredado rechaza ZIP>128MiB antes de firmar o crear Setup.
+`hub-update-qa` habilita exclusivamente la autoridad TEST ya usada por la matriz;
+no es un override runtime ni cambia el verificador antiguo. La distribución
+prohíbe esa feature y su marcador. Tests normales rechazan firmas QA; el gate
+QA aislado prueba aceptación y cero peticiones ZIP al exceder los límites.

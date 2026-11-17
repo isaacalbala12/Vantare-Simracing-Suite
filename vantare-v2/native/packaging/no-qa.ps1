@@ -44,7 +44,7 @@ function Assert-NativeDistributionLicenseRegistry([string]$Registry,[switch]$Req
 }
 # Distribution boundary: inspect resolved features AND the bytes actually copied.
 function Assert-NativeDistributionFeatures($Features) {
-    if (@($Features | Where-Object { $_ -cin @('qa-e2e','parity-capture') }).Count) { throw 'QA feature in distribution graph.' }
+    if (@($Features | Where-Object { $_ -cin @('qa-e2e','parity-capture','hub-update-qa') }).Count) { throw 'QA feature in distribution graph.' }
 }
 function Get-NativeKnownTestLicenseMarkers {
     $markers=@()

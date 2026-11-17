@@ -51,6 +51,25 @@ pub fn verify(json: &[u8]) -> Result<Vec<u8>> {
     verify_with(json, &key)
 }
 
+/// Hub feed uses the production authority unless the isolated QA build is selected.
+/// Legacy verify() never accepts the QA authority, even in that build.
+pub fn verify_hub_update(json: &[u8]) -> Result<Vec<u8>> {
+    #[cfg(feature = "hub-update-qa")]
+    {
+        std::hint::black_box("VANTARE_QA_HUB_UPDATE_NOT_FOR_DISTRIBUTION");
+        let public_key = [
+            0x19, 0x7f, 0x6b, 0x23, 0xe1, 0x6c, 0x85, 0x32, 0xc6, 0xab, 0xc8, 0x38, 0xfa, 0xcd,
+            0x5e, 0xa7, 0x89, 0xbe, 0x0c, 0x76, 0xb2, 0x92, 0x03, 0x34, 0x03, 0x9b, 0xfa, 0x8b,
+            0x3d, 0x36, 0x8d, 0x61,
+        ];
+        verify_with(json, &public_key)
+    }
+    #[cfg(not(feature = "hub-update-qa"))]
+    {
+        verify(json)
+    }
+}
+
 fn sign(payload: &[u8], key: &SigningKey) -> Result<Vec<u8>> {
     // El sobre base64 y su firma deben caber en el límite del bootstrap.
     if payload.len() > 32768 {
@@ -177,8 +196,15 @@ mod hub_authority_tests {
     use super::*;
     #[test]
     fn hub_qa_signature_never_changes_the_legacy_authority() {
-        let signed=sign(br#"{"schema":2,"product":"vantare-hub"}"#,&SigningKey::from_bytes(&[42;32])).unwrap();
+        let signed = sign(
+            br#"{"schema":2,"product":"vantare-hub"}"#,
+            &SigningKey::from_bytes(&[42; 32]),
+        )
+        .unwrap();
         assert!(verify(&signed).is_err());
-        assert_eq!(verify_hub_update(&signed).is_ok(),cfg!(feature="hub-update-qa"));
+        assert_eq!(
+            verify_hub_update(&signed).is_ok(),
+            cfg!(feature = "hub-update-qa")
+        );
     }
 }

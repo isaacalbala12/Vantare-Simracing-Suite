@@ -14,8 +14,13 @@ use std::{
     thread::JoinHandle,
     time::{Duration, Instant, SystemTime},
 };
+mod session_index;
+mod session_reader;
 mod types;
-pub use types::{Chunk, Lap, Sample, Signal};
+pub use session_index::{RecordingSessions, SessionIndex};
+pub use types::{
+    Chunk, Lap, LapTime, Sample, SessionEndReason, SessionKind, SessionSummary, Signal,
+};
 
 const MAX_RECORDINGS: usize = 256;
 const MAX_FRAME: usize = 2 * 1024 * 1024;

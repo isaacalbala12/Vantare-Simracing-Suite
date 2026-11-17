@@ -137,7 +137,30 @@ function Assert-PublishArtifacts([string]$OutputDirectory) {
     }
 }
 
+# Only Rune is built outside the main Cargo workspace; it is still a public image.
+function Assert-PublicExternalBins([object]$Inventory) {
+    $property=$Inventory.PSObject.Properties['external_bins']
+    if(-not $property -or $property.Value -isnot [array]){throw 'external_bins debe ser una lista'}
+    $external=@($property.Value)
+    if(@($external|Sort-Object -Unique).Count -ne $external.Count){throw 'external_bins duplicados'}
+    foreach($name in $external){
+        if($name -isnot [string] -or $name -cne 'vantare-overlays-rune.exe' -or $name -cnotin $Inventory.executables){throw 'Binario externo no autorizado'}
+        if((Get-PublicArtifact $name $Inventory) -cne $name){throw 'Override de binario externo rechazado'}
+    }
+    if('vantare-overlays-rune.exe' -cin $Inventory.executables -and 'vantare-overlays-rune.exe' -cnotin $external){throw 'Rune exige external_bins'}
+    $external
+}
+function Assert-RuneLock([string]$Path,[string]$ExpectedHash) {
+    $hash=Get-NativeHash $Path
+    if($ExpectedHash -and $hash -cne $ExpectedHash){throw 'Cargo.lock de Rune cambió'}
+    & python (Join-Path $PSScriptRoot 'rune-lock.py') $Path
+    if($LASTEXITCODE){throw 'Fuentes de Cargo.lock de Rune rechazadas'}
+    if((Get-NativeHash $Path) -cne $hash){throw 'Cargo.lock de Rune cambió durante la validación'}
+    $hash
+}
+
 function Assert-PublicInventory([string]$Payload,[object]$Inventory,$HubFiles=@()) {
+    $null=Assert-PublicExternalBins $Inventory
     $listed=@($Inventory.executables)
     if($Inventory.schema -ne 1 -or -not $listed.Count -or @($listed|Where-Object {$_ -cnotmatch '^vantare(?:-[a-z0-9]+)*\.exe$'}).Count -or @($listed|Sort-Object -Unique).Count -ne $listed.Count){throw 'Inventario público inválido'}
     if(@($Inventory.resources|Where-Object {$_ -cmatch '(^|/)\.\.?(/|$)' -or $_ -cmatch '^/' -or $_ -cmatch '\\|:' -or $_ -cmatch '^(layouts|telemetry-real)/'}).Count){throw 'Ruta de recurso inválida'}
@@ -170,7 +193,8 @@ function Get-PublicArtifact([string]$Name,[object]$Inventory) {
     if($override){$override.Value}else{$Name}
 }
 function Assert-PublicBins([string[]]$Available,[object]$Inventory) {
-    $public=@($Inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension((Get-PublicArtifact $_ $Inventory))})
+    $external=@(Assert-PublicExternalBins $Inventory)
+    $public=@($Inventory.executables|Where-Object {$_ -cnotin $external}|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension((Get-PublicArtifact $_ $Inventory))})
     $internal=@('vantare-admin','vantare-setup','vantare-uninstall','vantare-grabar-lmu-completo','vantare-verificar-lmu','vantare-workshop','root-launch-probe','vantare-hub')
     if(@($public|Where-Object {$_ -cnotin $Available}).Count -or @($Available|Where-Object {$_ -cnotin $public -and $_ -cnotin $internal}).Count){throw 'Binarios públicos incompatibles'}
 }

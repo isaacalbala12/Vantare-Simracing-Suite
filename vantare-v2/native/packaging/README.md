@@ -86,8 +86,19 @@ Electron para empaquetar o verificar. Rust/Setup copian sus artefactos dentro de
 la reserva del target compartido; no crean targets por salida o por rama.
 
 La lista `executables` es extensible: un EXE declarado y su sidecar bastan para
-validarlo, sin cambiar la lógica del inventario ni del manifiesto. M4 añadirá
-`bin/vantare-overlays-rune.exe`, junto al anfitrión; P3 no lo incluye ni activa.
+validarlo, sin cambiar la lógica del manifiesto. `external_bins` solo admite
+`vantare-overlays-rune.exe`, presente también en `executables`: queda fuera de
+la comparación con los bins del workspace principal, pero exige su EXE y hash.
+El candidato lo incluye junto al anfitrión; sin interruptor el launcher usa GPUI.
+
+Rune usa su workspace y lock propios. Antes del único `cargo fetch --locked`
+con red, el parser TOML (`rune-lock.py`, Python >=3.11) exige crates.io o el fork
+Rune fijado a `d5338988a7c1b3377adb60853815b6d0843dae7c`. Se comprueba el hash del
+lock antes/después; el build posterior vuelve a `--offline --locked`, con el
+mismo perfil, CRT estático y target reservado por la cola. Se validan features,
+bytes no QA, imports CRT y `--version` compartido antes de copiar EXE y sidecar.
+La prueba CPU de `--version` termina antes de inicializar Rune; con
+`VANTARE_SIN_GRAFICOS=1` el guard conserva prioridad y devuelve 6.
 Los límites nuevos son ZIP <=256 MiB, miembro <=256 MiB y total <=768 MiB.
 El primer relevo requiere Setup nuevo: el actualizador antiguo conserva 128 MiB.
 

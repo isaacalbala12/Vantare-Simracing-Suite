@@ -41,11 +41,14 @@ impl Drop for BinDir {
 #[test]
 fn no_flag_and_no_environment_keep_gpui_as_the_only_default() {
     assert_eq!(Engine::default(), Engine::Gpui);
-    let dir = BinDir::new(false);
-    assert_eq!(
-        dir.parse(&[], None).unwrap().overlays.path,
-        dir.0.join(binary_name("vantare-overlays"))
-    );
+    // Installing Rune alongside GPUI must not opt the package into Rune.
+    for rune_packaged in [false, true] {
+        let dir = BinDir::new(rune_packaged);
+        assert_eq!(
+            dir.parse(&[], None).unwrap().overlays.path,
+            dir.0.join(binary_name("vantare-overlays"))
+        );
+    }
 }
 #[test]
 fn flag_and_environment_select_the_rune_image() {

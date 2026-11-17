@@ -10,6 +10,7 @@ $root=Join-Path $qa ('build-tooling-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root)|Out-Null
 & (Join-Path $PSScriptRoot 'build-forwarding-tests.ps1') -QaRoot $root
 & (Join-Path $PSScriptRoot 'hub-inventory-tests.ps1') -QaRoot $root
+& (Join-Path $PSScriptRoot 'rune-tooling-tests.ps1') -QaRoot $root
 & (Join-Path $PSScriptRoot 'build-zip-tests.ps1') -QaRoot $root
 & (Join-Path $PSScriptRoot 'build-package-capacity-tests.ps1') -QaRoot $root
 if($PSVersionTable.PSVersion.Major -ge 7 -and [Enum]::GetNames([IO.Compression.CompressionLevel]) -contains 'SmallestSize'){& (Join-Path $PSScriptRoot 'measure-hub-package-tests.ps1') -QaRoot $root}
@@ -24,7 +25,7 @@ $clock=[Diagnostics.Stopwatch]::StartNew()
 $rejected=$false;try{Invoke-BuildProcess $shell @('-NoProfile','-File',$slow) $null 500|Out-Null}catch{$rejected=$true}
 if(-not $rejected -or $clock.Elapsed.TotalSeconds -gt 5){throw 'Plazo de --version no corta el proceso'}
 $inventory=Get-Content (Join-Path $PSScriptRoot 'public-inventory.json') -Raw|ConvertFrom-Json
-$bins=@($inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension((Get-PublicArtifact $_ $inventory))})
+$bins=@($inventory.executables|Where-Object {$_ -cnotin $inventory.external_bins}|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension((Get-PublicArtifact $_ $inventory))})
 Assert-PublicBins $bins $inventory
 $qaProbe='root-launch-probe'
 $hubManifest=Get-Content -LiteralPath (Join-Path $PSScriptRoot '../hub/Cargo.toml') -Raw

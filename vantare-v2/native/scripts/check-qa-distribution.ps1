@@ -4,6 +4,7 @@ $ErrorActionPreference='Stop'
 $target=[IO.Path]::GetFullPath($TargetDirectory)
 $native=Split-Path $PSScriptRoot
 . (Join-Path $native 'packaging/no-qa.ps1')
+. (Join-Path $native 'packaging/build-tooling.ps1')
 & (Join-Path $native 'packaging/hub-notices-real-tests.ps1') -Project (Join-Path $native '../hub-web') -EvidenceDirectory $target
 & (Join-Path $native 'packaging/no-qa-tests.ps1') -EvidenceDirectory (Join-Path $target ('marker-negative-'+[guid]::NewGuid().ToString('N')))
 Push-Location $native
@@ -63,6 +64,8 @@ try {
     $null=& (Join-Path $native 'packaging/build-candidate.ps1') -Version '0.0.0' -Channel nightly -OutputDirectory (Join-Path $target 'release-package') -BuildProfile Release -AllowDirty
     Save-DistributionPhase 'clean-candidate' $phase
     Assert-NativeDistributionTree (Join-Path $target 'release-package/payload')
+    # Rune is shipped as an ordinary product image; packaging does not select it.
+    Assert-ExecutableSidecar (Join-Path $target 'release-package/payload/bin/vantare-overlays-rune.exe')
     & (Join-Path $native 'packaging/no-qa-tests.ps1') -EvidenceDirectory (Join-Path $target ('actual-exe-controls-'+[guid]::NewGuid().ToString('N'))) -CleanExecutable (Join-Path $target 'release-package/payload/bin/vantare.exe') -FixtureExecutable (Join-Path $target 'release/vantare-core.exe')
 
 

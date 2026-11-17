@@ -25,6 +25,8 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
 mod background;
+#[cfg(test)]
+mod engine_tests;
 mod child_shutdown;
 #[cfg(windows)]
 mod installed;
@@ -840,7 +842,7 @@ mod tests {
     }
 
     fn parsed(list: &[&str]) -> Result<Config, String> {
-        parse(&args(list), Path::new("bin"))
+        parse_with_engine_env(&args(list), Path::new("bin"), None)
     }
 
     #[test]

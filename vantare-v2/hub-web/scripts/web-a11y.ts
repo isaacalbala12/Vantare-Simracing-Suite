@@ -233,11 +233,25 @@ try {
   }
   await checkMainScreens(page, server.resolvedUrls?.local[0] ?? "", evidence);
   const { checkAnalysisComparison } = await import("./analysis-compare-web.ts");
-  await checkAnalysisComparison(
-    page,
-    server.resolvedUrls?.local[0] ?? "",
-    resolve(evidence, "analysis-comparison"),
-  );
+  const comparisonContext = await browser.newContext({
+    timezoneId: "UTC",
+    locale: "es-ES",
+    reducedMotion: "reduce",
+    deviceScaleFactor: 1,
+  });
+  const comparisonPage = await comparisonContext.newPage();
+  comparisonPage.setDefaultTimeout(20000);
+  const comparisonFailures = collectPageFailures(comparisonPage);
+  try {
+    await checkAnalysisComparison(
+      comparisonPage,
+      server.resolvedUrls?.local[0] ?? "",
+      resolve(evidence, "analysis-comparison"),
+    );
+  } finally {
+    failures.push(...comparisonFailures);
+    await comparisonContext.close();
+  }
   await checkStudioCanvas(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkStudioCatalogDrop(
     page,

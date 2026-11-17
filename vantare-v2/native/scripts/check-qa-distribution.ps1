@@ -4,6 +4,7 @@ $ErrorActionPreference='Stop'
 $target=[IO.Path]::GetFullPath($TargetDirectory)
 $native=Split-Path $PSScriptRoot
 . (Join-Path $native 'packaging/no-qa.ps1')
+& (Join-Path $native 'packaging/hub-notices-real-tests.ps1') -Project (Join-Path $native '../hub-web') -EvidenceDirectory $target
 & (Join-Path $native 'packaging/no-qa-tests.ps1') -EvidenceDirectory (Join-Path $target ('marker-negative-'+[guid]::NewGuid().ToString('N')))
 Push-Location $native
 $previousTarget=$env:CARGO_TARGET_DIR

@@ -8,6 +8,20 @@ use std::{
     path::Path,
 };
 
+fn compressed_capacity(bytes: u64) -> Result<()> {
+    ensure(
+        bytes <= 256 * 1024 * 1024,
+        "ZIP comprimido supera el límite",
+    )
+}
+
+fn expanded_capacity(member: u64, total: u64) -> Result<()> {
+    ensure(
+        member <= 256 * 1024 * 1024 && total <= 768 * 1024 * 1024,
+        "ZIP supera el límite de extracción",
+    )
+}
+
 pub fn expand(
     zip_path: &Path,
     expected_sha: &str,
@@ -28,10 +42,7 @@ pub fn expand(
         options.share_mode(1);
     }
     let mut input = options.open(zip_path)?;
-    ensure(
-        input.metadata()?.len() <= 128 * 1024 * 1024,
-        "ZIP comprimido supera el límite",
-    )?;
+    compressed_capacity(input.metadata()?.len())?;
     let mut hash = Sha256::new();
     io::copy(&mut input, &mut hash)?;
     ensure(
@@ -83,10 +94,7 @@ pub fn expand(
         total = total
             .checked_add(member.size())
             .ok_or_else(|| super::WriteError::new(1, "Tamaño ZIP fuera de rango"))?;
-        ensure(
-            member.size() <= 256 * 1024 * 1024 && total <= 512 * 1024 * 1024,
-            "ZIP supera el límite de extracción",
-        )?;
+        expanded_capacity(member.size(), total)?;
         // Exact names forbid traversal, ADS, directory entries and .env.
         let mode = member.unix_mode().unwrap_or_default();
         ensure(
@@ -210,5 +218,21 @@ mod central_tests {
             file.stream_position().expect("cursor"),
             u64::try_from(2 * (46 + name.len())).expect("position")
         );
+    }
+}
+
+#[cfg(all(test, windows, feature = "write-engine"))]
+mod capacity_tests {
+    #[test]
+    fn compressed_limit_accepts_256_mib_and_rejects_one_more_byte() {
+        assert!(super::compressed_capacity(256 * 1024 * 1024).is_ok());
+        assert!(super::compressed_capacity(256 * 1024 * 1024 + 1).is_err());
+    }
+
+    #[test]
+    fn expanded_limit_accepts_768_mib_and_rejects_one_more_byte() {
+        assert!(super::expanded_capacity(256 * 1024 * 1024, 768 * 1024 * 1024).is_ok());
+        assert!(super::expanded_capacity(1, 768 * 1024 * 1024 + 1).is_err());
+        assert!(super::expanded_capacity(256 * 1024 * 1024 + 1, 768 * 1024 * 1024).is_err());
     }
 }

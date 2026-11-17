@@ -19,7 +19,10 @@ if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]
 if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión fuera de rango'}
 Assert-NativeDistributionConfigFile $Channel $ConfigFile
 $destination=Assert-BuildPath $OutputDirectory
-if((Test-Path -LiteralPath $destination) -and @(Get-ChildItem -LiteralPath $destination -Force).Count){throw 'La salida debe estar vacía'}
+# Private, one-use handoff from this process to its queued child, bound to output.
+$rustStage=$env:VANTARE_INTERNAL_CANDIDATE_STAGE -ceq $destination
+Remove-Item Env:VANTARE_INTERNAL_CANDIDATE_STAGE -ErrorAction SilentlyContinue
+if(-not $RustStage -and (Test-Path -LiteralPath $destination) -and @(Get-ChildItem -LiteralPath $destination -Force).Count){throw 'La salida debe estar vacía'}
 $native=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $sourceSha=(& git -C $native rev-parse HEAD).Trim()
 if($LASTEXITCODE){throw 'No se pudo identificar el SHA fuente'}
@@ -38,18 +41,50 @@ try{
         [IO.Directory]::CreateDirectory($data)|Out-Null
         [Environment]::SetEnvironmentVariable($pair[0],$data,'Process')
     }
-    if(-not $env:CARGO_TARGET_DIR){$env:CARGO_TARGET_DIR=Join-Path $destination 'target-build'}
     $env:VANTARE_VERSION=$Version;$env:VANTARE_BUILD_CHANNEL=$Channel
+    $web=Join-Path $native '../hub-web'
+    if(-not $RustStage){
+        Push-Location $web
+        try{
+            & bun run build
+            if($LASTEXITCODE){throw 'Falló build Electron'}
+            & bun run package
+            if($LASTEXITCODE){throw 'Falló package Electron'}
+        }finally{Pop-Location}
+        # Build and copy before releasing the shared target's lease.
+        $forward=@('-Version',$Version,'-Channel',$Channel,'-OutputDirectory',$destination,'-BuildProfile',$BuildProfile)
+        if($ConfigFile){$forward+=@('-ConfigFile',([IO.Path]::GetFullPath($ConfigFile)))}
+        if($AllowDirty){$forward+='-AllowDirty'}
+        $priorStage=$env:VANTARE_INTERNAL_CANDIDATE_STAGE
+        try{
+            $env:VANTARE_INTERNAL_CANDIDATE_STAGE=$destination
+            if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath -Version $Version -Channel $Channel -OutputDirectory $destination -BuildProfile $BuildProfile -ConfigFile $ConfigFile -AllowDirty:$AllowDirty}
+            else{
+                & pwsh -NoProfile -File (Join-Path $native 'scripts/compilar.ps1') pwsh -NoProfile -File $PSCommandPath @forward
+                if($LASTEXITCODE){throw 'Falló el candidato dentro del slot'}
+            }
+        }finally{$env:VANTARE_INTERNAL_CANDIDATE_STAGE=$priorStage}
+        return
+    }
+    if(-not $env:VANTARE_CARGO_QUEUE_OWNER -or -not $env:CARGO_TARGET_DIR){throw 'La fase Rust exige el slot de compilación'}
     $staticFlags='-C'+[char]31+'target-feature=+crt-static'
     if($oldFlags){$env:CARGO_ENCODED_RUSTFLAGS=$oldFlags+[char]31+$staticFlags}
     else{$env:CARGO_ENCODED_RUSTFLAGS=$staticFlags}
+    $ui=Join-Path $web 'release/package/vantare-hub-ui-win32-x64'
+    $receipt=Assert-HubPackage $ui (Join-Path $web 'release/package/package-inventory.json') $Version $sourceSha $dirty
+    Assert-HubSource $web
+
     Push-Location $native
     try{
         # The queue exports Machine > process jobs; do not override it with -j 2.
-        $args=@('build','--workspace','--exclude','vantare-admin','--exclude','vantare-installer','--bins','--target','x86_64-pc-windows-msvc','--locked','--offline','--timings')
+        $args=@('build','--workspace','--exclude','vantare-admin','--exclude','vantare-installer','--exclude','vantare-hub','--exclude','vantare-hub-host','--bins','--target','x86_64-pc-windows-msvc','--locked','--offline','--timings')
         if($BuildProfile -ceq 'Release'){$args+='--release'}
         & pwsh -NoProfile -File scripts/compilar.ps1 cargo @args
         if($LASTEXITCODE){throw 'Falló la compilación offline'}
+        $hostArgs=@('build','-p','vantare-hub-host','--bin','vantare-hub-host','--target','x86_64-pc-windows-msvc','--locked','--offline')
+        if($BuildProfile -ceq 'Release'){$hostArgs+='--release'}
+        & pwsh -NoProfile -File scripts/compilar.ps1 cargo @hostArgs
+        if($LASTEXITCODE){throw 'Falló el anfitrión Rust aislado'}
         $metadata=& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc|ConvertFrom-Json
         if($LASTEXITCODE){throw 'No se pudo leer cargo metadata'}
         Assert-NativeDistributionFeatures @($metadata.resolve.nodes|ForEach-Object {$_.features})
@@ -64,7 +99,9 @@ try{
     $dumpbin=Get-NativeDumpbin
     $target=Join-Path ([IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) ('x86_64-pc-windows-msvc/'+$BuildProfile.ToLowerInvariant())
     foreach($bin in $bins){
-        $source=Join-Path $target "$bin.exe"
+        $name="$bin.exe"
+        $artifact=Get-PublicArtifact $name $inventory
+        $source=Join-Path $target $artifact
         Assert-NativeDistributionBinary $source
         Assert-NativeStaticCrt $source $dumpbin
         $embedded=Invoke-BuildProcess $source @('--version') $null
@@ -85,7 +122,12 @@ try{
     Copy-Item -LiteralPath (Join-Path $native 'ui/assets/fonts/OFL-Inter.txt') -Destination (Join-Path $payload 'licenses/OFL-Inter.txt')
     $dependencies=@($metadata.packages|Sort-Object name,version|ForEach-Object {@{name=$_.name;version=$_.version;license=$_.license;source=$_.source}})
     Write-BuildJson (Join-Path $payload 'dependencies.json') $dependencies
-    Assert-PublicInventory $payload $inventory
+    Copy-Item -LiteralPath $ui -Destination (Join-Path $payload 'hub-ui') -Recurse
+    Write-HubNotices $web (Join-Path $payload 'licenses/hub-web-notices.txt')
+    Assert-PublicInventory $payload $inventory $receipt.files
+    Assert-NativeDistributionTree $payload
+    Assert-HubSource $web
+    if((& git -C $native rev-parse HEAD).Trim() -cne $sourceSha -or [bool]@(& git -C $native status --porcelain) -ne $dirty){throw 'La fuente cambió durante el candidato'}
     $files=@(Get-ChildItem -LiteralPath $payload -Recurse -File -Force|Sort-Object FullName|ForEach-Object {
         $null=Assert-BuildPath $_.FullName
         @{path=$_.FullName.Substring($payload.Length+1).Replace('\','/');size=$_.Length;sha256=(Get-NativeHash $_.FullName)}
@@ -104,6 +146,8 @@ try{
     $generation=Join-Path $portableTree ('generations/'+$id)
     [IO.Directory]::CreateDirectory($generation)|Out-Null
     Copy-Item -Path (Join-Path $payload '*') -Destination $generation -Recurse
+    $manifestPath=Join-Path $payload 'manifest.json'
+    Assert-SealedFiles $generation ($files+@(@{path='manifest.json';size=(Get-Item -LiteralPath $manifestPath).Length;sha256=(Get-NativeHash $manifestPath)}))
     [IO.Directory]::CreateDirectory((Join-Path $generation 'data'))|Out-Null
     # The portable ZIP omits directory records; keep its initial data/ on extraction.
     [IO.File]::WriteAllBytes((Join-Path $generation 'data/.vantare-directory'),[byte[]]::new(0))

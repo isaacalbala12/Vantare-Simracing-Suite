@@ -4,7 +4,6 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-$script:BuildPackageVerifier=$null
 
 function Assert-BuildPath([string]$Path) {
     if([string]::IsNullOrWhiteSpace($Path)){throw 'Ruta de build obligatoria'}
@@ -61,20 +60,10 @@ function New-BuildZip([string]$Directory,[string]$Destination,[ValidateSet('Opti
 function Test-BuildPackage([string]$Archive,[string]$Version,[string]$Channel,[string]$Verifier) {
     $archive=Assert-BuildPath $Archive
     if(-not $Verifier){
-        if($script:BuildPackageVerifier -and (Test-Path -LiteralPath $script:BuildPackageVerifier)){$Verifier=$script:BuildPackageVerifier}
-    }
-    if(-not $Verifier){
         $native=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-        $priorTarget=$env:CARGO_TARGET_DIR
-        if(-not $priorTarget){$env:CARGO_TARGET_DIR=Join-Path ([IO.Path]::GetDirectoryName($archive)) 'target-verifier'}
-        $targetDirectory=[IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)
-        Push-Location $native
-        try{
-            & pwsh -NoProfile -File scripts/compilar.ps1 cargo build -p vantare-installer --example verify-package --no-default-features --features write-engine --target x86_64-pc-windows-msvc --locked --offline -j 2
-            if($LASTEXITCODE){throw 'Falló la compilación del verificador Rust'}
-        }finally{Pop-Location;$env:CARGO_TARGET_DIR=$priorTarget}
-        $Verifier=Join-Path $targetDirectory 'x86_64-pc-windows-msvc/debug/examples/verify-package.exe'
-        $script:BuildPackageVerifier=$Verifier
+        & pwsh -NoProfile -File (Join-Path $native 'scripts/compilar.ps1') pwsh -NoProfile -File (Join-Path $PSScriptRoot 'verify-build-package.ps1') -Archive $archive -Version $Version -Channel $Channel
+        if($LASTEXITCODE){throw 'Falló la verificación Rust dentro del slot'}
+        return
     }
     $null=Invoke-BuildProcess $Verifier @($archive,(Get-NativeHash $archive),$Version,$Channel) $null 120000
 }
@@ -148,26 +137,42 @@ function Assert-PublishArtifacts([string]$OutputDirectory) {
     }
 }
 
-function Assert-PublicInventory([string]$Payload,[object]$Inventory) {
-    $public=@('vantare.exe','vantare-core.exe','vantare-overlays.exe','vantare-hub.exe','vantare-engineer.exe','vantare-services.exe','vantare-storage.exe','vantare-grabar-lmu.exe','vantare-grabar-acc.exe','vantare-import-profile.exe')
-    $listed=@($Inventory.executables|Sort-Object -CaseSensitive)
-    $approved=@($public|Sort-Object -CaseSensitive)
-    if($Inventory.schema -ne 1 -or [string]::Join("`n",$listed) -cne [string]::Join("`n",$approved)){throw 'Inventario público inválido'}
-    if(@($Inventory.resources|Where-Object {$_ -cmatch '(^|/)\.\.?(/|$)' -or $_ -cmatch '^/' -or $_ -cmatch '\\' -or $_ -cmatch '^(layouts|telemetry-real)/'}).Count){throw 'Ruta de recurso inválida'}
+function Assert-PublicInventory([string]$Payload,[object]$Inventory,$HubFiles=@()) {
+    $listed=@($Inventory.executables)
+    if($Inventory.schema -ne 1 -or -not $listed.Count -or @($listed|Where-Object {$_ -cnotmatch '^vantare(?:-[a-z0-9]+)*\.exe$'}).Count -or @($listed|Sort-Object -Unique).Count -ne $listed.Count){throw 'Inventario público inválido'}
+    if(@($Inventory.resources|Where-Object {$_ -cmatch '(^|/)\.\.?(/|$)' -or $_ -cmatch '^/' -or $_ -cmatch '\\|:' -or $_ -cmatch '^(layouts|telemetry-real)/'}).Count){throw 'Ruta de recurso inválida'}
     foreach($required in @('standings-design-system.sequence.json','session-alerts.snapshot.json')){
         if($required -cnotin $Inventory.resources){throw "Recurso obligatorio ausente: $required"}
     }
-    $expected=@('README.md','licenses/OFL-Inter.txt','dependencies.json')
-    $expected+=@($Inventory.executables|ForEach-Object {"bin/$_";"bin/$_.sha256"})
+    $expected=@('README.md','licenses/OFL-Inter.txt','dependencies.json','licenses/hub-web-notices.txt')
+    $expected+=@($listed|ForEach-Object {"bin/$_";"bin/$_.sha256"})
     $expected+=@($Inventory.resources|ForEach-Object {"bin/fixtures/$_"})
-    $actual=@(Get-ChildItem -LiteralPath $Payload -File -Recurse|ForEach-Object {$_.FullName.Substring($Payload.Length+1).Replace('\','/')})
-    $expected=@($expected|Sort-Object -CaseSensitive)
-    $actual=@($actual|Sort-Object -CaseSensitive)
-    if([string]::Join("`n",$expected) -cne [string]::Join("`n",$actual)){throw 'Inventario público incompatible'}
+    if(@($HubFiles).Count){
+        Assert-SealedFiles (Join-Path $Payload 'hub-ui') $HubFiles
+        $expected+=@($HubFiles|ForEach-Object {'hub-ui/'+$_.path})
+    }
+    $actual=@(Get-ChildItem -LiteralPath $Payload -Force -Recurse|ForEach-Object {
+        $null=Assert-BuildPath $_.FullName
+        if(-not $_.PSIsContainer){$_.FullName.Substring($Payload.Length+1).Replace('\','/')}
+    })
+    if((@($expected|Sort-Object -CaseSensitive) -join "`n") -cne (@($actual|Sort-Object -CaseSensitive) -join "`n")){throw 'Inventario público incompatible'}
+    foreach($exe in $listed){Assert-ExecutableSidecar (Join-Path $Payload "bin/$exe")}
 }
 
+function Get-PublicArtifact([string]$Name,[object]$Inventory) {
+    $overrides=$Inventory.PSObject.Properties['artifact_overrides']
+    if($overrides){
+        foreach($entry in $overrides.Value.PSObject.Properties){
+            if($entry.Name -cnotmatch '^vantare(-[a-z0-9]+)*\.exe\z' -or $entry.Name -cnotin $Inventory.executables -or $entry.Value -isnot [string] -or $entry.Value -cnotmatch '^vantare(-[a-z0-9]+)*\.exe\z'){throw 'Override de artefacto inválido'}
+        }
+    }
+    $override=if($overrides){$overrides.Value.PSObject.Properties[$Name]}else{$null}
+    if($override){$override.Value}else{$Name}
+}
 function Assert-PublicBins([string[]]$Available,[object]$Inventory) {
-    $public=@($Inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension($_)})
-    $internal=@('vantare-admin','vantare-setup','vantare-uninstall','vantare-grabar-lmu-completo','vantare-verificar-lmu','vantare-workshop','root-launch-probe','vantare-hub-host')
+    $public=@($Inventory.executables|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension((Get-PublicArtifact $_ $Inventory))})
+    $internal=@('vantare-admin','vantare-setup','vantare-uninstall','vantare-grabar-lmu-completo','vantare-verificar-lmu','vantare-workshop','root-launch-probe','vantare-hub')
     if(@($public|Where-Object {$_ -cnotin $Available}).Count -or @($Available|Where-Object {$_ -cnotin $public -and $_ -cnotin $internal}).Count){throw 'Binarios públicos incompatibles'}
 }
+
+. (Join-Path $PSScriptRoot 'hub-package-tooling.ps1')

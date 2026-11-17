@@ -20,6 +20,8 @@ foreach ($define in $Defines) { if ($define -ceq '/DTEST_INSTALLER') { $TestInst
 if ($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$' -or @($Version.Split('.') | Where-Object { [int]$_ -gt 65535 }).Count) { throw 'Versión inválida.' }
 Assert-NativeDistributionConfigFile $Channel $ConfigFile
 $output=Assert-BuildPath $OutputDirectory
+$inBuildSlot=$env:VANTARE_INTERNAL_SETUP_STAGE -ceq $output
+Remove-Item Env:VANTARE_INTERNAL_SETUP_STAGE -ErrorAction SilentlyContinue
 if ($TestInstaller) {
     . (Join-Path $PSScriptRoot 'matrix/guard.ps1')
     $null=Assert-MatrixRoot $output
@@ -31,7 +33,23 @@ $oldTarget=$env:CARGO_TARGET_DIR
 $previousConfig=Import-NativeBuildConfig $ConfigFile
 try {
 if($Channel -ieq 'beta'){Assert-NativeDistributionLicenseRegistry $env:VANTARE_LICENSE_PUBLIC_KEYS -Required}
-if(-not $env:CARGO_TARGET_DIR){$env:CARGO_TARGET_DIR=Join-Path $output 'target-installer'}
+
+if(-not $InBuildSlot){
+    $forward=@('-Version',$Version,'-OutputDirectory',$output,'-BuildProfile',$BuildProfile,'-Channel',$Channel)
+    if($ConfigFile){$forward+=@('-ConfigFile',([IO.Path]::GetFullPath($ConfigFile)))}
+    if($TestInstaller){$forward+='-TestInstaller'}
+    $priorStage=$env:VANTARE_INTERNAL_SETUP_STAGE
+    try{
+        $env:VANTARE_INTERNAL_SETUP_STAGE=$output
+        if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath -Version $Version -OutputDirectory $output -BuildProfile $BuildProfile -Channel $Channel -ConfigFile $ConfigFile -TestInstaller:$TestInstaller}
+        else{
+            & pwsh -NoProfile -File (Join-Path $PSScriptRoot '../scripts/compilar.ps1') pwsh -NoProfile -File $PSCommandPath @forward
+            if($LASTEXITCODE){throw 'Falló Setup dentro del slot'}
+        }
+    }finally{$env:VANTARE_INTERNAL_SETUP_STAGE=$priorStage}
+    return
+}
+if(-not $env:VANTARE_CARGO_QUEUE_OWNER -or -not $env:CARGO_TARGET_DIR){throw 'Setup exige el slot de compilación'}
 $null=Test-BuildPackage $archive $Version $Channel
 Assert-NativeDistributionArchive $archive -Registry $env:VANTARE_LICENSE_PUBLIC_KEYS
 foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','local'),@('APPDATA','roaming'))){
@@ -45,7 +63,7 @@ $names=@('VANTARE_VERSION','VANTARE_INSTALLER_ARCHIVE','VANTARE_INSTALLER_UNINST
 foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 Push-Location $native
 try {
-    if(-not $env:CARGO_TARGET_DIR){$env:CARGO_TARGET_DIR=Join-Path $output 'target-installer'}
+
     $env:VANTARE_VERSION=$Version
     # Setup debe abrirse antes de instalar el payload, también sin VC Redist.
     # CRT estático del toolchain ya existente; no redistribuye otra dependencia.

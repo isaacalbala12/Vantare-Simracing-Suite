@@ -1,6 +1,6 @@
 # Instalador nativo y paquete beta
 
-El Setup y Uninstall de `native/installer` y el lanzador `Vantare.exe` son el único motor instalado. El paquete contiene binarios Rust de motor 2, recursos y `manifest.json`; `candidate.ps1`, `beta.ps1` y NSIS ya no se distribuyen. `installer-cleanup.ps1` sigue siendo la excepción mínima y permanente para borrar el desinstalador después de que salga su proceso.
+El Setup y Uninstall de `native/installer` y el lanzador `Vantare.exe` son el único motor instalado. El paquete contiene binarios Rust de motor 2, Electron en `hub-ui/`, recursos y `manifest.json`; `candidate.ps1`, `beta.ps1` y NSIS ya no se distribuyen. `installer-cleanup.ps1` sigue siendo la excepción mínima y permanente para borrar el desinstalador después de que salga su proceso.
 
 ## Contrato de instalación
 
@@ -14,7 +14,7 @@ El Setup y Uninstall de `native/installer` y el lanzador `Vantare.exe` son el ú
 
 `build-candidate.ps1` es herramienta del repositorio, no parte de la instalación. Construye los binarios mediante `native/scripts/compilar.ps1` con CRT estático, verifica sus versiones y dependencias, genera el manifiesto y los ZIP de paquete y portable. `build-installer.ps1` empaqueta Setup/Uninstall; `sign-beta-manifest.ps1` y `publish-beta.ps1` preparan el feed. Esas herramientas no publican una release por sí solas y exigen un checkout limpio salvo `-AllowDirty` explícito.
 
-El inventario público cerrado está en `public-inventory.json`: diez EXE y 97 recursos aprobados, sin `ui/fixtures/layouts/` ni `telemetry-real/`. Cada artefacto publicable, incluido Setup, exige su `.sha256`. `build-tooling-tests.ps1 -QaRoot <raíz QA>` verifica la entrada UTF-8, el inventario, los sidecars y el manifiesto; con `-Verifier <matrix-verifier.exe>` comprueba además la firma de ida y vuelta con acentos. Tras una actualización confirmada no hay rollback manual: una versión nueva requiere otro paquete firmado.
+El inventario público cerrado está en `public-inventory.json`: una lista de EXE y los recursos aprobados, sin `ui/fixtures/layouts/` ni `telemetry-real/`. Cada artefacto publicable, incluido Setup, exige su `.sha256`. `build-tooling-tests.ps1 -QaRoot <raíz QA>` verifica la entrada UTF-8, el inventario, los sidecars y el manifiesto; con `-Verifier <matrix-verifier.exe>` comprueba además la firma de ida y vuelta con acentos. Tras una actualización confirmada no hay rollback manual: una versión nueva requiere otro paquete firmado.
 
 `Test-BuildPackage` invoca el ejemplo `verify-package`, que llama al mismo
 extractor Rust autenticado que Setup. El build solo calcula el SHA del ZIP y
@@ -24,7 +24,7 @@ El archivo vacío `data/.vantare-directory` es parte del contrato del ZIP
 portable: conserva la carpeta `data/` al extraerlo sin entradas de directorio.
 Se conserva como dato opaco en futuras actualizaciones.
 
-El gate de distribución de #1917 se aplica a `build-candidate.ps1`: rechaza las features QA del grafo resuelto y rastrea marcadores QA en los EXE antes de copiarlos y en el árbol final. `build-installer.ps1` comprueba también los EXE del ZIP y de Setup/Uninstall. `native/scripts/check-qa-distribution.ps1` prueba el rechazo positivo y un paquete release bajo un target aislado en la CI.
+El gate de distribución de #1917 se aplica a `build-candidate.ps1`: rechaza las features QA del grafo resuelto y rastrea marcadores QA en los EXE antes de copiarlos y en el árbol final. `build-installer.ps1` comprueba también los EXE del ZIP y de Setup/Uninstall. `native/scripts/check-qa-distribution.ps1` prueba el rechazo positivo y un paquete release en la CI.
 
 Antes de **publicar** cualquier release con motor 2 sin LegacyRunner, Isaac debe probar el Setup con los bytes distribuidos sobre raíces 0.0.975 y 0.0.988 reales en una VM o cuenta aislada y registrar la evidencia en [#1840](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1840). La prueba es condición de publicación, no de programación ni de apertura del PR.
 
@@ -69,3 +69,29 @@ Para un smoke local sin autoridad se admite `-Channel nightly`, también en
 build-installer; el canal del manifiesto debe coincidir. No se publica una beta
 con ese paquete. El scanner bloquea las claves conocidas de test como bytes,
 base64url, base64 estándar (con/sin padding) y hex sin distinguir mayúsculas/minúsculas.
+
+### Candidato Hub Electron (P3 / VANTA-138)
+
+Requiere Bun 1.4.4 y `bun install --frozen-lockfile` en `hub-web/`.
+`build-candidate.ps1` construye y sella Electron normal con la misma versión y
+procedencia del anfitrión. Compila `vantare-hub-host` aparte y lo instala como
+`bin/vantare-hub.exe`; el Hub GPUI queda excluido del candidato, sin retirar
+su crate. Los overlays GPUI existentes se conservan hasta su relevo autorizado.
+
+La generación lleva `hub-ui/` completa, con licencias Electron/Chromium,
+sidecars de todos sus EXE y textos de licencia npm en `licenses/hub-web-notices.txt`.
+El recibo de P1 cierra los nombres, tamaños y hashes antes de crear el manifiesto.
+El gate QA inspecciona también los bytes de ASAR y recursos web. No se ejecuta
+Electron para empaquetar o verificar. Rust/Setup copian sus artefactos dentro de
+la reserva del target compartido; no crean targets por salida o por rama.
+
+La lista `executables` es extensible: un EXE declarado y su sidecar bastan para
+validarlo, sin cambiar la lógica del inventario ni del manifiesto. M4 añadirá
+`bin/vantare-overlays-rune.exe`, junto al anfitrión; P3 no lo incluye ni activa.
+Los límites nuevos son ZIP <=256 MiB, miembro <=256 MiB y total <=768 MiB.
+El primer relevo requiere Setup nuevo: el actualizador antiguo conserva 128 MiB.
+
+Este candidato no autoriza publicación. El feed nuevo queda fuera de P3: usará
+`hub-beta-v<versión>` / `vantare-hub-beta.json`, nunca el publicador heredado
+`publish-beta.ps1` ni su etiqueta/manifiesto `native-beta`. El esquema firmado
+con tamaños y el rechazo antes de descargar siguen pendientes de su paso aprobado.

@@ -137,6 +137,33 @@ function Assert-PublishArtifacts([string]$OutputDirectory) {
     }
 }
 
+# Scope only the isolated Rune phase, never the host's Cargo configuration.
+function Invoke-RuneCargoHome([string]$Directory,[scriptblock]$Action) {
+    $runeHome=Assert-BuildPath $Directory
+    if([IO.Path]::GetPathRoot($runeHome) -ine 'D:\'){throw 'CARGO_HOME de Rune exige una ruta propia en D:'}
+    $previousCargoHome=$env:CARGO_HOME
+    $hadCargoHome=Test-Path Env:CARGO_HOME
+    $hostCargoHome=if($previousCargoHome){$previousCargoHome}else{Join-Path $env:USERPROFILE '.cargo'}
+    if($runeHome.TrimEnd('\') -ieq [IO.Path]::GetFullPath($hostCargoHome).TrimEnd('\')){throw 'Rune no puede usar CARGO_HOME del host'}
+    foreach($name in @('config','config.toml')) {
+        if(Test-Path -LiteralPath (Join-Path $runeHome $name)){throw 'CARGO_HOME de Rune debe estar libre de config/config.toml'}
+    }
+    [IO.Directory]::CreateDirectory($runeHome)|Out-Null
+    try{
+        $env:CARGO_HOME=$runeHome
+        & $Action
+    }finally{
+        if($hadCargoHome){$env:CARGO_HOME=$previousCargoHome}
+        else{Remove-Item -LiteralPath Env:CARGO_HOME -ErrorAction SilentlyContinue}
+    }
+}
+function Assert-RuneNoSubmodules([string]$CargoHome) {
+    $checkouts=Join-Path (Assert-BuildPath $CargoHome) 'git/checkouts'
+    if(Test-Path -LiteralPath $checkouts){
+        if(@(Get-ChildItem -LiteralPath $checkouts -Filter '.gitmodules' -File -Force -Recurse -ErrorAction Stop).Count){throw 'Rune: submodulos Git no permitidos (.gitmodules en CARGO_HOME propio)'}
+    }
+}
+
 # Only Rune is built outside the main Cargo workspace; it is still a public image.
 function Assert-PublicExternalBins([object]$Inventory) {
     $property=$Inventory.PSObject.Properties['external_bins']

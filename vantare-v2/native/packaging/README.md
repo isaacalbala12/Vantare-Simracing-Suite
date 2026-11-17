@@ -99,6 +99,22 @@ mismo perfil, CRT estático y target reservado por la cola. Se validan features,
 bytes no QA, imports CRT y `--version` compartido antes de copiar EXE y sidecar.
 La prueba CPU de `--version` termina antes de inicializar Rune; con
 `VANTARE_SIN_GRAFICOS=1` el guard conserva prioridad y devuelve 6.
+Solo la fase Rune usa `CARGO_HOME=D:/VantareServer/cargo-home-rune`: se crea
+vacío y se reutiliza su caché, rechazando `config`/`config.toml` y el home del
+host. El entorno se restaura también al fallar. Tras el fetch se rechaza cualquier
+`.gitmodules` dentro de `git/checkouts`; no se permiten submódulos del fork.
+
+Cada candidato Release llama a `rune-release-version-tests.ps1` antes de copiar
+Rune: exige PE Windows GUI x64 y compara stdout por tubería con la versión exacta
+(incluido el salto de línea), sin depender de una consola. Para repetirlo sobre
+un candidato real ya construido, sin compilar ni cambiar el guard gráfico:
+
+```powershell
+& native/packaging/rune-release-version-tests.ps1 -Executable D:/ruta/payload/bin/vantare-overlays-rune.exe -Version 0.0.0 -Channel nightly
+```
+
+La primera ejecución real de esta comprobación se registra en el PR del
+seguimiento M4; los tests de fixtures y del lock no sustituyen esa evidencia.
 Los límites nuevos son ZIP <=256 MiB, miembro <=256 MiB y total <=768 MiB.
 El primer relevo requiere Setup nuevo: el actualizador antiguo conserva 128 MiB.
 

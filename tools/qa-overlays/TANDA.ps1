@@ -445,7 +445,8 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
   $state.status='complete'
  } catch {$state.status='aborted';$state.error=$_.Exception.Message}
  finally {
-  $state.cleaned=$true
+  $state.cleanup_attempted=$true
+  $state.cleaned=($state.status -eq 'complete')
   $state.text_review='PENDIENTE; ejecución completa no equivale a paridad aprobada'
   @('# Revisión de texto — PENDIENTE','','Revisar parejas a tamaño real: mismo contenido/elipsis, baseline, tracking, sombra y recorte. No excluir texto del diff ni aprobar solo por <5 %.','') + @($manifest.captures|ForEach-Object {"- [ ] $($_.id): [GPUI](../gpui/$($_.id).png) | [Rune](../rune/$($_.id).png) | [pareja](../pares/$($_.id).png). Puede faltar PNG si falló la CLI; consultar estado/logs."}) | Set-Content -LiteralPath (Join-Path $Output 'texto/REVISION.md') -Encoding utf8
   Write-TandaJson $state (Join-Path $Output 'estado.json')

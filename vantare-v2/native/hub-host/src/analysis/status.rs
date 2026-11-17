@@ -230,7 +230,7 @@ fn open_status(path: &Path) -> std::io::Result<fs::File> {
         use std::os::unix::fs::OpenOptionsExt;
         // O_NOFOLLOW | O_NONBLOCK: do not follow a swapped link or block on a FIFO.
         #[cfg(target_os = "linux")]
-        options.custom_flags(0x20000 | 0x800);
+        options.custom_flags(0x0002_0000 | 0x0800);
         #[cfg(target_os = "macos")]
         options.custom_flags(0x100 | 0x4);
     }

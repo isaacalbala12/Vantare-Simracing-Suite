@@ -305,7 +305,7 @@ fn checks_the_opened_handle_size_even_if_the_checked_path_was_small() {
     let path = owned.0.join("recording-status.json");
     fs::write(&path, serde_json::to_vec(&core()).unwrap()).unwrap();
     let oversized = owned.0.join("oversized.json");
-    fs::write(&oversized, vec![b' '; (LIMIT + 1) as usize]).unwrap();
+    fs::write(&oversized, vec![b' '; usize::try_from(LIMIT + 1).unwrap()]).unwrap();
     // No bytes may be read from an oversized handle, even if a valid path was checked.
     assert!(
         read_with(&owned.0, &BTreeMap::new(), |_| {

@@ -3604,4 +3604,17 @@ mod draft_cas_tests {
         assert_eq!(ordinary.matches("crate::report::save_draft(").count(), 1);
         assert_eq!(captures.matches("crate::report::save_draft(").count(), 2);
     }
+    #[test]
+    fn stale_discard_conflicts_when_the_winner_already_discarded() {
+        let (root,mut app)=fixture("draft-cas-discarded");
+        app.draft_reply(save("A",None)).expect("create");
+        let revision=loaded(&mut app)["revision"].as_str().expect("revision").to_owned();
+        app.draft_reply(discard(Some(&revision))).expect("winner discards");
+        assert!(matches!(app.draft_reply(discard(Some(&revision))).expect("stale"), Reply::DraftConflict { draft: None, .. }));
+        assert_eq!(loaded(&mut app)["revision"], serde_json::Value::Null);
+        assert!(matches!(app.draft_reply(discard(None)).expect("observed absence"), Reply::Draft { draft: None, revision: None, .. }));
+        drop(app);
+        crate::cleanup_store(&root,"draft-cas-discarded", &[]);
+    }
+
 }

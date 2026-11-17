@@ -456,3 +456,20 @@ fn failed_archiving_is_not_retried_by_autosave_or_discard_until_load() {
     assert!(state.warning.is_none());
     assert_eq!(state.legacy, LegacyMigration::Archived);
 }
+
+#[test]
+fn conflicted_import_releases_importing_without_archiving_the_original() {
+    let root=Root::new();
+    let path=editor(&root.path,"local loser",100);
+    let original=fs::read(&path).expect("original");
+    let mut state=State::new(&root.path);
+    state.begin(Operation::Load);
+    import(&mut state);
+    assert!(state.importing);
+    let conflict=Reply::DraftConflict { draft: None, message: String::new() };
+    assert!(matches!(state.complete(Operation::Load,conflict).expect("conflict"),Next::Complete(Reply::DraftConflict { .. })));
+    assert!(!state.importing);
+    assert_eq!(fs::read(&path).expect("untouched"),original);
+    // Only a later, explicit load may start another import.
+    assert!(matches!(state.complete(Operation::Load,reply(None)).expect("load"),Next::Import(Command::DraftSave { .. })));
+}

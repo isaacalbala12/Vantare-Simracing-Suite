@@ -1660,3 +1660,25 @@ it("carries the observation through close-save conflicts without replay or losin
     request: { expectedRevision: loaded.value.revision },
   });
 });
+
+
+it("keeps local text when discard conflicts with an already absent winning draft", async()=>{
+  const hook=await mount();
+  act(()=>hook.result.current.edit({actionText:"before discard"}));
+  await act(async()=>{await hook.result.current.save();});
+  act(()=>hook.result.current.edit({actionText:"LOCAL RETAINED"}));
+  const original=hook.connection.request.bind(hook.connection);
+  const request=vi.spyOn(hook.connection,"request").mockImplementation(value=>{
+    if(value.method === "draft.discard")return Promise.reject(new HostFailure({kind:"draftConflict",current:{legacy:"none",exists:false,revision:null,fields:{module:"unknown",actionText:"",expectedText:"",observedText:"",contextText:""},screenshots:[],message:""}}));
+    if(value.method === "draft.save")return Promise.resolve({method:"draft.save",value:{legacy:"none",exists:true,revision:"c".repeat(32),fields:value.fields,screenshots:[],message:""}} as Reply);
+    return original(value);
+  });
+  await act(async()=>{await expect(hook.result.current.discard()).rejects.toMatchObject({detail:{kind:"draftConflict"}});});
+  expect(hook.result.current.fields.actionText).toBe("LOCAL RETAINED");
+  expect(hook.result.current.draftExists).toBe(false);
+  expect(hook.result.current.dirty).toBe(true);
+  expect(hook.result.current.message).toBe("Otro Hub cambió este borrador. Tu texto sigue aquí; si guardas, sustituirás el suyo.");
+  expect(request.mock.calls.filter(([value])=>value.method === "draft.discard")).toHaveLength(1);
+  await act(async()=>{await hook.result.current.save();});
+  expect(request.mock.calls.at(-1)?.[0]).toMatchObject({method:"draft.save",expectedRevision:null});
+});

@@ -1135,4 +1135,15 @@ mod draft_cas_tests {
             }
         }
     }
+    #[test]
+    fn draft_reply_uses_the_authority_revision_and_rejects_invalid_presence() {
+        let observed = "0123456789abcdef0123456789abcdef".to_owned();
+        let reply = complete(Operation::Load, core::Reply::Draft { draft: Some(saved()), revision: Some(observed.clone()), message: String::new() }).expect("draft reply");
+        let crate::protocol::Reply::DraftLoad { value } = reply else { panic!("draft load") };
+        assert_eq!(value.revision, Some(observed.clone()));
+        for (draft, revision) in [(Some(saved()), None), (None, Some(observed)), (Some(saved()), Some("malformed".into()))] {
+            assert_eq!(complete(Operation::Load, core::Reply::Draft { draft, revision, message: String::new() }), Err(HostError::Rejected));
+        }
+    }
+
 }

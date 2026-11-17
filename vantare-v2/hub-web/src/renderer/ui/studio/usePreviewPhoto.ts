@@ -27,11 +27,29 @@ export type PhotoStatus =
   | "invalidInput";
 type Photo = {
   status: PhotoStatus;
-  image?: PreviewImage;
+  image?: Pick<PreviewImage, "width" | "height">;
   src?: string;
   retrying?: boolean;
   key: string;
 };
+
+// preview_settings() passes only kind and settings to Rune; the CLI creates a
+// fresh instance with default placement/visibility and derives its natural size.
+export function previewFingerprint(
+  item: Pick<OverlayInstance, "kind" | "settings">,
+) {
+  return JSON.stringify(
+    { kind: item.kind, settings: item.settings },
+    (_key, value: unknown) =>
+      value && typeof value === "object" && !Array.isArray(value)
+        ? Object.fromEntries(
+            Object.keys(value)
+              .sort()
+              .map((key) => [key, (value as Record<string, unknown>)[key]]),
+          )
+        : value,
+  );
+}
 
 // The host has no cancellation command. A superseded request must finish before
 // the latest selection can be sent; its pixels and announcements are discarded.
@@ -53,7 +71,7 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
   const previous = useRef<
     | {
         id: string;
-        settings: string;
+        key: string;
         account: string | null;
         client: typeof client;
         regeneration: number;
@@ -62,8 +80,9 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
   >(undefined);
   const accountChanged = useRef(false);
   const reconciling = useRef(false);
-  const settings = JSON.stringify(item.settings);
-  const key = `${core.accountGeneration}:${item.id}:${view.revision}:demo:1`;
+  const key = `${core.accountGeneration}:${item.id}:${previewFingerprint(item)}:demo:1`;
+  const revision = useRef(view.revision);
+  revision.current = view.revision;
   const currentKey = useRef(key);
   currentKey.current = key;
   const allowed =
@@ -90,8 +109,8 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
     const last = previous.current;
     const changed =
       !last ||
-      last.id !== item.id ||
-      last.settings !== settings ||
+      last.key !== key ||
+      last.client !== client ||
       last.regeneration !== regeneration;
     if (
       last &&
@@ -107,22 +126,14 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
     }
     previous.current = {
       id: item.id,
-      settings,
+      key,
       account: core.accountGeneration,
       client,
       regeneration,
     };
-    if ((reconciling.current && last?.id === item.id) || !changed) {
-      // Geometry/another widget's revision invalidates pixels, but cannot start Rune.
-      setPhoto((old) =>
-        old.key === key
-          ? old
-          : {
-              status:
-                old.status === "studioConflict" ? "studioConflict" : "noDemo",
-              key,
-            },
-      );
+    if (!changed) return;
+    if (reconciling.current && last?.id === item.id) {
+      setPhoto({ status: "studioConflict", key });
       return;
     }
     const token = ++serial.current;
@@ -155,7 +166,7 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
           target: {
             kind: "instance",
             id: item.id,
-            baseRevision: view.revision,
+            baseRevision: revision.current,
           },
           scene: "demo",
           scale: "1",
@@ -175,7 +186,12 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
           return;
         }
         if (valid())
-          setPhoto({ status: "photo", image: reply.value, src, key });
+          setPhoto({
+            status: "photo",
+            image: { width: reply.value.width, height: reply.value.height },
+            src,
+            key,
+          });
       } catch (error) {
         if (!valid()) return;
         const detail = error instanceof HostFailure ? error.detail : undefined;
@@ -192,7 +208,20 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
         setPhoto({ status, key });
         if (status === "studioConflict") {
           reconciling.current = true;
-          await execute({ method: "studio.get" });
+          const current = await execute({ method: "studio.get" });
+          const refreshed = current?.instances.find(
+            (instance) => instance.id === item.id,
+          );
+          if (
+            alive.current &&
+            serial.current === token &&
+            previous.current?.id === item.id &&
+            refreshed
+          ) {
+            const refreshedKey = `${core.accountGeneration}:${item.id}:${previewFingerprint(refreshed)}:demo:1`;
+            previous.current.key = refreshedKey;
+            setPhoto({ status: "studioConflict", key: refreshedKey });
+          }
           reconciling.current = false;
         }
       } finally {
@@ -209,10 +238,8 @@ export function usePreviewPhoto(item: OverlayInstance, view: StudioView) {
     client,
     core.accountGeneration,
     item.id,
-    settings,
     regeneration,
     key,
-    view.revision,
     execute,
     cache,
   ]);

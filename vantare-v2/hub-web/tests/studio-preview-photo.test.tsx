@@ -799,10 +799,9 @@ it("regenerates explicitly with the latest global revision after an unrelated ed
 it("fingerprints exactly kind and complete settings with stable nested key order", () => {
   const item = {
     kind: "standings" as const,
-    settings: structuredClone(studioWidgetDefaults.standings) as Extract<
-      WidgetSettings,
-      { kind: "standings" }
-    >,
+    settings: JSON.parse(
+      JSON.stringify(studioWidgetDefaults.standings),
+    ) as Extract<WidgetSettings, { kind: "standings" }>,
   };
   const before = structuredClone(item);
   const fingerprint = previewFingerprint(item);

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { Page } from "playwright-core";
+import { catalogCardName } from "../../src/renderer/ui/studio/catalogName";
 import { until } from "../wait-for.ts";
 import type { VisualScene } from "./scenes.ts";
 
@@ -39,7 +40,7 @@ for (const expanded of [false, true]) {
       });
       await dialog.waitFor();
       await dialog
-        .getByRole("button", { name: "Añadir Delta", exact: true })
+        .getByRole("button", { name: catalogCardName("Delta") })
         .waitFor();
       const search = dialog.getByRole("searchbox", {
         name: "Buscar widget",

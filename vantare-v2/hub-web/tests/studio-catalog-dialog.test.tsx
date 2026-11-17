@@ -24,6 +24,7 @@ import {
 } from "../src/renderer/screens/studio/state";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { CatalogDialog } from "../src/renderer/ui/studio/CatalogDialog";
+import { catalogCardName } from "../src/renderer/ui/studio/catalogName";
 import { MoreMenu } from "../src/renderer/ui/studio/MoreMenu";
 import { RemoveWidget } from "../src/renderer/ui/studio/RemoveWidget";
 import { StudioFocus } from "../src/renderer/ui/studio/StudioFocus";
@@ -152,12 +153,14 @@ it("filters by search and category, supports clearing and explains an empty resu
   mount();
   const dialog = await openCatalog();
   await within(dialog).findByRole("button", {
-    name: `${t.addShort} Standings`,
+    name: catalogCardName("Standings"),
   });
   const search = within(dialog).getByRole("searchbox", { name: t.search });
   fireEvent.change(search, { target: { value: "DELTA" } });
   expect(
-    within(dialog).getByRole("button", { name: `${t.addShort} Delta` }),
+    within(dialog).getByRole("button", {
+      name: catalogCardName("Delta"),
+    }),
   ).toBeTruthy();
   fireEvent.click(within(dialog).getByRole("button", { name: "Coche" }));
   expect(within(dialog).getByText(t.noResults)).toBeTruthy();
@@ -165,10 +168,14 @@ it("filters by search and category, supports clearing and explains an empty resu
     within(dialog).getByRole("button", { name: text.catalogClear }),
   );
   expect(
-    within(dialog).getByRole("button", { name: `${t.addShort} Fuel y stint` }),
+    within(dialog).getByRole("button", {
+      name: catalogCardName("Fuel y stint"),
+    }),
   ).toBeTruthy();
   expect(
-    within(dialog).queryByRole("button", { name: `${t.addShort} Delta` }),
+    within(dialog).queryByRole("button", {
+      name: catalogCardName("Delta"),
+    }),
   ).toBeNull();
 });
 
@@ -177,7 +184,7 @@ it("keeps Pro cards focusable, marked and inert for mouse and keyboard", async (
   mount("studio-pro-bloqueado");
   const dialog = await openCatalog();
   const card = await within(dialog).findByRole("button", {
-    name: `${t.addShort} Fuel y stint`,
+    name: catalogCardName("Fuel y stint"),
   });
   expect(card.getAttribute("aria-disabled")).toBe("true");
   expect(
@@ -198,7 +205,7 @@ it("moves vertically using the actual grid column count and horizontally with ar
   mount();
   const dialog = await openCatalog();
   await within(dialog).findByRole("button", {
-    name: `${t.addShort} Standings`,
+    name: catalogCardName("Standings"),
   });
   const grid = Array.from(
     dialog.querySelectorAll<HTMLElement>(".v-studio-catalog-grid"),
@@ -223,7 +230,7 @@ it("adds once with the read revision, selects the new instance and closes the ca
   mount();
   const dialog = await openCatalog();
   const card = await within(dialog).findByRole("button", {
-    name: `${t.addShort} Delta`,
+    name: catalogCardName("Delta"),
   });
   fireEvent.click(card);
   fireEvent.click(card);
@@ -247,7 +254,9 @@ it("keeps the catalogue open on conflict and does not announce a successful add"
   mount("studio-error");
   const dialog = await openCatalog();
   fireEvent.click(
-    await within(dialog).findByRole("button", { name: `${t.addShort} Delta` }),
+    await within(dialog).findByRole("button", {
+      name: catalogCardName("Delta"),
+    }),
   );
   await within(dialog).findByText(t.conflict);
   expect(dialog.isConnected).toBe(true);
@@ -296,7 +305,7 @@ it("keeps protected catalogue entries inert and explains why", async () => {
   mount("studio-protegido");
   const dialog = await openCatalog();
   const card = await within(dialog).findByRole("button", {
-    name: `${t.addShort} Delta`,
+    name: catalogCardName("Delta"),
   });
   expect(dialog.querySelector(".v-callout")?.textContent).toContain(
     text.catalogProtected,

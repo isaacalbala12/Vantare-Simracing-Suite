@@ -12,6 +12,7 @@ import { Callout, Keycap, Skeleton } from "../Data";
 import { SearchInput } from "../Forms";
 import { WindowDialog as Dialog } from "../WindowDialog";
 import { catalogBlock, catalogGroups } from "./catalog-model";
+import { useCatalogPhotos } from "./useCatalogPhotos";
 import { WidgetThumb } from "./Widgets";
 import "./studio-catalog.css";
 
@@ -41,6 +42,10 @@ export function CatalogDialog({
   }, [open]);
   const view = state.view;
   const groups = view ? catalogGroups(view, search, category) : [];
+  const photos = useCatalogPhotos(
+    open,
+    groups.flatMap((group) => group.items),
+  );
   const groupNames = {
     suggested: t.kit,
     allowed: t.planWidgets,
@@ -69,7 +74,7 @@ export function CatalogDialog({
             );
           }}
         >
-          <header>
+          <div className="v-studio-catalog-head">
             <div>
               <Dialog.Title>{t.catalog}</Dialog.Title>
               <Dialog.Description>{text.catalogHelp}</Dialog.Description>
@@ -80,7 +85,7 @@ export function CatalogDialog({
             >
               <Icon name="x" />
             </Dialog.Close>
-          </header>
+          </div>
           <div className="v-studio-catalog-tools">
             <div className="v-studio-catalog-search">
               <Icon name="search" />
@@ -108,7 +113,24 @@ export function CatalogDialog({
               ))}
             </fieldset>
           </div>
-          <div className="v-studio-catalog-body" aria-busy={state.pending}>
+          <p className="v-studio-catalog-photo-legend">
+            <span
+              className="v-studio-catalog-photo-mark"
+              aria-hidden="true"
+              data-label={text.photo}
+            >
+              <Icon name="v-camera" />
+            </span>
+            <span>
+              <span className="v-a11y-separator">{text.photoLegendLead}</span>
+              {text.photoHelp}
+            </span>
+          </p>
+          <div
+            ref={photos.bodyRef}
+            className="v-studio-catalog-body"
+            aria-busy={state.pending}
+          >
             {!view && <Skeleton label={t.loading} />}
             {view && view.state !== "ready" && (
               <Callout title={text.catalogProtected} />
@@ -152,16 +174,37 @@ export function CatalogDialog({
                                       : block === "unavailable"
                                         ? text.catalogUnavailable
                                         : undefined;
+                          const owned = view.instances.filter(
+                            (item) => item.kind === widget.kind,
+                          ).length;
+                          const notice = !widget.allowed
+                            ? view.plan === "unverified"
+                              ? t.unverified
+                              : text.catalogPro
+                            : undefined;
+                          // Label in Name: the name starts with the action and
+                          // then repeats the visible text of the card in order.
+                          // The owned pill is painted by CSS, so it can only be
+                          // appended: a scrolled card clips it away from the
+                          // visible run and the name must survive both states.
+                          const label = [
+                            `${t.addShort} ${widget.name}`,
+                            widget.about,
+                            notice,
+                            owned > 0 ? t.owned(owned) : undefined,
+                          ]
+                            .filter((part): part is string => Boolean(part))
+                            .join(", ");
                           return (
                             <button
                               key={widget.kind}
                               type="button"
                               className="v-studio-catalog-widget"
                               data-kind={widget.kind}
-                              aria-label={`${t.addShort} ${widget.name}`}
+                              aria-label={label}
                               aria-disabled={!!block}
                               aria-describedby={
-                                block
+                                block && reason !== notice
                                   ? `studio-catalog-${widget.kind}-reason`
                                   : undefined
                               }
@@ -221,28 +264,53 @@ export function CatalogDialog({
                             >
                               <span className="v-studio-catalog-preview">
                                 <WidgetThumb kind={widget.kind} />
+                                {photos.photos.get(widget.kind) && (
+                                  <span
+                                    className="v-studio-catalog-photo"
+                                    aria-hidden="true"
+                                  >
+                                    <img
+                                      alt={""}
+                                      src={photos.photos.get(widget.kind)?.src}
+                                      width={
+                                        photos.photos.get(widget.kind)?.width
+                                      }
+                                      height={
+                                        photos.photos.get(widget.kind)?.height
+                                      }
+                                    />
+                                    <span
+                                      className="v-studio-catalog-photo-mark"
+                                      aria-hidden="true"
+                                      data-label={text.photo}
+                                    >
+                                      <Icon name="v-camera" />
+                                    </span>
+                                  </span>
+                                )}
+                                {photos.pending === widget.kind && (
+                                  <span
+                                    className="v-studio-catalog-photo-wait"
+                                    aria-hidden="true"
+                                  >
+                                    <i />
+                                  </span>
+                                )}
                               </span>
                               <strong>
                                 {widget.name}
-                                {view.instances.some(
-                                  (item) => item.kind === widget.kind,
-                                ) && (
-                                  <span className="v-studio-owned">
-                                    {t.owned(
-                                      view.instances.filter(
-                                        (item) => item.kind === widget.kind,
-                                      ).length,
-                                    )}
-                                  </span>
+                                {owned > 0 && (
+                                  <span
+                                    className="v-studio-owned"
+                                    data-label={t.owned(owned)}
+                                  />
                                 )}
-                              </strong>
-                              <small>{widget.about}</small>
+                              </strong>{" "}
+                              <small>{widget.about}</small>{" "}
                               {!widget.allowed ? (
                                 <span className="v-studio-catalog-badge">
                                   <Icon name="lock" />
-                                  {view.plan === "unverified"
-                                    ? t.unverified
-                                    : text.catalogPro}
+                                  {notice}
                                 </span>
                               ) : (
                                 <span

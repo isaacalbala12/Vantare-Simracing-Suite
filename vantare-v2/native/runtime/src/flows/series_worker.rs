@@ -372,7 +372,7 @@ impl SeriesWorker {
         }
         self.process
             .lock()
-            .map_err(|_| invalid("proceso envenenado"))?
+            .unwrap_or_else(|e| e.into_inner())
             .wait_until(deadline)?;
         Ok((state, self.analysis.load_full()))
     }
@@ -387,8 +387,8 @@ impl Drop for SeriesWorker {
         if let Err(error) = self
             .process
             .lock()
-            .map_err(|_| invalid("proceso envenenado"))
-            .and_then(|mut process| process.abort())
+            .unwrap_or_else(|e| e.into_inner())
+            .abort()
         {
             eprintln!("parar worker de series: {error}");
         }
@@ -503,7 +503,7 @@ fn retry_creation(
             }
             thread::sleep(Duration::from_millis(1));
         };
-        if !status.is_some_and(|status| status.code() == Some(3)) {
+        if status.is_none_or(|status| status.code() != Some(3)) {
             break;
         }
         let path = database.with_file_name(format!(
@@ -572,4 +572,84 @@ impl SeriesReader {
 
 fn invalid(message: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message)
+}
+
+#[cfg(all(test, windows))]
+mod poison_tests {
+    use super::*;
+
+    #[test]
+    fn drop_reaps_child_and_unblocks_reader_even_with_poisoned_process_mutex() {
+        use std::os::windows::process::CommandExt;
+        let mut child = Command::new("pwsh")
+            .args([
+                "-NoProfile",
+                "-NonInteractive",
+                "-Command",
+                "[Console]::In.ReadToEnd() | Out-Null",
+            ])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .creation_flags(0x0800_0000)
+            .spawn()
+            .expect("hijo real esperando EOF");
+        let mut pipe = Pipe {
+            input: child.stdin.take().expect("stdin"),
+            output: BufReader::new(child.stdout.take().expect("stdout")),
+        };
+        let process = Arc::new(Mutex::new(Process { child, pipe: None }));
+        let (finish, _control) = mpsc::channel();
+        let (_result, done) = mpsc::channel();
+        // El reader conserva stdin abierto mientras espera ready: solo matar
+        // al hijo puede desbloquearlo. El hijo no emite ninguna respuesta.
+        let task = thread::spawn(move || {
+            let _response = pipe.state("ready");
+        });
+        let worker = SeriesWorker {
+            process: Arc::clone(&process),
+            finish,
+            done,
+            thread: Some(task),
+            analysis: Arc::new(ArcSwap::from_pointee(RecordedSeriesSummary::default())),
+            failed: Arc::new(AtomicBool::new(false)),
+            cancelled: Arc::new(AtomicBool::new(false)),
+        };
+        let poisoned = Arc::clone(&process);
+        assert!(
+            thread::spawn(move || {
+                let _guard = poisoned.lock().expect("mutex aún sano");
+                panic!("envenenamiento deliberado");
+            })
+            .join()
+            .is_err()
+        );
+        assert!(process.is_poisoned());
+        let (closed, completion) = mpsc::channel();
+        let dropper = thread::spawn(move || {
+            drop(worker);
+            closed.send(()).expect("confirmar Drop");
+        });
+        let outcome = completion.recv_timeout(Duration::from_secs(5));
+        if outcome.is_err() {
+            // Limpiar también en la regresión: no dejar un hijo/hilo bloqueado
+            // al fallar la prueba. Esta guarda no convierte el timeout en éxito.
+            process
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .abort()
+                .expect("limpieza de emergencia");
+        }
+        dropper.join().expect("Drop sin panic");
+        assert!(outcome.is_ok(), "Drop se quedó esperando con el hijo vivo");
+        assert!(
+            process
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .child
+                .try_wait()
+                .expect("estado del hijo")
+                .is_some()
+        );
+    }
 }

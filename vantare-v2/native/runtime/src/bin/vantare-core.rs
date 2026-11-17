@@ -300,7 +300,7 @@ fn run(args: Args) -> Result<(), Box<dyn std::error::Error>> {
         &mut core,
         args.series_dir.as_deref(),
         epoch,
-        &vantare_runtime::service::storage_helper_path()?,
+        vantare_runtime::service::storage_helper_path,
     );
     vantare_runtime::service::drive_core_recorded(
         &mut core,

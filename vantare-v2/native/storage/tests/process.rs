@@ -703,12 +703,10 @@ fn recorded_drive_finishes_even_when_publication_returns_error() {
     let db = Database::new();
     let dir = db.0.parent().unwrap().join("new-dir");
     let mut core = Core::new(9);
-    let recording = vantare_runtime::service::SeriesRecording::start(
-        &mut core,
-        Some(&dir),
-        9,
-        Path::new(env!("CARGO_BIN_EXE_vantare-storage")),
-    );
+    let recording =
+        vantare_runtime::service::SeriesRecording::start(&mut core, Some(&dir), 9, || {
+            Ok(PathBuf::from(env!("CARGO_BIN_EXE_vantare-storage")))
+        });
     let path = dir.join(format!("series-9-{}.duckdb", std::process::id()));
     let deadline = Instant::now() + Duration::from_secs(10);
     while !path.exists() {
@@ -973,7 +971,7 @@ fn missing_helper_or_invalid_directory_degrades_without_stopping_photos() {
             &mut core,
             Some(&directory),
             1,
-            Path::new("nonexistent-storage-helper.exe"),
+            || Ok(PathBuf::from("nonexistent-storage-helper.exe")),
         );
         assert!(
             vantare_runtime::service::drive_core_recorded(

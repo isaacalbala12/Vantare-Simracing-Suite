@@ -128,12 +128,8 @@ pub fn run_controlled(
     }
     let mut publisher = Publisher::new(pipe, |_| true)?;
     let demand = publisher.demand_source();
-    let recording = SeriesRecording::start(
-        &mut core,
-        options.series_dir,
-        epoch,
-        &storage_helper_path()?,
-    );
+    let recording =
+        SeriesRecording::start(&mut core, options.series_dir, epoch, storage_helper_path);
     drive_core_recorded(
         &mut core,
         adapter,

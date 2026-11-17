@@ -17,17 +17,23 @@ pub struct SeriesRecording {
 
 impl SeriesRecording {
     /// Todo fallo de arranque degrada solo la grabación, nunca el núcleo.
-    pub fn start(core: &mut Core, directory: Option<&Path>, epoch: u64, helper: &Path) -> Self {
+    pub fn start(
+        core: &mut Core,
+        directory: Option<&Path>,
+        epoch: u64,
+        helper: impl FnOnce() -> std::io::Result<std::path::PathBuf>,
+    ) -> Self {
         let mut recording = Self {
             worker: None,
             failed: false,
         };
         if let Some(directory) = directory {
             let result = (|| {
+                let helper = helper()?;
                 std::fs::create_dir_all(directory)?;
                 let path = directory.join(format!("series-{epoch}-{}.duckdb", std::process::id()));
                 let receiver = core.series_mut().subscribe(SERIES_QUEUE)?;
-                SeriesWorker::start_new(helper, &path, receiver)
+                SeriesWorker::start_new(&helper, &path, receiver)
             })();
             match result {
                 Ok(worker) => recording.worker = Some(worker),
@@ -91,4 +97,37 @@ pub fn drive_core_recorded(
     });
     recording.finish(core);
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn disabled_recording_never_resolves_the_helper() {
+        let mut core = Core::new(1);
+        let recording = SeriesRecording::start(&mut core, None, 1, || {
+            panic!("sin series-dir no se debe resolver el helper")
+        });
+        assert!(recording.worker.is_none());
+        assert!(!recording.failed);
+        assert!(core.series().publication_status().is_none());
+    }
+
+    #[test]
+    fn helper_resolution_failure_only_disables_recording() {
+        let mut core = Core::new(1);
+        let recording = SeriesRecording::start(&mut core, Some(Path::new("unused")), 1, || {
+            Err(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "ejecutable no disponible",
+            ))
+        });
+        assert!(recording.worker.is_none());
+        assert!(recording.failed);
+        core.observe(vantare_domain::Observation::default())
+            .expect("Core sigue vivo");
+        assert_eq!(core.snapshot().sequence, 1);
+        recording.finish(&mut core);
+    }
 }

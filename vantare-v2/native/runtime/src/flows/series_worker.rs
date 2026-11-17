@@ -631,6 +631,7 @@ mod poison_tests {
             analysis: Arc::new(ArcSwap::from_pointee(RecordedSeriesSummary::default())),
             failed: Arc::new(AtomicBool::new(false)),
             cancelled: Arc::new(AtomicBool::new(false)),
+            database: Arc::new(ArcSwap::from_pointee(PathBuf::new())),
         };
         let poisoned = Arc::clone(&process);
         assert!(

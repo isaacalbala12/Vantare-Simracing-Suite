@@ -5,37 +5,41 @@ use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Instant, SystemTime};
 
-static NEXT: AtomicU64 = AtomicU64::new(0);
-struct Directory(PathBuf);
+pub(super) struct Directory(pub(super) PathBuf);
 impl Directory {
-    fn new() -> Self {
+    pub(super) fn new() -> Self {
         let path = std::env::temp_dir().join(format!(
             "series-real-quota-{}-{}",
             std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("fixture de grabación")
+                .as_nanos()
         ));
-        fs::create_dir_all(&path).unwrap();
+        fs::create_dir_all(&path).expect("fixture de grabación");
         Self(path)
     }
-    fn state(&self) -> Value {
-        serde_json::from_slice(&fs::read(self.0.join("recording-status.json")).unwrap()).unwrap()
+    pub(super) fn state(&self) -> Value {
+        serde_json::from_slice(
+            &fs::read(self.0.join("recording-status.json")).expect("fixture de grabación"),
+        )
+        .expect("fixture de grabación")
     }
 }
 impl Drop for Directory {
     fn drop(&mut self) {
-        fs::remove_dir_all(&self.0).unwrap();
+        fs::remove_dir_all(&self.0).expect("fixture de grabación");
     }
 }
-fn helper() -> PathBuf {
-    let exe = std::env::current_exe().unwrap();
+pub(super) fn helper() -> PathBuf {
+    let exe = std::env::current_exe().expect("fixture de grabación");
     let path = exe
         .parent()
-        .unwrap()
+        .expect("fixture de grabación")
         .parent()
-        .unwrap()
+        .expect("fixture de grabación")
         .join("vantare-storage.exe");
     assert!(
         path.is_file(),
@@ -46,9 +50,9 @@ fn helper() -> PathBuf {
 }
 fn ready(path: &Path) {
     // Abrir read-only confirma ready/COMMIT y el cierre del writer anterior.
-    let _reader = SeriesReader::open(&helper(), path).unwrap();
+    let _reader = SeriesReader::open(&helper(), path).expect("fixture de grabación");
 }
-fn wait_for(mut condition: impl FnMut() -> bool) {
+pub(super) fn wait_for(mut condition: impl FnMut() -> bool) {
     let deadline = Instant::now() + Duration::from_secs(10);
     while !condition() {
         assert!(Instant::now() < deadline, "transición no observada");
@@ -60,7 +64,7 @@ fn wait_for(mut condition: impl FnMut() -> bool) {
 fn real_read_only_and_writer_handles_are_skipped_by_prune() {
     use std::os::windows::process::CommandExt;
     let dir = Directory::new();
-    let path = dir.0.join("series-held.duckdb");
+    let path = dir.0.join("series-90-1.duckdb");
     let mut child = Command::new(helper())
         .arg(&path)
         .arg("--create")
@@ -145,10 +149,7 @@ fn writer_crash_persists_degraded_once_and_slow_status_does_not_block_core() {
         worker.kill_for_test();
         wait_for(|| worker.failed());
         let (release, released) = std::sync::mpsc::channel();
-        if delay {
-            recording.status_delay = Some(released);
-        }
-        recording.check(&core);
+        recording.check_with_delay(&core, delay.then_some(released));
         assert!(recording.pending_status.is_some());
         for _ in 0..1000 {
             core.observe(vantare_domain::Observation::default())
@@ -167,4 +168,20 @@ fn writer_crash_persists_degraded_once_and_slow_status_does_not_block_core() {
         assert_eq!(dir.state()["state"], "stopped");
         assert_eq!(dir.state()["cause"], "writer caído");
     }
+}
+
+#[test]
+fn orphan_wal_prevents_reusing_the_base_database_name() {
+    let dir = Directory::new();
+    let name = format!("series-45-{}.duckdb", std::process::id());
+    let wal = dir.0.join(format!("{name}.wal"));
+    fs::write(&wal, b"WAL reciente").unwrap();
+    let mut core = Core::new(45);
+    let recording = SeriesRecording::start(&mut core, Some(&dir.0), 45, || Ok(helper()));
+    assert_ne!(dir.state()["file"], name);
+    let path = dir.0.join(dir.state()["file"].as_str().unwrap());
+    wait_for(|| path.exists());
+    recording.finish(&mut core);
+    assert_eq!(fs::read(wal).unwrap(), b"WAL reciente");
+    ready(&path);
 }

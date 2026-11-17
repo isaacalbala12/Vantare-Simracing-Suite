@@ -9,6 +9,9 @@ mod prune;
 mod status;
 use status::{PendingStatus, Status};
 #[cfg(all(test, windows))]
+#[path = "series/measurement_tests.rs"]
+mod measurement_tests;
+#[cfg(all(test, windows))]
 #[path = "series/recording_tests.rs"]
 mod recording_tests;
 
@@ -21,8 +24,6 @@ pub struct SeriesRecording {
     failed: bool,
     status: Option<Status>,
     pending_status: Option<PendingStatus>,
-    #[cfg(test)]
-    status_delay: Option<std::sync::mpsc::Receiver<()>>,
 }
 
 impl SeriesRecording {
@@ -38,14 +39,13 @@ impl SeriesRecording {
             failed: false,
             status: None,
             pending_status: None,
-            #[cfg(test)]
-            status_delay: None,
         };
         if let Some(directory) = directory {
             let mut status = Status::new(directory, epoch, prune::PruneReport::default());
             let mut cause = "directorio inválido";
             let result = (|| {
                 std::fs::create_dir_all(directory)?;
+                status::clean_temporary(directory);
                 match prune::prune(
                     directory,
                     std::time::SystemTime::now(),
@@ -73,7 +73,7 @@ impl SeriesRecording {
                 cause = "directorio inválido";
                 let mut path =
                     directory.join(format!("series-{epoch}-{}.duckdb", std::process::id()));
-                while path.try_exists()? {
+                while path.try_exists()? || prune::wal(&path).try_exists()? {
                     let suffix = std::time::SystemTime::now()
                         .duration_since(std::time::UNIX_EPOCH)
                         .map_err(std::io::Error::other)?
@@ -105,6 +105,9 @@ impl SeriesRecording {
     }
 
     fn check(&mut self, core: &Core) {
+        self.check_with_delay(core, None);
+    }
+    fn check_with_delay(&mut self, core: &Core, delay: Option<std::sync::mpsc::Receiver<()>>) {
         if !self.failed
             && self.worker.as_ref().is_some_and(|worker| {
                 worker.failed()
@@ -126,14 +129,7 @@ impl SeriesRecording {
                 });
                 status.state = "degraded";
                 status.cause = Some("writer caído");
-                #[cfg(test)]
-                let pending = if let Some(release) = self.status_delay.take() {
-                    PendingStatus::delayed(status.clone(), release)
-                } else {
-                    PendingStatus::spawn(status.clone())
-                };
-                #[cfg(not(test))]
-                let pending = PendingStatus::spawn(status.clone());
+                let pending = PendingStatus::spawn(status.clone(), delay);
                 match pending {
                     Ok(task) => self.pending_status = Some(task),
                     Err(error) => eprintln!("arrancar hilo de estado: {error}"),

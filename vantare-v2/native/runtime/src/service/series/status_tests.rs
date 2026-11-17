@@ -62,7 +62,7 @@ fn finish_abandons_delayed_one_shot_and_stopped_wins_after_release() {
     let mut status = Status::new(&dir, 1, PruneReport::default());
     status.state = "degraded";
     let (release, released) = std::sync::mpsc::channel();
-    let task = PendingStatus::delayed(status.clone(), released).unwrap();
+    let task = PendingStatus::spawn(status.clone(), Some(released)).unwrap();
     // La escritura no puede acabar hasta recibir release: finish debe abandonar.
     let gate = task.finish();
     status.state = "stopped";
@@ -103,5 +103,57 @@ fn failed_atomic_replace_keeps_previous_document_and_cleans_temporary() {
     drop(held);
     assert_eq!(fs::read(path).unwrap(), old);
     assert_eq!(fs::read_dir(&dir).unwrap().count(), 1);
+    fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+#[cfg(windows)]
+fn stale_temporary_cleanup_is_anchored_and_recent_files_survive() {
+    let dir = std::env::temp_dir().join(format!("series-clean-status-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    for name in [
+        "recording-status.12-34.tmp",
+        "recording-volume.12-35.tmp",
+        "recording-volume.12-35.link",
+        "recording-status.usuario.tmp",
+        "recording-status.12-x.tmp",
+        "notas.tmp",
+    ] {
+        let path = dir.join(name);
+        fs::write(&path, b"data").unwrap();
+        fs::OpenOptions::new()
+            .write(true)
+            .open(path)
+            .unwrap()
+            .set_modified(std::time::UNIX_EPOCH)
+            .unwrap();
+    }
+    fs::write(dir.join("recording-status.98-76.tmp"), b"actual").unwrap();
+    clean_temporary(&dir);
+    assert_eq!(fs::read_dir(&dir).unwrap().count(), 4);
+    assert!(dir.join("recording-status.98-76.tmp").exists());
+    assert!(dir.join("recording-status.usuario.tmp").exists());
+    fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+#[cfg(windows)]
+fn share_delete_reader_does_not_prevent_atomic_status_replacement() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let dir = std::env::temp_dir().join(format!("series-share-delete-{}", std::process::id()));
+    fs::create_dir_all(&dir).unwrap();
+    let mut status = Status::new(&dir, 1, PruneReport::default());
+    status.persist(None).unwrap();
+    let path = dir.join("recording-status.json");
+    let reader = OpenOptions::new()
+        .read(true)
+        .share_mode(1 | 2 | 4)
+        .open(&path)
+        .unwrap();
+    status.state = "stopped";
+    status.persist(None).unwrap();
+    let value: serde_json::Value = serde_json::from_slice(&fs::read(path).unwrap()).unwrap();
+    assert_eq!(value["state"], "stopped");
+    drop(reader);
     fs::remove_dir_all(dir).unwrap();
 }

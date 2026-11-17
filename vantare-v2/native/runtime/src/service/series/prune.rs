@@ -7,7 +7,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 pub(super) const MAX_RECORDINGS: usize = 200;
 pub(super) const MAX_BYTES: u64 = 5 * 1024 * 1024 * 1024;
-const ORPHAN_MIN_AGE: Duration = Duration::from_secs(10 * 60);
+const ORPHAN_MIN_AGE: Duration = Duration::from_mins(10);
 const MAX_PRUNE_ITEMS: usize = 50;
 
 #[derive(Clone, Default, Serialize)]
@@ -50,9 +50,23 @@ pub(super) fn millis(time: SystemTime) -> u64 {
     .unwrap_or(u64::MAX)
 }
 fn database(name: &str) -> bool {
-    name.starts_with("series-") && name.ends_with(".duckdb")
+    name.strip_prefix("series-")
+        .and_then(|name| name.strip_suffix(".duckdb"))
+        .is_some_and(numeric_pair)
 }
-fn wal(path: &Path) -> PathBuf {
+pub(super) fn numeric_pair(value: &str) -> bool {
+    value
+        .split_once('-')
+        .is_some_and(|(a, b)| digits(a) && digits(b))
+}
+fn digits(value: &str) -> bool {
+    !value.is_empty() && value.bytes().all(|byte| byte.is_ascii_digit())
+}
+fn creating(name: &str) -> bool {
+    name.split_once(".creating-")
+        .is_some_and(|(base, suffix)| database(base) && numeric_pair(suffix))
+}
+pub(super) fn wal(path: &Path) -> PathBuf {
     let mut name = path.as_os_str().to_os_string();
     name.push(".wal");
     name.into()
@@ -92,10 +106,15 @@ fn scan(directory: &Path) -> io::Result<(Vec<Candidate>, Counts)> {
         if kind.is_symlink() {
             continue;
         }
-        let orphan = name.contains(".creating-");
+        let temporary = creating(name);
         let db = database(name) && kind.is_file();
         let is_wal = name.strip_suffix(".wal").is_some_and(database) && kind.is_file();
-        if !orphan && !db && !is_wal {
+        let orphan = temporary
+            || (is_wal
+                && !directory
+                    .join(name.strip_suffix(".wal").unwrap_or(name))
+                    .try_exists()?);
+        if !temporary && !db && !is_wal {
             continue;
         }
         let path = entry.path();
@@ -131,47 +150,70 @@ fn scan(directory: &Path) -> io::Result<(Vec<Candidate>, Counts)> {
     candidates.sort_by(|a, b| a.modified.cmp(&b.modified).then(a.name.cmp(&b.name)));
     Ok((candidates, counts))
 }
-fn exclusive(path: &Path) -> io::Result<()> {
-    let mut options = fs::OpenOptions::new();
-    options.read(true);
+pub(super) fn exclusive(path: &Path, delete: bool) -> io::Result<fs::File> {
     #[cfg(windows)]
     {
         use std::os::windows::fs::OpenOptionsExt;
-        options.share_mode(0);
+        const GENERIC_READ: u32 = 0x8000_0000;
+        const DELETE: u32 = 0x0001_0000;
+        const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x0400_0000;
+        fs::OpenOptions::new()
+            .read(true)
+            .access_mode(GENERIC_READ | DELETE)
+            .share_mode(0)
+            .custom_flags(if delete { FILE_FLAG_DELETE_ON_CLOSE } else { 0 })
+            .open(path)
     }
     #[cfg(not(windows))]
     {
-        // No hay una prueba portable de los handles de otros procesos. Fallar
-        // cerrado evita borrar una DB abierta fuera del producto Windows.
-        let _ = (options, path);
-        return Err(io::Error::other(
+        let _ = (path, delete);
+        Err(io::Error::other(
             "poda exclusiva solo disponible en Windows",
-        ));
+        ))
     }
-    #[cfg(windows)]
-    options.open(path).map(drop)
+}
+fn empty_directories(path: &Path) -> io::Result<()> {
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            empty_directories(&entry.path())?;
+        }
+    }
+    fs::remove_dir(path)
 }
 fn remove(candidate: &Candidate) -> io::Result<()> {
-    let mut paths = Vec::new();
-    files(&candidate.path, &mut paths)?;
-    let wal = wal(&candidate.path);
-    if !candidate.orphan && wal.try_exists()? {
-        files(&wal, &mut paths)?;
-    }
-    // Probar DB y WAL antes de borrar cualquiera. Windows impide borrar con
-    // nuestro propio share_mode(0), por eso cada prueba cierra su handle.
-    for path in paths {
-        exclusive(&path)?;
-    }
-    if candidate.path.is_dir() {
-        fs::remove_dir_all(&candidate.path)
-    } else {
-        fs::remove_file(&candidate.path)?;
-        if !candidate.orphan && wal.try_exists()? {
-            fs::remove_file(wal)?;
+    if candidate.orphan {
+        let mut paths = Vec::new();
+        files(&candidate.path, &mut paths)?;
+        let guards: Vec<_> = paths
+            .iter()
+            .map(|path| exclusive(path, false))
+            .collect::<io::Result<_>>()?;
+        drop(guards);
+        for path in paths {
+            drop(exclusive(&path, true)?);
         }
-        Ok(())
+        if candidate.path.is_dir() {
+            empty_directories(&candidate.path)?;
+        }
+    } else {
+        // Retener DB mientras se elimina WAL: ningún writer puede abrirla.
+        let guard = exclusive(&candidate.path, false)?;
+        if guard.metadata()?.permissions().readonly() {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "grabación de solo lectura",
+            ));
+        }
+        let wal = wal(&candidate.path);
+        if wal.try_exists()? {
+            drop(exclusive(&wal, true)?);
+        }
+        drop(guard);
+        // La apertura que comprueba exclusividad es también la que borra.
+        drop(exclusive(&candidate.path, true)?);
     }
+    Ok(())
 }
 fn record(report: &mut PruneReport, candidate: &Candidate, reason: &'static str) {
     let result = match remove(candidate) {

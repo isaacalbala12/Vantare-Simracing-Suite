@@ -542,24 +542,22 @@ export async function checkAnalysisComparison(
           await rows.first().focus();
           await page.keyboard.press("Tab");
           assert.equal(
-            await rows
-              .nth(1)
-              .evaluate((node) => {
-                const css = getComputedStyle(node);
-                const scale =
-                  Number.parseFloat(
-                    getComputedStyle(document.documentElement).zoom,
-                  ) * devicePixelRatio;
-                // Like the Studio QA, account for Chromium rounding the Hub's
-                // 2 px outline to whole device pixels at CSS zoom.
-                const paintedWidth = Math.floor(2 * scale) / scale;
-                return (
-                  document.activeElement === node &&
-                  node.matches(":focus-visible") &&
-                  css.outlineStyle !== "none" &&
-                  Number.parseFloat(css.outlineWidth) >= paintedWidth - 0.02
-                );
-              }),
+            await rows.nth(1).evaluate((node) => {
+              const css = getComputedStyle(node);
+              const scale =
+                Number.parseFloat(
+                  getComputedStyle(document.documentElement).zoom,
+                ) * devicePixelRatio;
+              // Like the Studio QA, account for Chromium rounding the Hub's
+              // 2 px outline to whole device pixels at CSS zoom.
+              const paintedWidth = Math.floor(2 * scale) / scale;
+              return (
+                document.activeElement === node &&
+                node.matches(":focus-visible") &&
+                css.outlineStyle !== "none" &&
+                Number.parseFloat(css.outlineWidth) >= paintedWidth - 0.02
+              );
+            }),
             true,
             "Change rows need visible keyboard focus",
           );

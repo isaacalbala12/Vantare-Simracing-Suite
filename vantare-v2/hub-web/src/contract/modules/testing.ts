@@ -1,5 +1,6 @@
 import { testingAnswerNoteMaxChars } from "../generated/testing";
 import {
+  isDraftRevision,
   isReportDraft,
   isReportFields,
   isReportPreview,
@@ -56,14 +57,36 @@ export function isRequest(value: Record<string, unknown>): boolean {
         isReportPreviewId(value.id) &&
         isReportFields(value.fields)
       );
-    case "report.capture":
     case "draft.save":
+      return (
+        exact(value, [
+          "method",
+          "fields",
+          ...(Object.hasOwn(value, "expectedRevision")
+            ? ["expectedRevision"]
+            : []),
+        ]) &&
+        isReportFields(value.fields) &&
+        (!Object.hasOwn(value, "expectedRevision") ||
+          isDraftRevision(value.expectedRevision))
+      );
+    case "draft.discard":
+      return (
+        exact(value, [
+          "method",
+          ...(Object.hasOwn(value, "expectedRevision")
+            ? ["expectedRevision"]
+            : []),
+        ]) &&
+        (!Object.hasOwn(value, "expectedRevision") ||
+          isDraftRevision(value.expectedRevision))
+      );
+    case "report.capture":
       return exact(value, ["method", "fields"]) && isReportFields(value.fields);
     case "report.prepare":
     case "report.retryPrepare":
     case "testing.refresh":
     case "draft.load":
-    case "draft.discard":
       return exact(value, ["method"]);
     default:
       return false;
@@ -93,6 +116,8 @@ export function isReply(value: Record<string, unknown>): boolean {
   }
 }
 export function isError(value: Record<string, unknown>): boolean {
+  if (value.kind === "draftConflict")
+    return exact(value, ["kind", "current"]) && isReportDraft(value.current);
   return value.kind === "evidencePending" && exact(value, ["kind"]);
 }
 export function isEvent(_value: Record<string, unknown>): boolean {

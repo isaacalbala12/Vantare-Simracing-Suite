@@ -58,6 +58,11 @@ pub fn content_hash(bytes: &[u8]) -> String {
     format!("{:x}", Sha256::digest(bytes))
 }
 
+/// Public draft fingerprint, available without network or report submission features.
+pub fn draft_revision(draft: &protocol::report_document::Draft) -> String {
+    content_hash(draft.idempotency_key.as_bytes())[..32].into()
+}
+
 /// Entropía SO; no fingerprint ni identificador sintético ante fallo.
 pub fn random_id() -> Result<String> {
     const HEX: &[u8; 16] = b"0123456789abcdef";

@@ -574,7 +574,13 @@ impl Remote {
         self.close_save_result = None;
         let fields = self.editor.fields(cx);
         self.close_save_fields = Some(fields.clone());
-        self.request(Command::DraftSave { fields }, cx);
+        self.request(
+            Command::DraftSave {
+                fields,
+                expected_revision: None,
+            },
+            cx,
+        );
         if self.inflight == Inflight::Idle {
             self.close_save_pending = false;
             self.close_save_fields = None;
@@ -624,7 +630,10 @@ impl Remote {
         self.report_revision = Some(self.editor.revision);
         self.autosave_pending = true;
         self.request_with_kind(
-            Command::DraftSave { fields },
+            Command::DraftSave {
+                fields,
+                expected_revision: None,
+            },
             Some(Inflight::Background),
             cx,
         );
@@ -748,7 +757,12 @@ impl Remote {
     }
 
     fn dispatch_with_kind(&mut self, command: Command, kind: Option<Inflight>) -> bool {
-        let discard = matches!(command, Command::DraftDiscard);
+        let discard = matches!(
+            command,
+            Command::DraftDiscard {
+                expected_revision: None
+            }
+        );
         if matches!(command, Command::AccountCancel) {
             self.access.requested(&command);
         }
@@ -774,7 +788,9 @@ impl Remote {
                 Command::LicenseStatus | Command::DeviceReset => Area::Licenses { renew: false },
                 Command::DraftLoad
                 | Command::DraftSave { .. }
-                | Command::DraftDiscard
+                | Command::DraftDiscard {
+                    expected_revision: None,
+                }
                 | Command::ReportCapture { .. }
                 | Command::ReportRemoveScreenshot { .. }
                 | Command::ReportPrepare
@@ -1034,6 +1050,7 @@ impl Remote {
                 }
                 self.legacy_status = LegacyStatus::Checked;
                 self.queued = Some(Command::DraftSave {
+                    expected_revision: None,
                     fields: legacy.fields.clone(),
                 });
                 self.editor.message = "Importando borrador antiguo al almacén protegido".into();
@@ -1233,7 +1250,9 @@ impl Remote {
             }
             Reply::Error { .. } | Reply::License { .. } | Reply::LicenseFailure { .. }
                 if background => {}
-            Reply::Status { message, .. } | Reply::Error { message } => {
+            Reply::DraftConflict { message, .. }
+            | Reply::Status { message, .. }
+            | Reply::Error { message } => {
                 if matches!(self.active, Area::Calendar) {
                     // El Calendario recibe su error sin alterar Cuenta.
                 } else if matches!(self.active, Area::Roadmap) {
@@ -1324,7 +1343,7 @@ impl Remote {
                 );
             }
             Reply::Closed => self.message = "Servicios cerrado".into(),
-            Reply::Draft { draft, message } => self.imported_draft(draft, message, cx),
+            Reply::Draft { draft, message, .. } => self.imported_draft(draft, message, cx),
             Reply::ReportPreview { preview } => {
                 if self.report_revision == Some(self.editor.revision) {
                     self.editor.clear_approval(cx);

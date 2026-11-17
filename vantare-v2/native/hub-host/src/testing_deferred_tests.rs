@@ -11,6 +11,7 @@ fn legacy(fixture: &Fixture) -> PathBuf {
 }
 fn empty() -> CoreReply {
     CoreReply::Draft {
+        revision: None,
         draft: None,
         message: String::new(),
     }
@@ -50,6 +51,7 @@ fn deferred_import_sends_the_confirmed_draft_once() {
     let result = session.service_reply(
         7,
         Ok(CoreReply::Draft {
+            revision: None,
             draft: Some(Draft {
                 schema_version: 1,
                 idempotency_key: "local-qa".into(),
@@ -247,7 +249,13 @@ fn busy_during_a_deferred_import_preserves_the_original_request() {
     begin(&mut session, &mut pipe);
     session.core.busy = true;
     session
-        .request(&mut pipe, 8, &Request::DraftDiscard {})
+        .request(
+            &mut pipe,
+            8,
+            &Request::DraftDiscard {
+                expected_revision: None,
+            },
+        )
         .unwrap();
     assert!(matches!(
         receive(&mut pipe),

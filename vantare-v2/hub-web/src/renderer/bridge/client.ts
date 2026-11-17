@@ -235,9 +235,9 @@ export class Client {
       return;
     }
     const started = this.reportClose.start(
-      async (fields, signal) => {
+      async (fields, expectedRevision, signal) => {
         const reply = await this.issue(
-          { method: reportCloseMethods[0], fields },
+          { method: reportCloseMethods[0], fields, expectedRevision },
           undefined,
           signal,
         );

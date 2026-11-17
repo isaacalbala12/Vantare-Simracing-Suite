@@ -30,7 +30,7 @@ fn legacy_files_are_archived_only_after_protected_draft_ack() {
             remote.editor.dirty = true;
             remote.report_revision = Some(remote.editor.revision);
             remote.imported_draft(None, String::new(), cx);
-            assert!(matches!(&remote.queued, Some(Command::DraftSave { fields: saved }) if saved == &fields));
+            assert!(matches!(&remote.queued, Some(Command::DraftSave { fields: saved, .. }) if saved == &fields));
             assert!(path.exists());
             assert!(!path.with_extension("json.imported").exists());
             remote.imported_draft(Some(super::super::protocol::report_document::Draft {
@@ -177,21 +177,36 @@ fn pending_discard_and_existing_queue_do_not_import_legacy_draft() {
         let (send, _requests) = mpsc::sync_channel(8);
         let remote = cx.new(|cx| super::purchase_tests::fixture(cx, send, &root));
         remote.update(cx, |remote, cx| {
-            remote.queued = Some(Command::DraftDiscard);
+            remote.queued = Some(Command::DraftDiscard {
+                expected_revision: None,
+            });
             remote.report_revision = Some(remote.editor.revision);
             remote.imported_draft(None, "loaded".into(), cx);
-            assert!(matches!(remote.queued, Some(Command::DraftDiscard)));
+            assert!(matches!(
+                remote.queued,
+                Some(Command::DraftDiscard {
+                    expected_revision: None
+                })
+            ));
             assert!(matches!(remote.legacy_status, LegacyStatus::Unchecked));
             remote.queued = Some(Command::DraftSave {
+                expected_revision: None,
                 fields: Fields::default(),
             });
             remote.imported_draft(None, "loaded".into(), cx);
             assert!(remote.editor.message.contains("borrador del usuario"));
             assert!(matches!(remote.legacy_status, LegacyStatus::Unchecked));
-            remote.queued = Some(Command::DraftDiscard);
+            remote.queued = Some(Command::DraftDiscard {
+                expected_revision: None,
+            });
             remote.discard_pending = true;
             remote.imported_draft(None, "discarded".into(), cx);
-            assert!(matches!(remote.queued, Some(Command::DraftDiscard)));
+            assert!(matches!(
+                remote.queued,
+                Some(Command::DraftDiscard {
+                    expected_revision: None
+                })
+            ));
             assert!(!path.exists());
             assert!(path.with_extension("json.imported").exists());
         });
@@ -224,6 +239,7 @@ fn protected_save_failure_leaves_legacy_source_intact() {
             remote.report_revision = Some(remote.editor.revision);
             remote.complete(
                 Reply::Draft {
+                    revision: None,
                     draft: None,
                     message: "cargado".into(),
                 },
@@ -266,6 +282,7 @@ fn final_save_acknowledges_only_the_requested_fields() {
             remote.inflight = Inflight::User;
             remote.complete(
                 Reply::Draft {
+                    revision: None,
                     draft: Some(super::super::protocol::report_document::Draft {
                         schema_version: 1,
                         idempotency_key: "draft_fixture".into(),
@@ -292,9 +309,16 @@ fn busy_services_defers_final_draft_save_without_overwriting_the_queue() {
             cx.new(|cx| super::purchase_tests::fixture(cx, send, std::path::Path::new(".")));
         remote.update(cx, |remote, cx| {
             remote.inflight = Inflight::User;
-            remote.queued = Some(Command::DraftDiscard);
+            remote.queued = Some(Command::DraftDiscard {
+                expected_revision: None,
+            });
             assert_eq!(remote.begin_close_save(cx), None);
-            assert!(matches!(remote.queued, Some(Command::DraftDiscard)));
+            assert!(matches!(
+                remote.queued,
+                Some(Command::DraftDiscard {
+                    expected_revision: None
+                })
+            ));
             assert!(requests.try_recv().is_err());
         });
         crate::quit_headless_test(cx);
@@ -340,7 +364,7 @@ fn autosave_waits_two_seconds_and_never_replaces_a_queued_user_save() {
             remote.autosave_due = Some(now + DRAFT_AUTOSAVE_DELAY);
             assert!(!remote.flush_draft_autosave(2, now + std::time::Duration::from_millis(1_999), cx));
             assert!(remote.flush_draft_autosave(1, now + DRAFT_AUTOSAVE_DELAY, cx));
-            remote.queued = Some(Command::DraftSave {
+            remote.queued = Some(Command::DraftSave { expected_revision: None,
                 fields: Fields::default(),
             });
             assert!(!remote.flush_draft_autosave(2, now + DRAFT_AUTOSAVE_DELAY, cx));
@@ -351,7 +375,7 @@ fn autosave_waits_two_seconds_and_never_replaces_a_queued_user_save() {
             assert!(!remote.flush_draft_autosave(2, now + DRAFT_AUTOSAVE_DELAY, cx));
             remote.inflight = Inflight::Idle;
             assert!(remote.flush_draft_autosave(2, now + DRAFT_AUTOSAVE_DELAY, cx));
-            assert!(matches!(requests.try_recv(), Ok(Command::DraftSave { fields }) if fields.action_text == "new edit"));
+            assert!(matches!(requests.try_recv(), Ok(Command::DraftSave { fields, .. }) if fields.action_text == "new edit"));
             assert_eq!(remote.report_revision, Some(1));
             remote.complete(Reply::Error { message: "fixture".into() }, cx);
             assert!(remote.editor.message.contains("No se pudo autoguardar"));

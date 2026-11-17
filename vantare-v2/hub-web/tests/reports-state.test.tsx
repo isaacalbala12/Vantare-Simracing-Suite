@@ -211,6 +211,7 @@ describe("protected report draft behavior", () => {
           fields: request.fields,
           legacy: "none",
           exists: true,
+          revision: "a".repeat(32),
           screenshots: [],
           message: "",
         },
@@ -759,6 +760,7 @@ async function seedSessionA(hook: Awaited<ReturnType<typeof mount>>) {
               fields: draftFields,
               legacy: "none",
               exists: true,
+              revision: "a".repeat(32),
               screenshots: [
                 {
                   id: "c".repeat(64),
@@ -1490,4 +1492,171 @@ it("does not publish an old account's late answer or retain its preloaded note",
   });
   expect(hook.result.current.answerDraft).toEqual({ score: 3, note: "" });
   expect(hook.result.current.participation.questionnaires).toEqual([]);
+});
+
+it.each(["save", "discard"] as const)(
+  "preserves local prose and reconciles %s conflicts without replay",
+  async (operation) => {
+    const hook = await mount("testing-tester-reports");
+    act(() => hook.result.current.edit({ actionText: "A first save" }));
+    await act(async () => {
+      await hook.result.current.save();
+    });
+    const stored = await hook.connection.request({ method: "draft.load" });
+    if (stored.method !== "draft.load") throw new Error("draft");
+    const winner = {
+      ...stored.value,
+      revision: "b".repeat(32),
+      fields: { ...stored.value.fields, actionText: "Other Hub winner" },
+    };
+    vi.useFakeTimers();
+    act(() => hook.result.current.edit({ actionText: "LOCAL UNSAVED" }));
+    const original = hook.connection.request.bind(hook.connection);
+    const requests = vi
+      .spyOn(hook.connection, "request")
+      .mockImplementation((request) => {
+        if (request.method === `draft.${operation}`)
+          return Promise.reject(
+            new HostFailure({ kind: "draftConflict", current: winner }),
+          );
+        return original(request);
+      });
+    await act(async () => {
+      await expect(hook.result.current[operation]()).rejects.toMatchObject({
+        detail: { kind: "draftConflict" },
+      });
+    });
+    expect(hook.result.current.fields.actionText).toBe("LOCAL UNSAVED");
+    expect(hook.result.current.dirty).toBe(true);
+    // A successful unrelated read must not re-arm the rejected report mutation.
+    await act(async () => {
+      await hook.result.current.refresh();
+    });
+    act(() => {
+      fireEvent.blur(window);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(reportAutosaveMs * 2);
+    });
+    expect(
+      requests.mock.calls.filter(([r]) => r.method === `draft.${operation}`),
+    ).toHaveLength(1);
+    const first = requests.mock.calls.find(
+      ([r]) => r.method === `draft.${operation}`,
+    )?.[0];
+    expect(first).toMatchObject({ expectedRevision: stored.value.revision });
+    // A separate, explicit user action uses the winner's observation, never the old revision.
+    await act(async () => {
+      await expect(hook.result.current[operation]()).rejects.toBeDefined();
+    });
+    expect(requests.mock.calls.at(-1)?.[0]).toMatchObject({
+      expectedRevision: winner.revision,
+    });
+  },
+);
+
+it("ignores a late draft conflict after the account generation changes", async () => {
+  const hook = await mount();
+  act(() => hook.result.current.edit({ actionText: "ACCOUNT A TEXT" }));
+  const original = hook.connection.request.bind(hook.connection);
+  let reject: ((reason: unknown) => void) | undefined;
+  const requests = vi
+    .spyOn(hook.connection, "request")
+    .mockImplementation((request) =>
+      request.method === "draft.save"
+        ? new Promise<Reply>((_, fail) => {
+            reject = fail;
+          })
+        : original(request),
+    );
+  let pending: Promise<unknown> | undefined;
+  await act(async () => {
+    pending = hook.result.current.save().catch(() => undefined);
+  });
+  const account = hook.account().value;
+  if (!account) throw new Error("account");
+  await act(async () => {
+    hook.host.postMessage({
+      kind: "event",
+      event: {
+        topic: "account",
+        value: { ...account, name: "B", session: "signedIn", gate: "none" },
+      },
+    });
+  });
+  await waitFor(() => expect(hook.result.current.fields.actionText).toBe(""));
+  await act(async () => {
+    reject?.(
+      new HostFailure({
+        kind: "draftConflict",
+        current: {
+          legacy: "none",
+          exists: true,
+          revision: "b".repeat(32),
+          fields: {
+            module: "hub",
+            actionText: "WINNER A",
+            expectedText: "",
+            observedText: "",
+            contextText: "",
+          },
+          screenshots: [],
+          message: "",
+        },
+      }),
+    );
+    await pending;
+  });
+  expect(hook.result.current.fields.actionText).toBe("");
+  expect(hook.result.current.failure).toBeUndefined();
+  expect(
+    requests.mock.calls.filter(([r]) => r.method === "draft.save"),
+  ).toHaveLength(1);
+});
+
+it("carries the observation through close-save conflicts without replay or losing editor text", async () => {
+  const hook = await mount();
+  act(() => hook.result.current.edit({ actionText: "seed" }));
+  await act(async () => {
+    await hook.result.current.save();
+  });
+  const loaded = await hook.connection.request({ method: "draft.load" });
+  if (loaded.method !== "draft.load") throw new Error("draft");
+  const current = {
+    ...loaded.value,
+    revision: "b".repeat(32),
+    fields: { ...loaded.value.fields, actionText: "winner" },
+  };
+  vi.useFakeTimers();
+  act(() => hook.result.current.edit({ actionText: "LOCAL CLOSE TEXT" }));
+  const original = hook.connection.send.bind(hook.connection);
+  const sent = vi
+    .spyOn(hook.connection, "send")
+    .mockImplementation((message) => {
+      if (
+        message.kind === "request" &&
+        message.request.method === "draft.save"
+      ) {
+        hook.host.postMessage({
+          kind: "failure",
+          id: message.id,
+          error: { kind: "draftConflict", current },
+        });
+      } else original(message);
+    });
+  await act(async () => {
+    await hook.close("window");
+  });
+  expect(hook.result.current.fields.actionText).toBe("LOCAL CLOSE TEXT");
+  expect(hook.result.current.failure).toBe("draftConflict");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(reportAutosaveMs * 2);
+  });
+  const writes = sent.mock.calls.filter(
+    ([m]) => m.kind === "request" && m.request.method === "draft.save",
+  );
+  expect(writes).toHaveLength(1);
+  expect(writes[0]?.[0]).toMatchObject({
+    request: { expectedRevision: loaded.value.revision },
+  });
 });

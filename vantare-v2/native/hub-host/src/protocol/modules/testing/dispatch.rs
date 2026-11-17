@@ -14,7 +14,7 @@ impl Session {
             | Request::TestingRefresh {}
             | Request::DraftLoad {}
             | Request::DraftSave { .. }
-            | Request::DraftDiscard {} => self.testing_request(pipe, id, request),
+            | Request::DraftDiscard { .. } => self.testing_request(pipe, id, request),
             _ => Err(io::ErrorKind::InvalidInput.into()),
         }
     }
@@ -109,12 +109,14 @@ impl Session {
                 Ok(Some(result))
             }
             crate::testing::legacy::Next::Import(command) => {
-                let vantare_ipc::services_protocol::Command::DraftSave { fields } = command else {
+                let vantare_ipc::services_protocol::Command::DraftSave { fields, .. } = command
+                else {
                     return Err(HostError::Rejected);
                 };
                 let command = crate::testing::draft_save(
                     &self.current.access,
                     &crate::testing::ReportFields::from(&fields),
+                    None,
                 )?;
                 self.continue_import(id, RemoteKind::Testing(operation), command)?;
                 Ok(None)

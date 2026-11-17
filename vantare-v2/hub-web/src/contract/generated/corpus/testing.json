@@ -8,6 +8,27 @@
       "kind": "failure"
     },
     {
+      "error": {
+        "current": {
+          "exists": true,
+          "fields": {
+            "actionText": "A",
+            "contextText": "",
+            "expectedText": "",
+            "module": "unknown",
+            "observedText": ""
+          },
+          "legacy": "none",
+          "message": "",
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "screenshots": []
+        },
+        "kind": "draftConflict"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
       "id": 1,
       "kind": "response",
       "result": {
@@ -82,6 +103,7 @@
           },
           "legacy": "none",
           "message": "",
+          "revision": null,
           "screenshots": []
         }
       }
@@ -102,6 +124,7 @@
           },
           "legacy": "none",
           "message": "",
+          "revision": null,
           "screenshots": []
         }
       }
@@ -186,6 +209,7 @@
           },
           "legacy": "none",
           "message": "",
+          "revision": null,
           "screenshots": []
         }
       }
@@ -206,6 +230,7 @@
           },
           "legacy": "none",
           "message": "",
+          "revision": null,
           "screenshots": []
         }
       }
@@ -226,6 +251,7 @@
           },
           "legacy": "none",
           "message": "",
+          "revision": null,
           "screenshots": []
         }
       }
@@ -358,6 +384,7 @@
       "id": 1,
       "kind": "request",
       "request": {
+        "expectedRevision": null,
         "method": "draft.discard"
       }
     },
@@ -365,6 +392,7 @@
       "id": 1,
       "kind": "request",
       "request": {
+        "expectedRevision": null,
         "fields": {
           "actionText": "",
           "contextText": "",

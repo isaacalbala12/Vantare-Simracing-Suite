@@ -273,7 +273,7 @@ impl State {
         ) {
             return Ok(Next::Complete(reply));
         }
-        if let Reply::Draft { draft, message } = &mut reply {
+        if let Reply::Draft { draft, message, .. } = &mut reply {
             if matches!(operation, Operation::Load)
                 && draft.is_none()
                 && !self.importing
@@ -282,6 +282,7 @@ impl State {
                 self.importing = true;
                 return Ok(Next::Import(Command::DraftSave {
                     fields: selected.fields.core(),
+                    expected_revision: None,
                 }));
             }
             if self.importing

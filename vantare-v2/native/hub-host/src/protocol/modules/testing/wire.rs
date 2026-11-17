@@ -56,9 +56,16 @@ pub enum Request {
     #[serde(rename = "draft.save")]
     DraftSave {
         fields: crate::testing::ReportFields,
+        #[serde(default, rename = "expectedRevision")]
+        #[cfg_attr(any(test, feature = "bindings"), ts(optional = nullable))]
+        expected_revision: Option<String>,
     },
     #[serde(rename = "draft.discard")]
-    DraftDiscard {},
+    DraftDiscard {
+        #[serde(default, rename = "expectedRevision")]
+        #[cfg_attr(any(test, feature = "bindings"), ts(optional = nullable))]
+        expected_revision: Option<String>,
+    },
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -114,6 +121,9 @@ pub enum Reply {
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostError {
     EvidencePending,
+    DraftConflict {
+        current: Box<crate::testing::ReportDraftView>,
+    },
 }
 
 #[cfg(any(test, feature = "bindings"))]

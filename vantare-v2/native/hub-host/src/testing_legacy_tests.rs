@@ -72,6 +72,7 @@ fn local(root: &Path, title: &str, time: u64) -> PathBuf {
 }
 fn reply(fields: Option<ReportFields>) -> Reply {
     Reply::Draft {
+        revision: None,
         draft: fields.map(|fields| Draft {
             schema_version: 1,
             idempotency_key: "private-core-key".into(),
@@ -82,7 +83,7 @@ fn reply(fields: Option<ReportFields>) -> Reply {
     }
 }
 fn import(state: &mut State) -> ReportFields {
-    let Next::Import(Command::DraftSave { fields }) = state
+    let Next::Import(Command::DraftSave { fields, .. }) = state
         .complete(Operation::Load, reply(None))
         .expect("local draft fixture")
     else {
@@ -198,6 +199,7 @@ fn corrupt_future_and_oversized_documents_are_left_in_place() {
         let Next::Complete(Reply::Draft {
             draft: None,
             message,
+            ..
         }) = state
             .complete(Operation::Load, reply(None))
             .expect("local draft fixture")

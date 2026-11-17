@@ -14,6 +14,7 @@ import {
   type HostError,
   type LegacyMigration,
   type Reply,
+  type ReportDraftView,
   type ReportFields,
   type ReportPreviewView,
   type ReportReceiptView,
@@ -85,6 +86,8 @@ function useReportsState() {
   const [saved, setSaved] = useState(JSON.stringify(fields));
   const [loaded, setLoaded] = useState(false);
   const [draftExists, setDraftExists] = useState(false);
+  const draftRevision = useRef<string | null>(null);
+  const unresolvedDraftConflict = useRef(false);
   const [screenshots, setScreenshots] = useState<ReportScreenshot[]>([]);
   const removingScreenshot = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -155,6 +158,21 @@ function useReportsState() {
       setCloseConfirmation(true);
     else client?.closeWindow();
   }, [client]);
+  function reconcileDraftConflict(current: ReportDraftView) {
+    unresolvedDraftConflict.current = true;
+    draftRevision.current = current.revision;
+    state.current.saved = JSON.stringify(current.fields);
+    setSaved(state.current.saved);
+    setDraftExists(current.exists);
+    setScreenshots(current.screenshots);
+    setLegacy(current.legacy);
+    setPreview(undefined);
+    setConsent(false);
+    setError(true);
+    setFailure("draftConflict");
+    setMessage(text.reviewAgain);
+    // Keep this editor's fields. The winning draft is an observation, not consent to resend.
+  }
   function request(request: Exclude<Request, { method: "window.close" }>) {
     const epoch = generation.current;
     const signal = cancellation.current.signal;
@@ -177,6 +195,11 @@ function useReportsState() {
             epoch === generation.current &&
             !(error instanceof ReportCloseDiscarded)
           ) {
+            if (
+              error instanceof HostFailure &&
+              error.detail.kind === "draftConflict"
+            )
+              reconcileDraftConflict(error.detail.current);
             failedRequest.current = request;
             setError(true);
             if (
@@ -206,6 +229,8 @@ function useReportsState() {
       throw new Error("unexpected report reply");
     setPreview(undefined);
     setConsent(false);
+    draftRevision.current = reply.value.revision;
+    unresolvedDraftConflict.current = false;
     setFields(reply.value.fields);
     setSaved(JSON.stringify(reply.value.fields));
     setLoaded(true);
@@ -221,6 +246,8 @@ function useReportsState() {
     const epoch = generation.current;
     const sessionSignal = cancellation.current.signal;
     if (!state.current.loaded) return;
+    if (closeSave && unresolvedDraftConflict.current)
+      throw new HostFailure({ kind: "rejected" });
     const snapshot = JSON.stringify(state.current.fields);
     if (snapshot === state.current.saved) return;
     const fields = structuredClone(state.current.fields);
@@ -250,11 +277,24 @@ function useReportsState() {
         throw new HostFailure({ kind: "coreUnavailable" });
       setBusy(true);
       try {
-        reply = await closeSave(fields, sessionSignal);
+        reply = await closeSave(fields, draftRevision.current, sessionSignal);
+      } catch (error) {
+        if (
+          epoch === generation.current &&
+          error instanceof HostFailure &&
+          error.detail.kind === "draftConflict"
+        )
+          reconcileDraftConflict(error.detail.current);
+        throw error;
       } finally {
         if (epoch === generation.current) setBusy(false);
       }
-    } else reply = await request({ method: "draft.save", fields });
+    } else
+      reply = await request({
+        method: "draft.save",
+        fields,
+        expectedRevision: draftRevision.current,
+      });
     if (
       epoch !== generation.current ||
       closeSignal?.aborted ||
@@ -263,6 +303,8 @@ function useReportsState() {
       throw new HostFailure({ kind: "coreUnavailable" });
     if (reply.method !== "draft.save")
       throw new Error("unexpected report reply");
+    draftRevision.current = reply.value.revision;
+    unresolvedDraftConflict.current = false;
     setScreenshots(reply.value.screenshots);
     setDraftExists(reply.value.exists);
     setMessage(reply.value.message);
@@ -280,11 +322,23 @@ function useReportsState() {
   const saveCurrent = useRef(saveWith);
   saveCurrent.current = saveWith;
   useEffect(() => {
-    if (!loaded || !dirty || busy || error || !available) return;
+    if (
+      !loaded ||
+      !dirty ||
+      busy ||
+      error ||
+      !available ||
+      unresolvedDraftConflict.current
+    )
+      return;
     const snapshot = JSON.stringify(fields);
     const epoch = generation.current;
     const timer = setTimeout(() => {
-      if (JSON.stringify(state.current.fields) !== snapshot) return;
+      if (
+        JSON.stringify(state.current.fields) !== snapshot ||
+        unresolvedDraftConflict.current
+      )
+        return;
       void saveCurrent.current().catch(() => {
         if (epoch === generation.current) setMessage(text.autosaveFailed);
       });
@@ -388,7 +442,12 @@ function useReportsState() {
   }, [client]);
   useEffect(() => {
     const flush = () => {
-      if (!state.current.available || !state.current.loaded) return;
+      if (
+        !state.current.available ||
+        !state.current.loaded ||
+        unresolvedDraftConflict.current
+      )
+        return;
       const epoch = generation.current;
       void saveCurrent.current().catch(() => {
         if (epoch === generation.current) setMessage(text.autosaveFailed);
@@ -421,6 +480,8 @@ function useReportsState() {
     cancellation.current = new AbortController();
 
     generation.current++;
+    draftRevision.current = null;
+    unresolvedDraftConflict.current = false;
     state.current = {
       fields: empty(),
       saved: JSON.stringify(empty()),
@@ -565,10 +626,15 @@ function useReportsState() {
     if (reply.method === "testing.noticeRead") updateParticipation(reply.value);
   }
   async function discard() {
-    const reply = await request({ method: "draft.discard" });
+    const reply = await request({
+      method: "draft.discard",
+      expectedRevision: draftRevision.current,
+    });
     if (reply.method !== "draft.discard")
       throw new Error("unexpected report reply");
     dismissSessionDiscarded();
+    unresolvedDraftConflict.current = false;
+    draftRevision.current = reply.value.revision;
     setScreenshots(reply.value.screenshots);
     setDraftExists(reply.value.exists);
     setFields(reply.value.fields);
@@ -601,6 +667,7 @@ function useReportsState() {
       });
       if (reply.method !== "report.removeScreenshot")
         throw new Error("unexpected screenshot reply");
+      draftRevision.current = reply.value.revision;
       setSaved(JSON.stringify(reply.value.fields));
       state.current.saved = JSON.stringify(reply.value.fields);
       setScreenshots(reply.value.screenshots);
@@ -661,6 +728,7 @@ function useReportsState() {
       );
       setPreview(undefined);
       if (reply.value.draftState === "cleared") {
+        draftRevision.current = null;
         setScreenshots([]);
         setDraftExists(false);
         if (JSON.stringify(state.current.fields) === sentFields)

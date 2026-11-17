@@ -145,6 +145,19 @@ solo responde y archiva tras su ACK. Cancelar elimina el guardado aún en espera
 conserva otros propietarios y reserva TODOS los IDs abandonados hasta retirar
 sus respuestas, incluido el RemoteKind de Testing para impedir otro guardado. Las respuestas sin dueño se descartan sin volver a contestar.
 
+#2057: `ReportDraftView.revision` es SHA-256 de la clave privada de idempotencia,
+truncado a 16 bytes en hex; ausencia = null. No cambia el documento persistido.
+`draft.save`/`draft.discard` envían `expectedRevision` (ausente equivale a null).
+Services v21 compara y escribe en su despachador serial: conflicto devuelve
+`DraftConflict`, que el host proyecta como `draftConflict { current }` solo para
+esas dos órdenes, sin revelar la clave. No se reenvía una mutación: tras una
+respuesta incierta se reconcilia mediante lectura. El renderer conserva la revisión
+observada y la envía al guardar, descartar y preparar el guardado de cierre. Un
+conflicto actualiza la observación sin reemplazar el texto local ni reenviar. Un
+cliente sin revisión solo puede crear cuando aún no hay borrador.
+Capturar/quitar capturas siguen fuera de este CAS y de esta entrega.
+
+
 AccountPoll no es siempre rápido: sin callback, accept no bloqueante devuelve
 enseguida; con callback, la lectura tiene plazo absoluto de 3 s y se ejecutan
 secuencialmente token (HTTP 8 s), userinfo (8 s) y foto opcional (2 s): hasta 21 s

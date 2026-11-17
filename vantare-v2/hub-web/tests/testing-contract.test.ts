@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  reportDraftRevisionCases,
   reportFieldLimits,
   testingIdLimits,
 } from "../src/contract/generated/contract";
@@ -188,7 +189,16 @@ describe("Testing Center closed wire and local persistence double", () => {
     expect(host(request("draft.load"))).toMatchObject({
       result: { value: { fields, exists: true, screenshots: [], message: "" } },
     });
-    expect(host(request("draft.discard", {expectedRevision: save?.kind === "response" && save.result.method === "draft.save" ? save.result.value.revision : null}))).toMatchObject({
+    expect(
+      host(
+        request("draft.discard", {
+          expectedRevision:
+            save?.kind === "response" && save.result.method === "draft.save"
+              ? save.result.value.revision
+              : null,
+        }),
+      ),
+    ).toMatchObject({
       result: { value: { exists: false } },
     });
     expect(host(request("draft.load"))).toMatchObject({
@@ -213,8 +223,6 @@ describe("Testing Center closed wire and local persistence double", () => {
             value: {
               fields,
               exists: true,
-      revision: "a".repeat(32),
-            revision: "a".repeat(32),
               revision: "a".repeat(32),
               screenshots: [],
               message: "",
@@ -233,8 +241,6 @@ describe("Testing Center closed wire and local persistence double", () => {
             value: {
               fields,
               exists: true,
-      revision: "a".repeat(32),
-            revision: "a".repeat(32),
               revision: "a".repeat(32),
               screenshots: [],
               message: "",
@@ -252,7 +258,6 @@ describe("Testing Center closed wire and local persistence double", () => {
           value: {
             fields,
             exists: true,
-      revision: "a".repeat(32),
             revision: "a".repeat(32),
             screenshots: [],
             legacy: "preserved",
@@ -335,7 +340,7 @@ describe("Testing Center closed wire and local persistence double", () => {
         value: {
           fields,
           exists: true,
-      revision: "a".repeat(32),
+          revision: "a".repeat(32),
           screenshots: [],
           message: "",
           idempotencyKey: "forbidden",
@@ -396,17 +401,49 @@ it("rejects a preview containing screenshots while capture is unavailable", () =
 it("draft CAS rejects stale saves and discards and returns the winning text", () => {
   const host = createMockHost("testing-reports");
   const first = host(request("draft.save", { fields, expectedRevision: null }));
-  if (first?.kind !== "response" || first.result.method !== "draft.save") throw new Error("first save");
+  if (first?.kind !== "response" || first.result.method !== "draft.save")
+    throw new Error("first save");
   const revision = first.result.value.revision;
   expect(revision).toMatch(/^[0-9a-f]{32}$/);
   const changed = { ...fields, actionText: "B" };
-  const conflict = host(request("draft.save", { fields: changed, expectedRevision: null }));
-  expect(conflict).toMatchObject({kind:"failure",error:{kind:"draftConflict",current:{fields,revision}}});
+  const conflict = host(
+    request("draft.save", { fields: changed, expectedRevision: null }),
+  );
+  expect(conflict).toMatchObject({
+    kind: "failure",
+    error: { kind: "draftConflict", current: { fields, revision } },
+  });
   expect(isHostMessage(conflict)).toBe(true);
-  expect(host(request("draft.save", {fields,expectedRevision:revision}))).toMatchObject({result:{value:{revision}}});
-  const second = host(request("draft.save", {fields:changed,expectedRevision:revision}));
-  if (second?.kind !== "response" || second.result.method !== "draft.save") throw new Error("retry after reconciliation");
+  expect(
+    host(request("draft.save", { fields, expectedRevision: revision })),
+  ).toMatchObject({ result: { value: { revision } } });
+  const second = host(
+    request("draft.save", { fields: changed, expectedRevision: revision }),
+  );
+  if (second?.kind !== "response" || second.result.method !== "draft.save")
+    throw new Error("retry after reconciliation");
   expect(second.result.value.revision).not.toBe(revision);
-  expect(host(request("draft.discard",{expectedRevision:revision}))).toMatchObject({error:{kind:"draftConflict",current:{fields:changed}}});
-  expect(host(request("draft.discard",{expectedRevision:second.result.value.revision}))).toMatchObject({result:{value:{exists:false,revision:null}}});
+  expect(
+    host(request("draft.discard", { expectedRevision: revision })),
+  ).toMatchObject({
+    error: { kind: "draftConflict", current: { fields: changed } },
+  });
+  expect(
+    host(
+      request("draft.discard", {
+        expectedRevision: second.result.value.revision,
+      }),
+    ),
+  ).toMatchObject({ result: { value: { exists: false, revision: null } } });
+});
+
+it("shares the exact revision acceptance vectors with Rust", () => {
+  for (const [expectedRevision, valid] of reportDraftRevisionCases) {
+    expect(
+      isUiMessage(request("draft.save", { fields, expectedRevision })),
+    ).toBe(valid);
+    expect(isUiMessage(request("draft.discard", { expectedRevision }))).toBe(
+      valid,
+    );
+  }
 });

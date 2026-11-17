@@ -168,6 +168,7 @@ fn another_screen_can_finish_between_import_load_and_save_without_an_early_archi
         &local,
         7,
         ServiceReply::Draft {
+            revision: None,
             draft: None,
             message: String::new(),
         },
@@ -200,7 +201,7 @@ fn another_screen_can_finish_between_import_load_and_save_without_an_early_archi
         Ok(Some(Reply::MailGet { .. }))
     ));
     assert_eq!(session.deferred.map(|(id, _)| id), Some(7));
-    let (id, ServiceCommand::DraftSave { fields }) = local.incoming.try_recv().unwrap() else {
+    let (id, ServiceCommand::DraftSave { fields, .. }) = local.incoming.try_recv().unwrap() else {
         panic!("the import save must follow the mail response");
     };
     assert_eq!(id, 7);
@@ -210,6 +211,7 @@ fn another_screen_can_finish_between_import_load_and_save_without_an_early_archi
         &local,
         7,
         ServiceReply::Draft {
+            revision: None,
             draft: Some(vantare_ipc::services_protocol::report_document::Draft {
                 schema_version: 1,
                 idempotency_key: "queue-qa".into(),
@@ -447,6 +449,7 @@ fn cancelling_a_real_core_import_waiter_prevents_its_save_and_preserves_the_lega
         .send((
             7,
             Ok(ServiceReply::Draft {
+                revision: None,
                 draft: None,
                 message: String::new(),
             }),

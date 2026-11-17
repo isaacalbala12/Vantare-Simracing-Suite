@@ -60,7 +60,7 @@ describe("renderer boundary", () => {
       null,
       {},
       { kind: "hello", version: HOST_PROTOCOL_VERSION - 1 },
-      { kind: "hello", version: 52 },
+      { kind: "hello", version: HOST_PROTOCOL_VERSION + 1 },
       { kind: "request", method: "unknown" },
     ])
       expect(mockReply(message)).toBeNull();

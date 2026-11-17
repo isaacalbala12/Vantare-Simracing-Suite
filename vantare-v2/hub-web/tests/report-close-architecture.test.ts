@@ -20,7 +20,9 @@ it("keeps the close-time request list closed to the report draft save", () => {
   );
   expect(source.match(/this\.issue\(/gu)).toHaveLength(2);
   expect(phase.match(/this\.issue\(/gu)).toHaveLength(1);
-  expect(phase).toContain("{ method: reportCloseMethods[0], fields }");
+  expect(phase).toContain(
+    "{ method: reportCloseMethods[0], fields, expectedRevision }",
+  );
   expect(phase).not.toContain("this.request(");
 });
 it("registers close preparation only from the report draft owner", () => {

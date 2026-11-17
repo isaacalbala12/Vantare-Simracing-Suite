@@ -251,7 +251,7 @@ fn a_reused_id_is_busy_until_the_cancelled_import_reply_is_retired() {
 
 fn saved_draft(fields: &crate::testing::ReportFields) -> services::Reply {
     services::Reply::Draft {
-        revision: None,
+        revision: Some("a".repeat(32)),
         draft: Some(report_document::Draft {
             schema_version: 1,
             idempotency_key: "qa-only".into(),

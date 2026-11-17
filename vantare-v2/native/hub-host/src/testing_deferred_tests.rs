@@ -51,7 +51,7 @@ fn deferred_import_sends_the_confirmed_draft_once() {
     let result = session.service_reply(
         7,
         Ok(CoreReply::Draft {
-            revision: None,
+            revision: Some("a".repeat(32)),
             draft: Some(Draft {
                 schema_version: 1,
                 idempotency_key: "local-qa".into(),

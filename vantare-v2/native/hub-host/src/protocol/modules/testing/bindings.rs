@@ -38,7 +38,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         id: 1,
         error: crate::protocol::HostError::EvidencePending,
     });
-    let mut current = crate::testing::draft(None);
+    let mut current = crate::testing::draft(None, None);
     current.exists = true;
     current.fields.action_text = "A".into();
     current.revision = Some("a".repeat(32));
@@ -159,10 +159,10 @@ pub(crate) fn testing_reply_samples() -> Vec<Reply> {
             },
         },
         Reply::ReportRemoveScreenshot {
-            value: crate::testing::draft(None),
+            value: crate::testing::draft(None, None),
         },
         Reply::ReportCapture {
-            value: crate::testing::draft(None),
+            value: crate::testing::draft(None, None),
         },
         Reply::TestingNoticeRead {
             value: crate::testing::TestingView::default(),
@@ -190,13 +190,13 @@ pub(crate) fn testing_reply_samples() -> Vec<Reply> {
             },
         },
         Reply::DraftLoad {
-            value: crate::testing::draft(None),
+            value: crate::testing::draft(None, None),
         },
         Reply::DraftSave {
-            value: crate::testing::draft(None),
+            value: crate::testing::draft(None, None),
         },
         Reply::DraftDiscard {
-            value: crate::testing::draft(None),
+            value: crate::testing::draft(None, None),
         },
     ]
 }

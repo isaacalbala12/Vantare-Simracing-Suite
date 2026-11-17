@@ -273,6 +273,9 @@ impl State {
         ) {
             return Ok(Next::Complete(reply));
         }
+        if matches!(reply, Reply::DraftConflict { .. }) {
+            self.importing = false;
+        }
         if let Reply::Draft { draft, message, .. } = &mut reply {
             if matches!(operation, Operation::Load)
                 && draft.is_none()

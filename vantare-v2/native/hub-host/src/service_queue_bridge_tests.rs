@@ -211,7 +211,7 @@ fn another_screen_can_finish_between_import_load_and_save_without_an_early_archi
         &local,
         7,
         ServiceReply::Draft {
-            revision: None,
+            revision: Some("a".repeat(32)),
             draft: Some(vantare_ipc::services_protocol::report_document::Draft {
                 schema_version: 1,
                 idempotency_key: "queue-qa".into(),

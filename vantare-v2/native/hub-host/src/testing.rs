@@ -190,7 +190,7 @@ pub struct ReportDraftView {
     pub screenshots: Vec<ReportScreenshot>,
     pub message: String,
 }
-pub fn draft(value: Option<&report_document::Draft>) -> ReportDraftView {
+pub fn draft(value: Option<&report_document::Draft>, revision: Option<String>) -> ReportDraftView {
     ReportDraftView {
         legacy: LegacyMigration::None,
         fields: value.map_or_else(
@@ -201,7 +201,7 @@ pub fn draft(value: Option<&report_document::Draft>) -> ReportDraftView {
             |draft| ReportFields::from(&draft.fields),
         ),
         exists: value.is_some(),
-        revision: value.map(vantare_services::draft_revision),
+        revision,
         screenshots: value.map_or_else(Vec::new, |d| screenshots(&d.screenshots)),
         message: String::new(),
     }
@@ -535,7 +535,8 @@ pub fn complete(
             {
                 return Err(HostError::Rejected);
             }
-            let mut current = draft(saved.as_ref());
+            let revision = saved.as_ref().map(vantare_services::draft_revision);
+            let mut current = draft(saved.as_ref(), revision);
             current.message = message;
             Err(HostError::DraftConflict {
                 current: Box::new(current),
@@ -544,15 +545,18 @@ pub fn complete(
         core::Reply::Draft {
             draft: saved,
             message,
-            revision: _,
+            revision,
         } => {
+            if !valid_draft_revision(revision.as_deref()) || saved.is_some() != revision.is_some() {
+                return Err(HostError::Rejected);
+            }
             if saved
                 .as_ref()
                 .is_some_and(|draft| !valid_screenshots(&draft.screenshots))
             {
                 return Err(HostError::Rejected);
             }
-            let mut value = draft(saved.as_ref());
+            let mut value = draft(saved.as_ref(), revision);
             value.message = message;
             match operation {
                 Operation::Load => Ok(Reply::DraftLoad { value }),
@@ -875,9 +879,12 @@ mod tests {
             screenshots: vec![],
         };
         assert!(
-            !serde_json::to_string(&super::draft(Some(&draft)))
-                .unwrap()
-                .contains("private key")
+            !serde_json::to_string(&super::draft(
+                Some(&draft),
+                Some(vantare_services::draft_revision(&draft))
+            ))
+            .unwrap()
+            .contains("private key")
         );
     }
     #[test]
@@ -1138,12 +1145,35 @@ mod draft_cas_tests {
     #[test]
     fn draft_reply_uses_the_authority_revision_and_rejects_invalid_presence() {
         let observed = "0123456789abcdef0123456789abcdef".to_owned();
-        let reply = complete(Operation::Load, core::Reply::Draft { draft: Some(saved()), revision: Some(observed.clone()), message: String::new() }).expect("draft reply");
-        let crate::protocol::Reply::DraftLoad { value } = reply else { panic!("draft load") };
+        let reply = complete(
+            Operation::Load,
+            core::Reply::Draft {
+                draft: Some(saved()),
+                revision: Some(observed.clone()),
+                message: String::new(),
+            },
+        )
+        .expect("draft reply");
+        let crate::protocol::Reply::DraftLoad { value } = reply else {
+            panic!("draft load")
+        };
         assert_eq!(value.revision, Some(observed.clone()));
-        for (draft, revision) in [(Some(saved()), None), (None, Some(observed)), (Some(saved()), Some("malformed".into()))] {
-            assert_eq!(complete(Operation::Load, core::Reply::Draft { draft, revision, message: String::new() }), Err(HostError::Rejected));
+        for (draft, revision) in [
+            (Some(saved()), None),
+            (None, Some(observed)),
+            (Some(saved()), Some("malformed".into())),
+        ] {
+            assert_eq!(
+                complete(
+                    Operation::Load,
+                    core::Reply::Draft {
+                        draft,
+                        revision,
+                        message: String::new()
+                    }
+                ),
+                Err(HostError::Rejected)
+            );
         }
     }
-
 }

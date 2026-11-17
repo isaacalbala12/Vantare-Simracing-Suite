@@ -993,3 +993,398 @@ fn missing_helper_or_invalid_directory_degrades_without_stopping_photos() {
         assert_eq!(core.snapshot().sequence, 129);
     }
 }
+
+fn session_open() -> Value {
+    json!(["session-open", {"epoch":1,"session":3,"kind":"practice","kindText":"",
+        "trackName":"Le Mans","vehicle":"Porsche","className":"LMGT3","startedAtMs":1000}])
+}
+
+fn session_close() -> Value {
+    json!(["session-close", {"epoch":1,"session":3,"endedAtMs":2000,"simElapsedS":null,
+        "finalPosition":null,"finalClassPosition":null,"lapsCompleted":1,"bestLapMs":null,
+        "endReason":"coreStopped"}])
+}
+
+fn lap_time() -> Value {
+    json!(["lap", {"epoch":1,"session":3,"car":7,"lap":0,"officialMs":112_000,
+        "sectorMs":[31200,47810,32990]}])
+}
+
+fn exchange(process: &mut Process, command: &Value, expected: &Value) {
+    process.send(command);
+    assert_eq!(&process.response(), expected);
+}
+
+#[test]
+fn session_events_are_idempotent_and_sealing_prevents_every_new_write() {
+    let db = Database::new();
+    let mut owner = Process::start_mode(&db.0, Some("--create"));
+    assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
+    exchange(&mut owner, &lap_time(), &json!(["rejected", "missing"]));
+    exchange(
+        &mut owner,
+        &session_close(),
+        &json!(["rejected", "missing"]),
+    );
+    for _ in 0..2 {
+        exchange(
+            &mut owner,
+            &session_open(),
+            &json!(["ack-session", "open", 1, 3]),
+        );
+        exchange(&mut owner, &lap_time(), &json!(["ack-lap", 1, 3, 7, 0]));
+    }
+    let mut conflict = session_open();
+    conflict[1]["vehicle"] = "changed".into();
+    exchange(&mut owner, &conflict, &json!(["rejected", "conflict"]));
+    let mut lap_conflict = lap_time();
+    lap_conflict[1]["officialMs"] = Value::Null;
+    exchange(&mut owner, &lap_conflict, &json!(["rejected", "conflict"]));
+    let mut sector_conflict = lap_time();
+    sector_conflict[1]["sectorMs"] = json!([1, 2, 3]);
+    exchange(
+        &mut owner,
+        &sector_conflict,
+        &json!(["rejected", "conflict"]),
+    );
+    for _ in 0..2 {
+        exchange(
+            &mut owner,
+            &session_close(),
+            &json!(["ack-session", "close", 1, 3]),
+        );
+    }
+    exchange(
+        &mut owner,
+        &session_open(),
+        &json!(["ack-session", "open", 1, 3]),
+    );
+    exchange(&mut owner, &lap_time(), &json!(["ack-lap", 1, 3, 7, 0]));
+    exchange(&mut owner, &lap_conflict, &json!(["rejected", "sealed"]));
+    let mut next = lap_time();
+    next[1]["lap"] = 1.into();
+    exchange(&mut owner, &next, &json!(["rejected", "sealed"]));
+    let mut changed = session_close();
+    changed[1]["bestLapMs"] = 112_000.into();
+    exchange(&mut owner, &changed, &json!(["rejected", "sealed"]));
+    owner.send(&json!(["stop"]));
+    assert!(owner.child.wait().unwrap().success());
+    let mut reader = Process::start_mode(&db.0, Some("--read-only"));
+    assert_eq!(reader.response(), json!(["ready", 0, false, 0]));
+    reader.send(&json!(["session-summaries"]));
+    let sessions = reader.response();
+    assert_eq!(sessions[0], "session-summaries");
+    assert_eq!(sessions[1], "series-session.v1");
+    assert_eq!(sessions[2], 1);
+    let mut expected = session_open()[1].clone();
+    for (key, value) in session_close()[1].as_object().unwrap() {
+        expected[key] = value.clone();
+    }
+    expected["sealed"] = true.into();
+    assert_eq!(sessions[3], json!([expected]));
+    exchange(
+        &mut reader,
+        &json!(["lap-times", 1, 3]),
+        &json!(["lap-times", "series-laps.v1", 1, [lap_time()[1]]]),
+    );
+}
+
+#[test]
+fn session_metadata_survives_kill_wal_read_only_and_resume_with_chunks() {
+    for sealed in [false, true] {
+        let db = Database::new();
+        {
+            let mut owner = Process::start_mode(&db.0, Some("--create"));
+            assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
+            exchange(
+                &mut owner,
+                &session_open(),
+                &json!(["ack-session", "open", 1, 3]),
+            );
+            let mut lap = lap_time();
+            lap[1]["officialMs"] = Value::Null;
+            lap[1]["sectorMs"] = Value::Null;
+            exchange(&mut owner, &lap, &json!(["ack-lap", 1, 3, 7, 0]));
+            if sealed {
+                exchange(
+                    &mut owner,
+                    &session_close(),
+                    &json!(["ack-session", "close", 1, 3]),
+                );
+            }
+            assert!(db.0.with_extension("duckdb.wal").exists());
+            owner.child.kill().unwrap();
+            owner.child.wait().unwrap();
+        }
+        let original = std::fs::read(&db.0).unwrap();
+        let wal = std::fs::read(db.0.with_extension("duckdb.wal")).unwrap();
+        {
+            let mut reader = Process::start_mode(&db.0, Some("--read-only"));
+            assert_eq!(reader.response(), json!(["ready", 0, false, 0]));
+            reader.send(&json!(["session-summaries"]));
+            let summary = reader.response();
+            assert_eq!(summary[3][0]["sealed"], sealed);
+            assert_eq!(
+                summary[3][0]["endedAtMs"],
+                if sealed { json!(2000) } else { Value::Null }
+            );
+            assert_eq!(summary[3][0]["bestLapMs"], Value::Null);
+            reader.send(&json!(["lap-times", 1, 3]));
+            let laps = reader.response();
+            assert_eq!(laps[3][0]["officialMs"], Value::Null);
+            assert_eq!(laps[3][0]["sectorMs"], Value::Null);
+            reader.send(&json!(["stop"]));
+            assert!(reader.child.wait().unwrap().success());
+        }
+        assert_eq!(std::fs::read(&db.0).unwrap(), original);
+        assert_eq!(
+            std::fs::read(db.0.with_extension("duckdb.wal")).unwrap(),
+            wal
+        );
+        let mut resumed = Process::start_mode(&db.0, Some("--resume"));
+        assert_eq!(resumed.response(), json!(["ready", 0, false, 0]));
+        exchange(
+            &mut resumed,
+            &session_open(),
+            &json!(["ack-session", "open", 1, 3]),
+        );
+        exchange(
+            &mut resumed,
+            &json!(["append", payload()]),
+            &json!(["ack", 1]),
+        );
+        exchange(
+            &mut resumed,
+            &json!(["page", 0, 16]),
+            &json!(["page", [payload()]]),
+        );
+    }
+}
+
+#[test]
+fn v1_metadata_is_unsupported_without_stopping_or_migrating_the_helper() {
+    let db = Database::new();
+    {
+        let connection = duckdb::Connection::open(&db.0).unwrap();
+        connection.execute_batch("CREATE TABLE series_meta(singleton BOOLEAN, schema_version VARCHAR, watermark UBIGINT, finished BOOLEAN, attempted UBIGINT); INSERT INTO series_meta VALUES(true,'vantare.series-db.v1',0,false,0); CREATE TABLE series_chunks(idx UBIGINT PRIMARY KEY,payload BLOB);").unwrap();
+    }
+    for mode in ["--resume", "--read-only"] {
+        let mut process = Process::start_mode(&db.0, Some(mode));
+        assert_eq!(process.response(), json!(["ready", 0, false, 0]));
+        for command in [
+            session_open(),
+            lap_time(),
+            session_close(),
+            json!(["session-summaries"]),
+            json!(["lap-times", 1, 3]),
+            json!(["lap-times", 1, 3, null, 256]),
+        ] {
+            exchange(&mut process, &command, &json!(["unsupported", "meta"]));
+        }
+        exchange(
+            &mut process,
+            &json!(["status"]),
+            &json!(["status", 0, false, 0]),
+        );
+        process.send(&json!(["stop"]));
+        assert!(process.child.wait().unwrap().success());
+    }
+    let connection = duckdb::Connection::open(&db.0).unwrap();
+    let tables: u64 = connection.query_row("SELECT count(*) FROM information_schema.tables WHERE table_name IN ('session_summaries','lap_times')",[],|row|row.get(0)).unwrap();
+    assert_eq!(tables, 0);
+    drop(connection);
+    let mut process = Process::start_mode(&db.0, Some("--resume"));
+    assert_eq!(process.response(), json!(["ready", 0, false, 0]));
+    exchange(
+        &mut process,
+        &json!(["append", payload()]),
+        &json!(["ack", 1]),
+    );
+    exchange(
+        &mut process,
+        &json!(["page", 0, 16]),
+        &json!(["page", [payload()]]),
+    );
+    process.send(&json!(["finish", 1]));
+    assert_eq!(process.response(), json!(["finished", 1, true, 1]));
+    process.send(&json!(["stop"]));
+    assert!(process.child.wait().unwrap().success());
+    let mut reader = Process::start_mode(&db.0, Some("--read-only"));
+    assert_eq!(reader.response(), json!(["ready", 1, true, 1]));
+    reader.send(&json!(["summaries"]));
+    let summaries = reader.response();
+    assert_eq!(summaries[0], "summaries");
+    assert_eq!(summaries[1], "series-summary.v1");
+    assert_eq!(summaries[2], 1);
+    reader.send(&json!(["plot-page", 0, 16]));
+    let plotted = reader.response();
+    assert_eq!(plotted[0], "plot-page");
+    assert_eq!(plotted[1], "series-plot.v1");
+    assert_eq!(plotted[2].as_array().unwrap().len(), 1);
+    assert_eq!(plotted[2][0]["index"], 1);
+}
+
+#[test]
+fn metadata_invalid_fields_and_frame_limits_never_receive_an_ack() {
+    for (field, invalid) in [
+        ("trackName", json!("x".repeat(257))),
+        ("kind", json!("future")),
+        ("startedAtMs", json!(-1)),
+        ("extra", json!(true)),
+    ] {
+        let db = Database::new();
+        let mut owner = Process::start_mode(&db.0, Some("--create"));
+        assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
+        let mut event = session_open();
+        event[1][field] = invalid;
+        exchange(&mut owner, &event, &json!(["rejected", "invalid"]));
+        exchange(
+            &mut owner,
+            &json!(["session-summaries"]),
+            &json!(["session-summaries", "series-session.v1", 0, []]),
+        );
+        exchange(
+            &mut owner,
+            &session_open(),
+            &json!(["ack-session", "open", 1, 3]),
+        );
+        let mut invalid_lap = lap_time();
+        invalid_lap[1]["sectorMs"] = json!([null]);
+        exchange(&mut owner, &invalid_lap, &json!(["rejected", "invalid"]));
+        exchange(&mut owner, &lap_time(), &json!(["ack-lap", 1, 3, 7, 0]));
+        let mut invalid_close = session_close();
+        invalid_close[1]["endReason"] = json!("invalid");
+        exchange(&mut owner, &invalid_close, &json!(["rejected", "invalid"]));
+        exchange(
+            &mut owner,
+            &session_close(),
+            &json!(["ack-session", "close", 1, 3]),
+        );
+    }
+    let db = Database::new();
+    let mut owner = Process::start_mode(&db.0, Some("--create"));
+    assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
+    let mut event = session_open();
+    event[1]["trackName"] = "é".repeat(128).into();
+    exchange(&mut owner, &event, &json!(["ack-session", "open", 1, 3]));
+    // The existing transport cap applies before parsing every command, including metadata.
+    let mut oversized = vec![b' '; 32768 + 129];
+    oversized.push(b'\n');
+    if let Err(error) = owner.input.write_all(&oversized) {
+        assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe);
+    }
+    let mut line = String::new();
+    assert_eq!(owner.output.read_line(&mut line).unwrap(), 0);
+    assert!(!owner.child.wait().unwrap().success());
+}
+
+#[test]
+fn metadata_round_trips_full_unsigned_keys_results_and_distinct_session_car_lap_keys() {
+    let db = Database::new();
+    let mut owner = Process::start_mode(&db.0, Some("--create"));
+    assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
+    let mut opened = session_open();
+    opened[1]["epoch"] = u64::MAX.into();
+    opened[1]["session"] = u64::MAX.into();
+    opened[1]["startedAtMs"] = u64::MAX.into();
+    exchange(
+        &mut owner,
+        &opened,
+        &json!(["ack-session", "open", u64::MAX, u64::MAX]),
+    );
+    let mut lap = lap_time();
+    lap[1]["epoch"] = u64::MAX.into();
+    lap[1]["session"] = u64::MAX.into();
+    lap[1]["car"] = u32::MAX.into();
+    lap[1]["lap"] = u32::MAX.into();
+    lap[1]["officialMs"] = u32::MAX.into();
+    lap[1]["sectorMs"] = json!(vec![u32::MAX; 16]);
+    exchange(
+        &mut owner,
+        &lap,
+        &json!(["ack-lap", u64::MAX, u64::MAX, u32::MAX, u32::MAX]),
+    );
+    let mut closed = session_close();
+    closed[1]["epoch"] = u64::MAX.into();
+    closed[1]["session"] = u64::MAX.into();
+    closed[1]["endedAtMs"] = u64::MAX.into();
+    closed[1]["simElapsedS"] = json!(0);
+    for field in [
+        "finalPosition",
+        "finalClassPosition",
+        "lapsCompleted",
+        "bestLapMs",
+    ] {
+        closed[1][field] = u32::MAX.into();
+    }
+    closed[1]["endReason"] = "sessionChanged".into();
+    for _ in 0..2 {
+        exchange(
+            &mut owner,
+            &closed,
+            &json!(["ack-session", "close", u64::MAX, u64::MAX]),
+        );
+    }
+    exchange(
+        &mut owner,
+        &session_open(),
+        &json!(["ack-session", "open", 1, 3]),
+    );
+    for (car, number) in [(7, 0), (8, 0), (7, 1)] {
+        let mut event = lap_time();
+        event[1]["car"] = car.into();
+        event[1]["lap"] = number.into();
+        exchange(&mut owner, &event, &json!(["ack-lap", 1, 3, car, number]));
+    }
+    owner.send(&json!(["stop"]));
+    assert!(owner.child.wait().unwrap().success());
+    let mut reader = Process::start_mode(&db.0, Some("--read-only"));
+    assert_eq!(reader.response(), json!(["ready", 0, false, 0]));
+    reader.send(&json!(["session-summaries"]));
+    let sessions = reader.response();
+    assert_eq!(sessions[2], 2);
+    let result = &sessions[3][0];
+    for key in ["epoch", "session", "startedAtMs", "endedAtMs"] {
+        assert_eq!(result[key], u64::MAX);
+    }
+    for key in [
+        "finalPosition",
+        "finalClassPosition",
+        "lapsCompleted",
+        "bestLapMs",
+    ] {
+        assert_eq!(result[key], u32::MAX);
+    }
+    assert_eq!(result["simElapsedS"], 0.0);
+    exchange(
+        &mut reader,
+        &json!(["lap-times", u64::MAX, u64::MAX]),
+        &json!(["lap-times", "series-laps.v1", 1, [lap[1]]]),
+    );
+    reader.send(&json!(["lap-times", 1, 3]));
+    assert_eq!(reader.response()[2], 3);
+}
+
+#[test]
+fn read_only_metadata_write_is_rejected_without_changing_the_file() {
+    let db = Database::new();
+    {
+        let mut writer = Process::start_mode(&db.0, Some("--create"));
+        assert_eq!(writer.response(), json!(["ready", 0, false, 0]));
+        exchange(
+            &mut writer,
+            &session_open(),
+            &json!(["ack-session", "open", 1, 3]),
+        );
+        writer.send(&json!(["stop"]));
+        assert!(writer.child.wait().unwrap().success());
+    }
+    let original = std::fs::read(&db.0).unwrap();
+    let mut reader = Process::start_mode(&db.0, Some("--read-only"));
+    assert_eq!(reader.response(), json!(["ready", 0, false, 0]));
+    reader.send(&session_close());
+    let mut line = String::new();
+    assert_eq!(reader.output.read_line(&mut line).unwrap(), 0);
+    assert!(!reader.child.wait().unwrap().success());
+    assert_eq!(std::fs::read(&db.0).unwrap(), original);
+}

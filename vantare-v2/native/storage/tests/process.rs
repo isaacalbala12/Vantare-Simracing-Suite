@@ -978,7 +978,7 @@ fn missing_helper_or_invalid_directory_degrades_without_stopping_photos() {
                 &mut core,
                 &mut vantare_runtime::adapter::open_replay(
                     &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../testdata/lmu-fixture.bin"),
-                    None
+                    Some("1.3.0.0")
                 )
                 .unwrap(),
                 1.0,

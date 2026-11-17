@@ -44,7 +44,7 @@ function Get-BuildCompressionChoice([double]$OptimalSeconds,[double]$SmallestSiz
     if($SmallestSizeSeconds - $OptimalSeconds -lt 120){'SmallestSize'}else{'Optimal'}
 }
 
-function New-BuildZip([string]$Directory,[string]$Destination,[ValidateSet('Optimal','SmallestSize')][string]$CompressionLevel='Optimal') {
+function New-BuildZip([string]$Directory,[string]$Destination,[ValidateSet('Optimal','SmallestSize')][string]$CompressionLevel=$(if([Enum]::GetNames([IO.Compression.CompressionLevel]) -contains 'SmallestSize'){'SmallestSize'}else{'Optimal'})) {
     $directory=Assert-BuildPath $Directory;$destination=Assert-BuildPath $Destination
     # Resolve before creating the archive: PS 5.1 has no SmallestSize.
     $level=[Enum]::Parse([IO.Compression.CompressionLevel],$CompressionLevel,$true)

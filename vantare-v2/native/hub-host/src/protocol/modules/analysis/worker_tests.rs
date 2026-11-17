@@ -41,7 +41,7 @@ fn fixture(
                     let seq = lap * chunks * count + offset + 1;
                     serde_json::json!([
                         seq,
-                        [1, f64::from(offset) * 0.123456789],
+                        [1, f64::from(offset) * 0.123_456_789],
                         [1, f64::from(offset) * 0.01],
                         [1, 50.0],
                         [1, 0.5],
@@ -123,8 +123,9 @@ fn worker_rejects_epoch_session_and_car_mismatches_from_real_summaries() {
 }
 #[test]
 fn worker_limit_counts_gap_entries_and_dense_gap_comparison_fits() {
-    for (chunks, too_large) in [(700, false), (782, true)] {
-        let (root, mut reader) = fixture(&[(1, 3, 7)], chunks, 64, true);
+    // 800 gap chunks x (one separator + 2 x 62 samples) = exactly 100,000 entries.
+    for (chunks, too_large) in [(800, false), (801, true)] {
+        let (root, mut reader) = fixture(&[(1, 3, 7)], chunks, 62, true);
         let request = job(0, 0);
         if too_large {
             let opened = &mut reader.as_mut().unwrap().0;
@@ -164,7 +165,10 @@ fn compare_absolute_deadline_uses_injected_clock_between_pages_and_drops_session
         let n = calls.get();
         calls.set(n + 1);
         if n < 2 {
-            request.deadline - Duration::from_secs(40)
+            request
+                .deadline
+                .checked_sub(Duration::from_secs(40))
+                .unwrap()
         } else {
             request.deadline
         }

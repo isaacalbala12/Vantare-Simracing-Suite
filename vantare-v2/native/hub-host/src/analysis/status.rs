@@ -214,6 +214,16 @@ fn project(
     })
 }
 pub fn read(root: &Path, paths: &BTreeMap<String, PathBuf>) -> Option<AnalysisRecordingStatus> {
+    read_with(root, paths, open_status)
+}
+fn open_status(path: &Path) -> std::io::Result<fs::File> {
+    fs::File::open(path)
+}
+fn read_with(
+    root: &Path,
+    paths: &BTreeMap<String, PathBuf>,
+    open: impl FnOnce(&Path) -> std::io::Result<fs::File>,
+) -> Option<AnalysisRecordingStatus> {
     let metadata = fs::symlink_metadata(root).ok()?;
     if !metadata.is_dir() || super::reparse(&metadata) {
         return None;
@@ -225,7 +235,7 @@ pub fn read(root: &Path, paths: &BTreeMap<String, PathBuf>) -> Option<AnalysisRe
     }
     // std File::open on Windows includes FILE_SHARE_DELETE for atomic Core replacement.
     let mut bytes = Vec::new();
-    fs::File::open(path)
+    open(&path)
         .ok()?
         .take(LIMIT + 1)
         .read_to_end(&mut bytes)

@@ -8,6 +8,7 @@ $qa=Assert-BuildPath $QaRoot
 if(-not ($qa.StartsWith('D:\VantareServer\qa\',[StringComparison]::OrdinalIgnoreCase) -or ($env:RUNNER_TEMP -and $qa.StartsWith(([IO.Path]::GetFullPath($env:RUNNER_TEMP).TrimEnd('\')+'\'),[StringComparison]::OrdinalIgnoreCase)))){throw 'Test exige raíz QA'}
 $root=Join-Path $qa ('build-tooling-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($root)|Out-Null
+& (Join-Path $PSScriptRoot 'hub-inventory-tests.ps1') -QaRoot $root
 & (Join-Path $PSScriptRoot 'build-zip-tests.ps1') -QaRoot $root
 & (Join-Path $PSScriptRoot 'build-package-capacity-tests.ps1') -QaRoot $root
 if($PSVersionTable.PSVersion.Major -ge 7 -and [Enum]::GetNames([IO.Compression.CompressionLevel]) -contains 'SmallestSize'){& (Join-Path $PSScriptRoot 'measure-hub-package-tests.ps1') -QaRoot $root}
@@ -35,10 +36,14 @@ if(-not $rejected){throw 'El auxiliar sustituyó al Hub público antes de integr
 $rejected=$false;try{Assert-PublicBins ($bins+@($qaProbe,'surprise')) $inventory}catch{$rejected=$true}
 if(-not $rejected){throw 'Binario desconocido aceptado'}
 $payload=Join-Path $root 'payload'
-foreach($name in @('README.md','licenses/OFL-Inter.txt','dependencies.json')+@($inventory.executables|ForEach-Object {"bin/$_";"bin/$_.sha256"})+@($inventory.resources|ForEach-Object {"bin/fixtures/$_"})){
+foreach($name in @('README.md','licenses/OFL-Inter.txt','dependencies.json','licenses/hub-web-notices.txt')+@($inventory.executables|ForEach-Object {"bin/$_";"bin/$_.sha256"})+@($inventory.resources|ForEach-Object {"bin/fixtures/$_"})){
     $file=Join-Path $payload $name
     [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($file))|Out-Null
     [IO.File]::WriteAllText($file,'x')
+}
+foreach($name in $inventory.executables){
+    $file=Join-Path $payload ('bin/'+$name)
+    [IO.File]::WriteAllText("$file.sha256","$(Get-NativeHash $file)  $name``n".Replace('``','`'))
 }
 Assert-PublicInventory $payload $inventory
 foreach($extra in @('bin/root-launch-probe.exe','bin/vantare-hub-host.exe','bin/unknown.exe','bin/fixtures/telemetry-real/unwanted.json')){

@@ -55,7 +55,19 @@ struct Stamp {
     modified: SystemTime,
 }
 fn regular_directory(root: &Path) -> Result<()> {
-    for component in root.ancestors().filter(|path| !path.as_os_str().is_empty()) {
+    // The catalog root is args.data.join("recordings") (analysis/init.inc).
+    // Its parent is the already-resolved Vantare data directory, not AppData.
+    // Check recordings itself and parents only through that boundary; a user may
+    // relocate their profile/AppData with a junction above it.
+    let data_dir = root
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .unwrap_or(root);
+    let parents = root
+        .ancestors()
+        .skip(1)
+        .take_while(|path| path.starts_with(data_dir));
+    for component in std::iter::once(root).chain(parents) {
         let metadata = fs::symlink_metadata(component).map_err(|error| {
             self::error(
                 if error.kind() == io::ErrorKind::NotFound {

@@ -8,7 +8,7 @@ export const launcherScenes: Record<string, VisualScene> = {
     async prepare(page) {
       await page.getByRole("button", { name: /^Launcher ?\d*$/ }).click();
       await page
-        .getByRole("heading", { name: "Creador de Contenido", exact: true })
+        .getByRole("heading", { name: /Creador de Contenido/ })
         .waitFor();
       const toggle = page
         .getByRole("button", {
@@ -245,7 +245,8 @@ launcherScenes["launcher-perfil-duplicado"] = {
   async prepare(page) {
     await launcherScenes["launcher-base"].prepare(page);
     await page
-      .getByRole("button", { name: "Creador de Contenido", exact: true })
+      .locator(".v-launcher-profile-grid")
+      .getByRole("button", { name: /Creador de Contenido/ })
       .click({ button: "right" });
     await page.getByRole("menuitem", { name: "Duplicar", exact: true }).click();
     const name = page.getByRole("textbox", { name: "Nombre", exact: true });

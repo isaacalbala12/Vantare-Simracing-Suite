@@ -29,9 +29,7 @@ try {
     );
     await page.getByRole("tab", { name: "General", exact: true }).waitFor();
     await page.getByRole("button", { name: "Inicio", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Notificaciones", exact: true })
-      .click();
+    await page.getByRole("button", { name: /^Notificaciones/ }).click();
     const panel = page.locator(".v-notifications--compact");
     await panel.getByText("Todo al día", { exact: true }).waitFor();
     await page.evaluate(async () => {
@@ -75,9 +73,7 @@ try {
   await page
     .getByRole("button", { name: "Cambiar tema claro u oscuro", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "Notificaciones", exact: true })
-    .click();
+  await page.getByRole("button", { name: /^Notificaciones/ }).click();
   await page.getByText("Error local del Hub", { exact: true }).waitFor();
   await page
     .getByRole("button", { name: "Ver todas las notificaciones", exact: true })

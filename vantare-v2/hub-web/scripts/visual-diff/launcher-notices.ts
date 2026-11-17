@@ -13,9 +13,7 @@ export const launcherNoticeScenes: Record<string, VisualScene> = {
         .getByRole("button", { name: new RegExp(`^${launcherText.launch}`) })
         .first()
         .click();
-      await page
-        .getByRole("button", { name: "Notificaciones", exact: true })
-        .click();
+      await page.getByRole("button", { name: /^Notificaciones/ }).click();
       await page.getByText("Aplicaciones listas", { exact: true }).waitFor();
       await page
         .getByRole("button", {

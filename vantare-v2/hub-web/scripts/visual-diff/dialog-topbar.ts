@@ -343,16 +343,12 @@ for (const [kind, button, section] of [
 scenes["dialog-topbar-notifications"] = {
   mock: "notificaciones-base",
   async prepare(page) {
-    await page
-      .getByRole("button", { name: "Notificaciones", exact: true })
-      .click();
+    await page.getByRole("button", { name: /^Notificaciones/ }).click();
     await page.locator(".v-notifications--compact").waitFor();
   },
   async cleanup(page) {
     if (process.env.VANTARE_DIALOG_AUDIT_PHASE === "after") {
-      await page
-        .getByRole("dialog", { name: "Notificaciones", exact: true })
-        .focus();
+      await page.getByRole("dialog", { name: /^Notificaciones/ }).focus();
       await page.keyboard.press("Escape");
       const bell = page.getByRole("button", {
         name: "Notificaciones",

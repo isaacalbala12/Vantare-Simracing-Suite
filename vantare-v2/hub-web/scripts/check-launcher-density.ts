@@ -119,13 +119,12 @@ export async function checkLauncherDensity(
             "Compact profiles stay on one row",
           );
         }
-        const first = page.getByRole("button", {
-          name: "Creador de Contenido",
-          exact: true,
-        });
+        const first = page
+          .locator(".v-launcher-profile-grid")
+          .getByRole("button", { name: /Creador de Contenido/ });
         await first.focus();
         await page.keyboard.press("Tab");
-        const next = page.getByRole("button", { name: "Pro", exact: true });
+        const next = page.getByRole("button", { name: /^Pro ?\d+ apps/ });
         assert.ok(
           await next.evaluate(
             (node) =>

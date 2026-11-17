@@ -51,6 +51,7 @@ export async function prepareResidentRemoval(page: Page, state: string) {
         await page.getByText(text.removed, { exact: true }).waitFor();
         assert.equal(
           await page
+            .locator(".v-launcher-profile-grid")
             .getByRole("button", { name: /Creador de Contenido/ })
             .count(),
           0,
@@ -98,6 +99,7 @@ export async function prepareResidentRemoval(page: Page, state: string) {
         }
         assert.equal(
           await page
+            .locator(".v-launcher-profile-grid")
             .getByRole("button", { name: /Creador de Contenido/ })
             .count(),
           1,

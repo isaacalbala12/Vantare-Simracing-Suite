@@ -37,7 +37,7 @@ if(-not $InBuildSlot){
     $forward=@('-Version',$Version,'-OutputDirectory',$output,'-BuildProfile',$BuildProfile,'-Channel',$Channel,'-InBuildSlot')
     if($ConfigFile){$forward+=@('-ConfigFile',([IO.Path]::GetFullPath($ConfigFile)))}
     if($TestInstaller){$forward+='-TestInstaller'}
-    if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath @forward}
+    if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath -Version $Version -OutputDirectory $output -BuildProfile $BuildProfile -Channel $Channel -InBuildSlot -ConfigFile $ConfigFile -TestInstaller:$TestInstaller}
     else{
         & pwsh -NoProfile -File (Join-Path $PSScriptRoot '../scripts/compilar.ps1') pwsh -NoProfile -File $PSCommandPath @forward
         if($LASTEXITCODE){throw 'Falló Setup dentro del slot'}

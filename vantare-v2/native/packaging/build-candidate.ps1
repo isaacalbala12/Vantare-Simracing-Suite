@@ -53,7 +53,7 @@ try{
         $forward=@('-Version',$Version,'-Channel',$Channel,'-OutputDirectory',$destination,'-BuildProfile',$BuildProfile,'-RustStage')
         if($ConfigFile){$forward+=@('-ConfigFile',([IO.Path]::GetFullPath($ConfigFile)))}
         if($AllowDirty){$forward+='-AllowDirty'}
-        if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath @forward}
+        if($env:VANTARE_CARGO_QUEUE_OWNER){& $PSCommandPath -Version $Version -Channel $Channel -OutputDirectory $destination -BuildProfile $BuildProfile -RustStage -ConfigFile $ConfigFile -AllowDirty:$AllowDirty}
         else{
             & pwsh -NoProfile -File (Join-Path $native 'scripts/compilar.ps1') pwsh -NoProfile -File $PSCommandPath @forward
             if($LASTEXITCODE){throw 'Falló el candidato dentro del slot'}

@@ -10,11 +10,12 @@ use ts_rs::TS;
 
 pub const EXPORT_LIMIT: usize = 64 * 1024;
 pub const EXPORT_NAME: &str = "vantare-report.json";
-pub const BINARIES: [&str; 9] = [
+pub const BINARIES: [&str; 10] = [
     "vantare-hub.exe",
     "vantare.exe",
     "vantare-core.exe",
     "vantare-overlays.exe",
+    "vantare-overlays-rune.exe",
     "vantare-engineer.exe",
     "vantare-storage.exe",
     "vantare-workshop.exe",
@@ -279,7 +280,7 @@ mod tests {
             .collect::<std::collections::BTreeSet<_>>().len(), entries.len());
     }
     #[test]
-    fn exactly_nine_fixed_names_and_no_reads_for_missing_links_or_oversized_files() {
+    fn exactly_ten_fixed_names_and_no_reads_for_missing_links_or_oversized_files() {
         let root = Root::new();
         let mut state = State::default();
         let unavailable = state.collect_at(None, |_| panic!("no directory to read"));
@@ -321,7 +322,7 @@ mod tests {
         let entries = state.collect_at(Some(&root.0), |_| {
             panic!("non-files, links and oversized files must not be read")
         });
-        assert_eq!(entries.len(), 9);
+        assert_eq!(entries.len(), 10);
         assert_eq!(entries[0].state, BinaryState::Unreadable);
         assert_eq!(entries[1].state, BinaryState::Unreadable);
         if linked.is_ok() {

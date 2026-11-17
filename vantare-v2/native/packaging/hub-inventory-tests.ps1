@@ -15,6 +15,21 @@ function Reject([scriptblock]$Action){
     if(-not $failed){throw 'Invalid Hub inventory accepted'}
 }
 $inventory=Get-Content (Join-Path $PSScriptRoot 'public-inventory.json') -Raw|ConvertFrom-Json
+if((Get-PublicArtifact 'vantare-hub.exe' $inventory) -cne 'vantare-hub-host.exe'){throw 'Host artifact mapping missing'}
+foreach($case in @(
+    @{key='vantare-hub.exe';value='..\x.exe'},
+    @{key='vantare-hub.exe';value='../vantare.exe'},
+    @{key='vantare-hub.exe';value='D:\vantare.exe'},
+    @{key='vantare-hub.exe';value='x.exe'},
+    @{key='vantare-hub.exe';value='Vantare.exe'},
+    @{key='../vantare.exe';value='vantare.exe'},
+    @{key='vantare-unknown.exe';value='vantare.exe'}
+)){
+    $bad=$inventory|ConvertTo-Json -Depth 20|ConvertFrom-Json
+    $bad.artifact_overrides=[pscustomobject]@{}
+    $bad.artifact_overrides|Add-Member -NotePropertyName $case.key -NotePropertyValue $case.value
+    Reject {Get-PublicArtifact 'vantare-hub.exe' $bad}
+}
 $payload=Join-Path $root 'payload'
 foreach($name in @('README.md','licenses/OFL-Inter.txt','dependencies.json','licenses/hub-web-notices.txt')+@($inventory.executables|ForEach-Object {"bin/$_"})+@($inventory.resources|ForEach-Object {"bin/fixtures/$_"})){
     Put (Join-Path $payload $name) 'fixture'

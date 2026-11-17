@@ -52,6 +52,8 @@ export default function Analysis({
         }}
         rail={
           <AnalysisRail
+            clock={clock}
+            timeZone={timeZone}
             enabled={enabled}
             state={state}
             recording={state.rows.some((r) => r.recording)}
@@ -82,6 +84,8 @@ export default function Analysis({
           </>
         ) : state.selected ? (
           <AnalysisLaps
+            clock={clock}
+            timeZone={timeZone}
             state={state}
             controller={state.controller}
             enabled={enabled}

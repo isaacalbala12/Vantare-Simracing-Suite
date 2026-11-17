@@ -29,12 +29,16 @@ export function AnalysisRail({
   enabled,
   recording,
   state,
+  clock = Date.now,
+  timeZone = recordingZone(),
 }: {
   enabled: boolean;
   recording: boolean;
   state?: AnalysisSnapshot;
+  clock?: () => number;
+  timeZone?: string;
 }) {
-  const now = useRecordingClock(Date.now);
+  const now = useRecordingClock(clock, timeZone);
   const row = state?.selected;
   const opened = state?.opened;
   return (
@@ -50,7 +54,7 @@ export function AnalysisRail({
         <RailBlock icon="pulse" title={t.thisRecording}>
           <dl className="v-an-recording-meta">
             {[
-              [t.date, recordingDateLabel(row.startedAtMs, now)],
+              [t.date, recordingDateLabel(row.startedAtMs, now, timeZone)],
               [t.circuit, <em key="track">{t.track}</em>],
               [t.carLabel, <em key="car">{t.car}</em>],
               [t.laps, opened.laps.length],
@@ -81,8 +85,8 @@ export function AnalysisNotice({
   loading = false,
 }: {
   title: string;
-  icon?: IconName;
   loading?: boolean;
+  icon?: IconName;
   help?: string;
   children?: ReactNode;
 }) {
@@ -125,7 +129,6 @@ function RecordingRow({
   timeZone: string;
 }) {
   const ref = useRef<HTMLTableRowElement>(null);
-  const dateId = useId();
   useEffect(() => {
     if (!ref.current || row.recording || !controller) return;
     const observer = new IntersectionObserver(([entry]) =>
@@ -163,7 +166,15 @@ function RecordingRow({
         </time>
       </td>
       <td>
-        <button type="button" className="v-an-open" aria-description={date(row.startedAtMs, timeZone)} onClick={(event) => {event.stopPropagation(); controller?.open(row);}}> 
+        <button
+          type="button"
+          className="v-an-open"
+          aria-description={date(row.startedAtMs, timeZone)}
+          onClick={(event) => {
+            event.stopPropagation();
+            controller?.open(row);
+          }}
+        >
           <em>{t.track}</em>
           <em>{t.car}</em>
         </button>
@@ -255,10 +266,10 @@ export function AnalysisCatalog({
           )
         }
       />
-      <RecordingStrip
-        enabled={enabled}
-        recording={state.rows.some((r) => r.recording)}
-      />
+      <div className="v-an-strip" role="status">
+        {`${t.automatic}: ${enabled ? t.enabled : t.disabled}`}
+        {state.rows.some((r) => r.recording) && <strong>{t.recording}</strong>}
+      </div>
       {!enabled && state.rows.length > 0 && (
         <Callout
           title={t.off}

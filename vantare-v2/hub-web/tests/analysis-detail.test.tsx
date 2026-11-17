@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AnalysisRequest } from "../src/contract/generated/analysis";
 import type { Reply } from "../src/contract/generated/contract";
+import { analysisQaNow } from "../src/mock/analysis-scenes";
 import { createMockHost } from "../src/mock/host";
 import { AnalysisController } from "../src/renderer/app/AnalysisController";
 import * as host from "../src/renderer/app/Host";
@@ -31,7 +32,11 @@ const access = {
   analysis: true,
 };
 function bridge() {
-  const mock = createMockHost("analysis-qa-catalog");
+  const mock = createMockHost(
+    "analysis-qa-catalog",
+    undefined,
+    () => analysisQaNow,
+  );
   let id = 0;
   return vi.fn(async (request: AnalysisRequest): Promise<Reply> => {
     const r = mock({ kind: "request", id: ++id, request });
@@ -40,7 +45,7 @@ function bridge() {
     throw Error("fixture has no response");
   });
 }
-function mount(request = bridge()) {
+function mount(request = bridge(), timeZone = "UTC") {
   vi.spyOn(host, "useHost").mockReturnValue({
     client: { request } as unknown as Client,
   });
@@ -57,7 +62,7 @@ function mount(request = bridge()) {
         <TooltipProvider>
           <SectionChromeProvider>
             <SectionTabsSlot />
-            <Analysis />
+            <Analysis clock={() => analysisQaNow} timeZone={timeZone} />
           </SectionChromeProvider>
         </TooltipProvider>
       </UiProvider>
@@ -156,6 +161,17 @@ it("opens the host mock, renders approximate reduced signals and closes its toke
     screen.getByRole("tab", { name: "Vueltas" }).getAttribute("aria-disabled"),
   ).toBe("true");
 });
+it.each([
+  ["UTC", "Hoy · 16:05 · 21,4 MB"],
+  ["Europe/Madrid", "Hoy · 17:05 · 21,4 MB"],
+])(
+  "uses the injected clock and zone %s in the recording heading",
+  async (zone, metadata) => {
+    mount(bridge(), zone);
+    await selectRow();
+    expect(await screen.findByText(metadata)).toBeTruthy();
+  },
+);
 it("keeps technical counters folded and preserves u64 strings exactly", async () => {
   const real = bridge();
   const request = vi.fn(async (r: AnalysisRequest) => {

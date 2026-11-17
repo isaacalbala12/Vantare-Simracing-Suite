@@ -181,9 +181,13 @@ export function recordingDate(
     .replaceAll(".", "");
   return `${prefix}, ${time}`;
 }
-export function recordingDateLabel(ms: number, nowMs: number) {
-  const group = recordingGroup(ms, nowMs);
+export function recordingDateLabel(
+  ms: number,
+  nowMs: number,
+  timeZone = recordingZone(),
+) {
+  const group = recordingGroup(ms, nowMs, timeZone);
   return group === "today" || group === "yesterday"
-    ? `${analysisText[group]}, ${recordingDate(ms, nowMs)}`
-    : recordingDate(ms, nowMs);
+    ? `${analysisText[group]}, ${recordingDate(ms, nowMs, timeZone)}`
+    : recordingDate(ms, nowMs, timeZone);
 }

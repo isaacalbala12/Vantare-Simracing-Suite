@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import type { AnalysisLap } from "../src/contract/generated/analysis";
+import { analysisQaNow } from "../src/mock/analysis-scenes";
 import { createMockHost } from "../src/mock/host";
 import {
   estimatedLap,
@@ -9,7 +10,11 @@ import {
 } from "../src/renderer/app/analysis-laps";
 
 function laps() {
-  const host = createMockHost("analysis-qa-laps");
+  const host = createMockHost(
+    "analysis-qa-laps",
+    undefined,
+    () => analysisQaNow,
+  );
   host({ kind: "request", id: 1, request: { method: "analysis.catalog" } });
   const response = host({
     kind: "request",

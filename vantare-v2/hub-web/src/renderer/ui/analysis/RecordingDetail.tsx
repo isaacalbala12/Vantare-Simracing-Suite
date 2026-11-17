@@ -8,6 +8,7 @@ import type {
   AnalysisSnapshot,
   Opened,
 } from "../../app/AnalysisController";
+import { recordingZone } from "../../app/analysis-dates";
 import {
   estimatedLap,
   lapDataKind,
@@ -134,13 +135,17 @@ export function AnalysisLaps({
   controller,
   updates,
   enabled,
+  clock = Date.now,
+  timeZone = recordingZone(),
 }: {
   state: AnalysisSnapshot;
   controller?: AnalysisController;
   updates: () => void;
   enabled: boolean;
+  clock?: () => number;
+  timeZone?: string;
 }) {
-  const now = useRecordingClock(Date.now);
+  const now = useRecordingClock(clock, timeZone);
   const opened = state.opened;
   const summary = summarizeLaps(opened?.laps ?? []);
   const back = () => controller?.load();
@@ -179,7 +184,7 @@ export function AnalysisLaps({
         <div>
           <p className="v-an-heading-meta">
             {state.selected
-              ? `${recordingDateLabel(state.selected.startedAtMs, now).replace(", ", " · ")} · ${size(state.selected.sizeBytes)}`
+              ? `${recordingDateLabel(state.selected.startedAtMs, now, timeZone).replace(", ", " · ")} · ${size(state.selected.sizeBytes)}`
               : t.dash}
           </p>
           <h1>

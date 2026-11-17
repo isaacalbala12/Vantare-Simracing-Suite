@@ -4,11 +4,12 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "playwright-core";
+import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
 import { analysisText as t } from "../src/renderer/i18n/analysis.es.ts";
 import { writeAnalysisSheet } from "./analysis-sheet.ts";
 import { webQaPreview } from "./web-qa.ts";
 
-const output = "D:/VantareServer/evidence/analisis/p1/p1b/revision-visual";
+const output = "D:/VantareServer/evidence/analisis/p1/p1b/dst-fix";
 const subset = process.argv.includes("--technical-only")
   ? "technical"
   : process.argv.includes("--settings-only")
@@ -50,8 +51,11 @@ try {
   const context = await browser.newContext({
     reducedMotion: "reduce",
     deviceScaleFactor: 1,
+    timezoneId: "UTC",
+    locale: "es-ES",
   });
   const page = await context.newPage();
+  await page.clock.setFixedTime(analysisQaNow);
   const reference = await context.newPage();
   await reference.setViewportSize({ width: 1400, height: 1000 });
   const base = server.resolvedUrls?.local[0];

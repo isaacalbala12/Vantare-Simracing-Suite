@@ -83,7 +83,7 @@ fn single() {
     let mut real = Real::start_rune("rune-single");
     let overlay = real.ready();
     let core = real.scenario.starts("core");
-    let status = Command::new(env!("CARGO_BIN_EXE_vantare"))
+    let status = Command::new(super::super::launcher_exe())
         .args(["--instancia", &real.scenario.instance, "--overlays-bin"])
         .arg(real.scenario.dir.join("bin/vantare-overlays-rune.exe"))
         .env("VANTARE_NATIVE_DATA_ROOT", &real.scenario.dir)

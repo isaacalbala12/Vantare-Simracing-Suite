@@ -39,6 +39,14 @@ mod restart;
 #[path = "lifecycle/characterization.rs"]
 mod characterization;
 
+/// Portable QA runs use a separately hashed launcher from the frozen product SHA.
+fn launcher_exe() -> PathBuf {
+    env::var_os("VANTARE_LIFECYCLE_LAUNCHER_EXE").map_or_else(
+        || PathBuf::from(env!("CARGO_BIN_EXE_vantare")),
+        PathBuf::from,
+    )
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = env::args().skip(1).collect();
     #[cfg(windows)]
@@ -402,7 +410,7 @@ impl Scenario {
         grace: &str,
     ) -> Command {
         let me = env::current_exe().unwrap();
-        let mut command = Command::new(env!("CARGO_BIN_EXE_vantare"));
+        let mut command = Command::new(launcher_exe());
         command
             .args([
                 "--core-bin",
@@ -478,7 +486,7 @@ impl Scenario {
     }
 
     fn stop(&self) {
-        let status = Command::new(env!("CARGO_BIN_EXE_vantare"))
+        let status = Command::new(launcher_exe())
             .args(["--parar", "--instancia", &self.instance])
             .env("VANTARE_NATIVE_DATA_ROOT", &self.dir)
             .env("LOCALAPPDATA", &self.dir)
@@ -518,7 +526,13 @@ impl Drop for Scenario {
                 .to_string_lossy()
                 .starts_with("vantare-lifecycle-")
         );
-        let _ = fs::remove_dir_all(&self.dir);
+        // Processes are already stopped by their owners; retain only this guarded
+        // QA directory when collecting the portable lifecycle evidence.
+        if env::var_os("VANTARE_LIFECYCLE_KEEP_ARTIFACTS").as_deref()
+            != Some(std::ffi::OsStr::new("1"))
+        {
+            let _ = fs::remove_dir_all(&self.dir);
+        }
     }
 }
 

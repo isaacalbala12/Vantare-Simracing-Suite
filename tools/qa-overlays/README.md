@@ -101,3 +101,199 @@ con CSV válido. No interpreta TimeInQPC como CPUStartQPC ni estima pantalla.
 La cabecera de fixtures/presentmon-2.6-header.csv se copió, sin filas privadas,
 de evidence/rune-vs-gpui/rapida-20261115/resultados/09-gpui_fast/muestreo/presentmon.csv.
 El parser completo del kit conserva su comportamiento y sus columnas requeridas.
+
+## Kit autónomo de la tanda (17-nov)
+
+Fuentes de binarios congeladas en fb2e2e520be96b59066e2a69c3899cf9842a0752
+(19 tipos; cinco con Vantare/Eficiencia, incluido Standings Eficiencia E6 y sRGB #2496).
+El worktree de compilación permanece limpio; estos scripts tienen SHA propio.
+No editar el handoff vivo: estado/evidencia van en el cuerpo del PR.
+
+`preparar_tanda.py` exige el SHA y los hashes de binarios.json, copia PresentMon
+2.6.0 con su digest oficial fijado, corpus LMU47 con hash, locks y fuentes de
+fixtures exactas. Conserva fotos/orden/sequence/epoch; no interpreta memoria
+LMU ni genera datos. Produce prefijos de todas las escenas cortas y los cortes
+1/3/10/121/197/final de las historias largas. Escala de paridad base 1, misma
+configuración Vantare/Eficiencia; tamaño natural de cada motor, sin reescalar.
+Los tamaños del plan se rotulan como orientativos; el resultado guarda los
+IHDR reales y el diff rechaza dimensiones diferentes.
+
+Una sola entrada: TANDA.ps1, cuyo modo por defecto SOLO valida. La ejecución
+se hace desde el servidor, con una ventana UTC expresamente autorizada:
+
+```powershell
+pwsh -NoProfile -File <kit>/TANDA.ps1 -Modo Servidor -Kit <kit> `
+  -NoAntesUtc <ISO-UTC-autorizada> -LimiteUtc <ISO-UTC-fin-autorizada>
+```
+
+No ejecutarlo para preparar el kit. No hay cita implícita ni reinicio automático.
+El servidor verifica que Machine contiene VANTARE_LICENSE_PUBLIC_KEYS sin
+imprimirlo; el núcleo debe llevarlo compilado. No se copia la variable al PC,
+no se extraen claves de otros sitios y no hay identidad/licencia sintéticas.
+Después de configurar Machine hay que reconstruir el núcleo y regenerar hashes.
+La ausencia de esa configuración impide lanzar/apagar el PC, pero permite el
+ensayo gráfico deshabilitado, que queda rotulado como NO listo para derechos.
+
+El coordinador copia a una carpeta QA nueva y registra una tarea /IT con el
+usuario ya conectado, sin contraseña. Solo los samplers fijos preautorizados usan Highest; trabajador y capturas/lifecycle usan Limited. El trabajador exige sesión única esperada,
+token limitado, GPU física, diez minutos de inactividad y ningún juego/Vantare
+ajeno abierto. Nunca cierra procesos de Isaac. Crear ventanas/capturar no está
+autorizado hasta la cita; el modo Trabajador se rechaza en el servidor incluso
+si alguien olvida VANTARE_SIN_GRAFICOS. Una sesión bloqueada puede impedir la
+captura GDI de GPUI: se conserva el error, no se publica una aprobación falsa.
+
+Por ronda: host nuevo, núcleo real, pipe nuevo, mismo corpus sin extensión ni
+ralentización, 5 s descartados y 50 centrales; Waiting sin simulador también.
+El QPC procede del PRIMER span observe real del núcleo, mediante su feature
+paint-stats existente. La traza del núcleo se guarda en memoria y se vuelca al
+cerrar fuera de la ventana; nunca se infiere el reloj de la llegada de stderr.
+Se valida frecuencia, fin y ausencia de overflow. Una captura tardía se invalida,
+no desplaza el tramo. La instrumentación solo del núcleo es idéntica en ambos
+brazos y se excluye de la familia CPU/memoria del overlay; tiene coste de memoria
+propio y no acredita latencia de presentación ni una campaña A/A completa.
+
+Se empaqueta además vantare-services.exe de la MISMA base exclusivamente para
+LicenseStatus/Read local antes/después de cada ronda: política vigente Pro o
+Founders, nunca renovación/login ni transferencia de credenciales. El nonce de
+ese enlace efímero vive solo en memoria y no se registra. Unconfigured,
+NoCredential, caducidad o versión incompatible invalidan la ronda. Esto impide
+medir en silencio una capa vacía por derechos. El núcleo necesita además el binding con la credencial legítima: la clave pública verifica, no concede Owner. Núcleo, host y Services quedan en QA; no se vuelve automáticamente al perfil real. Como defensa adicional se conserva una foto de los directorios Vantare/VantareNative reales (solo nombres y hashes) antes/después: cualquier cambio fuera de logs aborta ANTES del análisis y sin apagar. El núcleo normal persiste authority fuera de logs; no se usa como fallback ni se revierte su reloj. El ensayo de denegación usa un almacén QA vacío aislado.
+
+Capturas: todas usan fotos explícitas; NO_DEMO no tiene fallback. GPUI recibe
+exactamente el mismo prefijo que Rune. Para el modo asentado, el TSV entrega
+fotos con empates t=0 en el mismo orden y motion=false. No acredita fases de
+animaciones. GPUI no ofrece wall-ms: Avisos conserva esa limitación explícita.
+PNG original con alfa, pareja GPUI|Rune a tamaño real, diff de píxeles <5 % con
+umbral por canal 8 y revisión de texto separada PENDIENTE. Completar la ejecución
+no aprueba la paridad ni el texto automáticamente.
+
+Al cerrar, solo termina procesos propios. Se conserva cada código/token Rune
+0/2/3/4/5/6 y cada error. GPU ausente, sesión/actividad inesperada, derechos o
+CSV inválidos abortan sin apagado. PresentMon temporizado termina su sesión ETW.
+La evidencia se copia al servidor en destino nuevo, se verifica el archivo y
+cada hash y SOLO ENTONCES se autoriza una segunda tarea interactiva a comprobar
+otra vez la sesión/inactividad y ejecutar shutdown /s /t 60. Copia fallida o
+actividad final dejan el PC encendido. Las tareas temporales propias se retiran.
+
+Ensayo permitido en el servidor, sin dispositivo gráfico:
+
+```powershell
+pwsh -NoProfile -File <kit>/TANDA.ps1 -Modo Ensayo -Kit <kit> -Salida <salida-nueva>
+```
+
+Fija VANTARE_SIN_GRAFICOS=1, valida rutas/hashes/TSV, ejecuta SOLO el guard Rune
+(6 GRAPHICS_DISABLED), el controlador con procesos/transporte/apagado falsos y
+las regresiones CSV. No ejecuta GPUI, PresentMon ni captura real, SSH o shutdown.
+PROBAR_DERECHOS.ps1 verifica IPC Core/Services real pero solo CPU y QA vacío:
+debe DENEGAR, sin fabricar acceso. VERIFICAR_DLLS.ps1 lee imports con dumpbin,
+sin ejecutar binarios. Todo resultado de ensayo va en logs externos al repo.
+
+### Ciclo de vida Rune (#2522), solo en la cita autorizada
+
+El producto se mantiene en fb2e2e520, anterior a M1/M2. Se transporta también
+vantare.exe y se usa --overlays-bin, sin recongelar producto. Por excepción
+expresa de la raíz, el launcher auxiliar se reutiliza del run oficial
+44006217558, SHA 8358fdae1 (descendiente de fb2e2e520), perfil debug de CI;
+sus hashes y los del archivo original constan en builds. No entra en las
+mediciones CPU/memoria. El arnés CI fija con env! una ruta D:/a/... del runner
+que no existe en la carpeta QA: se transporta su adaptación portátil solo de pruebas validada por CI; no se
+crean rutas/junctions fuera de C:/VantareQA.
+Los cuatro tests ignorados de #2522 se precompilan aparte desde su fuente
+registrada en lifecycle-binarios.json; no se ejecuta Cargo en el PC. Se invoca
+lifecycle-rune-tests.exe --ignored --test-threads=1 --nocapture, con las rutas
+VANTARE_RUNE_OVERLAYS_EXE y VANTARE_LIFECYCLE_HARNESS y el launcher congelado
+mediante VANTARE_LIFECYCLE_LAUNCHER_EXE. Solo cambian en el arnés la ubicación
+del launcher y la retención optativa del directorio QA para evidencia.
+
+Comprueba EOF, reinicio después de caída, salida cero e instancia única. Estos
+tests usan el núcleo sintético original de lifecycle, separado por completo de
+las mediciones con el replay LMU y de la identidad legítima de Isaac. TEMP/TMP
+se sitúan dentro de la evidencia; se conservan logs y se cierran hijos propios.
+El ensayo del servidor solo enumera los tests de libtest (--list --ignored),
+nunca ejecuta los cuatro ignorados ni el arnés con su parser propio.
+
+El muestreador se prepara en su modo RootInfoFile existente ANTES de arrancar
+el replay: CAPTURA-LISTA confirma ETW y las clases de contadores ya preparadas.
+Se entrega atómicamente la identidad del host recién creado. ETW dura 65 s,
+pero solo se analizan [5,55) desde el primer observe real del núcleo. La ronda
+falsa PROBAR_RONDA comprueba este orden, la identidad y el cierre por denegación;
+no se desplaza la ventana si el host llega demasiado tarde.
+
+La matriz se obtiene de los campos REALES de settings: Vantare/Eficiencia para
+Relative, Standings, Fuel, Pedales y Delta; los otros catorce son funcionales
+sin designSystem. No se etiquetan dos veces como Looks diferentes. Se conservan
+los 13 escenarios nombrados del catálogo y todos los respaldos/variantes del
+plan: orientación, tamaños, pausa, miniavisos y ausencia de datos. Neo/Neutro y
+brandVisible se explicitan donde existen. Se generarán 223 parejas visuales y
+96 rondas de rendimiento; duración orientativa 2 h 45 min más copia/verificación.
+La paridad DPI 125/150 queda fuera: GPUI capture exige 96 DPI; no se cambia DPI.
+
+Los auxiliares se han reutilizado de CI para no consumir RAM del servidor:
+launcher y libtest del run 44006217558 (8358fdae1); arnés portátil del run
+44012118423, merge 704fac60688752d588279db52f6bf6f1adb8359c de #2525
+(fuente de tests idéntica a 5d61507ba). El diff de domain/ipc/session/restart
+respecto a fb2e2e520 está vacío. Los tres son debug y quedan fuera de CPU/memoria.
+La cola local pendiente se canceló sin hijos Rust; no se interrumpió compilación.
+El PATH solo del hijo lifecycle incluye bin/ para encontrar el CRT empaquetado,
+y se restaura en finally; no se cambia ninguna variable Machine/User.
+
+Los layouts QA fijan performance.widgets.qa=15, opción existente común de
+producto. Banderas conserva la excepción de seguridad del producto: 0 (por
+cambio, sin limitar). Se registra el Hz efectivo en cada caso; no se modifica
+el perfil ni layout de Isaac. Las parejas incluyen superposición al 50 % y
+cajas alfa: un PNG transparente se revisa como ocultación esperada, no como
+aprobación de contenido por un diff cero.
+
+En Waiting el muestreador se inicia DESPUÉS del host, modo directo de 60 s:
+CAPTURA-LISTA vuelve a ser su origen y conserva cinco segundos completos de
+calentamiento del host. Nunca se pasa ReplayStartQpc en Waiting. PROBAR_RONDA
+ejecuta y comprueba ambas órdenes con procesos falsos y el rechazo de derechos.
+
+Tras configurar Machine, reconstruir SOLO el núcleo por la cola, conservando
+los otros binarios y auxiliares con sus hashes (salida siempre nueva):
+
+```powershell
+pwsh -NoProfile -File tools/qa-overlays/COMPILAR_TANDA.ps1 -SoloNucleo `
+  -Source D:/VantareServer/worktrees/isa-2365-tanda-fb2e2e520 `
+  -BaseArtifacts D:/VantareServer/evidence/overlays-rune/kit-tanda-fb2e2e520 `
+  -Output D:/VantareServer/evidence/overlays-rune/kit-tanda-fb2e2e520/licenciado-UTC
+```
+
+Sin Machine aborta ANTES de entrar en cola/crear salida; probado con el token
+BLOCKED_LICENSE_CONFIG. Después hay que repetir dumpbin, preparar_tanda y
+TANDA -Modo Ensayo contra la nueva carpeta de binarios; no editar el manifiesto
+para cambiar production_rights_configured a mano.
+
+Capturas y lifecycle aíslan VANTARE_NATIVE_DATA_ROOT, LOCALAPPDATA y APPDATA
+en carpetas QA nuevas de la evidencia. La medición también aísla núcleo y
+host en raíces QA separadas: sin Owner legítimo allí se rechaza la ronda;
+no se usa silenciosamente el perfil real. Las bases de
+Relative/Standings/Fuel/Delta fijan contentVersion=1 para medir el producto
+actual y no activar por omisión el Eficiencia heredado; los escenarios del
+catálogo conservan sus ajustes y sus omisiones originales documentadas.
+
+### Revisión de seguridad de #2525
+
+TANDA exige -PythonExe con ruta absoluta al Python del PC; cada invocación
+lleva -I, también análisis/diff y ensayos. No se busca ni ejecuta python por
+PATH. Para el ensayo servidor usar C:/Program Files/Python313/python.exe.
+Capturas/lifecycle/host/núcleo trabajan con token Limited. El coordinador
+preautoriza una tarea Highest por ronda, con acción fija SAMPLER_TANDA.ps1;
+solo ejecuta MUESTREAR/PresentMon, nunca Python ni ventanas. Al abortar se
+cierran hosts de inmediato y se espera el finally temporizado del sampler
+para que cierre su ETW; si no termina, no se afirma cierre ni se apaga.
+
+GetLastInputInfo NO detecta de forma fiable un volante/DirectInput. La
+constante TandaGameProcesses añade iRacing, ACC/EVO, AMS2, rF2, SimHub y otros
+simuladores; Steam se bloquea solo con modo gamepadui/bigpicture/tenfoot. No
+se cierra ninguna aplicación. Shutdown lleva el comentario «Tanda QA de
+Vantare: apagado automático» y vigila los 60 s: entrada/juego/cambio de sesión
+provoca shutdown /a y accepted=false. El servidor siempre lanza
+GRAPHICS_DISABLED antes de cualquier intento de apagar.
+
+Los horarios requieren UTC ISO terminada en Z, sin espacios ni código. La
+evidencia solo conserva estado.kind y catálogo de los derechos, sin sujetos
+ni identificadores. evidence-hashes.json se publica por .tmp+rename. La
+extracción tar valida todos los headers primero y rechaza enlaces duros,
+simbólicos y tipos no regulares antes de crear salida. completed_without_error
+indica fin sin errores; no pretende certificar una limpieza no observada.

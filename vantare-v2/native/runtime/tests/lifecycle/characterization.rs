@@ -123,7 +123,7 @@ impl Real {
             } else {
                 "normal"
             };
-            PathBuf::from(env!("CARGO_BIN_EXE_vantare"))
+            super::launcher_exe()
                 .parent()
                 .unwrap()
                 .join("lifecycle")
@@ -142,7 +142,7 @@ impl Real {
             r#"{"version":1,"instances":[]}"#,
         )
         .unwrap();
-        let mut command = Command::new(env!("CARGO_BIN_EXE_vantare"));
+        let mut command = Command::new(super::launcher_exe());
         command
             .args(["--instancia", &scenario.instance, "--core-bin"])
             .arg(bin.join("vantare-core.exe"))
@@ -470,7 +470,7 @@ fn restart_and_single() {
     assert_eq!(real.scenario.starts("core"), core);
     for with_hub in [false, true] {
         let _hub = with_hub.then(|| real.hub("idle", false));
-        let status = Command::new(env!("CARGO_BIN_EXE_vantare"))
+        let status = Command::new(super::launcher_exe())
             .args(["--instancia", &real.scenario.instance])
             .env("VANTARE_NATIVE_DATA_ROOT", &real.scenario.dir)
             .env("LOCALAPPDATA", &real.scenario.dir)

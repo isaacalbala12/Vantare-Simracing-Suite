@@ -290,13 +290,13 @@ Los tests de Eficiencia aíslan sus fuentes con with_families: TextSystem::new
 sin ese guard cambia el medidor global de Rune y podía alterar el oráculo Mono
 de Vantare en paralelo. No se cambia ningún oráculo ni test de Vantare.
 Verificación local E6: fmt --check, clippy --all-targets -- -D warnings,
-601 tests lib + 3 bin PASS en Mac; 51 tests Python de clasificadores/tokens/
+602 tests lib + 3 bin PASS en Mac; 51 tests Python de clasificadores/tokens/
 dependencias, generador --check y auditoría de licencias PASS. Runtime CPU,
 sin abrir ventana. Comparación física de píxeles y CI Windows pendientes.
 
 Build del ejecutable y cinco tests de política de distribución con
 debug-assertions=no PASS en el mismo target del Mac. Delta frente a nightly
-5aa79a733: producción +555/−32=587 líneas; tests +697/−28=725.
+5aa79a733: producción +555/−32=587 líneas; tests +725/−28=753.
 El target propio se borra al terminar esta verificación local.
 
 ## Revisión E6 en el mismo PR
@@ -316,3 +316,7 @@ barrido 100° (paradas 0/0,5 y 0/1). Rune expone dirección, colores y el cierre
 último segmento en Instance; shader.wgsl:437–459 prolonga el último color con
 clamp. La API CPU no ofrece muestras de color rasterizado: comprobar que el
 tramo 0,8–1,0 mantiene gold al 10% queda pendiente de captura en el PC.
+
+Revisión verificada en Mac: la nueva regresión falló primero con pit_alpha 1
+frente a 0; tras la condición pedida por Sonnet pasan 602 tests lib + 3 bin,
+fmt --check, clippy -D warnings, build y cinco tests de política de distribución.

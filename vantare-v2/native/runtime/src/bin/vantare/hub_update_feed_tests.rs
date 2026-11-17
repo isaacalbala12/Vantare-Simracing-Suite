@@ -215,7 +215,11 @@ fn download_requires_exact_signed_length_and_hash() {
             &AtomicBool::new(false),
         );
         server.join().expect("valid test fixture");
-        assert_eq!(result.is_ok(), length == 5 && !wrong_hash);
+        assert_eq!(
+            result.is_ok(),
+            length == 5 && !wrong_hash,
+            "length={length}, wrong_hash={wrong_hash}, result={result:?}"
+        );
         fs::remove_dir_all(root).expect("valid test fixture");
     }
 }

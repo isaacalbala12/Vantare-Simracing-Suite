@@ -36,6 +36,7 @@ import {
   ComparisonPlot,
   tracePath,
 } from "../src/renderer/ui/analysis/ComparisonPlot";
+import { ComparisonRail } from "../src/renderer/ui/analysis/ComparisonRail";
 import { CompareAction } from "../src/renderer/ui/analysis/LapChoices";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 
@@ -409,6 +410,38 @@ it("explains the unavailable quick comparison without removing it from keyboard 
   await userEvent.keyboard("{Enter} ");
   expect(document.activeElement).toBe(button);
   expect(c.snapshot().compareView).toBeUndefined();
+  c.dispose();
+});
+it("shows the known pair while initially loading and never labels a failed new pair with the previous result", async () => {
+  const c = new AnalysisController({ request: bridge() });
+  c.load();
+  await waitFor(() => expect(c.snapshot().loading).toBe(false));
+  c.open(c.snapshot().rows[1]);
+  await waitFor(() => expect(c.snapshot().opened).toBeTruthy());
+  const rail = render(
+    <ComparisonRail
+      state={{ ...c.snapshot(), pair: { a: 8, b: 6 }, comparing: true }}
+    />,
+  );
+  expect(screen.getByText(t.line(t.a, 9))).toBeTruthy();
+  expect(screen.getByText(t.line(t.b, 7))).toBeTruthy();
+  expect(screen.getByText(t.loading)).toBeTruthy();
+  c.compare();
+  await waitFor(() => expect(c.snapshot().comparison).toBeTruthy());
+  rail.rerender(
+    <ComparisonRail
+      state={{
+        ...c.snapshot(),
+        pair: { a: 6, b: 8 },
+        compareError: "analysisTimeout",
+        comparing: false,
+      }}
+    />,
+  );
+  expect(screen.getByText(t.line(t.a, 7))).toBeTruthy();
+  expect(screen.getByText(t.line(t.b, 9))).toBeTruthy();
+  expect(screen.queryByText(t.line(t.a, 13))).toBeNull();
+  expect(screen.getByText(t.noDelta)).toBeTruthy();
   c.dispose();
 });
 it("waits for both the abandoned reader and cancel acknowledgement before reopening, ignoring a late result", async () => {

@@ -3,10 +3,11 @@ import { analysisText, lapTime } from "../../i18n/analysis.es";
 import { seconds, comparisonText as t } from "../../i18n/comparison.es";
 import { RailBlock } from "../Frame";
 export function ComparisonRail({ state }: { state: AnalysisSnapshot }) {
-  const data = state.comparison;
+  const data = state.compareError ? undefined : state.comparison;
+  const pair = data ?? state.pair;
   const laps = state.opened?.laps ?? [];
-  const a = laps.find((lap) => lap.index === data?.a),
-    b = laps.find((lap) => lap.index === data?.b);
+  const a = laps.find((lap) => lap.index === pair?.a),
+    b = laps.find((lap) => lap.index === pair?.b);
   const end = data?.delta?.at(-1)?.value;
   return (
     <>
@@ -24,13 +25,15 @@ export function ComparisonRail({ state }: { state: AnalysisSnapshot }) {
           ))}
         </dl>
         <p>
-          {end == null
-            ? t.noDelta
-            : end > 0
-              ? t.slower
-              : end < 0
-                ? t.faster
-                : t.equal}
+          {state.comparing && !data
+            ? t.loading
+            : end == null
+              ? t.noDelta
+              : end > 0
+                ? t.slower
+                : end < 0
+                  ? t.faster
+                  : t.equal}
         </p>
       </RailBlock>
       <RailBlock icon="pulse" title={t.how}>

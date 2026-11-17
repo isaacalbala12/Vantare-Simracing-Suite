@@ -9,6 +9,7 @@
         "recordings": [
           {
             "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "recording": false,
             "sizeBytes": 9007199254740991,
             "startedAtMs": 1700000000000
           }

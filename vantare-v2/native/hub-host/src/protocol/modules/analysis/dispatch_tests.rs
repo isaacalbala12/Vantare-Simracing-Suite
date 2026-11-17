@@ -72,8 +72,8 @@ fn denied_and_disconnected_feed_revoke_catalog_tokens() {
     for disconnect in [false, true] {
         let fixture = Fixture::new();
         let mut session = fixture.session();
-        let root = fixture.0.join("recordings");
-        std::fs::create_dir(&root).unwrap();
+        let root = fixture.0.join("hub/recordings");
+        std::fs::create_dir_all(&root).unwrap();
         std::fs::write(root.join("private.duckdb"), []).unwrap();
         session.current.access.verified = true;
         session.current.access.analysis = true;
@@ -115,8 +115,8 @@ fn active_work_is_answered_on_revocation_feed_loss_and_host_close() {
     for cause in ["right", "feed", "close"] {
         let fixture = Fixture::new();
         let mut session = fixture.session();
-        let root = fixture.0.join("recordings");
-        std::fs::create_dir(&root).unwrap();
+        let root = fixture.0.join("hub/recordings");
+        std::fs::create_dir_all(&root).unwrap();
         std::fs::write(
             root.join("private.duckdb"),
             include_bytes!("../../../analysis/fixtures/no-series.duckdb"),

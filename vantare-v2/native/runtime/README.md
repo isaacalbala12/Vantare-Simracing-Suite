@@ -1,5 +1,27 @@
 # runtime — adquisición y núcleo
 
+## Grabación al arrancar el supervisor — G4b
+
+`vantare` prepara los argumentos del Core una vez, antes del bucle de E/S del
+supervisor. Por defecto añade `--series-dir <datos-del-Hub>/recordings`; solo
+`general.grabacion: false` en `hub-settings.json` desactiva esa adición. El cambio
+guardado aplica al siguiente arranque de Vantare, sin reiniciar el Core en pista.
+
+Un `--series-dir <DIR>` explícito del Core tiene prioridad sobre el ajuste, incluso
+si está desactivado: se conserva sin duplicarlo para usos de desarrollo. Con
+`--replay` no se añade grabación automática; un directorio ya explícito se conserva.
+El fichero ausente activa grabación sin reintentos. Otros errores de apertura o
+lectura tienen hasta tres reintentos de 20 ms (cuatro intentos en total); si no
+se recuperan, la grabación queda activada. Se admite BOM UTF-8 inicial y hasta
+32 KiB de fichero incluidos esos bytes. JSON/campo inválido o fichero mayor activa
+grabación. Si no se puede resolver la raíz para grabar, se avisa y continúa sin
+grabación automática; el requisito de raíz de la instalación conserva su error.
+
+Instalado usa `<base>/hub`, el mismo `--data-dir` que recibe el Hub; en desarrollo
+usa `ipc::paths::Root::hub()`. Los nombres `HUB_SETTINGS_FILE` y `RECORDINGS_DIR`
+se comparten desde `ipc::paths`. Un Hub no instalado lanzado a mano con otro
+`--data-dir` no verá estas grabaciones: el supervisor no conoce ese override.
+
 ## Contrato vigente de licencias y supervisor
 
 [ADR 0102](../../docs/adr/0102-modelo-acceso-nativo.md) fija dueños y compatibilidad;

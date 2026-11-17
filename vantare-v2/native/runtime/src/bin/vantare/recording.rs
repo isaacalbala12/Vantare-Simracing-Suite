@@ -1,9 +1,10 @@
-//! The saved choice is read once during session setup, before supervisor I/O.
+//! Resolve the saved choice during session setup, before supervisor I/O.
 use std::{
-    io::Read,
+    io::{self, Read},
     path::{Path, PathBuf},
+    time::Duration,
 };
-use vantare_ipc::paths::{HUB_SETTINGS_FILE, Root};
+use vantare_ipc::paths::{Error, HUB_SETTINGS_FILE, RECORDINGS_DIR, Root};
 
 pub(super) fn hub_data(root: &Root, installed: bool) -> PathBuf {
     if installed {
@@ -13,27 +14,68 @@ pub(super) fn hub_data(root: &Root, installed: bool) -> PathBuf {
     }
 }
 
-pub(super) fn configure(args: &mut Vec<String>, hub: &Path) {
-    if enabled(hub) {
+pub(super) fn startup_args(mut args: Vec<String>, hub: Result<PathBuf, Error>) -> Vec<String> {
+    if explicit_or_replay(&args) {
+        return args;
+    }
+    match hub {
+        Ok(hub) => configure(&mut args, &hub),
+        Err(error) => super::log(format!(
+            "grabación desactivada: raíz de datos no disponible ({error})"
+        )),
+    }
+    args
+}
+
+fn explicit_or_replay(args: &[String]) -> bool {
+    args.iter()
+        .any(|arg| arg == "--series-dir" || arg == "--replay")
+}
+
+fn configure(args: &mut Vec<String>, hub: &Path) {
+    if !explicit_or_replay(args) && enabled(hub) {
         args.extend([
             "--series-dir".into(),
-            hub.join("recordings").to_string_lossy().into_owned(),
+            hub.join(RECORDINGS_DIR).to_string_lossy().into_owned(),
         ]);
     }
 }
 
 fn enabled(hub: &Path) -> bool {
-    // Match the settings store's size limit; malformed or inaccessible input enables recording.
-    let read = || -> Option<serde_json::Value> {
-        let file = std::fs::File::open(hub.join(HUB_SETTINGS_FILE)).ok()?;
-        let mut bytes = Vec::new();
-        file.take(32 * 1024 + 1).read_to_end(&mut bytes).ok()?;
-        if bytes.len() > 32 * 1024 {
-            return None;
+    enabled_with(
+        || {
+            let file = std::fs::File::open(hub.join(HUB_SETTINGS_FILE))?;
+            let mut bytes = Vec::new();
+            file.take(32 * 1024 + 1).read_to_end(&mut bytes)?;
+            Ok(bytes)
+        },
+        std::thread::sleep,
+    )
+}
+
+fn enabled_with(
+    mut read: impl FnMut() -> io::Result<Vec<u8>>,
+    mut wait: impl FnMut(Duration),
+) -> bool {
+    let mut retries = 0;
+    let bytes = loop {
+        match read() {
+            Ok(bytes) => break bytes,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => return true,
+            Err(_) if retries < 3 => {
+                retries += 1;
+                wait(Duration::from_millis(20));
+            }
+            Err(_) => return true,
         }
-        serde_json::from_slice(&bytes).ok()
     };
-    read()
+    // Match the store's byte limit, including any UTF-8 BOM.
+    if bytes.len() > 32 * 1024 {
+        return true;
+    }
+    let bytes = bytes.strip_prefix(b"\xef\xbb\xbf").unwrap_or(&bytes);
+    serde_json::from_slice::<serde_json::Value>(bytes)
+        .ok()
         .and_then(|value| value.get("general")?.get("grabacion")?.as_bool())
         .unwrap_or(true)
 }

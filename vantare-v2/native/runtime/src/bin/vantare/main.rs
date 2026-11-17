@@ -554,9 +554,11 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             .as_ref()
             .map(|_| vantare_ipc::control::Feed::connect(&photo, config.core.path.clone()))
             .transpose()?;
-        let data_root = vantare_ipc::paths::Root::from_env()?;
-        let hub_data = recording::hub_data(&data_root, config.installation.is_some());
-        recording::configure(&mut config.core.args, &hub_data);
+        config.core.args = recording::startup_args(
+            config.core.args,
+            vantare_ipc::paths::Root::from_env()
+                .map(|root| recording::hub_data(&root, config.installation.is_some())),
+        );
         let hub_image = config.core.path.with_file_name("vantare-hub.exe");
         let mut core = Service::new("núcleo", config.core, config.restarts)
             .with_policy(session::Policy::core(config.restarts));
@@ -583,10 +585,10 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             );
         }
         if let Some(root) = &config.installation {
-            let data = data_root.base();
+            let data = vantare_ipc::paths::Root::from_env()?.base().to_path_buf();
             let mut hub_args = vec!["--control-stdin".into(), "--pipe".into(), photo.clone()];
             for (flag, path) in [
-                ("--data-dir", hub_data),
+                ("--data-dir", data.join("hub")),
                 ("--layout", data.join("Vantare/native/layout.json")),
                 (
                     "--engineer-settings",

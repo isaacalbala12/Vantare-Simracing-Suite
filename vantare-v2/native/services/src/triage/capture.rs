@@ -171,6 +171,10 @@ mod tests {
 }
 
 #[cfg(all(test, windows))]
+#[path = "capture_engines_tests.rs"]
+mod engine_tests;
+
+#[cfg(all(test, windows))]
 #[test]
 #[ignore = "integration: runs real PowerShell; execute explicitly on Windows"]
 fn windows_capture_without_hardware_emits_the_typed_document() {

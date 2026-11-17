@@ -259,6 +259,26 @@ mod tests {
         }
     }
     #[test]
+    fn both_overlay_images_are_reported_exactly_once() {
+        assert_eq!(BINARIES.as_slice(), [
+            "vantare-hub.exe", "vantare.exe", "vantare-core.exe",
+            "vantare-overlays.exe", "vantare-overlays-rune.exe",
+            "vantare-engineer.exe", "vantare-storage.exe", "vantare-workshop.exe",
+            "vantare-grabar-lmu.exe", "vantare-grabar-acc.exe",
+        ]);
+        let root = Root::new();
+        for name in ["vantare-overlays.exe", "vantare-overlays-rune.exe"] {
+            std::fs::write(root.0.join(name), name).unwrap();
+        }
+        let entries = State::default().collect_at(Some(&root.0), hash);
+        let present: Vec<_> = entries.iter()
+            .filter(|entry| entry.state == BinaryState::Present)
+            .map(|entry| entry.name.as_str()).collect();
+        assert_eq!(present, ["vantare-overlays.exe", "vantare-overlays-rune.exe"]);
+        assert_eq!(entries.iter().map(|entry| &entry.name)
+            .collect::<std::collections::BTreeSet<_>>().len(), entries.len());
+    }
+    #[test]
     fn exactly_nine_fixed_names_and_no_reads_for_missing_links_or_oversized_files() {
         let root = Root::new();
         let mut state = State::default();

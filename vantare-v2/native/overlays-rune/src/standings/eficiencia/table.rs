@@ -1,5 +1,5 @@
 //! Port de paint_table/paint_column_label/paint_row/paint_cell de GPUI.
-//! FLIP/presencia de E5; efectos independientes en E6.
+//! Canales de FLIP, presencia y efectos independientes de Eficiencia.
 use super::{
     Visual,
     model::{self, Align, Column, Metric, Row},
@@ -143,11 +143,12 @@ fn row_layer(v: &Visual, row: &Row, top: f32, pose: super::motion::Pose, last: b
     let y = top + pose.offset * s.geometry.row_height / model::ROW_HEIGHT;
     let mut layer = rect(0.0, y, v.config.width, s.geometry.row_height)
         .key(format!("efficiency-row-{}", row.id.0));
-    if pose.alpha < 0.999 {
-        layer = layer.opacity(pose.alpha.max(0.0));
-    }
-    for node in paint_row(v, row, last) {
+    for node in paint_row(v, row, pose, last) {
         layer = layer.child(node);
+    }
+    // GPUI with_opacity multiplica cada primitiva, sin componer un grupo.
+    if pose.alpha < 0.999 {
+        layer = layer.dim(pose.alpha.max(0.0));
     }
     layer
 }
@@ -237,7 +238,7 @@ fn column_label(v: &Visual, language: Language, column: Column, x: f32, w: f32) 
     }
     cell
 }
-fn paint_row(v: &Visual, row: &Row, last: bool) -> Vec<El> {
+fn paint_row(v: &Visual, row: &Row, pose: super::motion::Pose, last: bool) -> Vec<El> {
     let (c, p) = (&v.config, &v.plan);
     let s = &c.style;
     let (w, h) = (c.width, s.geometry.row_height);
@@ -270,6 +271,18 @@ fn paint_row(v: &Visual, row: &Row, last: bool) -> Vec<El> {
             ],
         ));
     }
+    if pose.flash > 0.0 {
+        let rgb = if pose.flash_up {
+            s.colors.gain.0
+        } else {
+            s.colors.loss.0
+        };
+        nodes.push(
+            rect(0.0, 0.0, w, h)
+                .key("position-flash")
+                .fill(color(rgb, 0.12 * pose.flash)),
+        );
+    }
     if !last && c.study != "v2-focus" {
         if row.is_player {
             nodes.push(rect(0.0, 0.0, w, 1.0).fill(color(s.colors.white.0, 0.13)));
@@ -289,7 +302,7 @@ fn paint_row(v: &Visual, row: &Row, last: bool) -> Vec<El> {
     let mut x = 0.0;
     for (index, (column, cw)) in p.columns.iter().zip(&p.widths).enumerate() {
         let mut cell = rect(x, 0.0, *cw, h).key(format!("efficiency-cell-{index}"));
-        for node in paint_cell(v, row, *column, 0.0, *cw) {
+        for node in paint_cell(v, row, pose, *column, 0.0, *cw) {
             cell = cell.child(node);
         }
         nodes.push(cell);
@@ -309,7 +322,14 @@ fn paint_row(v: &Visual, row: &Row, last: bool) -> Vec<El> {
     }
     nodes
 }
-fn paint_cell(v: &Visual, row: &Row, column: Column, x: f32, cw: f32) -> Vec<El> {
+fn paint_cell(
+    v: &Visual,
+    row: &Row,
+    pose: super::motion::Pose,
+    column: Column,
+    x: f32,
+    cw: f32,
+) -> Vec<El> {
     let (c, content) = (&v.config, &v.content_plan);
     let s = &c.style;
     let (f, g) = (&s.fonts, &s.geometry);
@@ -399,6 +419,32 @@ fn paint_cell(v: &Visual, row: &Row, column: Column, x: f32, cw: f32) -> Vec<El>
                 width(&shown, font.0),
             );
             nodes.push(label("cell-name", &shown, tx, base_for(f.body_size), font));
+            if let Some((places, alpha)) = pose.chip {
+                let sign = if places > 0 { "+" } else { "−" };
+                let text = format!("{sign}{}", places.abs());
+                let mut ci = ink(s, f.badge_size, f.bold_weight, -0.039, s.colors.ink.0);
+                ci.1 = color(s.colors.ink.0, alpha);
+                let x = x + g.cell_padding + avail + 7.0 + 19.0 - width(&text, ci.0);
+                nodes.push(label("position-chip", &text, x, base_for(f.badge_size), ci));
+            }
+            if pose.battle > 0.0 {
+                nodes.push(
+                    rect(
+                        x + g.cell_padding,
+                        g.row_height - 3.0,
+                        cw - 2.0 * g.cell_padding,
+                        2.0,
+                    )
+                    .key("battle-underline")
+                    .linear_gradient(
+                        90.0f32.to_radians(),
+                        [
+                            (0.0, color(s.colors.gold.0, 0.55 * pose.battle)),
+                            (0.8, color(s.colors.gold.0, 0.10 * pose.battle)),
+                        ],
+                    ),
+                );
+            }
         }
         Metric::Gap => {
             let value = &row.classification_gap;
@@ -469,6 +515,23 @@ fn paint_cell(v: &Visual, row: &Row, column: Column, x: f32, cw: f32) -> Vec<El>
                 g.cell_padding
             };
             let tx = aligned_x(align, x + pad, cw - 2.0 * pad, width(value, font.0));
+            if column.metric == Metric::BestLap
+                && let Some((session, alpha, frac)) = pose.sweep
+            {
+                let rgb = if session {
+                    s.colors.best_sweep.0
+                } else {
+                    s.colors.gain.0
+                };
+                nodes.push(paint_sweep(
+                    x,
+                    cw,
+                    g.row_height,
+                    rgb,
+                    alpha * if session { 0.45 } else { 0.35 },
+                    frac,
+                ));
+            }
             if c.broadcast && is_lap {
                 nodes.push(
                     rect(x + 6.0, 2.0, cw - 12.0, 26.0)
@@ -483,6 +546,19 @@ fn paint_cell(v: &Visual, row: &Row, column: Column, x: f32, cw: f32) -> Vec<El>
                 );
             }
             nodes.push(label("cell-metric", value, tx, base_for(f.body_size), font));
+            if column.metric == Metric::BestLap && pose.best_marker > 0.0 {
+                let mut mi = ink(
+                    s,
+                    f.marker_size,
+                    f.regular_weight,
+                    0.0,
+                    s.colors.best_marker.0,
+                );
+                mi.1 = color(s.colors.best_marker.0, pose.best_marker);
+                let mw = width("◆", mi.0);
+                let base = 3.0 + (f.marker_size * 1984.0 / 2048.0).round();
+                nodes.push(label("best-marker", "◆", x + cw - 3.0 - mw, base, mi));
+            }
         }
         Metric::Pit => {}
     }
@@ -498,4 +574,26 @@ fn split_seconds(value: &str) -> Option<(&str, &str)> {
         && int.bytes().all(|b| b.is_ascii_digit())
         && frac.is_none_or(|f| !f.is_empty() && f.bytes().all(|b| b.is_ascii_digit()));
     ok.then_some((body, "s"))
+}
+
+fn paint_sweep(x: f32, cw: f32, height: f32, rgb: u32, alpha: f32, frac: f32) -> El {
+    rect(x, 1.0, cw, height - 2.0)
+        .key("best-sweep")
+        .clip_soft(0.0)
+        .child(
+            rect(frac * cw, 0.0, cw, height - 2.0)
+                .key("best-sweep-a")
+                .linear_gradient(
+                    100.0f32.to_radians(),
+                    [(0.0, color(rgb, 0.0)), (0.5, color(rgb, alpha))],
+                ),
+        )
+        .child(
+            rect(frac * cw + cw / 2.0, 0.0, cw / 2.0, height - 2.0)
+                .key("best-sweep-b")
+                .linear_gradient(
+                    100.0f32.to_radians(),
+                    [(0.0, color(rgb, alpha)), (1.0, color(rgb, 0.0))],
+                ),
+        )
 }

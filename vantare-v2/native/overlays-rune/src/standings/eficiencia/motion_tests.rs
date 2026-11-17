@@ -53,6 +53,16 @@ fn shared_tween_matches_gpui_bisection_and_retargets_without_a_jump() {
         t.retarget(0.0, 0.5, 1.0);
         close(t.value(0.5), before);
     }
+    // Oráculos fijos de GPUI, independientes de la bisección copiada arriba.
+    for (curve, x, expected) in [
+        ([0.22, 0.9, 0.3, 1.0], 0.25, 0.748_086),
+        ([0.22, 0.9, 0.3, 1.0], 0.75, 0.992_917),
+        ([0.0, 0.0, 0.58, 1.0], 0.5, 0.684_643),
+    ] {
+        let mut t = Tween::fixed(0.0).with_curve(curve);
+        t.retarget(1.0, 0.0, 1.0);
+        assert!((t.value(x) - expected).abs() < 0.000001);
+    }
     // Inventario decía ≈0,93; la curva literal de GPUI da 0,94859246.
     close(gpui_bezier([0.22, 0.9, 0.3, 1.0], 0.5), 0.948_592_5);
 }
@@ -61,20 +71,22 @@ fn seed_missing_stale_and_new_identity_do_not_arm_a_clock() {
     let mut p = plan();
     let id = p.rows[0].id;
     let mut m = Motion::default();
-    m.update(&p, 3, 0.0);
+    m.update(&p, 3, true, 0.0);
     assert!(m.seeded);
-    assert_eq!(m.frame_shared(0.0).row(id), Pose::default());
+    assert_eq!(m.frame_shared(0.0).row(id).offset, 0.0);
+    assert_eq!(m.frame_shared(0.0).row(id).alpha, 1.0);
     assert_eq!(m.wake(0.0), Wake::Idle);
     p.rows.swap(0, 1);
-    m.update(&p, 3, 0.1);
+    m.update(&p, 3, true, 0.1);
     assert_eq!(m.wake(0.1), Wake::Frame);
     p.identity = "otra sesión".into();
-    m.update(&p, 3, 0.11);
-    assert_eq!(m.frame_shared(0.11).row(id), Pose::default());
+    m.update(&p, 3, true, 0.11);
+    assert_eq!(m.frame_shared(0.11).row(id).offset, 0.0);
+    assert_eq!(m.frame_shared(0.11).row(id).alpha, 1.0);
     assert_eq!(m.wake(0.11), Wake::Idle);
     for status in [Status::Missing, Status::Disconnected, Status::Stale] {
         p.status = status;
-        m.update(&p, 3, 0.2);
+        m.update(&p, 3, true, 0.2);
         assert!(m.prev.is_none());
         assert_eq!(m.wake(0.2), Wake::Idle);
     }
@@ -89,9 +101,9 @@ fn continuity_is_the_literal_gpui_contract_including_backwards_sequence() {
     q.sequence = 9;
     assert!(!motion_continues(&p, &q));
     let mut m = Motion::default();
-    m.update(&p, 3, 0.0);
+    m.update(&p, 3, true, 0.0);
     q.rows.swap(0, 1);
-    m.update(&q, 3, 0.1);
+    m.update(&q, 3, true, 0.1);
     assert_eq!(
         m.wake(0.1),
         Wake::Idle,
@@ -112,10 +124,10 @@ fn thirty_pixel_flip_is_313_ms_and_carries_the_live_offset() {
     let mut p = plan();
     let id = p.rows[0].id;
     let mut m = Motion::default();
-    m.update(&p, 3, 0.0);
+    m.update(&p, 3, true, 0.0);
     p.rows.swap(0, 1);
     p.sequence += 1;
-    m.update(&p, 3, 1.0);
+    m.update(&p, 3, true, 1.0);
     close(m.flips[&id].end() as f32, 1.313);
     close(m.frame_shared(1.0).row(id).offset, -30.0);
     close(
@@ -125,7 +137,7 @@ fn thirty_pixel_flip_is_313_ms_and_carries_the_live_offset() {
     let old_top = 30.0 + m.frame_shared(1.1).row(id).offset;
     p.rows.swap(0, 1);
     p.sequence += 1;
-    m.update(&p, 3, 1.1);
+    m.update(&p, 3, true, 1.1);
     close(m.frame_shared(1.1).row(id).offset, old_top);
     m.frame_shared(2.0);
     assert_eq!(m.wake(2.0), Wake::Idle);
@@ -136,16 +148,16 @@ fn flip_duration_caps_at_460_ms_and_ignores_sub_half_pixel_offsets() {
     let p = plan();
     let id = p.rows[0].id;
     let mut m = Motion::default();
-    m.update(&p, 3, 0.0);
+    m.update(&p, 3, true, 0.0);
     m.tops.insert(id, 400.0);
-    m.update(&p, 3, 1.0);
+    m.update(&p, 3, true, 1.0);
     close(m.flips[&id].end() as f32, 1.460);
     m.frame_shared(2.0);
     m.tops.insert(id, 0.49);
-    m.update(&p, 3, 2.0);
+    m.update(&p, 3, true, 2.0);
     assert!(!m.flips.contains_key(&id));
     m.tops.insert(id, 0.5);
-    m.update(&p, 3, 3.0);
+    m.update(&p, 3, true, 3.0);
     close(m.flips[&id].end() as f32, 3.280); // GPUI trunca los ms a u64.
 }
 #[test]
@@ -155,23 +167,23 @@ fn presence_fades_in_and_out_in_200_ms_and_reuses_ghost_top_and_alpha() {
     let mut p = full.clone();
     p.rows.remove(1);
     let mut m = Motion::default();
-    m.update(&p, 2, 0.0);
-    m.update(&full, 3, 1.0);
+    m.update(&p, 2, true, 0.0);
+    m.update(&full, 3, true, 1.0);
     close(m.frame_shared(1.0).row(id).alpha, 0.0);
     close(m.frame_shared(1.2).row(id).alpha, 1.0);
-    m.update(&p, 2, 2.0);
+    m.update(&p, 2, true, 2.0);
     let f = m.frame_shared(2.0);
     assert_eq!(f.ghosts.len(), 1);
     close(f.ghosts[0].top, 30.0);
     close(f.ghosts[0].pose.alpha, 1.0);
     let alpha = m.frame_shared(2.1).ghosts[0].pose.alpha;
     close(alpha, 1.0 - gpui_bezier([0.0, 0.0, 0.58, 1.0], 0.5));
-    m.update(&full, 3, 2.1);
+    m.update(&full, 3, true, 2.1);
     let f = m.frame_shared(2.1);
     assert!(f.ghosts.is_empty());
     close(f.row(id).alpha, alpha);
     close(m.frame_shared(2.3).row(id).alpha, 1.0);
-    m.update(&p, 2, 3.0);
+    m.update(&p, 2, true, 3.0);
     assert_eq!(m.wake(3.0), Wake::Frame);
     assert!(m.frame_shared(3.2).ghosts.is_empty());
     assert_eq!(
@@ -188,15 +200,15 @@ fn ghost_keeps_the_in_flight_absolute_top_and_idle_frames_share_the_arc() {
     let mut p = plan();
     let id = p.rows[0].id;
     let mut m = Motion::default();
-    m.update(&p, 3, 0.0);
+    m.update(&p, 3, true, 0.0);
     let a = m.frame_shared(0.0);
     let b = m.frame_shared(0.1);
     assert!(Arc::ptr_eq(&a, &b));
     p.rows.swap(0, 1);
-    m.update(&p, 3, 1.0);
+    m.update(&p, 3, true, 1.0);
     let top = 30.0 + m.frame_shared(1.1).row(id).offset;
     p.rows.remove(1);
-    m.update(&p, 2, 1.1);
+    m.update(&p, 2, true, 1.1);
     close(m.frame_shared(1.1).ghosts[0].top, top);
     m.frame_shared(2.0);
     assert!(Arc::ptr_eq(&m.frame_shared(2.0), &m.frame_shared(3.0)));
@@ -227,11 +239,11 @@ fn animated_rows_and_ghosts_stay_inside_the_window() {
         p.rows.truncate(3);
         v.ingest(Arc::new(p.clone()));
         let mut m = Motion::default();
-        m.update(&p, 3, 0.0);
+        m.update(&p, 3, true, 0.0);
         p.rows.swap(0, 1);
         let departed = p.rows.remove(2).id;
         v.ingest(Arc::new(p.clone()));
-        m.update(&p, 2, 1.0);
+        m.update(&p, 2, true, 1.0);
         for clock in [1.0, 1.05, 1.1, 1.2, 1.313] {
             v.frame = m.frame_shared(clock);
             let clone = v.clone_for_test();
@@ -247,7 +259,7 @@ fn animated_rows_and_ghosts_stay_inside_the_window() {
                 let ghost = ghost.expect("el fantasma se pinta durante los 200 ms");
                 close(ghost.rect[1], v.plan.table_top + v.plan.head_row + 60.0);
                 close(
-                    ghost.opacity,
+                    v.frame.ghosts[0].pose.alpha,
                     1.0 - gpui_bezier([0.0, 0.0, 0.58, 1.0], ((clock - 1.0) / 0.2) as f32),
                 );
             } else {
@@ -310,11 +322,12 @@ fn swap(photo: &mut vantare_domain::Snapshot) {
     photo.state.cars[1].class_position = Reliable(1);
 }
 #[test]
-fn real_controller_emits_only_during_flip_and_stops_waking_at_313_ms() {
+fn real_controller_finishes_flip_at_313_ms_flash_at_500_and_notice_at_1200() {
     let (mut rt, mut photo) = runtime(false);
     assert!(rt.wake_deadline().is_none());
     swap(&mut photo);
     assert!(rt.update_if(|s, _| s.update(&photo, 0.0).build));
+    // Runtime::frame recibe un delta en segundos, no un instante absoluto.
     rt.frame(0.1);
     assert!(rt.wake_deadline().is_some());
     let frame = rt.state.visual.frame.clone();
@@ -325,6 +338,21 @@ fn real_controller_emits_only_during_flip_and_stops_waking_at_313_ms() {
     rt.frame(0.1);
     assert!(rt.wake_deadline().is_some());
     rt.frame(0.113);
+    assert!(
+        rt.state.motion.flips.is_empty(),
+        "FLIP finalizado en 313 ms"
+    );
+    assert_eq!(
+        rt.state.motion.wake(0.313),
+        Wake::Frame,
+        "el flash crece durante 500 ms"
+    );
+    rt.frame(0.187);
+    assert!(
+        matches!(rt.state.motion.wake(0.5), Wake::At(_)),
+        "solo queda el aviso quieto hasta 1200 ms"
+    );
+    rt.frame(0.7);
     assert!(rt.wake_deadline().is_none());
     let size = rt.state.size();
     crate::testdata::assert_inside_window(&mut rt, (size.width, size.height));

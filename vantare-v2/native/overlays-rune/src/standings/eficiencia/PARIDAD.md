@@ -131,7 +131,7 @@ Los colores se comparan con hex sRGB literal. Tras #2496 (c58a05690), el dorsal
 es #a5a5abff, no el #d2d2d6ff que producía el helper anterior: el oráculo no cambia.
 Sin reloj de animación en E3, con o sin movimiento reducido. E5 conecta Tween compartido.
 E4 retira las marcas dead_code puntuales al portar pies/bandas/ausencia/rail;
-E6 añade flash/chip/barrido/batalla/rombo y animación de boxes. No promover a
+E6 conecta flash/chip/barrido/batalla/rombo y animación de boxes. No promover a
 testers hasta completar E5/E6 y la comparación física de píxeles pendiente.
 
 ## Revisión E3 en el mismo PR
@@ -166,7 +166,7 @@ la ausencia de adquisición para un layout vacío.
 Orden conservado: sombra exterior, panel/marca/cinta, tabla o ausencia, pie,
 marco y rail PIT. Las capas tienen pin y claves propias. El preview Rune escala
 el árbol del host: la pintura de producto corresponde a unit=1/layout_width=width.
-E4 pinta el estado final PIT (alfa1, dx0) solo para filas in_pits; E5/E6 conectan
+E4 pinta el estado final PIT (alfa 1, dx0) solo para filas in_pits; E5/E6 conectan
 los canales animados y ghosts. No se añade ningún reloj ni gate por sequence.
 
 La matriz normal conserva assert_inside_window sin modificarlo para
@@ -215,8 +215,22 @@ Motion::update: Visual::ingest conserva same_visible, como eficiencia.rs:50–70
 Sin canales, Frame no recorre las presencias; el reposo reutiliza el mismo Arc.
 Los tests usan Runtime CPU, pin y assert_inside_window durante FLIP/ghosts;
 el reloj acaba exactamente al final de sus canales y reducido nunca lo arma.
-No se modifica Motion de Vantare ni sus tests. E6 sigue pendiente (efectos y PIT).
+No se modifica Motion de Vantare ni sus tests. Los efectos y PIT se conectan en E6.
 La entrada de handoff de E5 se entrega en el cuerpo del futuro PR, por orden de Isaac.
+
+Seguimientos de revisión E5: GPUI sigue alimentando Motion::update con las
+fotos recibidas durante reducido; Rune lo descarta al activar la política y
+resiembra con la última ContentPlan al salir de reducido, sin FLIP/fundido.
+Tween::active exige from!=to, frente a running de GPUI que solo comprueba la
+duración: un fantasma con alfa0→0 desaparece inmediatamente en Rune; GPUI lo
+retiene invisible durante200 ms. Los fantasmas Rune se ordenan por id para
+estabilizar Scene; GPUI recorre el HashMap sin orden garantizado.
+En E5 el fundido se aplica por grupo mediante El::opacity, mientras GPUI
+multiplica el alfa por primitiva con with_opacity. E6 cambia esa aplicación a
+El::dim después de añadir los hijos para conservar la mezcla literal de GPUI.
+Los tests fijan FLIP(0,25)=0,748086, FLIP(0,75)=0,992917 y
+EASE_OUT(0,5)=0,684643, además de política false→true→false, pausa y cambio de
+pestaña con movimiento. Runtime::frame recibe deltas en segundos.
 
 ## Erratas numéricas del plan/inventario E5
 
@@ -228,3 +242,81 @@ sin ejecutarlo. Política de distribución compilada con debug-assertions=no:
 5 tests PASS. Clasificadores/tokens/licencias: 51 tests Python, generador --check
 y auditoría de dependencias PASS. Comparación física y CI Windows pendientes.
 E5 permanece local hasta la fusión de E4; el target propio se borra al terminar.
+
+## E6: efectos de Eficiencia
+
+| GPUI | Rune E6 |
+| --- | --- |
+| derive_events/priority (motion.rs:209–309) | Motion: mismas prioridades, clases, umbral de mejora 0,0005 y continuity de E5 |
+| select_battle (321–386) | Función literal, clase normalizada, class_position consecutiva, gaps y preferencia/retención |
+| admisión/clear_notice (597–641,704–708) | Máximo tres avisos, caducidad 1200, expulsión por prioridad y borrado conjunto de flash/chip |
+| targets batalla/PIT/rombo (643–691) | Tween compartido: EASE 200/200/220 ms; semilla final sin animar |
+| frame (741–782) | Canales independientes de flash/chip/sweep/battle/best_marker/pit_alpha/pit_dx en Pose |
+| wake (804–830) | Frame con canales activos/barrido; At con solo aviso quieto; Idle tras caducidad |
+| eficiencia.rs:111–117 | Reducido: Frame de Motion nuevo, Idle SIEMPRE, sin despertar de caducidad |
+| view.rs:1036–1050,1222–1246 | Flash de fila bajo filetes; chip y batalla en DriverName, con fuentes/posiciones literales |
+| view.rs:1325–1362,1384–1431 | Barrido bajo cápsula/texto y rombo sobre el tiempo BestLap; misma máscara/degradados |
+| view.rs:1714–1786 | PIT hereda alfa de fila y canal PIT, dx −5↔0, mismo rail/glow/bordes de E4 |
+
+El flash Eficiencia CRECE de 0 a 1 durante 500 ms EASE_OUT y permanece con su aviso
+hasta 1200 ms, como GPUI; no se confunde con el flash propio de Vantare. El chip
+crece 180 ms EASE y conserva signo «+»/«−». Pose guarda places numérico y el pintor
+forma el mismo texto al dibujar. Sweep usa el progreso EASE_OUT, dos degradados
+100° bajo una máscara inset 1, y acaba 800 ms después del aviso. Rombo «◆» de 6 px.
+Chip, barrido, subrayado de batalla, rombo y rail PIT son del pintor Eficiencia;
+no se añaden al pintor Vantare ni se cambian sus tests. Lead/Pit se conservan
+como variantes de GPUI: solo se construyen al restaurar avisos entre Looks en
+GPUI, ruta que Rune no tiene. Sus ramas se prueban y llevan allow(dead_code)
+limitado a esas dos variantes, sin inventar eventos nuevos en derive_events.
+El reposo vuelve a compartir Arc; sequence no decide la proyección ni repintado.
+Al salir de pausa se muestrea el frame final incluso con el mismo Board, como
+Visual::frame del host GPUI; pausa y reducido siguen sin frames de animación.
+Handoff y evidencia final de E6 se entregan en el cuerpo del futuro PR, sin
+editar el handoff vivo. E6 se publica contra nightly con E5 #2511 fusionado como 5aa79a733.
+
+## Erratas del plan/inventario E6 contrastadas con GPUI
+
+- Paso 7 decía un despertar de caducidad en reducido; GPUI devuelve Wake::Idle SIEMPRE en eficiencia.rs:111–117 (decisión del orquestador).
+- Paso 3/inventario decía pico del barrido a 320 ms; GPUI aplica EASE_OUT antes de los keyframes, así que el pico ocurre cuando EASE_OUT(t)=0,4, aproximadamente212,864 ms; a 320 ms ya ha pasado el pico (motion.rs:764–778).
+- Inventario indicaba glifo «?»; GPUI dibuja «◆» en view.rs:1357–1362.
+- La cantera usa límites de batalla 2,5/1 s (y+0,5 retenido); GPUI usa 0,8 nuevo/1,2 retenido, con class_position consecutiva y diferencia de gaps, en motion.rs:321–386. Se copia GPUI completo.
+- Inventario llama a la batalla subrayado del gap y al chip texto junto a posición; GPUI pinta ambos dentro de DriverName, en view.rs:1222–1246.
+
+El alfa de presencia/PIT se aplica con El::dim después de añadir sus hijos,
+para multiplicar las primitivas como with_opacity de GPUI. El::opacity aislaría
+el subárbol y cambiaría la mezcla de sus capas; un test exige el brillo PIT
+0,22·0,5=0,11 y el fondo top3 0,03·0,5=0,015 en las instancias pintadas.
+Los tests de Eficiencia aíslan sus fuentes con with_families: TextSystem::new
+sin ese guard cambia el medidor global de Rune y podía alterar el oráculo Mono
+de Vantare en paralelo. No se cambia ningún oráculo ni test de Vantare.
+Verificación local E6: fmt --check, clippy --all-targets -- -D warnings,
+602 tests lib + 3 bin PASS en Mac; 51 tests Python de clasificadores/tokens/
+dependencias, generador --check y auditoría de licencias PASS. Runtime CPU,
+sin abrir ventana. Comparación física de píxeles y CI Windows pendientes.
+
+Build del ejecutable y cinco tests de política de distribución con
+debug-assertions=no PASS en el mismo target del Mac. Delta frente a nightly
+5aa79a733: producción +555/−32=587 líneas; tests +725/−28=753.
+El target propio se borra al terminar esta verificación local.
+
+## Revisión E6 en el mismo PR
+
+La primera entrada en PIT conserva una entrada explícita de Pose aunque todos
+sus canales coincidan con Default: pit_alpha=0 y pit_dx=−5 en t0. Así row_for
+no toma el fallback in_pits de alfa 1, igual que GPUI siempre inserta RowVis
+(motion.rs:736–750). Regresión por row_for con session_best=None para evitar
+que otro canal enmascare ese primer frame.
+animate(from,to) usa Tween::retarget compartido: si from==to no crea transición.
+Una fila que reentra desde alfa 1 tiene por tanto un fundido 1→1 sin reloj extra;
+GPUI Tween::animate fija 200 ms y running sigue despertando durante ese plazo,
+aunque la opacidad no cambie (motion.rs:116–135,559–571). Es una diferencia de
+actividad sin diferencia visible, adicional a la de active frente a running.
+Los oráculos comparan con GPUI batalla 90° (paradas 0/0,8 y gold 0,55/0,10) y
+barrido 100° (paradas 0/0,5 y 0/1). Rune expone dirección, colores y el cierre del
+último segmento en Instance; shader.wgsl:437–459 prolonga el último color con
+clamp. La API CPU no ofrece muestras de color rasterizado: comprobar que el
+tramo 0,8–1,0 mantiene gold al 10% queda pendiente de captura en el PC.
+
+Revisión verificada en Mac: la nueva regresión falló primero con pit_alpha 1
+frente a 0; tras la condición pedida por Sonnet pasan 602 tests lib + 3 bin,
+fmt --check, clippy -D warnings, build y cinco tests de política de distribución.

@@ -851,3 +851,76 @@ fn non_collision_publication_failure_keeps_the_temporary_database_for_diagnosis(
     assert!(!db.0.exists());
     assert_eq!(std::fs::read(retained).unwrap(), original);
 }
+
+#[test]
+fn v2_tables_keep_sql_types_and_bounded_metadata_readers_report_retention() {
+    let db = Database::new();
+    create_database(&db.0).unwrap();
+    {
+        let store = Store::open(&db.0, false).unwrap();
+        let version: String = store
+            .connection
+            .query_row("SELECT schema_version FROM series_meta", [], |row| {
+                row.get(0)
+            })
+            .unwrap();
+        assert_eq!(version, "vantare.series-db.v2");
+        store.connection.execute_batch("INSERT INTO session_summaries SELECT 1, i::UBIGINT, 'unknown', '', '', '', '', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, false FROM range(257) t(i); INSERT INTO lap_times SELECT 1, 256, 7, i::UINTEGER, NULL, NULL FROM range(257) t(i);").unwrap();
+        assert!(
+            store
+                .connection
+                .execute_batch("INSERT INTO lap_times VALUES(1,256,7,0,10,NULL)")
+                .is_err()
+        );
+        assert!(
+            store
+                .connection
+                .execute_batch(
+                    "INSERT INTO session_summaries(epoch,session,sealed) VALUES(1,256,false)"
+                )
+                .is_err()
+        );
+    }
+    let mut output = Vec::new();
+    serve_mode(
+        &db.0,
+        OpenMode::ReadOnly,
+        &b"[\"session-summaries\"]\n[\"lap-times\",1,256]\n"[..],
+        &mut output,
+    )
+    .unwrap();
+    let frames: Vec<Value> = output
+        .split(|b| *b == b'\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| serde_json::from_slice(line).unwrap())
+        .collect();
+    for frame in &frames[1..] {
+        assert_eq!(frame[1], 257);
+        assert_eq!(frame[2].as_array().unwrap().len(), 256);
+    }
+    assert_eq!(frames[1][2][0]["session"], 256);
+    assert_eq!(frames[1][2][255]["session"], 1);
+    assert_eq!(frames[2][2][0]["lap"], 0);
+    assert_eq!(frames[2][2][255]["lap"], 255);
+}
+
+#[test]
+fn metadata_lost_ack_preserves_committed_identity_and_safe_retry() {
+    let db = Database::new();
+    let event = json!({"epoch":1,"session":3,"kind":"practice","kindText":"",
+        "trackName":"Le Mans","vehicle":"Porsche","className":"LMGT3","startedAtMs":1000});
+    let input = format!("{}\n", json!(["session-open", event]));
+    let mut output = FailAck {
+        lines: 0,
+        bytes: Vec::new(),
+    };
+    assert!(serve_mode(&db.0, OpenMode::Create, input.as_bytes(), &mut output).is_err());
+    assert_eq!(output.bytes, b"[\"ready\",0,false,0]\n");
+    let mut recovered = Store::open(&db.0, false).unwrap();
+    assert_eq!(metadata::sessions(&recovered).unwrap()[1], 1);
+    assert_eq!(
+        metadata::write(&mut recovered, "session-open", &event).unwrap(),
+        json!(["ack-session", "open", 1, 3])
+    );
+    assert_eq!(metadata::sessions(&recovered).unwrap()[1], 1);
+}

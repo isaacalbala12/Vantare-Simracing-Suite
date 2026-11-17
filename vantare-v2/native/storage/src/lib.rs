@@ -1,4 +1,4 @@
-//! Propietario único de una DB de series v1. No se enlaza desde UI/IPC/Core.
+//! Propietario único de una DB de series v1/v2. No se enlaza desde UI/IPC/Core.
 
 use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
@@ -7,9 +7,11 @@ use duckdb::{Config, Connection, params};
 use serde_json::{Value, json};
 use vantare_runtime::flows::{MAX_CHUNK_BYTES, SeriesAnalysis, SeriesChunk};
 mod inspection;
+mod metadata;
 
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
-const SCHEMA: &str = "vantare.series-db.v1";
+const SCHEMA_V1: &str = "vantare.series-db.v1";
+const SCHEMA: &str = "vantare.series-db.v2";
 const MAX_REQUEST_BYTES: usize = MAX_CHUNK_BYTES + 128;
 use vantare_runtime::flows::MAX_STORAGE_PAGE_CHUNKS as MAX_PAGE_CHUNKS;
 
@@ -120,6 +122,7 @@ fn create_database(path: &Path) -> Result<()> {
 struct Store {
     connection: Connection,
     read_only: bool,
+    metadata: bool,
     watermark: u64,
     finished: bool,
     attempted: u64,
@@ -146,7 +149,7 @@ impl Store {
                 [],
                 |row| row.get(0),
             )?;
-            if schema != SCHEMA {
+            if schema != SCHEMA && schema != SCHEMA_V1 {
                 return Err("versión de almacenamiento desconocida".into());
             }
         }
@@ -157,6 +160,7 @@ impl Store {
             tests::creation_step("before-meta");
             let tx = connection.transaction()?;
             tx.execute_batch("CREATE TABLE series_meta (singleton BOOLEAN PRIMARY KEY CHECK(singleton), schema_version VARCHAR NOT NULL, watermark UBIGINT NOT NULL, finished BOOLEAN NOT NULL, attempted UBIGINT NOT NULL); CREATE TABLE series_chunks (idx UBIGINT PRIMARY KEY, payload BLOB NOT NULL CHECK(octet_length(payload) <= 32768));")?;
+            tx.execute_batch(metadata::TABLES)?;
             tx.execute(
                 "INSERT INTO series_meta VALUES (true, ?, 0, false, 0)",
                 [SCHEMA],
@@ -171,7 +175,7 @@ impl Store {
             [],
             |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
         )?;
-        if schema != SCHEMA {
+        if schema != SCHEMA && schema != SCHEMA_V1 {
             return Err("versión de almacenamiento desconocida".into());
         }
         let maximum: u64 = connection.query_row(
@@ -186,6 +190,7 @@ impl Store {
         let mut store = Self {
             connection,
             read_only,
+            metadata: schema == SCHEMA,
             watermark,
             finished,
             attempted,
@@ -353,6 +358,15 @@ pub fn serve_mode(
             [Value::String(name), chunk] if name == "append" => {
                 let chunk = SeriesChunk::from_bytes(&serde_json::to_vec(chunk)?)?;
                 json!(["ack", store.append(&chunk)?])
+            }
+            [Value::String(name), event]
+                if matches!(name.as_str(), "session-open" | "session-close" | "lap") =>
+            {
+                metadata::write(&mut store, name, event)?
+            }
+            [Value::String(name)] if name == "session-summaries" => metadata::sessions(&store)?,
+            [Value::String(name), epoch, session] if name == "lap-times" => {
+                metadata::laps(&store, epoch, session)?
             }
             [Value::String(name)] if name == "status" => store.state("status"),
             [Value::String(name)] if name == "summaries" && read_only => {

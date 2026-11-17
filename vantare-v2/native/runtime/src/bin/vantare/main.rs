@@ -117,6 +117,7 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
     parse_with_engine_env(args, bin_dir, engine_env.as_deref())
 }
 
+#[allow(clippy::too_many_lines)] // Un único recorrido conserva el orden de flags y los tres grupos de hijos.
 fn parse_with_engine_env(
     args: &[String],
     bin_dir: &Path,

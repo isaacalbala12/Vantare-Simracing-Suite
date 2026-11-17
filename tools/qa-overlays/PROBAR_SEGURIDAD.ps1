@@ -75,6 +75,14 @@ foreach($type in @([System.Formats.Tar.TarEntryType]::SymbolicLink,[System.Forma
  Require ($rejected -and -not(Test-Path $destination)) 'Archive link accepted or extracted before validation'
 }
 $script:PythonExe=Join-Path $base 'python.exe';Set-Content $script:PythonExe 'FAKE NEVER EXECUTE'
+foreach($invalidPython in @('python','python.exe','./python.exe','C:/python.exe;shutdown.exe','C:/python.exe" -c evil')){
+ $rejected=$false;try {Assert-TandaPython $invalidPython -SyntaxOnly} catch {$rejected=$true}
+ Require $rejected "Unsafe Python path accepted: $invalidPython"
+}
+Assert-TandaPython $script:PythonExe
+$samplerRejected=$false
+try { & "$PSScriptRoot/SAMPLER_TANDA.ps1" -Kit $base -Round $base -Seconds 60 } catch {$samplerRejected=$_.Exception.Message -like 'GRAPHICS_DISABLED*'}
+Require ($samplerRejected -and -not(Test-Path (Join-Path $base 'sampler.log'))) 'Sampler guard reached ETW on server'
 function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120)
  Require ([IO.Path]::IsPathFullyQualified($Image) -and $Image -ceq $script:PythonExe -and $Arguments[0] -ceq '-I') 'Python uses PATH or non-isolated mode'
  @{code=0;stdout='';stderr=''}

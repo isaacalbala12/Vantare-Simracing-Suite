@@ -44,6 +44,9 @@ fn unchanged_session_photos_allocate_nothing_after_open() {
     frame.state.cars.push(Car {
         id: CarId(7),
         laps: Quality::Reliable(0),
+        last_lap_s: Quality::Reliable(91.234),
+        position: Quality::Stale(3),
+        best_lap_s: Quality::Reliable(89.5),
         ..Car::default()
     });
     let mut tracker = SessionTracker::default();

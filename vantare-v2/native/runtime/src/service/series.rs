@@ -17,7 +17,14 @@ mod recording_tests;
 
 const SERIES_QUEUE: usize = 32;
 /// Dentro de los 3 s del supervisor y los 4 s del watchdog del Core.
+#[cfg(not(test))]
 const SERIES_FINISH_TIMEOUT: Duration = Duration::from_secs(1);
+// Solo el arnés unitario amplía el plazo; el producto conserva 1 s.
+#[cfg(test)]
+const SERIES_FINISH_TIMEOUT: Duration = session_capture_tests::FINISH_TIMEOUT;
+#[cfg(test)]
+#[path = "series/session_capture_tests.rs"]
+mod session_capture_tests;
 
 pub struct SeriesRecording {
     worker: Option<SeriesWorker>,

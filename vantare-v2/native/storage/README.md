@@ -246,3 +246,31 @@ de pérdidas. Una caída conserva solo los eventos cuyo COMMIT llegó al disco.
 
 El tiempo oficial viene de best_lap_s/last_lap_s del juego y está PENDIENTE DE
 VERIFICAR con LMU real (medición en el PC de juego con Isaac).
+
+
+### Limitaciones de captura y medición pendiente con LMU real
+
+- Un last_lap_s IDÉNTICO al de la vuelta anterior no se reconoce como nuevo:
+  la vuelta espera 3 s del reloj de origen y sale con `officialMs:null`.
+- Si last_lap_s cambia en una foto ANTERIOR a la que sube laps, ese valor ya
+  es la línea base cuando se detecta la vuelta. Si no llega otro valor distinto,
+  espera los mismos 3 s y sale con null. El orden de refresco de LMU no está
+  verificado; véase `delayed_lap_counter` en el [README de flows](../runtime/src/flows/README.md).
+- Tipo de sesión, circuito, coche y clase se fijan en el primer fotograma con
+  jugador y su coche; no se refinan después, aunque fueran unknown o vacíos.
+  El helper rechaza otro open con datos distintos para la misma clave con
+  `rejected conflict`. Si el jugador cambia de coche dentro de una sesión,
+  el resumen describe el primer coche; los resultados de cierre usan el último.
+- Si laps baja y vuelve a subir en la misma sesión/coche, se reutiliza la clave
+  `(epoch,session,car,lap)`. Un valor distinto recibe `rejected conflict`,
+  conserva el primer valor y provoca un único aviso de rechazo en stderr del
+  pump. Un valor idéntico sigue siendo idempotente. Un salto del contador solo
+  registra la última vuelta observada; no reconstruye las intermedias.
+- `session_events_dropped` NO se expone en `recording-status.json`. La pérdida
+  se avisa en stderr y puede dejar una sesión sin sellar o sin vueltas; ese
+  archivo de estado no ofrece el contador ni garantiza cobertura completa.
+
+Estas limitaciones se deben contrastar al medir con LMU real en el PC de juego
+con Isaac: el tiempo oficial (best_lap_s/last_lap_s del juego) sigue PENDIENTE DE
+VERIFICAR. Los fixtures fijan el comportamiento actual, no el orden de refresco
+ni la correspondencia física con el cronómetro del juego.

@@ -289,3 +289,49 @@ fn reliable_zero_last_time_and_sectors_remain_values_but_zero_best_is_null() {
         Value::Null
     );
 }
+
+#[test]
+fn last_time_refreshed_before_lap_counter_waits_three_source_seconds_then_is_null() {
+    let mut tracker = SessionTracker::default();
+    tracker.observe(&snapshot(1, 7, 0, 0), 100);
+    let mut early = snapshot(1, 7, 0, 500);
+    early.state.cars[0].last_lap_s = Quality::Reliable(91.0);
+    assert!(tracker.observe(&early, 200).is_empty());
+    early.state.cars[0].laps = Quality::Reliable(1);
+    early.origin.source_time = Some(Duration::from_secs(1));
+    assert!(tracker.observe(&early, 300).is_empty());
+    early.origin.source_time = Some(Duration::from_millis(3999));
+    assert!(tracker.observe(&early, u64::MAX).is_empty());
+    early.origin.source_time = Some(Duration::from_secs(4));
+    assert_eq!(
+        commands(&tracker.observe(&early, 400)),
+        [json!(["lap", {
+            "epoch":7,"session":1,"car":7,"lap":0,"officialMs":null,"sectorMs":null
+        }])]
+    );
+    assert!(tracker.observe(&early, 500).is_empty());
+}
+
+#[test]
+fn a_counter_jump_records_only_the_last_lap_and_a_drop_reuses_the_original_key() {
+    let mut tracker = SessionTracker::default();
+    tracker.observe(&snapshot(1, 7, 0, 0), 100);
+    let mut next = snapshot(1, 7, 3, 1000);
+    next.state.cars[0].last_lap_s = Quality::Reliable(91.0);
+    let first = commands(&tracker.observe(&next, 200));
+    assert_eq!(first.len(), 1);
+    assert_eq!(first[0][1]["lap"], 2);
+    assert_eq!(first[0][1]["officialMs"], 91_000);
+    next.state.cars[0].laps = Quality::Reliable(1);
+    next.origin.source_time = Some(Duration::from_secs(2));
+    assert!(tracker.observe(&next, 300).is_empty());
+    next.state.cars[0].laps = Quality::Reliable(3);
+    next.state.cars[0].last_lap_s = Quality::Reliable(92.0);
+    next.origin.source_time = Some(Duration::from_secs(3));
+    let repeated = commands(&tracker.observe(&next, 400));
+    assert_eq!(repeated.len(), 1);
+    for field in ["epoch", "session", "car", "lap"] {
+        assert_eq!(first[0][1][field], repeated[0][1][field]);
+    }
+    assert_eq!(repeated[0][1]["officialMs"], 92_000);
+}

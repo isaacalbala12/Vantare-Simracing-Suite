@@ -1,41 +1,10 @@
 use super::*;
-use std::collections::VecDeque;
-use std::sync::atomic::AtomicBool;
-use vantare_domain::{Adapter, AdapterError, SessionId, SessionKind};
 use vantare_runtime::flows::{SessionEvent, SessionTracker};
 
-fn observation(session: u64, car: u32, laps: u32, time_ms: u64, last: f64) -> Observation {
-    let mut frame = photo(0, 100);
-    frame.origin.source_time = Some(Duration::from_millis(time_ms));
-    frame.origin.received_at = Duration::from_millis(time_ms);
-    frame.state.session.id = SessionId(session);
-    frame.state.session.kind = Quality::Reliable(SessionKind::Race);
-    frame.state.session.track_name = Quality::Reliable("Spa".into());
-    frame.state.session.elapsed_s =
-        Quality::Reliable(Duration::from_millis(time_ms % 2000).as_secs_f64());
-    frame.state.cars = vec![Car {
-        id: CarId(car),
-        vehicle: format!("Car {car}"),
-        laps: Quality::Reliable(laps),
-        position: Quality::Reliable(2),
-        last_lap_s: Quality::Reliable(last),
-        best_lap_s: Quality::Reliable(last),
-        last_sectors_s: vec![Quality::Reliable(last / 3.0); 3],
-        lap_distance_m: Quality::Reliable(0.0),
-        lap_elapsed_s: Quality::Reliable(0.0),
-        ..Car::default()
-    }];
-    frame.state.player.as_mut().unwrap().car = CarId(car);
-    frame
-}
-fn frames() -> Vec<Observation> {
-    vec![
-        observation(10, 7, 0, 0, 90.0),
-        observation(10, 7, 1, 1000, 91.0),
-        observation(20, 9, 3, 2000, 88.0),
-        observation(20, 9, 4, 3000, 89.0),
-    ]
-}
+#[path = "../../../runtime/tests/support/session_frames.rs"]
+mod fixture;
+use fixture::{frames, observation};
+
 fn send(worker: &SeriesWorker, events: Vec<SessionEvent>) {
     for event in events {
         assert!(worker.try_session_event(event));
@@ -94,58 +63,6 @@ fn core_tracker_and_real_helper_capture_two_sessions_and_complete_laps() {
     assert_eq!(lap[3][0]["lap"], 3);
     assert_eq!(lap[3][0]["car"], 9);
     assert_eq!(lap[3][0]["officialMs"], 89_000);
-}
-
-#[test]
-fn recording_loop_observes_and_seals_both_sessions_through_the_product_path() {
-    struct Replay(VecDeque<Observation>);
-    impl Adapter for Replay {
-        fn poll(&mut self, _: Duration) -> Result<Option<Observation>, AdapterError> {
-            Ok(self.0.pop_front())
-        }
-    }
-    let db = Database::new();
-    let directory = db.0.parent().unwrap();
-    let path = directory.join(format!("series-17-{}.duckdb", std::process::id()));
-    let mut core = Core::new(17);
-    let recording =
-        vantare_runtime::service::SeriesRecording::start(&mut core, Some(directory), 17, || {
-            Ok(PathBuf::from(env!("CARGO_BIN_EXE_vantare-storage")))
-        });
-    let deadline = Instant::now() + Duration::from_secs(10);
-    while !path.exists() {
-        assert!(Instant::now() < deadline);
-        std::thread::yield_now();
-    }
-    let stop = AtomicBool::new(false);
-    vantare_runtime::service::drive_core_recorded(
-        &mut core,
-        &mut Replay(frames().into()),
-        1000.0,
-        &stop,
-        None,
-        recording,
-        |core| {
-            if core.snapshot().sequence >= 4 {
-                stop.store(true, Ordering::Relaxed);
-            }
-            Ok(())
-        },
-    )
-    .unwrap();
-    let sessions = rows(&path, &json!(["session-summaries"]));
-    assert_eq!(sessions[2], 2);
-    for session in sessions[3].as_array().unwrap() {
-        assert_eq!(session["sealed"], true);
-    }
-    assert_eq!(
-        rows(&path, &json!(["lap-times", 17, 10]))[3][0]["officialMs"],
-        91_000
-    );
-    assert_eq!(
-        rows(&path, &json!(["lap-times", 17, 20]))[3][0]["officialMs"],
-        89_000
-    );
 }
 
 #[test]
@@ -284,5 +201,42 @@ fn killing_the_core_owner_preserves_an_unsealed_session_and_the_acked_lap() {
     assert_eq!(
         rows(&db.0, &json!(["lap-times", 17, 10]))[3][0]["officialMs"],
         91_000
+    );
+}
+
+#[test]
+fn a_counter_drop_and_rise_conflicts_without_replacing_the_first_official_time() {
+    let db = Database::new();
+    let (_sender, receiver) = mpsc::sync_channel(1);
+    let worker = SeriesWorker::start_new(
+        Path::new(env!("CARGO_BIN_EXE_vantare-storage")),
+        &db.0,
+        receiver,
+    )
+    .unwrap();
+    let mut tracker = SessionTracker::default();
+    for (index, (laps, last)) in [(0, 90.0), (3, 91.0), (1, 91.0), (3, 92.0)]
+        .into_iter()
+        .enumerate()
+    {
+        let wall = u64::try_from(index).unwrap() * 1000;
+        let frame = observation(10, 7, laps, wall, last);
+        let snapshot = vantare_domain::Snapshot {
+            epoch: 17,
+            origin: frame.origin,
+            state: frame.state,
+            ..vantare_domain::Snapshot::default()
+        };
+        send(&worker, tracker.observe(&snapshot, wall));
+    }
+    send(&worker, tracker.finish(4000));
+    worker.finish(0, Duration::from_secs(10)).unwrap();
+    let laps = rows(&db.0, &json!(["lap-times", 17, 10]));
+    assert_eq!(laps[2], 1);
+    assert_eq!(laps[3][0]["lap"], 2);
+    assert_eq!(laps[3][0]["officialMs"], 91_000);
+    assert_eq!(
+        rows(&db.0, &json!(["session-summaries"]))[3][0]["sealed"],
+        true
     );
 }

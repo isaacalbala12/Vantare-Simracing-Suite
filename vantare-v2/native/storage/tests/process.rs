@@ -42,8 +42,16 @@ struct Process {
 
 impl Process {
     fn start(path: &Path) -> Self {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_vantare-storage"))
-            .arg(path)
+        Self::start_mode(path, None)
+    }
+
+    fn start_mode(path: &Path, mode: Option<&str>) -> Self {
+        let mut command = Command::new(env!("CARGO_BIN_EXE_vantare-storage"));
+        command.arg(path);
+        if let Some(mode) = mode {
+            command.arg(mode);
+        }
+        let mut child = command
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
@@ -455,4 +463,143 @@ fn read_only_helper_reports_missing_incompatible_and_unreadable_codes() {
         assert_eq!(frame[1], expected);
         assert_ne!(frame[2].as_str().unwrap(), "");
     }
+}
+
+#[test]
+fn explicit_creation_collision_and_resume_preserve_the_recorded_prefix() {
+    let db = Database::new();
+    let exe = env!("CARGO_BIN_EXE_vantare-storage");
+    let mut owner = Process::start_mode(&db.0, Some("--create"));
+    assert_eq!(owner.response(), json!(["ready", 0, false, 0]));
+    owner.send(&json!(["append", payload()]));
+    assert_eq!(owner.response(), json!(["ack", 1]));
+    owner.send(&json!(["stop"]));
+    assert!(owner.child.wait().unwrap().success());
+    let original = std::fs::read(&db.0).unwrap();
+    let collision = Command::new(exe)
+        .arg(&db.0)
+        .arg("--create")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(collision.status.code(), Some(3));
+    assert_eq!(collision.stdout, [] as [u8; 0]);
+    assert_eq!(std::fs::read(&db.0).unwrap(), original);
+    let mut resumed = Process::start_mode(&db.0, Some("--resume"));
+    assert_eq!(resumed.response(), json!(["ready", 1, false, 0]));
+    resumed.send(&json!(["page", 0, 16]));
+    assert_eq!(resumed.response(), json!(["page", [payload()]]));
+    resumed.send(&json!(["append", payload()]));
+    assert_eq!(resumed.response(), json!(["ack", 1]));
+    let mut second = payload();
+    second[1] = 2.into();
+    second[3] = 1.into();
+    second[4][7][0][0] = 2.into();
+    resumed.send(&json!(["append", second]));
+    assert_eq!(resumed.response(), json!(["ack", 2]));
+    resumed.send(&json!(["stop"]));
+    assert!(resumed.child.wait().unwrap().success());
+    let mut legacy = Process::start(&db.0);
+    assert_eq!(legacy.response(), json!(["ready", 2, false, 0]));
+    legacy.send(&json!(["stop"]));
+    assert!(legacy.child.wait().unwrap().success());
+    let reader = Command::new(exe)
+        .arg(&db.0)
+        .arg("--read-only")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert!(reader.status.success());
+    assert_eq!(
+        serde_json::from_slice::<Value>(reader.stdout.trim_ascii()).unwrap(),
+        json!(["ready", 2, false, 0])
+    );
+}
+
+#[test]
+fn explicit_modes_do_not_create_missing_resume_or_change_an_existing_file() {
+    let db = Database::new();
+    let exe = env!("CARGO_BIN_EXE_vantare-storage");
+    let missing = Command::new(exe)
+        .arg(&db.0)
+        .arg("--resume")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(missing.status.code(), Some(1));
+    assert!(!db.0.exists());
+    std::fs::write(&db.0, b"original must survive").unwrap();
+    for args in [
+        vec!["--create"],
+        vec!["--resume"],
+        vec!["--create", "--resume"],
+        vec!["--invalid"],
+    ] {
+        let result = Command::new(exe)
+            .arg(&db.0)
+            .args(args)
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        assert!(!result.status.success());
+        assert_eq!(result.stdout, [] as [u8; 0]);
+        assert_eq!(std::fs::read(&db.0).unwrap(), b"original must survive");
+    }
+    assert_eq!(
+        std::fs::read_dir(db.0.parent().unwrap()).unwrap().count(),
+        1,
+        "colisión no debe crear temporales"
+    );
+}
+
+#[test]
+fn competing_create_helpers_publish_exactly_one_database() {
+    let db = Database::new();
+    let spawn = || {
+        Command::new(env!("CARGO_BIN_EXE_vantare-storage"))
+            .arg(&db.0)
+            .arg("--create")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap()
+    };
+    let first = spawn();
+    let second = spawn();
+    let a = first.wait_with_output().unwrap();
+    let b = second.wait_with_output().unwrap();
+    assert_ne!(a.status.success(), b.status.success());
+    let (winner, loser) = if a.status.success() { (a, b) } else { (b, a) };
+    assert_eq!(
+        serde_json::from_slice::<Value>(winner.stdout.trim_ascii()).unwrap(),
+        json!(["ready", 0, false, 0])
+    );
+    assert_eq!(loser.stdout, [] as [u8; 0]);
+    assert_eq!(loser.status.code(), Some(3));
+    assert_ne!(loser.stderr, [] as [u8; 0]);
+    assert_eq!(
+        std::fs::read_dir(db.0.parent().unwrap()).unwrap().count(),
+        1,
+        "el perdedor no deja .creating-*"
+    );
+    let mut resumed = Process::start_mode(&db.0, Some("--resume"));
+    assert_eq!(resumed.response(), json!(["ready", 0, false, 0]));
+    resumed.send(&json!(["stop"]));
+    assert!(resumed.child.wait().unwrap().success());
+}
+
+#[test]
+fn create_requires_the_owner_to_create_the_parent_directory() {
+    let db = Database::new();
+    let parent = db.0.parent().unwrap().join("absent");
+    let output = Command::new(env!("CARGO_BIN_EXE_vantare-storage"))
+        .arg(parent.join("recording.duckdb"))
+        .arg("--create")
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert_eq!(output.stdout, [] as [u8; 0]);
+    assert!(!parent.exists());
 }

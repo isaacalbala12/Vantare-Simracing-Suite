@@ -1,6 +1,45 @@
 # Almacenamiento de series — ISA-1429
 
-Crate y proceso bajo demanda: `vantare-storage <ruta.duckdb> [--read-only]`.
+Crate y proceso bajo demanda:
+`vantare-storage <ruta.duckdb> [--read-only|--create|--resume]`.
+
+- `--create`: solo nombre nuevo. Inicializa y confirma el esquema en un
+  directorio hermano exclusivo `<nombre>.creating-<pid>-<contador>/`, hace
+  CHECKPOINT, cierra la conexión y comprueba que no quede WAL. Sin conexión
+  abierta, sincroniza el fichero y publica con `std::fs::hard_link`: creación
+  atómica del nombre final que nunca reemplaza un destino existente, tampoco
+  si otro creador gana después de comprobarlo. Tras publicar intenta retirar
+  el alias temporal y su directorio; si falla esa limpieza, registra el error
+  en stderr y sirve igualmente la DB publicada (`ready`). No copia ni renombra
+  una DB/WAL viva. Las grabaciones exigen un volumen con enlaces duros
+  (NTFS/ReFS con ese soporte); sin él, la creación falla cerrado. `--create`
+  no crea el directorio padre: debe crearlo el dueño antes de invocar el helper.
+- Si se pierde la carrera por un destino o WAL existente, intenta retirar
+  únicamente su temporal propio antes de devolver el error. Ante otros fallos
+  de publicación conserva los artefactos para diagnóstico, sin reparación.
+  Una caída también conserva los artefactos. Antes de publicar solo existe el temporal;
+  después ya existe una DB inicializada, aunque aún no se haya enviado ready.
+  Un corte justo después de publicar puede dejar ambos nombres del mismo
+  fichero cerrado: no abrir el temporal ni usarlo como otra grabación.
+- `--resume`: exige un fichero existente y el prefijo válido del formato
+  propio. No sustituye ni inicializa archivos ausentes/ajenos/incompletos.
+- Sin modo se conserva el comportamiento histórico crear/reabrir; el Hub
+  GPUI congelado y `--read-only` mantienen CLI y protocolo sin cambios.
+
+Códigos de salida: **0**, éxito; **3**, `--create` rechazado por destino o WAL
+ya existente (`AlreadyExists`), de modo que el dueño puede elegir otro nombre
+sin interpretar texto; **1**, cualquier otro error, también en los otros modos.
+La limpieza fallida después de publicar no convierte el éxito en salida 1.
+El barrido de directorios `.creating-*` huérfanos pertenece a **G4a**; este
+helper no lo implementa ni toca temporales de otros creadores.
+
+La publicación resuelve la carrera entre creadores, no promete persistencia
+del nombre ante pérdida eléctrica. Los temporales no son grabaciones del
+catálogo. No reanudar automáticamente tras una caída ni borrar un temporal
+que pueda pertenecer a otro proceso. El directorio de datos es local y de
+confianza; no habilita importar DB externas ni protege frente a otro editor
+deliberado que borre/sustituya archivos o sus WAL durante una apertura.
+
 Ningún paquete vivo depende de storage/DuckDB. El workspace tiene 14
 miembros y ocho default-members; storage se excluye del build por defecto para
 no compilar DuckDB bundled. Compilarlo explícitamente con `--offline -j 4`

@@ -1,7 +1,7 @@
 //! Propietario único de una DB de series v1. No se enlaza desde UI/IPC/Core.
 
 use std::io::{self, BufRead, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use duckdb::{Config, Connection, params};
 use serde_json::{Value, json};
@@ -12,6 +12,110 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + S
 const SCHEMA: &str = "vantare.series-db.v1";
 const MAX_REQUEST_BYTES: usize = MAX_CHUNK_BYTES + 128;
 use vantare_runtime::flows::MAX_STORAGE_PAGE_CHUNKS as MAX_PAGE_CHUNKS;
+
+/// El modo histórico se conserva para los consumidores de la misma generación.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OpenMode {
+    Legacy,
+    ReadOnly,
+    Create,
+    Resume,
+}
+
+fn temporary_database(path: &Path) -> io::Result<PathBuf> {
+    let name = path
+        .file_name()
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "falta nombre de grabación"))?;
+    let mut next = 0_u64;
+    loop {
+        let mut temporary = name.to_os_string();
+        temporary.push(format!(".creating-{}-{next}", std::process::id()));
+        let directory = path.with_file_name(temporary);
+        // El directorio exclusivo reserva el nombre antes de que DuckDB cree
+        // su fichero; no abrir un fichero vacío previamente creado por otro.
+        match std::fs::create_dir(&directory) {
+            Ok(()) => return Ok(directory.join("recording.duckdb")),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+                next = next.checked_add(1).ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::AlreadyExists, "nombres temporales agotados")
+                })?;
+            }
+            Err(error) => return Err(error),
+        }
+    }
+}
+
+fn require_missing(path: &Path) -> io::Result<()> {
+    match std::fs::symlink_metadata(path) {
+        Ok(_) => Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            "grabación o WAL existente",
+        )),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error),
+    }
+}
+
+fn wal_path(path: &Path) -> PathBuf {
+    let mut wal = path.as_os_str().to_os_string();
+    wal.push(".wal");
+    wal.into()
+}
+
+fn cleanup_temporary(temporary: &Path) {
+    // Solo el alias y directorio reservados por esta creación; nunca un barrido.
+    if let Err(error) = std::fs::remove_file(temporary) {
+        let _written = writeln!(
+            io::stderr(),
+            "limpiar temporal {}: {error}",
+            temporary.display()
+        );
+    }
+    if let Some(directory) = temporary.parent()
+        && let Err(error) = std::fs::remove_dir(directory)
+    {
+        let _written = writeln!(
+            io::stderr(),
+            "limpiar directorio temporal {}: {error}",
+            directory.display()
+        );
+    }
+}
+
+fn create_database(path: &Path) -> Result<()> {
+    require_missing(path)?;
+    require_missing(&wal_path(path))?;
+    let temporary = temporary_database(path)?;
+    // Ante fallo no recuperable o caída se conserva el temporal, sin reparación.
+    let store = Store::open(&temporary, false)?;
+    store.connection.execute_batch("CHECKPOINT")?;
+    store.connection.close().map_err(|(_, error)| error)?;
+    require_missing(&wal_path(&temporary))?;
+    std::fs::OpenOptions::new()
+        .write(true)
+        .open(&temporary)?
+        .sync_all()?;
+    #[cfg(test)]
+    tests::creation_step("before-publish");
+    // hard_link crea el destino de forma atómica y falla si YA existe,
+    // incluso si otro creador ganó después de symlink_metadata. A diferencia
+    // de rename en Unix, nunca reemplaza. No se copia ni renombra una DB viva.
+    // Si el volumen no soporta enlaces duros, falla conservando el temporal.
+    if let Err(error) =
+        require_missing(&wal_path(path)).and_then(|()| std::fs::hard_link(&temporary, path))
+    {
+        if error.kind() == io::ErrorKind::AlreadyExists {
+            cleanup_temporary(&temporary);
+        }
+        return Err(error.into());
+    }
+    #[cfg(test)]
+    tests::creation_step("after-publish");
+    // Publicar ya tuvo éxito: la limpieza es de mejor esfuerzo y no impide RW.
+    // Si queda un alias, es diagnóstico; no se abre como otra grabación.
+    cleanup_temporary(&temporary);
+    Ok(())
+}
 
 struct Store {
     connection: Connection,
@@ -25,8 +129,12 @@ struct Store {
 
 impl Store {
     fn open(path: &Path, read_only: bool) -> Result<Self> {
+        Self::open_with_creation(path, read_only, true)
+    }
+
+    fn open_with_creation(path: &Path, read_only: bool, create_if_missing: bool) -> Result<Self> {
         let exists = path.exists();
-        if read_only && !exists {
+        if !exists && (read_only || !create_if_missing) {
             return Err(io::Error::new(io::ErrorKind::NotFound, "DB histórica inexistente").into());
         }
         // Inspección sin permiso de escribir antes de abrir DB existentes RW:
@@ -45,6 +153,8 @@ impl Store {
         let config = configuration(read_only)?;
         let mut connection = Connection::open_with_flags(path, config)?;
         if !exists {
+            #[cfg(test)]
+            tests::creation_step("before-meta");
             let tx = connection.transaction()?;
             tx.execute_batch("CREATE TABLE series_meta (singleton BOOLEAN PRIMARY KEY CHECK(singleton), schema_version VARCHAR NOT NULL, watermark UBIGINT NOT NULL, finished BOOLEAN NOT NULL, attempted UBIGINT NOT NULL); CREATE TABLE series_chunks (idx UBIGINT PRIMARY KEY, payload BLOB NOT NULL CHECK(octet_length(payload) <= 32768));")?;
             tx.execute(
@@ -52,6 +162,8 @@ impl Store {
                 [SCHEMA],
             )?;
             tx.commit()?;
+            #[cfg(test)]
+            tests::creation_step("after-meta");
         }
         // No inicializar ni migrar archivos ajenos, aunque sean DuckDB válidos.
         let (schema, watermark, finished, attempted): (String, u64, bool, u64) = connection.query_row(
@@ -199,13 +311,32 @@ fn configuration(read_only: bool) -> duckdb::Result<Config> {
 
 /// Protocolo local de arrays JSON, un frame por línea, comandos cerrados.
 /// EOF cierra la conexión. Error termina el proceso sin ACK ni reintento oculto.
-pub fn serve(
+pub fn serve(path: &Path, read_only: bool, input: impl BufRead, output: impl Write) -> Result<()> {
+    serve_mode(
+        path,
+        if read_only {
+            OpenMode::ReadOnly
+        } else {
+            OpenMode::Legacy
+        },
+        input,
+        output,
+    )
+}
+
+/// Crear exige un nombre nuevo; reanudar nunca inicializa una DB ausente.
+pub fn serve_mode(
     path: &Path,
-    read_only: bool,
+    mode: OpenMode,
     mut input: impl BufRead,
     mut output: impl Write,
 ) -> Result<()> {
-    let mut store = match Store::open(path, read_only) {
+    if mode == OpenMode::Create {
+        create_database(path)?;
+        require_missing(&wal_path(path))?;
+    }
+    let read_only = mode == OpenMode::ReadOnly;
+    let mut store = match Store::open_with_creation(path, read_only, mode == OpenMode::Legacy) {
         Ok(store) => store,
         Err(error) => {
             if read_only {

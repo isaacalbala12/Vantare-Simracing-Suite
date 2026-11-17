@@ -6,7 +6,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-const MOCKS: &str = r#"
+const MOCKS: &str = r"
 function Get-CimInstance {
     param([string]$ClassName)
     [pscustomobject]@{Caption='fixture';Version='1';BuildNumber='1';Name='fixture';NumberOfCores=1;TotalVisibleMemorySize=1048576;DriverVersion='1'}
@@ -19,7 +19,7 @@ function Get-Process {
     }
 }
 
-"#;
+";
 
 #[test]
 fn capture_recognizes_either_engine_and_deduplicates_vantare_when_both_run() {

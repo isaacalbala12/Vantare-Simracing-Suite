@@ -89,6 +89,7 @@ export function Stage({
                   ? p.announcements.busy
                   : p.announcements.failed;
   const info = useRef<HTMLButtonElement>(null);
+  const root = useRef<HTMLElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
   const retryFocused = useRef(false);
   const description = useId();
@@ -116,7 +117,11 @@ export function Stage({
     return () => observer.disconnect();
   }, [photo.image]);
   return (
-    <section className="v-focus-stage v-preview-stage" data-photo={real}>
+    <section
+      ref={root}
+      className="v-focus-stage v-preview-stage"
+      data-photo={real}
+    >
       <header>
         <div className="v-preview-source">
           <span
@@ -155,25 +160,27 @@ export function Stage({
             >
               <Icon name="info" />
             </Popover.Trigger>
-            <Popover.Positioner
-              className="v-positioner"
-              align="start"
-              sideOffset={6}
-            >
-              <Popover.Popup className="v-preview-help" initialFocus={false}>
-                <div role="note">
-                  <b>{p.helpTitle}</b>
-                  <p>{real ? p.photoHelp : p.drawingHelp}</p>
-                  {real && (
-                    <ul>
-                      {p.photoFacts.map((fact) => (
-                        <li key={fact}>{fact}</li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </Popover.Popup>
-            </Popover.Positioner>
+            <Popover.Portal container={root}>
+              <Popover.Positioner
+                className="v-positioner"
+                align="start"
+                sideOffset={6}
+              >
+                <Popover.Popup className="v-preview-help" initialFocus={false}>
+                  <div role="note">
+                    <b>{p.helpTitle}</b>
+                    <p>{real ? p.photoHelp : p.drawingHelp}</p>
+                    {real && (
+                      <ul>
+                        {p.photoFacts.map((fact) => (
+                          <li key={fact}>{fact}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </Popover.Popup>
+              </Popover.Positioner>
+            </Popover.Portal>
           </Popover.Root>
           {retry && (
             <Button

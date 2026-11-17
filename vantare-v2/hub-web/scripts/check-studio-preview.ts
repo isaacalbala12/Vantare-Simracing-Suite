@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "playwright-core";
+import type { Browser, Page } from "playwright-core";
 import { studioText } from "../src/renderer/i18n/studio";
 
 const text = studioText.preview;
@@ -199,5 +199,30 @@ export async function checkStudioPreview(
         await page.close();
       }
     }
+  }
+}
+
+if (import.meta.main) {
+  const { mkdir } = await import("node:fs/promises");
+  const { chromium } = await import("playwright-core");
+  const { webQaPreview } = await import("./web-qa");
+  const evidence =
+    process.env.VANTARE_HUB_EVIDENCE ?? "test-results/studio-preview";
+  await mkdir(evidence, { recursive: true });
+  const server = await webQaPreview();
+  let browser: Browser | undefined;
+  try {
+    browser = await chromium.launch({ timeout: 15000 });
+    const page = await browser.newPage();
+    await checkStudioPreview(
+      page,
+      server.resolvedUrls?.local[0] ?? "",
+      evidence,
+    );
+  } finally {
+    await browser?.close();
+    await new Promise<void>((resolve, reject) =>
+      server.httpServer.close((error) => (error ? reject(error) : resolve())),
+    );
   }
 }

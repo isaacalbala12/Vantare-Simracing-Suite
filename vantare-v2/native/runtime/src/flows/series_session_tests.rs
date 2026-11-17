@@ -227,3 +227,49 @@ fn finish_flushes_pending_before_sealing_and_zero_best_lap_is_absent() {
     assert_eq!(events[1][1]["endedAtMs"], 900);
     assert!(tracker.finish(1000).is_empty());
 }
+
+
+#[test]
+fn a_last_frame_without_the_player_still_sets_the_session_end_clock() {
+    let mut tracker = SessionTracker::default();
+    tracker.observe(&snapshot(1, 7, 0, 0), 100);
+    let mut last = snapshot(1, 7, 0, 2000);
+    last.state.player = None;
+    assert!(tracker.observe(&last, 300).is_empty());
+    let events = commands(&tracker.observe(&snapshot(2, 7, 0, 3000), 900));
+    assert_eq!(events[0][1]["endedAtMs"], 300);
+    assert_eq!(events[0][1]["simElapsedS"], 2.0);
+    assert_eq!(events[0][1]["finalPosition"], 3);
+}
+
+#[test]
+fn epoch_changes_close_and_open_even_when_the_session_id_is_unchanged() {
+    let mut tracker = SessionTracker::default();
+    let mut frame = snapshot(1, 7, 0, 0);
+    tracker.observe(&frame, 100);
+    frame.epoch = 8;
+    let events = commands(&tracker.observe(&frame, 200));
+    assert_eq!(events.len(), 2);
+    assert_eq!(events[0][0], "session-close");
+    assert_eq!(events[0][1]["epoch"], 7);
+    assert_eq!(events[0][1]["endedAtMs"], 100);
+    assert_eq!(events[1][1]["epoch"], 8);
+}
+
+#[test]
+fn received_clock_is_used_when_source_clock_is_absent_and_text_is_bounded_utf8() {
+    let mut tracker = SessionTracker::default();
+    let mut frame = snapshot(1, 7, 0, 0);
+    frame.origin.source_time = None;
+    frame.state.cars[0].vehicle = "€".repeat(200);
+    let opened = commands(&tracker.observe(&frame, 100));
+    let vehicle = opened[0][1]["vehicle"].as_str().unwrap();
+    assert_eq!(vehicle, "€".repeat(85));
+    frame.state.cars[0].laps = Quality::Reliable(1);
+    frame.origin.received_at = Duration::from_secs(1);
+    assert!(tracker.observe(&frame, 100).is_empty());
+    frame.origin.received_at = Duration::from_secs(4);
+    let events = commands(&tracker.observe(&frame, 100));
+    assert_eq!(events[0][0], "lap");
+    assert_eq!(events[0][1]["officialMs"], Value::Null);
+}

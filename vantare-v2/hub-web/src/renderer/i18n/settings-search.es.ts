@@ -12,7 +12,8 @@ export const settingsSearchTerms: Readonly<Record<string, string>> = {
   updates: "versión instalada canal novedades stable testers nightly rollback",
   shortcuts:
     "perfil launcher globales ctrl guardar deshacer rehacer duplicar borrar flechas combinaciones",
-  privacy: "fallos uso diagnóstico posthog consentimiento envíos política",
+  privacy:
+    "fallos uso diagnóstico posthog consentimiento envíos política grabar grabación vueltas telemetría",
   diagnostics:
     "telemetry core overlay datos registros fuentes eventos errores informe",
 };

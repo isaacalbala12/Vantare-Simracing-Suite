@@ -1671,3 +1671,25 @@ describe("honest notification preferences", () => {
     );
   });
 });
+
+it("saves recording through the settings CAS independently of analysis access and can undo", async () => {
+  const hook = mount("ajustes-base", <Privacy />);
+  const recording = await screen.findByRole("switch", {
+    name: "Grabar mis vueltas",
+  });
+  expect(hook.result.current.view?.general.grabacion).toBe(true);
+  fireEvent.click(recording);
+  await waitFor(() =>
+    expect(hook.result.current.view?.general.grabacion).toBe(false),
+  );
+  expect(
+    screen.getByText("Se apagará la próxima vez que arranque Vantare"),
+  ).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Deshacer" }));
+  await waitFor(() =>
+    expect(hook.result.current.view?.general.grabacion).toBe(true),
+  );
+  expect(
+    screen.queryByText("Se apagará la próxima vez que arranque Vantare"),
+  ).toBeNull();
+});

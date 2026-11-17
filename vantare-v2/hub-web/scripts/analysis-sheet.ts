@@ -14,5 +14,6 @@ export async function writeAnalysisSheet(output: string, html: string) {
       `src="data:image/png;base64,${data.toString("base64")}"`,
     );
   }
+  html = html.replaceAll("<img ", '<img loading="lazy" decoding="async" ');
   await writeFile(resolve(output, "comparacion.html"), html);
 }

@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import type { AnalysisRow } from "../../../contract/generated/analysis";
+import type { HostError } from "../../../contract/generated/contract";
 import type {
   AnalysisController,
   AnalysisSnapshot,
@@ -14,11 +15,12 @@ import {
   date,
   lapTime,
   recordingDate,
+  recordingDateLabel,
   size,
   analysisText as t,
 } from "../../i18n/analysis.es";
 import { Button } from "../Button";
-import { Badge, Callout, Skeleton } from "../Data";
+import { Badge, Callout, Skeleton, Spinner } from "../Data";
 import { SearchInput } from "../Forms";
 import { RailBlock, SectionPageHeader } from "../Frame";
 import "./analysis.css";
@@ -26,18 +28,53 @@ import { useRecordingClock } from "./useRecordingClock";
 export function AnalysisRail({
   enabled,
   recording,
+  state,
+  clock = Date.now,
+  timeZone = recordingZone(),
 }: {
   enabled: boolean;
   recording: boolean;
+  state?: AnalysisSnapshot;
+  clock?: () => number;
+  timeZone?: string;
 }) {
+  const now = useRecordingClock(clock, timeZone);
+  const row = state?.selected;
+  const opened = state?.opened;
   return (
-    <RailBlock icon="pulse" title={t.automatic}>
-      <p>
-        <strong>{enabled ? t.enabled : t.disabled}</strong>
-      </p>
-      {recording && <p>{t.recording}</p>}
-      <p>{t.local}</p>
-    </RailBlock>
+    <>
+      <RailBlock icon="pulse" title={t.automatic}>
+        <p>
+          <strong>{enabled ? t.enabled : t.disabled}</strong>
+        </p>
+        {recording && <p>{t.recording}</p>}
+        <p>{enabled ? t.idle : t.offExisting}</p>
+      </RailBlock>
+      {row && opened && (
+        <RailBlock icon="pulse" title={t.thisRecording}>
+          <dl className="v-an-recording-meta">
+            {[
+              [t.date, recordingDateLabel(row.startedAtMs, now, timeZone)],
+              [t.circuit, <em key="track">{t.track}</em>],
+              [t.carLabel, <em key="car">{t.car}</em>],
+              [t.laps, opened.laps.length],
+              [t.size, size(row.sizeBytes)],
+              [
+                t.state,
+                <Badge key="state" dot tone={opened.finished ? "ok" : "warn"}>
+                  {opened.finished ? t.complete : t.unconfirmed}
+                </Badge>,
+              ],
+            ].map(([label, value]) => (
+              <div key={String(label)}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+        </RailBlock>
+      )}
+    </>
   );
 }
 export function AnalysisNotice({
@@ -45,8 +82,10 @@ export function AnalysisNotice({
   help,
   children,
   icon = "pulse",
+  loading = false,
 }: {
   title: string;
+  loading?: boolean;
   icon?: IconName;
   help?: string;
   children?: ReactNode;
@@ -54,11 +93,25 @@ export function AnalysisNotice({
   return (
     <div className="v-card v-an-notice">
       <div>
-        <Icon name={icon} />
+        {loading ? <Spinner label={title} /> : <Icon name={icon} />}
         <h2>{title}</h2>
         {help && <p>{help}</p>}
         <div className="v-an-actions">{children}</div>
       </div>
+    </div>
+  );
+}
+export function RecordingStrip({
+  enabled,
+  recording,
+}: {
+  enabled: boolean;
+  recording: boolean;
+}) {
+  return (
+    <div className="v-an-strip" role="status">
+      {`${t.automatic}: ${enabled ? t.enabled : t.disabled}`}
+      {recording && <strong>{t.recording}</strong>}
     </div>
   );
 }
@@ -103,7 +156,7 @@ function RecordingRow({
             ? t.unreadable
             : t.dash;
   return (
-    <tr ref={ref}>
+    <tr ref={ref} onClick={() => controller?.open(row)}>
       <td>
         <time
           dateTime={new Date(row.startedAtMs).toISOString()}
@@ -113,10 +166,18 @@ function RecordingRow({
         </time>
       </td>
       <td>
-        <span className="v-an-open">
+        <button
+          type="button"
+          className="v-an-open"
+          aria-description={date(row.startedAtMs, timeZone)}
+          onClick={(event) => {
+            event.stopPropagation();
+            controller?.open(row);
+          }}
+        >
           <em>{t.track}</em>
           <em>{t.car}</em>
-        </span>
+        </button>
       </td>
       <td className="v-an-secondary">{readable ? inspection.laps : t.dash}</td>
       <td className="v-an-secondary v-an-number">
@@ -331,5 +392,52 @@ function CatalogColumns() {
         )}
       </tr>
     </thead>
+  );
+}
+
+export function AnalysisError({
+  kind,
+  recording,
+  back,
+  retry,
+  updates,
+}: {
+  kind: HostError["kind"];
+  recording: boolean;
+  back: () => void;
+  retry: () => void;
+  updates: () => void;
+}) {
+  const [title, help] = recording
+    ? [t.recordingTitle, t.recordingHelp]
+    : kind === "analysisLocked"
+      ? [t.lockedTitle, t.lockedHelp]
+      : kind === "analysisIncompatible"
+        ? [t.incompatibleTitle, t.incompatibleHelp]
+        : kind === "analysisNotFound"
+          ? [t.missingTitle, t.missingHelp]
+          : kind === "analysisChanged"
+            ? [t.changedTitle, t.changedHelp]
+            : kind === "analysisTooLarge"
+              ? [t.largeTitle, t.largeHelp]
+              : kind === "analysisTimeout"
+                ? [t.timeoutTitle, t.timeoutHelp]
+                : [t.unreadableTitle, t.unreadableHelp];
+  const onlyBack =
+    recording ||
+    ["analysisNotFound", "analysisChanged", "analysisTooLarge"].includes(kind);
+  return (
+    <AnalysisNotice
+      icon={recording || kind === "analysisLocked" ? "lock" : "x"}
+      title={title}
+      help={help}
+    >
+      {!onlyBack && (
+        <Button onClick={kind === "analysisIncompatible" ? updates : retry}>
+          {kind === "analysisIncompatible" ? t.updates : t.retry}
+        </Button>
+      )}
+      <Button onClick={back}>{t.back}</Button>
+    </AnalysisNotice>
   );
 }

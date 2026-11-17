@@ -9,6 +9,7 @@ import {
   AnalysisNotice,
   AnalysisRail,
 } from "../../ui/analysis/Analysis";
+import { AnalysisLaps } from "../../ui/analysis/RecordingDetail";
 import { Button } from "../../ui/Button";
 import { SectionPageHeader } from "../../ui/Frame";
 export default function Analysis({
@@ -23,6 +24,7 @@ export default function Analysis({
   const navigate = useUi((s) => s.navigate);
   const cache = useQueryClient();
   const enabled = settings.view?.general.grabacion ?? true;
+  const current = state.selected ? "laps" : "recordings";
   const goSettings = (target: string) => {
     cache.setQueryData(["settings", "target"], target);
     navigate("settings");
@@ -39,20 +41,26 @@ export default function Analysis({
             id: "laps",
             etiqueta: t.laps,
             visible: true,
-            ariaDisabled: true,
-            description: t.openFirst,
+            ariaDisabled: !state.selected,
+            description: !state.selected ? t.openFirst : undefined,
           },
           { id: "map", etiqueta: t.map, visible: true, ariaDisabled: true },
         ]}
-        activeTab="recordings"
+        activeTab={current}
+        onTabChange={(id) => {
+          if (id === "recordings" && state.selected) state.controller?.load();
+        }}
         rail={
           <AnalysisRail
+            clock={clock}
+            timeZone={timeZone}
             enabled={enabled}
+            state={state}
             recording={state.rows.some((r) => r.recording)}
           />
         }
       />
-      <SectionPanel activeTab="recordings">
+      <SectionPanel activeTab={current}>
         {denied ? (
           <>
             <SectionPageHeader title={t.recordings} description={t.intro} />
@@ -74,6 +82,15 @@ export default function Analysis({
               </Button>
             </AnalysisNotice>
           </>
+        ) : state.selected ? (
+          <AnalysisLaps
+            clock={clock}
+            timeZone={timeZone}
+            state={state}
+            controller={state.controller}
+            enabled={enabled}
+            updates={() => goSettings("updates")}
+          />
         ) : (
           <AnalysisCatalog
             clock={clock}

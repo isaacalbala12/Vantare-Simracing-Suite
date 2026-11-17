@@ -6,11 +6,18 @@ import type {
 import type { HostError, Reply } from "../../contract/generated/contract";
 import { HostFailure } from "../bridge/client";
 export type Inspection = Extract<AnalysisReply, { method: "analysis.inspect" }>;
+export type Opened = Omit<
+  Extract<AnalysisReply, { method: "analysis.open" }>,
+  "session"
+>;
 export type AnalysisSnapshot = {
   rows: AnalysisRow[];
   inspections: Record<string, Inspection>;
   rowErrors: Record<string, HostError["kind"]>;
   loading: boolean;
+  opening: boolean;
+  selected?: AnalysisRow;
+  opened?: Opened;
   error?: HostError["kind"];
 };
 type Bridge = { request: (request: AnalysisRequest) => Promise<Reply> };
@@ -24,6 +31,7 @@ export class AnalysisController {
     inspections: {},
     rowErrors: {},
     loading: true,
+    opening: false,
   };
   private listeners = new Set<() => void>();
   private active = true;
@@ -32,6 +40,7 @@ export class AnalysisController {
   private lane: Promise<void> = Promise.resolve();
   private timer?: ReturnType<typeof setTimeout>;
   private wake?: () => void;
+  private session?: string;
   constructor(private client: Bridge) {}
   snapshot = () => this.value;
   subscribe = (fn: () => void) => {
@@ -81,19 +90,25 @@ export class AnalysisController {
   private enqueue(work: () => Promise<void>) {
     this.lane = this.lane
       .then(work)
-      .catch((e) => this.publish({ error: failure(e), loading: false }));
+      .catch((e) =>
+        this.publish({ error: failure(e), loading: false, opening: false }),
+      );
   }
   load = () => {
     const generation = ++this.generation;
     this.publish({
       loading: true,
+      opening: false,
       error: undefined,
+      selected: undefined,
+      opened: undefined,
       inspections: {},
       rowErrors: {},
     });
     const cancelled = this.interrupt();
     this.enqueue(async () => {
       await cancelled;
+      await this.close();
       const r = await this.request({ method: "analysis.catalog" }, generation);
       if (r?.method !== "analysis.catalog" || generation !== this.generation)
         return;
@@ -111,6 +126,7 @@ export class AnalysisController {
     this.enqueue(async () => {
       if (
         !this.visible.has(id) ||
+        this.value.selected ||
         this.value.inspections[id] ||
         this.value.rowErrors[id] ||
         generation !== this.generation
@@ -131,12 +147,57 @@ export class AnalysisController {
       }
     });
   };
+  open = (row: AnalysisRow) => {
+    const generation = ++this.generation;
+    this.publish({
+      selected: row,
+      opened: undefined,
+      error: row.recording ? "analysisLocked" : undefined,
+      opening: !row.recording,
+    });
+    const cancelled = this.interrupt();
+    this.enqueue(async () => {
+      await cancelled;
+      await this.close();
+      if (row.recording || generation !== this.generation) return;
+      try {
+        const r = await this.request(
+          { method: "analysis.open", id: row.id },
+          generation,
+        );
+        if (r?.method !== "analysis.open") return;
+        const { session, ...opened } = r;
+        this.session = session;
+        if (!this.active || generation !== this.generation) {
+          await this.close();
+          return;
+        }
+        this.publish({ opened, opening: false });
+      } catch (e) {
+        if (generation !== this.generation) return;
+        if (failure(e) === "analysisCancelled") {
+          this.load();
+          return;
+        }
+        this.publish({ error: failure(e), opening: false });
+      }
+    });
+  };
+  private async close() {
+    const session = this.session;
+    this.session = undefined;
+    if (session)
+      await this.client
+        .request({ method: "analysis.close", session })
+        .catch(() => undefined);
+  }
   dispose = () => {
     this.active = false;
     ++this.generation;
     const cancelled = this.interrupt();
     this.enqueue(async () => {
       await cancelled;
+      await this.close();
     });
   };
 }

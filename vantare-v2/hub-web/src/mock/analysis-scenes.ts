@@ -16,6 +16,7 @@ export function analysisScene(context: MockContext, clock = Date.now) {
   if (context.settingsData)
     context.settingsData.general.grabacion = !name.startsWith("disabled");
   const mock = create(context);
+  let pendingOpen: Extract<UiToHost, { kind: "request" }>["id"] | undefined;
   return (value: UiToHost): HostToUi | null | undefined => {
     if (
       value.kind !== "request" ||
@@ -23,6 +24,19 @@ export function analysisScene(context: MockContext, clock = Date.now) {
     )
       return undefined;
     const { id, request } = value;
+    if (request.method === "analysis.cancel" && pendingOpen !== undefined) {
+      context.emit?.({
+        kind: "failure",
+        id: pendingOpen,
+        error: { kind: "analysisCancelled" },
+      });
+      pendingOpen = undefined;
+      return {
+        kind: "response",
+        id,
+        result: { method: request.method, cancelled: true },
+      };
+    }
     if (request.method === "analysis.catalog") {
       mock(value);
       if (name === "loading") return null;
@@ -90,6 +104,74 @@ export function analysisScene(context: MockContext, clock = Date.now) {
           bestLapApproxMs: [1, 2, 3, 5, 7, 9].includes(index) ? 111600 : null,
         },
       };
+    }
+    if (request.method === "analysis.open") {
+      if (name === "opening") {
+        pendingOpen = id;
+        return null;
+      }
+      const error = (
+        {
+          unreadable: "analysisUnreadable",
+          locked: "analysisLocked",
+          incompatible: "analysisIncompatible",
+          missing: "analysisNotFound",
+          changed: "analysisChanged",
+          large: "analysisTooLarge",
+          timeout: "analysisTimeout",
+        } as const
+      )[name as "unreadable"];
+      if (error) return { kind: "failure", id, error: { kind: error } };
+      const original = mock({
+        ...value,
+        request: { method: "analysis.open", id: "a".repeat(64) },
+      });
+      if (
+        original?.kind === "response" &&
+        original.result.method === "analysis.open"
+      ) {
+        const base = original.result.laps;
+        return {
+          ...original,
+          result: {
+            ...original.result,
+            watermark: "18446744073709551615",
+            laps: Array.from({ length: 14 }, (_, i) => {
+              const lap = base[i % base.length];
+              return {
+                ...lap,
+                index: i,
+                lap: i + 1,
+                sealed: i !== 13,
+                gap: i === 4,
+                lapTimeApproxMs: [
+                  null,
+                  113904,
+                  112881,
+                  112410,
+                  null,
+                  112097,
+                  111600,
+                  112544,
+                  111815,
+                  112302,
+                  null,
+                  112733,
+                  112661,
+                  null,
+                ][i],
+                speed: {
+                  ...lap.speed,
+                  max: (i === 3 ? 276 : 274 + (i % 2)) / 3.6,
+                  reliable: i === 11 ? 6975 : 7200,
+                  estimated: i === 11 ? 225 : 0,
+                },
+              };
+            }),
+          },
+        };
+      }
+      return original;
     }
     return mock(value);
   };

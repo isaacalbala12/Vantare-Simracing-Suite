@@ -90,6 +90,21 @@ export async function checkAnalysisComparison(
             exact: true,
           })
           .click();
+        const selectedB = page.getByRole("button", {
+          name: t.select(t.b, scene === "gaps-b" ? 5 : 7),
+          exact: true,
+        });
+        const hovered = await selectedB.evaluate(
+          (node) => getComputedStyle(node).backgroundColor,
+        );
+        await page.mouse.move(width - 1, 979);
+        assert.equal(
+          await selectedB.evaluate(
+            (node) => getComputedStyle(node).backgroundColor,
+          ),
+          hovered,
+          "Hover must preserve the selected B mark",
+        );
         if (scene !== "selection") {
           await page
             .getByRole("button", { name: t.compare, exact: true })

@@ -18,11 +18,14 @@
 .v-an-choice[aria-pressed="false"] {
   color: var(--text-3);
 }
-.v-an-choice[aria-pressed="true"] {
+.v-an-choices .v-an-choice.v-button[aria-pressed="true"]:not([data-disabled]) {
   color: var(--bg-base);
   background: var(--analysis-a);
 }
-.v-an-choice.v-an-series-b[aria-pressed="true"] {
+.v-an-choices
+  .v-an-choice.v-an-series-b.v-button[aria-pressed="true"]:not(
+    [data-disabled]
+  ) {
   background: var(--analysis-b);
 }
 .v-an-compare-action {

@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { lazy, Suspense, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { usePilot } from "../../app/PilotState";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { useSettings } from "../../app/SettingsState";
@@ -52,12 +52,13 @@ const Diagnostics = lazy(() =>
 export function Settings() {
   const state = useSettings();
   const pilot = usePilot();
-  const target = useQuery({
-    queryKey: ["settings", "target"],
-    enabled: false,
-    initialData: "general",
-  });
-  const [tab, setTab] = useState(target.data);
+  const cache = useQueryClient();
+  const [tab, setTab] = useState(
+    () => cache.getQueryData<string>(["settings", "target"]) ?? "general",
+  );
+  useEffect(() => {
+    cache.removeQueries({ queryKey: ["settings", "target"], exact: true });
+  }, [cache]);
   const [search, setSearch] = useState("");
 
   const loading = <Skeleton label={t("settings.loading")} />;

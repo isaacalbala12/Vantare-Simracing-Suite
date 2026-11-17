@@ -109,7 +109,12 @@ export function ComparisonTable({ data }: { data: Compared }) {
     <details className="v-an-values-table">
       <summary>{t.table}</summary>
       <p id={help}>{t.tableHelp}</p>
-      <div className="v-an-tablewrap">
+      <div
+        className="v-an-tablewrap"
+        tabIndex={0}
+        role="region"
+        aria-label={t.table}
+      >
         <table className="v-table" aria-describedby={help}>
           <caption className="v-sr-only">{t.table}</caption>
           <thead>

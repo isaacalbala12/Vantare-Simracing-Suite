@@ -1448,7 +1448,7 @@ textarea.v-input:read-only {
   display: inline-flex;
   flex: none;
 }
-.v-preview-seal svg {
+.v-preview-stage .v-preview-seal svg {
   width: 14px;
   height: 14px;
 }
@@ -1477,7 +1477,7 @@ textarea.v-input:read-only {
   background: var(--active);
   color: var(--text-1);
 }
-.v-preview-info svg {
+.v-preview-stage .v-preview-info svg {
   width: 15px;
   height: 15px;
 }
@@ -1502,7 +1502,7 @@ textarea.v-input:read-only {
   color: var(--text-2);
   cursor: default;
 }
-.v-preview-regenerate svg {
+.v-preview-stage .v-preview-regenerate svg {
   width: 12px;
   height: 12px;
 }
@@ -1525,7 +1525,7 @@ textarea.v-input:read-only {
   font-size: 13px;
   margin-bottom: 4px;
 }
-.v-preview-help p {
+.v-preview-stage .v-preview-help p {
   margin: 0;
 }
 .v-preview-help ul {
@@ -1567,7 +1567,7 @@ textarea.v-input:read-only {
   font-size: 11.5px;
   color: var(--text-caption);
 }
-.v-preview-metadata > span:first-child {
+.v-preview-stage .v-preview-metadata > span:first-child {
   font: 10.5px var(--font-mono);
   letter-spacing: 0.02em;
 }
@@ -1611,5 +1611,12 @@ textarea.v-input:read-only {
 }
 .v-focus-column:has(.v-preview-stage[data-photo="true"]) .v-step-save-photo {
   display: inline;
+}
+
+.v-preview-stage > .v-focus-drawing {
+  min-height: 300px;
+}
+.v-preview-stage > header {
+  z-index: 3;
 }
 

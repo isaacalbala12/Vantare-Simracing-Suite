@@ -37,6 +37,7 @@ let cache: QueryClient;
 let studio: ReturnType<typeof useStudio>;
 let requests: Request[];
 let intercept: ((request: PhotoRequest) => Promise<Reply>) | undefined;
+let readState: StudioView["state"] | undefined;
 const clients = new Set<Client>();
 const decode = vi.fn<() => Promise<void>>();
 const decodeDescriptor = Object.getOwnPropertyDescriptor(
@@ -78,6 +79,7 @@ function deferred() {
 beforeEach(() => {
   requests = [];
   intercept = undefined;
+  readState = undefined;
   decode.mockReset().mockResolvedValue(undefined);
   Object.defineProperty(HTMLImageElement.prototype, "decode", {
     configurable: true,
@@ -114,7 +116,14 @@ beforeEach(() => {
   ) {
     requests.push(value);
     if (value.method === "preview.render" && intercept) return intercept(value);
-    return request.call(this, value, onSent);
+    const result = request.call(this, value, onSent);
+    return value.method === "studio.get"
+      ? result.then((reply) =>
+          reply.method === "studio.get" && readState
+            ? { ...reply, value: { ...reply.value, state: readState } }
+            : reply,
+        )
+      : result;
   });
   const connect = Client.connect;
   vi.spyOn(Client, "connect").mockImplementation(async () => {
@@ -556,4 +565,27 @@ it("does not steal focus if the user leaves the regeneration button before succe
   );
   await photoReady();
   expect(document.activeElement).toBe(example);
+});
+
+it("withdraws the photo and sends no preview request when the document becomes protected", async () => {
+  await mount();
+  await photoReady();
+  readState = "protected";
+  await act(async () => {
+    await studio.execute({ method: "studio.get" });
+  });
+  expect(
+    stage().queryByRole("img", { name: /Vista previa real de/ }),
+  ).toBeNull();
+  expect(
+    stage().getByText("· sin foto mientras el diseño esté protegido", {
+      exact: true,
+    }),
+  ).toBeTruthy();
+  expect(
+    stage().queryByRole("button", {
+      name: "Volver a generar la vista previa real",
+    }),
+  ).toBeNull();
+  expect(photos()).toHaveLength(1);
 });

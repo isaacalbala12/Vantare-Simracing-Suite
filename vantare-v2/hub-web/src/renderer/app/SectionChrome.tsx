@@ -1,6 +1,7 @@
 import { Tabs } from "@base-ui/react/tabs";
 import {
   createContext,
+  Fragment,
   type ReactNode,
   useContext,
   useLayoutEffect,
@@ -15,6 +16,8 @@ export interface SectionTab {
   id: string;
   etiqueta: string;
   visible: boolean;
+  ariaDisabled?: boolean;
+  description?: string;
 }
 
 const Context = createContext<
@@ -128,7 +131,11 @@ export function SectionChrome({
             <Tabs.Root
               value={activeTab}
               onValueChange={(value) => {
-                if (typeof value === "string") onTabChange?.(value);
+                if (
+                  typeof value === "string" &&
+                  !visibleTabs.find((tab) => tab.id === value)?.ariaDisabled
+                )
+                  onTabChange?.(value);
               }}
               className="v-section-tabs"
             >
@@ -146,17 +153,35 @@ export function SectionChrome({
                 }}
               >
                 {visibleTabs.map((tab) => (
-                  <Tabs.Tab
-                    key={tab.id}
-                    value={tab.id}
-                    className="v-section-tab"
-                    id={sectionTabId(tab.id)}
-                    aria-controls={
-                      activeTab === tab.id ? sectionPanelId(tab.id) : undefined
-                    }
-                  >
-                    {tab.etiqueta}
-                  </Tabs.Tab>
+                  <Fragment key={tab.id}>
+                    <Tabs.Tab
+                      aria-disabled={tab.ariaDisabled || undefined}
+                      aria-describedby={
+                        tab.description
+                          ? `${sectionTabId(tab.id)}-description`
+                          : undefined
+                      }
+                      title={tab.description}
+                      value={tab.id}
+                      className="v-section-tab"
+                      id={sectionTabId(tab.id)}
+                      aria-controls={
+                        activeTab === tab.id
+                          ? sectionPanelId(tab.id)
+                          : undefined
+                      }
+                    >
+                      {tab.etiqueta}
+                    </Tabs.Tab>
+                    {tab.description && (
+                      <span
+                        className="v-sr-only"
+                        id={`${sectionTabId(tab.id)}-description`}
+                      >
+                        {tab.description}
+                      </span>
+                    )}
+                  </Fragment>
                 ))}
               </Tabs.List>
             </Tabs.Root>,

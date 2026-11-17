@@ -8,6 +8,7 @@ import {
 } from "../contract/generated/contract";
 import { mockModules } from "../contract/generated/mocks";
 import { isUiMessage } from "../contract/validation";
+import { analysisScene } from "./analysis-scenes";
 import type { MockContext } from "./context";
 import { studioStateVisual } from "./studio-states";
 import { studioFieldVisual } from "./studio-widget-scenes";
@@ -34,6 +35,7 @@ export function helloForScene(name?: string): typeof hello {
 export function createMockHost(
   sceneName = "ajustes-base",
   emit: (message: HostToUi) => void = () => {},
+  analysisClock = Date.now,
 ) {
   const requestedScene = sceneName;
   const visual =
@@ -77,12 +79,15 @@ export function createMockHost(
     },
   };
   const handlers = mockModules.map((module) => module.create(context));
+  const analysis = analysisScene(context, analysisClock);
   return (value: unknown): HostToUi | null => {
     if (!isUiMessage(value)) return null;
     if (value.kind === "hello")
       return value.version === HOST_PROTOCOL_VERSION
         ? helloForScene(requestedScene)
         : null;
+    const analysisReply = analysis?.(value);
+    if (analysisReply !== undefined) return analysisReply;
     for (const handler of handlers) {
       const result = handler(value);
       if (result !== undefined) {

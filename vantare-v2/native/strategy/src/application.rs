@@ -1,5 +1,5 @@
 //! Manual Strategy calculation boundary and exact Analysis revision checks.
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -79,15 +79,119 @@ pub fn prepare_manual(input: Input) -> Result<PreparedCalculation, String> {
     Ok(PreparedCalculation { input })
 }
 
+/// Search route that produced a manual calculation. Diagnostic only; it is
+/// not part of any wire contract.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CalculationRoute {
+    Scalar,
+    Greedy,
+}
+
+/// What happened to the greedy fallback in one calculation. Typed on purpose:
+/// consumers map it to their own closed reasons instead of parsing text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Fallback {
+    /// The search gave a plan or a proven answer: no fallback was needed.
+    NotApplicable,
+    /// The search ran out of budget without a plan and the greedy plan was returned.
+    Applied,
+    /// The search ran out of budget without a plan and no greedy plan was possible.
+    Refused(solver::GreedyRefusal),
+}
+
+/// A manual calculation with how it was produced.
+#[derive(Clone, Debug)]
+pub struct Calculation {
+    pub outcome: SolverOutcome,
+    pub route: CalculationRoute,
+    pub fallback: Fallback,
+}
+
 pub fn calculate(
     prepared: &PreparedCalculation,
     source_status: SourceStatus,
     cancel: &AtomicBool,
 ) -> Result<SolverOutcome, String> {
+    calculate_with_route(prepared, source_status, cancel).map(|(outcome, _)| outcome)
+}
+
+pub fn calculate_detailed(
+    prepared: &PreparedCalculation,
+    source_status: SourceStatus,
+    cancel: &AtomicBool,
+) -> Result<Calculation, String> {
     if source_status != SourceStatus::Open {
         return Err("source_not_open".into());
     }
-    solver::solve_v2_cancellable(&prepared.input, cancel)
+    calculate_inner(prepared, cancel, &|| {}, &|| {})
+}
+
+pub fn calculate_with_route(
+    prepared: &PreparedCalculation,
+    source_status: SourceStatus,
+    cancel: &AtomicBool,
+) -> Result<(SolverOutcome, CalculationRoute), String> {
+    calculate_detailed(prepared, source_status, cancel)
+        .map(|calculation| (calculation.outcome, calculation.route))
+}
+
+/// `before_greedy` runs right before the greedy fallback starts and
+/// `after_greedy` right after it ends; tests use them to place a cancellation.
+fn calculate_inner(
+    prepared: &PreparedCalculation,
+    cancel: &AtomicBool,
+    before_greedy: &dyn Fn(),
+    after_greedy: &dyn Fn(),
+) -> Result<Calculation, String> {
+    let input = &prepared.input;
+    let mut outcome = solver::solve_v2_cancellable(input, cancel)?;
+    let scalar = |outcome, fallback| Calculation {
+        outcome,
+        route: CalculationRoute::Scalar,
+        fallback,
+    };
+    // Only a search that ran out of budget without any plan gets the fallback:
+    // a plan or a proven "no solution" is returned exactly as the solver gave it.
+    let without_plan = outcome.certificate.status == solver::OptimalityStatus::NotProven
+        && !outcome.result.feasible;
+    if !without_plan {
+        return Ok(scalar(outcome, Fallback::NotApplicable));
+    }
+    if solver::runs_extended_search(input) {
+        // The extended search already ran; the greedy plan only knows the scalar model.
+        return Ok(scalar(
+            outcome,
+            Fallback::Refused(solver::GreedyRefusal::NotScalar),
+        ));
+    }
+    before_greedy();
+    if cancel.load(Ordering::Relaxed) {
+        return Err("cancelled".into());
+    }
+    let greedy = solver::solve_greedy_fallback(input);
+    after_greedy();
+    match greedy {
+        Ok(plan) => {
+            if cancel.load(Ordering::Relaxed) {
+                return Err("cancelled".into());
+            }
+            Ok(Calculation {
+                outcome: plan,
+                route: CalculationRoute::Greedy,
+                fallback: Fallback::Applied,
+            })
+        }
+        Err(refusal) => {
+            // No plan. The typed cause is `Fallback::Refused`; the text stays next
+            // to the scalar search's own reason for what already reads it.
+            let cause = format!("greedy_plan_unavailable: {}", refusal.code());
+            outcome.certificate.reason = Some(match outcome.certificate.reason.take() {
+                Some(reason) => format!("{reason}; {cause}"),
+                None => cause,
+            });
+            Ok(scalar(outcome, Fallback::Refused(refusal)))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -139,5 +243,48 @@ mod tests {
         let error = calculate(&prepared, SourceStatus::Closed, &AtomicBool::new(false))
             .expect_err("closed source is blocked");
         assert_eq!(error, "source_not_open");
+    }
+
+    fn manual_prepared() -> PreparedCalculation {
+        let mut input: Input =
+            serde_json::from_str(include_str!("../testdata/fuji-1450-input.json")).expect("Fuji");
+        input.extra.clear();
+        input.budget.p95_millis = 2_000;
+        input.budget.max_candidates = 250_000;
+        input.budget.max_iterations = 1_000_000;
+        prepare_manual(input).expect("valid manual input")
+    }
+
+    // The two cancellation checks around the fallback are each protected: removing
+    // either one makes one of these tests fail. The hooks run on the calling
+    // thread, so the cancellation lands deterministically, without sleeping.
+    #[test]
+    fn a_cancellation_before_the_greedy_fallback_stops_it_from_running() {
+        let cancel = AtomicBool::new(false);
+        let (reached, ran) = (AtomicBool::new(false), AtomicBool::new(false));
+        let result = calculate_inner(
+            &manual_prepared(),
+            &cancel,
+            &|| {
+                reached.store(true, Ordering::Relaxed);
+                cancel.store(true, Ordering::Relaxed);
+            },
+            &|| ran.store(true, Ordering::Relaxed),
+        );
+        assert!(reached.load(Ordering::Relaxed), "the fallback was reached");
+        assert!(!ran.load(Ordering::Relaxed), "the fallback must not run");
+        assert_eq!(result.expect_err("cancelled"), "cancelled");
+    }
+
+    #[test]
+    fn a_cancellation_while_the_greedy_fallback_runs_publishes_no_plan() {
+        let cancel = AtomicBool::new(false);
+        let ran = AtomicBool::new(false);
+        let result = calculate_inner(&manual_prepared(), &cancel, &|| {}, &|| {
+            ran.store(true, Ordering::Relaxed);
+            cancel.store(true, Ordering::Relaxed);
+        });
+        assert!(ran.load(Ordering::Relaxed), "the fallback ran");
+        assert_eq!(result.expect_err("cancelled"), "cancelled");
     }
 }

@@ -72,7 +72,7 @@ pub fn recalculate_edited_plan_detailed(
         return Err("too_many_required_pit_windows".into());
     }
 
-    let (outcome, fallback) = solve_with_fallback(&constrained, cancel, &|| {}, &|| {})?;
+    let (outcome, fallback) = solve_with_fallback(&constrained, cancel)?;
     // This guard is for the scalar solver. A greedy plan cannot trip it: the edited stops
     // are fixed (min = max = their count, one exact window each), so a plan with that many
     // stops has every stop on a window lap, and the greedy plan refuses (`MaxStops`) as
@@ -99,8 +99,16 @@ pub fn recalculate_edited_plan_detailed(
 /// untouched. When the greedy plan refuses, the outcome is still the scalar one, which
 /// had no plan to begin with, with the cause appended to `certificate.reason` (the
 /// typed cause is the returned `Fallback`; no consumer reads the text).
-/// `before` and `after` run around the greedy plan; tests place a cancellation there.
+/// `solve_with_hooks` runs `before` and `after` around the greedy plan; tests place a
+/// cancellation there.
 fn solve_with_fallback(
+    constrained: &Input,
+    cancel: &AtomicBool,
+) -> Result<(SolverOutcome, Fallback), String> {
+    solve_with_hooks(constrained, cancel, &|| {}, &|| {})
+}
+
+fn solve_with_hooks(
     constrained: &Input,
     cancel: &AtomicBool,
     before: &dyn Fn(),
@@ -434,12 +442,15 @@ mod tests {
     // The budget is found by scanning (deterministic, no clock involved).
     #[test]
     fn a_partial_scalar_plan_stays_identical() {
-        let mut input = manual(40);
+        // A 9-lap race with a tank of about six laps: the scalar search is small, so
+        // completing it and scanning the budgets below costs milliseconds.
+        let mut input = manual(9);
         input.ve_capacity_percent.value = 0.0;
         input.ve_per_lap_percent.value = 0.0;
+        input.fuel_capacity_liters.value = 12.0;
         let edited = EditedPlan {
-            stints: vec![10, 10, 10, 10],
-            pit_stop_laps: vec![10, 20, 30],
+            stints: vec![3, 3, 3],
+            pit_stop_laps: vec![3, 6],
         };
         let scalar_with = |candidates: usize| {
             let mut budget = input.clone();
@@ -457,7 +468,7 @@ mod tests {
         let mut complete = 50_usize;
         while scalar_with(complete).1.certificate.status == solver::OptimalityStatus::NotProven {
             complete *= 2;
-            assert!(complete < 10_000_000, "the scalar search never completes");
+            assert!(complete < 1_000_000, "the scalar search never completes");
         }
         let found = (1..complete).rev().take(5_000).find_map(|candidates| {
             let (budget, scalar) = scalar_with(candidates);
@@ -489,12 +500,12 @@ mod tests {
                 .wrapping_add(1_442_695_040_888_963_407);
             (state >> 33) % bound
         };
-        let (mut plans, mut refused) = (0, 0);
+        let (mut applied, mut refused, mut other) = (0, 0, 0);
         for _ in 0..120 {
             let mut input = manual(60);
             input.ve_capacity_percent.value = 0.0;
             input.ve_per_lap_percent.value = 0.0;
-            input.budget.max_candidates = 20_000;
+            input.budget.max_candidates = 200; // the scalar search gives up: the greedy plan decides
             let cuts = 1 + next(3);
             let mut stops: Vec<u32> = (0..cuts)
                 .map(|_| u32::try_from(1 + next(59)).expect("lap"))
@@ -512,19 +523,26 @@ mod tests {
                 stints,
                 pit_stop_laps: stops,
             };
-            let (outcome, _) =
+            let (outcome, fallback) =
                 recalculate_edited_plan_detailed(&input, &edited, &AtomicBool::new(false))
                     .expect("never the schedule guard, never an error");
-            if outcome.result.feasible {
-                plans += 1;
-                assert_eq!(outcome.result.stints, edited.stints);
-            } else {
-                refused += 1;
+            match fallback {
+                Fallback::Applied => {
+                    applied += 1;
+                    assert!(outcome.result.feasible);
+                    assert_eq!(outcome.result.stints, edited.stints);
+                }
+                Fallback::Refused(_) => {
+                    refused += 1;
+                    assert!(!outcome.result.feasible);
+                }
+                Fallback::NotApplicable => other += 1,
             }
         }
+        // Both ends of the greedy route must really run, or the guard is never tried.
         assert!(
-            plans > 10 && refused > 10,
-            "{plans} plans, {refused} without"
+            applied > 10 && refused > 10,
+            "{applied} applied, {refused} refused, {other} not needed"
         );
     }
 
@@ -540,7 +558,7 @@ mod tests {
         let (input, edited) = without_plan_input();
         let cancel = AtomicBool::new(false);
         let ran = AtomicBool::new(false);
-        let result = solve_with_fallback(
+        let result = solve_with_hooks(
             &constrained(&input, &edited),
             &cancel,
             &|| cancel.store(true, Ordering::Relaxed),
@@ -554,7 +572,7 @@ mod tests {
     fn a_cancellation_while_the_greedy_plan_runs_publishes_no_plan() {
         let (input, edited) = without_plan_input();
         let cancel = AtomicBool::new(false);
-        let result = solve_with_fallback(&constrained(&input, &edited), &cancel, &|| {}, &|| {
+        let result = solve_with_hooks(&constrained(&input, &edited), &cancel, &|| {}, &|| {
             cancel.store(true, Ordering::Relaxed);
         });
         assert_eq!(result.expect_err("cancelled"), "cancelled");

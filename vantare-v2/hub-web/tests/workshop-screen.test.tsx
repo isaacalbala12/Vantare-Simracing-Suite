@@ -104,7 +104,11 @@ async function enter() {
 async function openBattle(user: ReturnType<typeof userEvent.setup>) {
   await screen.findByRole("img", { name: imageName });
   if (!screen.queryByRole("combobox", { name: new RegExp(battle) })) {
-    await choose(user, /^Escena/, battle);
+    await choose(
+      user,
+      /^Escena/,
+      /^Batalla cercana · conducción(?: 4 fotogramas)?$/,
+    );
     await screen.findByRole("img", { name: new RegExp(battle) });
   }
 }
@@ -255,9 +259,13 @@ it("keeps the previous photo while pending and drops all clicks and shortcuts wi
   expect(photoRequests()).toHaveLength(before + 1);
   await act(async () => pending.resolve(png));
   expect(photoRequests()).toHaveLength(before + 1);
-  expect(screen.getByRole("status").textContent).toMatch(
-    /^Fotograma 2 de 4 listo\./,
-  );
+  expect(
+    screen
+      .getAllByRole("status")
+      .map((node) => node.textContent)
+      .filter((label) => label?.startsWith("Fotograma"))
+      .join(""),
+  ).toMatch(/^Fotograma 2 de 4 listo\./);
 });
 
 const failures: { error: HostError; text: string | RegExp; retry: boolean }[] =
@@ -319,9 +327,11 @@ it.each(failures)(
     await screen.findByText(text);
     const alert = screen.getByRole("alert");
     expect(within(alert).getByText(text)).toBeTruthy();
-    expect(screen.queryByRole("status")?.textContent).not.toMatch(
-      /Fotograma .* listo/,
-    );
+    expect(
+      screen
+        .queryAllByRole("status")
+        .some((node) => /Fotograma .* listo/.test(node.textContent ?? "")),
+    ).toBe(false);
     expect(photoRequests()).toHaveLength(1);
     const control = screen.queryByRole("button", {
       name: "Volver a generar",
@@ -390,11 +400,16 @@ it.each(["exit", "account", "live", "rights"] as const)(
         live: reason === "live",
       });
     }
+    if (reason === "account" || reason === "rights")
+      await screen.findByText("Sin acceso a las fotos");
+    if (reason === "live") await screen.findByText("Live está en marcha");
     await act(async () => pending.resolve(png));
     expect(screen.queryByRole("img", { name: imageName })).toBeNull();
-    expect(screen.queryByRole("status")?.textContent).not.toMatch(
-      /Fotograma .* listo/,
-    );
+    expect(
+      screen
+        .queryAllByRole("status")
+        .some((node) => /Fotograma .* listo/.test(node.textContent ?? "")),
+    ).toBe(false);
     expect(photoRequests()).toHaveLength(1);
     if (reason === "live")
       expect(screen.getByText("Live está en marcha")).toBeTruthy();

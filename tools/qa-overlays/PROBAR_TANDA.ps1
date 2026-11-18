@@ -183,6 +183,12 @@ if(-not $rejected -or $script:transfer.Contains('verified-ack') -or $script:tran
 $script:SoloVisual=$true
 $manifest.scope='visual-lifecycle'
 $manifest.production_rights_configured=$false
+$manifest.ci_artifact=@{run_id=123;name=('qa-kit-'+$manifest.source_sha)}
+foreach($path in @('bin/lifecycle.exe','binarios.json','ci-binarios.json')){
+ $file=Join-Path $root $path
+ Set-Content -LiteralPath $file 'FAKE'
+ $manifest.files+=@{path=$path;sha256=(Get-FileHash -LiteralPath $file).Hash}
+}
 Write-TandaJson $manifest (Join-Path $root 'manifiesto.json')
 $rejected=$false
 try {$null=Assert-TandaInputs $root} catch {$rejected=$_.Exception.Message -like '*no admite rondas*'}
@@ -191,9 +197,18 @@ $manifest.measurements=@()
 Write-TandaJson $manifest (Join-Path $root 'manifiesto.json')
 function Assert-TandaMachineRegistry {throw 'BLOCKED_LICENSE_CONFIG'}
 $script:events.Clear()
+$script:lifecycleCalls=[Collections.Generic.List[string]]::new()
+function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]$WatchSession,$Environment=@{})
+ if($Image -like '*lifecycle.exe'){
+  if($Arguments[0] -cne 'rune-lifecycle' -or -not $WatchSession){throw 'Escenario lifecycle fuera del controlador'}
+  $script:lifecycleCalls.Add($Arguments[1])
+ }
+ @{code=0;stderr='OK';stdout=''}
+}
 Invoke-TandaWorker $root (Join-Path $sandbox 'visual-worker')
 $visualState=Read-TandaJson (Join-Path $sandbox 'visual-worker/estado.json')
 if($visualState.status -ne 'complete' -or $visualState.captures.Count -ne 3 -or $visualState.measurements.Count -ne 0 -or $visualState.lifecycle -ne '4 passed; 0 failed'){throw 'El trabajador visual no completó exclusivamente captura/lifecycle'}
+if(($script:lifecycleCalls -join ',') -cne 'eof,restart,exit-zero,single'){throw 'No se despacharon los cuatro escenarios propios del arnés'}
 $script:fakeArchive=Join-Path $sandbox 'visual.tar'
 & tar -cf $script:fakeArchive -C (Join-Path $sandbox 'visual-worker') .
 if($LASTEXITCODE){throw 'Tar local visual falso falló'}

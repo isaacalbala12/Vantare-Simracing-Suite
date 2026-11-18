@@ -18,14 +18,13 @@ class InputsTests(unittest.TestCase):
             sha = "a" * 40
             def record(name, image):
                 image.write_bytes(name.encode())
-                return {"name": name, "source_sha": sha, "sha256": packaging.digest(image)}
+                return {"name": name, "source_sha": sha, "run_id": 123, "sha256": packaging.digest(image)}
 
             builds = [record(name, binaries / (name + ".exe")) for name in
-                      ("vantare-overlays-rune", "vantare-overlays", "vantare")]
-            tests = [record(name, binaries / name) for name in
-                     ("lifecycle-harness.exe", "lifecycle-rune-tests.exe")]
+                      ("vantare-overlays-rune", "vantare-overlays", "vantare", "lifecycle")]
             packaging.write_json(root / "binarios.json", builds)
-            packaging.write_json(root / "lifecycle-binarios.json", {"binaries": tests})
+            packaging.write_json(root / "ci-binarios.json", {"source_sha": sha, "run_id": "123",
+                                 "files": [{"file": row["name"] + ".exe", "sha256": row["sha256"]} for row in builds]})
             # One real fixture suffices to exercise the visual packaging branch.
             fixture = next(packaging.specifications(repo))
             with patch.object(packaging.subprocess, "check_output", return_value=sha + "\n"), \
@@ -37,7 +36,8 @@ class InputsTests(unittest.TestCase):
             self.assertEqual(manifest["measurements"], [])
             self.assertFalse(manifest["production_rights_configured"])
             self.assertNotIn("presentmon", manifest)
-            self.assertEqual(len(list((root / "output" / "bin").glob("*.exe"))), 5)
+            self.assertEqual(len(list((root / "output" / "bin").glob("*.exe"))), 4)
+            self.assertEqual(manifest["ci_artifact"]["run_id"], "123")
 
     def test_all_nineteen_canonical_sources_exist_and_fit_cli_limits(self):
         fixtures = Path(__file__).resolve().parents[2] / "vantare-v2/native/ui/fixtures"

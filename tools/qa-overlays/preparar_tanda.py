@@ -159,7 +159,9 @@ def prepare(repo, output, binary_directory, presentmon=None, corpus=None, invent
         builds = [builds]
     by_name = {row["name"]: row for row in builds}
     required = ["vantare-overlays-rune.exe", "vantare-overlays.exe", "vantare.exe"]
-    if not visual:
+    if visual:
+        required += ["lifecycle.exe"]
+    else:
         required += ["vantare-core.exe", "vantare-services.exe"]
     for name in required:
         build = by_name[name.removesuffix(".exe")]
@@ -171,15 +173,30 @@ def prepare(repo, output, binary_directory, presentmon=None, corpus=None, invent
         shutil.copyfile(Path(binary_directory) / name, output / "bin" / name)
     if not visual and "paint-stats" not in by_name["vantare-core"]["features"]:
         raise ValueError("El núcleo necesita la instrumentación existente paint-stats para QPC real")
-    lifecycle = json.loads((Path(binary_directory).parent / "lifecycle-binarios.json").read_text(encoding="utf-8-sig"))
-    for row in lifecycle["binaries"]:
-        name = row["name"]
-        valid_source = not visual or row.get("source_sha") == source_sha
-        if not valid_source or name not in ("lifecycle-harness.exe", "lifecycle-rune-tests.exe") or row["sha256"] != digest(Path(binary_directory) / name):
-            raise ValueError("Arnés lifecycle sin hash válido")
-        shutil.copyfile(Path(binary_directory) / name, output / "bin" / name)
-    if {row["name"] for row in lifecycle["binaries"]} != {"lifecycle-harness.exe", "lifecycle-rune-tests.exe"}:
-        raise ValueError("Falta un ejecutable de pruebas lifecycle")
+    if visual:
+        receipt = Path(binary_directory).parent / "ci-binarios.json"
+        ci = json.loads(receipt.read_text(encoding="utf-8-sig"))
+        builds = [by_name[name.removesuffix(".exe")] for name in required]
+        if ci["source_sha"] != source_sha or any(str(row.get("run_id")) != str(ci["run_id"]) for row in builds):
+            raise ValueError("Los binarios visuales deben venir de un solo run del SHA congelado")
+        ci_hashes = {row["file"]: row["sha256"] for row in ci["files"]}
+        if any(ci_hashes.get(name) != by_name[name.removesuffix(".exe")]["sha256"] for name in required):
+            raise ValueError("Hashes del kit no coinciden con el recibo original de CI")
+        shutil.copyfile(receipt, output / "ci-binarios.json")
+        write_json(output / "binarios.json", {"source_sha": source_sha, "run_id": ci["run_id"], "files": builds})
+        manifest["ci_artifact"] = {"run_id": ci["run_id"], "name": "qa-kit-" + source_sha,
+                                   "receipt": "ci-binarios.json", "receipt_sha256": digest(receipt)}
+        lifecycle = {"source_sha": source_sha, "harness": by_name["lifecycle"],
+                     "scenarios": ["eof", "restart", "exit-zero", "single"]}
+    else:
+        lifecycle = json.loads((Path(binary_directory).parent / "lifecycle-binarios.json").read_text(encoding="utf-8-sig"))
+        for row in lifecycle["binaries"]:
+            name = row["name"]
+            if name not in ("lifecycle-harness.exe", "lifecycle-rune-tests.exe") or row["sha256"] != digest(Path(binary_directory) / name):
+                raise ValueError("Arnés lifecycle sin hash válido")
+            shutil.copyfile(Path(binary_directory) / name, output / "bin" / name)
+        if {row["name"] for row in lifecycle["binaries"]} != {"lifecycle-harness.exe", "lifecycle-rune-tests.exe"}:
+            raise ValueError("Falta un ejecutable de pruebas lifecycle")
     manifest["lifecycle"] = {**lifecycle, "selector": "--overlays-bin", "launcher_build": by_name["vantare"],
                              "tests": 4, "synthetic_core_not_performance": True}
     manifest["builds"] = builds

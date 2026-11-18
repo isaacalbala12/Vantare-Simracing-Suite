@@ -49,8 +49,11 @@ function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
   if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw "Falta input: $($file.path)"}
   if((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ine $file.sha256){throw "Hash incorrecto: $($file.path)"}
  }
- $requiredFiles=@('bin/vantare-overlays-rune.exe','bin/vantare-overlays.exe','bin/vantare.exe','bin/lifecycle-harness.exe','bin/lifecycle-rune-tests.exe')
- if(-not $SoloVisual){$requiredFiles+=@('bin/vantare-core.exe','bin/vantare-services.exe','bin/PresentMon-2.6.0-x64.exe')}
+ $requiredFiles=@('bin/vantare-overlays-rune.exe','bin/vantare-overlays.exe','bin/vantare.exe')
+ if($SoloVisual){
+  $requiredFiles+=@('bin/lifecycle.exe','ci-binarios.json','binarios.json')
+  if([string]$manifest.ci_artifact.run_id -notmatch '\A[1-9][0-9]*\z' -or $manifest.ci_artifact.name -cne ('qa-kit-'+$manifest.source_sha)){throw 'Procedencia CI visual inválida'}
+ }else{$requiredFiles+=@('bin/lifecycle-harness.exe','bin/lifecycle-rune-tests.exe','bin/vantare-core.exe','bin/vantare-services.exe','bin/PresentMon-2.6.0-x64.exe')}
  foreach($required in $requiredFiles){
   $path=Resolve-TandaPath $Root $required
   if(-not $seen.ContainsKey($path)){throw "Binario sin hash: $required"}
@@ -180,8 +183,13 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  $env:VANTARE_SIN_GRAFICOS='1'
  $guard=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays-rune.exe') @('--capture-scene') (Join-Path $Output 'guard') 20
  if($guard.code -ne 6 -or $guard.stderr -notmatch '^GRAPHICS_DISABLED\b'){throw 'El binario no cumple el guard gráfico'}
- $list=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--list','--ignored') (Join-Path $Output 'lifecycle-list') 20
- if($list.code -ne 0 -or @($list.stdout -split "`n"|Where-Object {$_ -match '^rune_[a-z_]+: test\s*$'}).Count -ne 4){throw 'No se enumeraron exactamente cuatro tests lifecycle, sin ejecutarlos'}
+ if(-not $SoloVisual){
+  $list=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--list','--ignored') (Join-Path $Output 'lifecycle-list') 20
+  if($list.code -ne 0 -or @($list.stdout -split "`n"|Where-Object {$_ -match '^rune_[a-z_]+: test\s*$'}).Count -ne 4){throw 'No se enumeraron exactamente cuatro tests lifecycle, sin ejecutarlos'}
+ }else{
+  $import=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_IMPORTAR_TANDA.ps1')) (Join-Path $Output 'importacion-falsa') 60
+  if($import.code -ne 0){throw 'Las regresiones del importador de CI fallaron'}
+ }
  $fake=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_TANDA.ps1')) (Join-Path $Output 'controlador-falso') 90
  if($fake.code -ne 0){throw 'El ensayo del controlador falso falló'}
  $round=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_RONDA.ps1')) (Join-Path $Output 'ronda-falsa') 30
@@ -190,7 +198,9 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  if($security.code -ne 0){throw 'Regresiones de seguridad fallaron'}
  $csv=Invoke-TandaPython @('-m','unittest','discover','-s',(Join-Path $Root 'tools/qa-overlays'),'-p','test_*.py') (Join-Path $Output 'csv-falsos') 180
  if($csv.code -ne 0){throw 'Las regresiones de CSV falsos fallaron'}
- Write-TandaJson @{source_sha=$manifest.source_sha;production_rights_configured=$manifest.production_rights_configured;guard_code=6;guard_token='GRAPHICS_DISABLED';input_hashes='PASS';captures=$manifest.captures.Count;measurements=$manifest.measurements.Count;gpu_executed=$false;shutdown_executed=$false;utc=[DateTime]::UtcNow.ToString('o')} (Join-Path $Output 'ensayo.json')
+ $result=@{source_sha=$manifest.source_sha;production_rights_configured=$manifest.production_rights_configured;guard_code=6;guard_token='GRAPHICS_DISABLED';input_hashes='PASS';captures=$manifest.captures.Count;measurements=$manifest.measurements.Count;gpu_executed=$false;shutdown_executed=$false;utc=[DateTime]::UtcNow.ToString('o')}
+ if($SoloVisual){$result.ci_run_id=$manifest.ci_artifact.run_id;$result.lifecycle_executed=$false}
+ Write-TandaJson $result (Join-Path $Output 'ensayo.json')
 }
 function Start-TandaOwned([string]$Image,[string[]]$Arguments,[string]$Log,[hashtable]$Environment=@{}){
  $info=[Diagnostics.ProcessStartInfo]::new($Image)
@@ -439,9 +449,20 @@ function Invoke-TandaLifecycle([string]$Root,[string]$Output){
    $qa=Join-Path $directory $name;$null=New-Item -ItemType Directory -Path $qa -Force
    [Environment]::SetEnvironmentVariable($name,$qa,'Process')
   }
-  $result=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--ignored','--test-threads=1','--nocapture') (Join-Path $directory 'tests') 600 -WatchSession
-  Write-TandaJson @{code=$result.code;stdout=$result.stdout;stderr=$result.stderr;selector='--overlays-bin';measurement=$false;scenario_core='synthetic lifecycle fixture, not LMU performance'} (Join-Path $directory 'resultado.json')
-  if($result.code -ne 0 -or $result.stdout -notmatch '4 passed; 0 failed'){throw 'LIFECYCLE_FAILED: consultar lifecycle/tests y resultado.json'}
+  if($SoloVisual){
+   $scenarios=@()
+   foreach($scenario in @('eof','restart','exit-zero','single')){
+    Assert-TandaUnattended
+    $result=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle.exe') @('rune-lifecycle',$scenario) (Join-Path $directory $scenario) 150 -WatchSession
+    $scenarios+=@{name=$scenario;code=$result.code;stdout=$result.stdout;stderr=$result.stderr}
+    Write-TandaJson @{scenarios=$scenarios;selector='--overlays-bin';measurement=$false;scenario_core='synthetic lifecycle fixture'} (Join-Path $directory 'resultado.json')
+    if($result.code -ne 0){throw "LIFECYCLE_FAILED: $scenario"}
+   }
+  }else{
+   $result=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--ignored','--test-threads=1','--nocapture') (Join-Path $directory 'tests') 600 -WatchSession
+   Write-TandaJson @{code=$result.code;stdout=$result.stdout;stderr=$result.stderr;selector='--overlays-bin';measurement=$false;scenario_core='synthetic lifecycle fixture, not LMU performance'} (Join-Path $directory 'resultado.json')
+   if($result.code -ne 0 -or $result.stdout -notmatch '4 passed; 0 failed'){throw 'LIFECYCLE_FAILED: consultar lifecycle/tests y resultado.json'}
+  }
  } finally {
   foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$prior[$name],'Process')}
  }

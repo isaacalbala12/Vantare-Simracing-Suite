@@ -9,8 +9,9 @@ if(-not $dump){
  $dump=@(& $vswhere -latest -products '*' -find 'VC/Tools/MSVC/*/bin/Hostx64/x64/dumpbin.exe')|Select-Object -First 1
 }
 if(-not $dump){throw 'No se localizó dumpbin instalado'}
-$required=@('vantare-overlays-rune.exe','vantare-overlays.exe','vantare.exe','lifecycle-harness.exe','lifecycle-rune-tests.exe')
-if(-not $SoloVisual){$required+=@('vantare-core.exe','vantare-services.exe','PresentMon-2.6.0-x64.exe')}
+$required=@('vantare-overlays-rune.exe','vantare-overlays.exe','vantare.exe')
+if($SoloVisual){$required+=@('lifecycle.exe')}
+else{$required+=@('lifecycle-harness.exe','lifecycle-rune-tests.exe','vantare-core.exe','vantare-services.exe','PresentMon-2.6.0-x64.exe')}
 foreach($name in $required){
  if(-not(Test-Path -LiteralPath (Join-Path $Bin $name) -PathType Leaf)){throw "Falta binario para auditar: $name"}
 }

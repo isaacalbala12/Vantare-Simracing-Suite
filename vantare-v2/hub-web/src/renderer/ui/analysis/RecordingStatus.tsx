@@ -73,7 +73,7 @@ export function RecordingStatus({
         : t[`${kind}Help`];
   const content = (
     <>
-      <div className="v-an-status-message" role="status">
+      <div className="v-an-status-message" data-kind={kind} role="status">
         <Badge tone={tone} dot>
           {t[kind]}
         </Badge>
@@ -112,21 +112,50 @@ export function RecordingStatus({
       </RailBlock>
       {status && usage && (
         <RailBlock icon="pulse" title={t.space}>
-          <dl className="v-an-recording-meta">
-            <div>
-              <dt>{a.recordings}</dt>
-              <dd>{t.count(usage.count, status.limits.maxRecordings)}</dd>
-            </div>
-            <div>
-              <dt>{a.size}</dt>
-              <dd>{t.bytes(usage.bytes, status.limits.maxBytes)}</dd>
-            </div>
-          </dl>
+          <QuotaMeter
+            label={a.recordings}
+            value={usage.count}
+            max={status.limits.maxRecordings}
+            caption={t.count(usage.count, status.limits.maxRecordings)}
+          />
+          <QuotaMeter
+            label={a.size}
+            value={usage.bytes}
+            max={status.limits.maxBytes}
+            caption={t.bytes(usage.bytes, status.limits.maxBytes)}
+          />
           <p>{t.quota(status.limits.maxRecordings, status.limits.maxBytes)}</p>
           <p>{a.local}</p>
         </RailBlock>
       )}
     </>
+  );
+}
+
+function QuotaMeter({
+  label,
+  value,
+  max,
+  caption,
+}: {
+  label: string;
+  value: number;
+  max: number;
+  caption: string;
+}) {
+  if (max <= 0) return null;
+  return (
+    <div className="v-an-quota-meter">
+      <span>{label}</span>
+      <span>{caption}</span>
+      <meter
+        min={0}
+        max={max}
+        value={Math.min(value, max)}
+        aria-label={label}
+        aria-valuetext={caption}
+      />
+    </div>
   );
 }
 
@@ -172,33 +201,34 @@ export function RecordingPruneNotice({
 }: PruneProps & { show: () => void; acknowledge: () => void }) {
   const now = useRecordingClock(clock, timeZone);
   return (
-    <Callout
-      tone="warn"
-      title={t.pruneTitle(batch.items.length)}
-      actions={
-        <div className="v-an-prune-actions">
-          <Button size="sm" onClick={show}>
-            {t.seePrune}
-          </Button>
-          <Button
-            size="sm"
-            onClick={(event) => {
-              event.currentTarget
-                .closest('[role="tabpanel"]')
-                ?.querySelector("h1")
-                ?.focus();
-              acknowledge();
-            }}
-          >
-            {t.acknowledge}
-          </Button>
-        </div>
-      }
-    >
-      {t.pruneSummary(
-        recordingDateLabel(batch.atMs, now, timeZone),
-        batch.bytes,
-      )}
-    </Callout>
+    <div className="v-an-prune-notice">
+      <Callout
+        title={t.pruneTitle(batch.items.length)}
+        actions={
+          <div className="v-an-prune-actions">
+            <Button size="sm" onClick={show}>
+              {t.seePrune}
+            </Button>
+            <Button
+              size="sm"
+              onClick={(event) => {
+                event.currentTarget
+                  .closest('[role="tabpanel"]')
+                  ?.querySelector("h1")
+                  ?.focus();
+                acknowledge();
+              }}
+            >
+              {t.acknowledge}
+            </Button>
+          </div>
+        }
+      >
+        {t.pruneSummary(
+          recordingDateLabel(batch.atMs, now, timeZone),
+          batch.bytes,
+        )}
+      </Callout>
+    </div>
   );
 }

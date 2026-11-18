@@ -100,6 +100,18 @@ export async function checkRecordingStatus(
             await page.locator(".v-an-prune-list li:visible").count(),
             3,
           );
+          assert.equal(
+            await page
+              .getByRole("meter", { name: a.recordings })
+              .getAttribute("aria-valuetext"),
+            t.count(200, 200),
+          );
+          assert.equal(
+            await page
+              .getByRole("meter", { name: a.size })
+              .getAttribute("aria-valuetext"),
+            t.bytes(4_900_000_000, 5_000_000_000),
+          );
           await page.getByRole("button", { name: t.acknowledge }).click();
           await page
             .getByText(t.pruneTitle(3), { exact: true })

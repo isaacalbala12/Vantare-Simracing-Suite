@@ -407,3 +407,6 @@ mod preview_dispatch_tests;
 
 #[path = "protocol/modules/analysis/dispatch_tests.rs"]
 mod analysis_dispatch_tests;
+
+#[path = "protocol/modules/strategy/dispatch_tests.rs"]
+mod strategy_dispatch_tests;

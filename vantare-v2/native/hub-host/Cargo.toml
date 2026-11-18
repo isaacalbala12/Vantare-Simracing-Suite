@@ -23,6 +23,7 @@ vantare-services = { workspace = true, features = ["browser"] }
 # Existing Services version/features; no new package (VANTA-138 calendar).
 chrono = { version = "0.4", default-features = false, features = ["std", "serde", "clock"] }
 vantare-launcher.workspace = true
+vantare-strategy = { path = "../strategy" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
 # Approved existing lock package, MIT OR Apache-2.0; no additional packages.

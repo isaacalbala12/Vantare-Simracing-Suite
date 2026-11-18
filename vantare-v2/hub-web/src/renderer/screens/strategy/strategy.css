@@ -46,7 +46,10 @@
   justify-content: flex-end;
   gap: var(--space-3);
   border-bottom: 1px solid var(--line-2);
-  padding-bottom: var(--space-3);
+}
+
+.strategy-filebar .v-button {
+  min-height: var(--chip-h);
 }
 
 .strategy-file-state {
@@ -320,6 +323,34 @@
 .strategy-summary {
   align-self: start;
 }
+.strategy-summary .strategy-summary-note {
+  margin-top: var(--space-5);
+  font-size: var(--text-small);
+  color: var(--text-3);
+}
+.strategy-breadcrumb {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--chip-h);
+  gap: var(--space-1);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+.strategy-breadcrumb:hover:not(:disabled) {
+  text-decoration: underline;
+}
+.strategy-breadcrumb:disabled {
+  cursor: default;
+  opacity: var(--disabled-opacity);
+}
+.strategy-breadcrumb svg,
+.strategy-advanced summary svg {
+  width: var(--space-5);
+  height: var(--space-5);
+  flex: none;
+}
+
 .strategy-summary-rows {
   margin: 0;
   font-size: var(--text-small);
@@ -434,9 +465,16 @@
   flex: 1;
 }
 .strategy-advanced summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   cursor: pointer;
   font-weight: 650;
   padding-block: var(--space-2);
+}
+.strategy-advanced:not([open]) summary svg {
+  rotate: -90deg;
 }
 .strategy-race-head {
   display: flex;

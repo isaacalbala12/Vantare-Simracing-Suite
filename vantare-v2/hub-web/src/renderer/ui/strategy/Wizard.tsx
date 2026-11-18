@@ -1,6 +1,7 @@
 import { useCallback, useId, useRef, useState } from "react";
 import type { StrategyComputeForm } from "../../../contract/generated/strategy";
 import { strategyLimits } from "../../../contract/generated/strategy";
+import { Icon } from "../../assets/icons/Icon";
 import { strategy as t } from "../../i18n/strategy";
 
 type Field = keyof typeof t.labels;
@@ -343,10 +344,11 @@ export function Wizard({
       <div className="strategy-wizard-head">
         <button
           type="button"
-          className="v-button"
+          className="strategy-breadcrumb"
           disabled={pending}
           onClick={close}
         >
+          <Icon name="chevron-left" />
           {t.collection}
         </button>
         <span>{t.new}</span>
@@ -409,7 +411,10 @@ export function Wizard({
                 <div className="strategy-grid">{fuel.map(field)}</div>
               </fieldset>
               <details ref={advancedSection} className="strategy-advanced">
-                <summary>{t.advanced}</summary>
+                <summary>
+                  <Icon name="down" />
+                  {t.advanced}
+                </summary>
                 <div className="strategy-grid">
                   {advanced.map(field)}
                   <fieldset className="strategy-field strategy-service">
@@ -497,6 +502,7 @@ export function Wizard({
               ],
             ]}
           />
+          <p className="strategy-summary-note">{t.summaryHelp}</p>
         </aside>
       </div>
       <div className="strategy-wizard-foot">

@@ -181,6 +181,35 @@ async function verify(
     ),
     `document scrolls outside strategy at ${scene}`,
   );
+  if (width === 1280) {
+    const geometry = await scope.evaluate((node) => {
+      const bar = node
+        .querySelector(".strategy-filebar")
+        ?.getBoundingClientRect();
+      const content = Array.from(node.children)
+        .slice(1)
+        .find((child) => getComputedStyle(child).position !== "absolute")
+        ?.getBoundingClientRect();
+      const header = document
+        .querySelector(".v-titlebar")
+        ?.getBoundingClientRect();
+      if (!bar || !content || !header)
+        throw new Error("Missing strategy header geometry");
+      return {
+        header: header.height,
+        row: bar.height,
+        push: content.top - bar.top,
+      };
+    });
+    assert(
+      geometry.push <= 40,
+      `Strategy/${scene}/${scheme}: file row pushes content ${geometry.push}px (max 40px)`,
+    );
+    if (scene === "col" || scene === "as-reglas")
+      console.log(
+        `Strategy 1280×720 ${scene}/${scheme}: ${JSON.stringify(geometry)}`,
+      );
+  }
   const text = (await scope.textContent()) ?? "";
   assert(
     !/[a-z]:[\\/]|\\\\|(^|\s)\/(?:[^\s]+\/)+/im.test(text),
@@ -289,12 +318,30 @@ async function exercise(
       document.activeElement?.matches("h2:focus-visible"),
     ),
   );
+  await page
+    .locator(".strategy-wizard-head")
+    .getByRole("button", { name: "Tus estrategias", exact: true })
+    .waitFor();
+  assert.equal(
+    await page.locator(".strategy-wizard-head").getByRole("button").count(),
+    1,
+  );
+  assert.equal(
+    await page
+      .locator(".strategy-summary")
+      .getByText("Se guarda al crear la carrera en el último paso.", {
+        exact: true,
+      })
+      .count(),
+    1,
+  );
   await step("as-inicio", 1);
   await next();
   await combination(page);
   await step("as-comb", 2);
   await next();
   await rules(page);
+  assert.equal(await page.locator(".strategy-advanced summary svg").count(), 1);
   await step("as-reglas", 3);
   await fill(page, { "Vueltas que vas a dar": "", "Consumo por vuelta": "0" });
   await next();

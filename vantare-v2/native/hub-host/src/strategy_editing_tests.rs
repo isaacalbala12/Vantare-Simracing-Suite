@@ -485,7 +485,9 @@ fn fuji_with_ve_recalculates_an_edited_witness_schedule() {
         stints: vec![43, 42, 42, 43, 42, 24],
         pit_stop_laps: vec![43, 85, 127, 170, 212],
     };
-    for (index, delta) in [(None, 0_i32), (Some(1), 1), (Some(4), -1)] {
+    // Edits the 1 % battery grid can serve: a second 43-lap stint (e.g. moving
+    // stop 2 by +1) is impossible after a first one of 43 (see the crate test).
+    for (index, delta) in [(None, 0_i32), (Some(0), -1), (Some(3), -1)] {
         let mut edited = edited.clone();
         if let Some(index) = index {
             edited.pit_stop_laps[index] = edited.pit_stop_laps[index]

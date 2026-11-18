@@ -1,5 +1,5 @@
 //! Application entry point for recalculating an edited stint and stop schedule.
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -72,7 +72,7 @@ pub fn recalculate_edited_plan_detailed(
         return Err("too_many_required_pit_windows".into());
     }
 
-    let outcome = solver::solve_v2_cancellable(&constrained, cancel)?;
+    let (outcome, fallback) = solve_with_fallback(&constrained, cancel)?;
     if outcome.result.feasible
         && (outcome.result.stints != edited.stints
             || outcome
@@ -85,7 +85,44 @@ pub fn recalculate_edited_plan_detailed(
     {
         return Err("solver_did_not_preserve_edited_schedule".into());
     }
-    Ok((outcome, Fallback::NotApplicable))
+    Ok((outcome, fallback))
+}
+
+/// The scalar search first. Only when it ends without any plan (`not_proven`, no
+/// feasible plan) the greedy plan is tried on the same constrained input; it keeps
+/// the fixed stops and windows or refuses with its typed cause, and the result is
+/// never `proven`. A plan or a proven "no solution" is returned untouched.
+fn solve_with_fallback(
+    constrained: &Input,
+    cancel: &AtomicBool,
+) -> Result<(SolverOutcome, Fallback), String> {
+    let mut outcome = solver::solve_v2_cancellable(constrained, cancel)?;
+    let without_plan = outcome.certificate.status == solver::OptimalityStatus::NotProven
+        && !outcome.result.feasible;
+    if !without_plan {
+        return Ok((outcome, Fallback::NotApplicable));
+    }
+    if solver::runs_extended_search(constrained) {
+        return Ok((outcome, Fallback::Refused(solver::GreedyRefusal::NotScalar)));
+    }
+    if cancel.load(Ordering::Relaxed) {
+        return Err("cancelled".into());
+    }
+    let greedy = solver::solve_greedy_fallback(constrained);
+    if cancel.load(Ordering::Relaxed) {
+        return Err("cancelled".into());
+    }
+    match greedy {
+        Ok(plan) => Ok((plan, Fallback::Applied)),
+        Err(refusal) => {
+            let cause = format!("greedy_plan_unavailable: {}", refusal.code());
+            outcome.certificate.reason = Some(match outcome.certificate.reason.take() {
+                Some(reason) => format!("{reason}; {cause}"),
+                None => cause,
+            });
+            Ok((outcome, Fallback::Refused(refusal)))
+        }
+    }
 }
 
 fn validate_edited_plan(race_laps: u32, edited: &EditedPlan) -> Result<(), String> {
@@ -245,7 +282,7 @@ mod tests {
     // energy and an exact calendar; the greedy fallback must keep that calendar.
     #[test]
     fn fuji_with_virtual_energy_recalculates_the_edited_schedule_with_the_fallback() {
-        for (index, delta) in [(None, 0), (Some(1), 1), (Some(4), -1)] {
+        for (index, delta) in [(None, 0), (Some(0), -1), (Some(3), -1)] {
             let edited = witness(index, delta);
             let (outcome, fallback) =
                 recalculate_edited_plan_detailed(&manual(236), &edited, &AtomicBool::new(false))
@@ -268,6 +305,22 @@ mod tests {
             assert!(outcome.certificate.proof.is_none());
             assert_eq!(fallback, Fallback::Applied, "{edited:?}");
         }
+    }
+
+    // On the 1 % grid a second 43-lap stint is impossible after a first one of 43:
+    // the battery left (0.41 %) plus the largest whole-step top-up is 99.41 %, short
+    // of the 99.59 % it needs. The scalar model has the same limit, so this edit has
+    // no plan; the answer is the typed cause, not a plan that breaks the calendar.
+    #[test]
+    fn an_edit_the_service_grid_cannot_serve_has_no_plan_and_a_typed_cause() {
+        let (outcome, fallback) = recalculate_edited_plan_detailed(
+            &manual(236),
+            &witness(Some(1), 1),
+            &AtomicBool::new(false),
+        )
+        .expect("a result, not an error");
+        assert!(!outcome.result.feasible);
+        assert_eq!(fallback, Fallback::Refused(solver::GreedyRefusal::MaxStops));
     }
 
     // A calendar no plan can follow is still "no plan", never a plan that breaks it,

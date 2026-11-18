@@ -1,11 +1,14 @@
 import { useCallback, useId, useState } from "react";
 import type { StrategyComputeForm } from "../../../contract/generated/strategy";
 import { strategyLimits } from "../../../contract/generated/strategy";
+import { Icon } from "../../assets/icons/Icon";
 import { strategy as t } from "../../i18n/strategy";
 
+// Fields with a control. `team` and `variantMode` travel with the document but
+// have no control: the manual calculation only supports the dry mode.
 export type Field = keyof typeof t.labels;
-type Values = Record<Field, string>;
-type Errors = Partial<Values>;
+type Values = Record<Field | "team" | "variantMode", string>;
+type Errors = Partial<Record<Field, string>>;
 
 export const initial: Values = {
   track: "",
@@ -37,7 +40,7 @@ export const initial: Values = {
   variantMode: "dry",
   serviceMode: "parallel",
 };
-const units: Partial<Values> = {
+const units: Partial<Record<Field, string>> = {
   durationMinutes: "min",
   raceLaps: "vueltas",
   formationSeconds: "s",
@@ -76,17 +79,14 @@ const fractions = new Set<Field>([
   "vePerLapPercent",
   "veStep",
 ]);
-const modes = {
-  variantMode: ["dry", "wet", "eco", "humid"],
-  serviceMode: ["parallel", "sequential"],
-} as const;
+const serviceModes = ["parallel", "sequential"] as const;
 
 export const decimal = (value: string) => value.trim().replace(",", ".");
 
 function validation(field: Field, value: string): string | undefined {
   const text = value.trim();
-  if (field === "variantMode" || field === "serviceMode")
-    return (modes[field] as readonly string[]).includes(value)
+  if (field === "serviceMode")
+    return (serviceModes as readonly string[]).includes(value)
       ? undefined
       : t.required;
   if (field === "startAt") {
@@ -94,7 +94,7 @@ function validation(field: Field, value: string): string | undefined {
     return;
   }
   if (!units[field]) {
-    if (!text && field !== "variantNote" && field !== "team") return t.required;
+    if (!text && field !== "variantNote") return t.required;
     if (new TextEncoder().encode(text).length > strategyLimits.text)
       return t.length;
     return;
@@ -158,7 +158,7 @@ export function toForm(v: Values): StrategyComputeForm {
 
 export function formValues(form: StrategyComputeForm): Values {
   const values = { ...form.fields, ...form.inputs };
-  for (const key of Object.keys(units) as Field[]) {
+  for (const key of Object.keys(units) as (keyof typeof units)[]) {
     values[key] = values[key]
       .replace(/(\.\d*?)0+$/, "$1")
       .replace(/\.$/, "")
@@ -221,9 +221,9 @@ export function useStrategyForm(initialValues: Values) {
   }
 
   function field(key: Field, before?: string) {
-    if (key === "serviceMode" || key === "variantMode") return choiceField(key);
+    if (key === "serviceMode") return choiceField();
     const help = [
-      errors[key] || (t.help as Partial<Values>)[key],
+      errors[key] || (t.help as Partial<Record<Field, string>>)[key],
       before && t.before(before),
     ].filter(Boolean);
     const inputId = `${id}-${key}`;
@@ -254,6 +254,7 @@ export function useStrategyForm(initialValues: Values) {
         </div>
         {help.length > 0 && (
           <small id={`${inputId}-help`} data-error={!!errors[key]}>
+            {errors[key] && <Icon name="alert" />}
             {help.join(" · ")}
           </small>
         )}
@@ -261,10 +262,9 @@ export function useStrategyForm(initialValues: Values) {
     );
   }
 
-  function choiceField(key: keyof typeof modes) {
-    const help =
-      errors[key] ||
-      (key === "serviceMode" ? t.serviceHelp : t.help.variantName);
+  function choiceField() {
+    const key = "serviceMode";
+    const help = errors[key] || t.serviceHelp;
     const helpId = `${id}-${key}-help`;
     return (
       <fieldset
@@ -275,7 +275,7 @@ export function useStrategyForm(initialValues: Values) {
       >
         <legend>{t.labels[key]}</legend>
         <div>
-          {modes[key].map((option) => (
+          {serviceModes.map((option) => (
             <label key={option}>
               <input
                 type="radio"
@@ -283,9 +283,7 @@ export function useStrategyForm(initialValues: Values) {
                 checked={option === v[key]}
                 onChange={() => change(key, option)}
               />
-              {option === "parallel" || option === "sequential"
-                ? t[option]
-                : t.modes[option]}
+              {t[option]}
             </label>
           ))}
         </div>

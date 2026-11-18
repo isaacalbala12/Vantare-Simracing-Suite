@@ -121,7 +121,6 @@ export const strategy = {
   loads: (fuel: string, energy: string) =>
     `de ${fuel} L en ${fuel} L · de ${energy} % en ${energy} %`,
   perLap: (time: string) => `${time} por vuelta`,
-  modes: { dry: "Seco", wet: "Mojado", eco: "Ahorro", humid: "Húmedo" },
   editBlock: (block: string) => `Editar ${block.toLowerCase()}`,
   yourRace: "Tu carrera",
   summaryHelp: "Se guarda al crear la carrera en el último paso.",
@@ -168,8 +167,6 @@ export const strategy = {
     basePaceSeconds: "Ritmo por vuelta",
     variantName: "Nombre de esta estrategia",
     variantNote: "Nota",
-    team: "Equipo",
-    variantMode: "Modo de la estrategia",
     serviceMode: "En la parada",
   },
   help: {

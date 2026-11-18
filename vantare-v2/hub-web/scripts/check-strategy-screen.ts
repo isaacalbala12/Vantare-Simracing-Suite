@@ -219,7 +219,7 @@ async function verify(
   );
   // The editor was just audited in this layout. The focus exercise checks
   // the ring and border directly without a second axe pass over the same form.
-  if (scene === "carrera-foco") return;
+  if (scene === "carrera-foco" || scene === "carrera-editar-fin") return;
   const { violations } = await new AxeBuilder({ page })
     .include(".strategy-screen")
     .include('[role="menu"][aria-label="Archivo"]')
@@ -245,6 +245,14 @@ async function editRace(page: Page, shot: (name: string) => Promise<void>) {
       .evaluate((node) => node.matches(":focus-visible")),
   );
   await shot("carrera-editar");
+  const body = page.locator(".strategy-race-editor-body");
+  await body.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await shot("carrera-editar-fin");
+  await body.evaluate((node) => {
+    node.scrollTop = 0;
+  });
 
   const deposit = page.getByRole("textbox", { name: "Depósito", exact: true });
   const date = page.getByRole("textbox", { name: "Salida", exact: true });

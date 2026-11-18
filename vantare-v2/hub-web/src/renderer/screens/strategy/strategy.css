@@ -409,7 +409,15 @@
   color: var(--text-3);
 }
 .strategy-field small[data-error="true"] {
+  display: flex;
+  gap: var(--space-1);
+  align-items: flex-start;
   color: color-mix(in srgb, var(--err) 45%, var(--text-1));
+}
+.strategy-field small[data-error="true"] :where(svg) {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
 }
 
 .strategy-input {

@@ -52,14 +52,7 @@ const sections = [
   ],
   [
     t.driverAndStrategy,
-    [
-      "driverName",
-      "driverInitials",
-      "variantName",
-      "variantNote",
-      "team",
-      "variantMode",
-    ],
+    ["driverName", "driverInitials", "variantName", "variantNote"],
   ],
 ] as const satisfies readonly (readonly [string, readonly Field[]])[];
 const editable: readonly Field[] = sections.flatMap(([, fields]) => [
@@ -131,7 +124,7 @@ function summary(form: StrategyComputeForm) {
     ],
     [
       t.car,
-      "track",
+      "v-gauge",
       [
         [
           l.fuel,

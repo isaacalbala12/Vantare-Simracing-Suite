@@ -447,3 +447,54 @@ it("keeps the draft visible when confirmation fails", async () => {
   click("Cancelar edición");
   expect(screen.queryByRole("alert")).toBeNull();
 });
+
+it("edits every confirmable value and offers no control for team or variant mode", async () => {
+  mount("ready");
+  await openRace();
+  click("Editar carrera");
+  // 13 fields − team − variantMode + 15 inputs − serviceMode = 25 text boxes.
+  expect(screen.getAllByRole("textbox")).toHaveLength(25);
+  expect(screen.getAllByRole("radio")).toHaveLength(2);
+  expect(screen.queryByText(/Equipo|Modo de la estrategia/)).toBeNull();
+  expect(
+    screen.queryByRole("radio", { name: /Seco|Mojado|Ahorro/ }),
+  ).toBeNull();
+  for (const input of screen.getAllByRole("textbox"))
+    expect(
+      (input as HTMLInputElement).readOnly || input.hasAttribute("disabled"),
+    ).toBe(false);
+});
+
+it("sends the saved variant mode untouched and shows a generic error when the host rejects it", async () => {
+  const request = mount(
+    "ready",
+    (r) => (r.method === "strategy.confirm" ? { kind: "rejected" } : undefined),
+    false,
+    (view) => {
+      if (view.form) view.form.fields.variantMode = "wet";
+      return view;
+    },
+  );
+  await openRace();
+  click("Editar carrera");
+  fill({ "Nombre de la carrera": "Copa Fuji" });
+  click("Confirmar datos");
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "No se ha podido completar la acción.",
+  );
+  expect(
+    request.mock.calls.find(([r]) => r.method === "strategy.confirm")?.[0],
+  ).toMatchObject({ fields: { variantMode: "wet" } });
+  expect(field("Nombre de la carrera").value).toBe("Copa Fuji");
+});
+
+it("does not mark a focused field without an error as invalid", async () => {
+  mount("ready");
+  await openRace();
+  click("Editar carrera");
+  const deposit = field("Depósito");
+  deposit.focus();
+  fireEvent.change(deposit, { target: { value: "85" } });
+  expect(deposit.getAttribute("aria-invalid")).toBeNull();
+  expect(screen.queryByRole("alert")).toBeNull();
+});

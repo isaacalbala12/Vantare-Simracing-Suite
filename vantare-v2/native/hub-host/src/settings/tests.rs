@@ -514,11 +514,13 @@ fn legacy_v1_general_without_recording_migrates_to_v2_with_recording_enabled() {
     fs::write(&legacy, &bytes).unwrap();
     let view = root.settings().view();
     assert!(view.general.grabacion);
+    assert!(!view.general.analisis_beta);
     assert!(!view.protected);
     let saved: serde_json::Value =
         serde_json::from_slice(&fs::read(root.0.join(store::FILE)).unwrap()).unwrap();
     let mut expected = general;
     expected["grabacion"] = true.into();
+    expected["analisisBeta"] = false.into();
     assert_eq!(saved["version"], 2);
     assert_eq!(saved["general"], expected);
     assert_eq!(fs::read(legacy).unwrap(), bytes);

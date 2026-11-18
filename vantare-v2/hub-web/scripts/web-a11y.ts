@@ -245,6 +245,7 @@ try {
   await checkMainScreens(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkLightContrast(page, server.resolvedUrls?.local[0] ?? "", evidence);
   const { checkAnalysisComparison } = await import("./analysis-compare-web.ts");
+  const { checkAnalysisSessions } = await import("./analysis-sessions-web.ts");
   const comparisonContext = await browser.newContext({
     timezoneId: "UTC",
     locale: "es-ES",
@@ -259,6 +260,11 @@ try {
       comparisonPage,
       server.resolvedUrls?.local[0] ?? "",
       resolve(evidence, "analysis-comparison"),
+    );
+    await checkAnalysisSessions(
+      comparisonPage,
+      server.resolvedUrls?.local[0] ?? "",
+      resolve(evidence, "analysis-sessions"),
     );
   } finally {
     failures.push(...comparisonFailures);

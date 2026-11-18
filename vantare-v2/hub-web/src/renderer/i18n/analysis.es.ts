@@ -1,3 +1,4 @@
+import type { AnalysisSessionSummary } from "../../contract/generated/analysis";
 import { recordingGroup, recordingZone } from "../app/analysis-dates";
 export const analysisText = {
   title: "Análisis",
@@ -13,6 +14,20 @@ export const analysisText = {
   intro: "Tus sesiones grabadas en este PC. Abre una para ver sus vueltas.",
   track: "Circuito sin identificar",
   car: "Coche sin identificar",
+  moreSessions: (count: number) => `+${count} sesiones`,
+  moreSessionsHelp: (count: number) =>
+    count === 1
+      ? "1 sesión más en esta grabación"
+      : `${count} sesiones más en esta grabación`,
+  latestSessionBest: "Mejor vuelta oficial de la sesión más reciente",
+  practice: "Práctica",
+  qualifying: "Clasificación",
+  race: "Carrera",
+  other: "Otra sesión",
+  interrupted: "Interrumpida",
+  sessionNumber: (number: number) => `Sesión ${number}`,
+  closingPosition: (position: number) =>
+    `Posición al cerrar la sesión: ${position}`,
   dash: "—",
   search: "Buscar circuito o coche…",
   clear: "Borrar búsqueda",
@@ -137,8 +152,20 @@ export const analysisText = {
   pendingOn: "Se encenderá la próxima vez que arranque Vantare",
   pendingOff: "Se apagará la próxima vez que arranque Vantare",
 };
-export function lapTime(ms: number | null | undefined) {
+export function sessionType(session: AnalysisSessionSummary | undefined) {
+  if (!session || session.kind === "unknown") return undefined;
+  return session.kind === "other"
+    ? session.kindText || analysisText.other
+    : analysisText[session.kind];
+}
+export function lapTime(ms: number | null | undefined, official = false) {
   if (ms == null) return analysisText.dash;
+  if (official) {
+    const rounded = Math.round(ms);
+    const minutes = Math.floor(rounded / 60000);
+    const seconds = Math.floor(rounded / 1000) % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}.${String(rounded % 1000).padStart(3, "0")}`;
+  }
   const tenths = Math.round(ms / 100);
   return `≈${Math.floor(tenths / 600)}:${(Math.floor(tenths / 10) % 60).toString().padStart(2, "0")}.${tenths % 10}`;
 }

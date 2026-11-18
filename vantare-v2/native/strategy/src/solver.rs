@@ -538,8 +538,19 @@ pub enum GreedyRefusal {
     /// `minPitStops` cannot be reached: the race has too few laps to split.
     MinStops,
     /// A required window cannot be met before its last lap.
+    ///
+    /// A defence, not reachable with a valid input: `Input::validate` demands
+    /// `1 <= from <= to < race_laps`, and every stop is placed no later than the
+    /// earliest pending window's last lap, so a window is always met in time.
     WindowUnreachable,
     /// A service amount does not fit the Fuel/VE step grid.
+    ///
+    /// A defence, not reachable through `calculate`: a stint is never longer than
+    /// what `laps_for` allows with the tank filled up to its grid top, so the
+    /// amount needed for it always fits `capacity - level` on the grid. The same
+    /// refusal also covers a tank the grid cannot describe (`Resource::new` fails,
+    /// for example a capacity with no consumption), which the scalar search
+    /// rejects with an error before the fallback runs.
     ServiceGrid,
 }
 

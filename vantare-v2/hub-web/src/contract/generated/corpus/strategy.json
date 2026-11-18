@@ -30,6 +30,7 @@
           ],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -52,6 +53,7 @@
           "events": [],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -74,6 +76,7 @@
           "events": [],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -96,6 +99,7 @@
           "events": [],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -118,6 +122,7 @@
           "events": [],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -158,6 +163,7 @@
           ],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -198,6 +204,7 @@
           ],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -238,6 +245,7 @@
           ],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -278,6 +286,7 @@
           ],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -318,6 +327,7 @@
           ],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -358,6 +368,7 @@
           ],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -395,6 +406,7 @@
           ],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -411,6 +423,13 @@
     {
       "error": {
         "kind": "strategyDirty"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "strategyEditPending"
       },
       "id": 1,
       "kind": "failure"
@@ -459,6 +478,7 @@
           ],
           "plan": {
             "computeId": 7,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -499,6 +519,29 @@
           ],
           "plan": {
             "computeId": 7,
+            "edit": {
+              "canReset": false,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 3
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 3,
+                  "lap": 2,
+                  "maxLap": 2,
+                  "minLap": 1,
+                  "vePercent": 5
+                }
+              ]
+            },
             "error": null,
             "errorField": null,
             "result": {
@@ -580,6 +623,7 @@
           ],
           "plan": {
             "computeId": 7,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": {
@@ -629,6 +673,7 @@
           ],
           "plan": {
             "computeId": 7,
+            "edit": null,
             "error": "invalidInput",
             "errorField": "raceLaps",
             "result": null,
@@ -669,6 +714,7 @@
           ],
           "plan": {
             "computeId": 8,
+            "edit": null,
             "error": "invalidInput",
             "errorField": null,
             "result": null,
@@ -709,6 +755,7 @@
           ],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
@@ -749,10 +796,724 @@
           ],
           "plan": {
             "computeId": null,
+            "edit": null,
             "error": null,
             "errorField": null,
             "result": null,
             "state": "uncalculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.moveBoundary",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "computeId": 7,
+            "edit": {
+              "canReset": true,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "vePercent": 5
+                },
+                {
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 9,
+                "pitCount": 2,
+                "totalSeconds": 301
+              },
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 12,
+                    "lap": 3,
+                    "service": "parallel",
+                    "vePercent": 5
+                  },
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 13,
+                    "lap": 6,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 3
+                  },
+                  {
+                    "fromLap": 4,
+                    "toLap": 6
+                  },
+                  {
+                    "fromLap": 7,
+                    "toLap": 9
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "edited"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.moveStop",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "computeId": 7,
+            "edit": {
+              "canReset": true,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "vePercent": 5
+                },
+                {
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 9,
+                "pitCount": 2,
+                "totalSeconds": 301
+              },
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 12,
+                    "lap": 3,
+                    "service": "parallel",
+                    "vePercent": 5
+                  },
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 13,
+                    "lap": 6,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 3
+                  },
+                  {
+                    "fromLap": 4,
+                    "toLap": 6
+                  },
+                  {
+                    "fromLap": 7,
+                    "toLap": 9
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "edited"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.recalculate",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "computeId": 8,
+            "edit": {
+              "canReset": true,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "vePercent": 5
+                },
+                {
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 9,
+                "pitCount": 2,
+                "totalSeconds": 301
+              },
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 12,
+                    "lap": 3,
+                    "service": "parallel",
+                    "vePercent": 5
+                  },
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 13,
+                    "lap": 6,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 3
+                  },
+                  {
+                    "fromLap": 4,
+                    "toLap": 6
+                  },
+                  {
+                    "fromLap": 7,
+                    "toLap": 9
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "calculating"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "computeId": 8,
+            "edit": {
+              "canReset": true,
+              "error": "scheduleNotPreserved",
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "vePercent": 5
+                },
+                {
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 9,
+                "pitCount": 2,
+                "totalSeconds": 301
+              },
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 12,
+                    "lap": 3,
+                    "service": "parallel",
+                    "vePercent": 5
+                  },
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 13,
+                    "lap": 6,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 3
+                  },
+                  {
+                    "fromLap": 4,
+                    "toLap": 6
+                  },
+                  {
+                    "fromLap": 7,
+                    "toLap": 9
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "edited"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "computeId": 8,
+            "edit": {
+              "canReset": true,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "vePercent": 5
+                },
+                {
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "no_solution",
+              "degraded": false,
+              "metrics": null,
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": null
+            },
+            "state": "calculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.resetEdit",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "computeId": 7,
+            "edit": {
+              "canReset": true,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "vePercent": 5
+                },
+                {
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 9,
+                "pitCount": 2,
+                "totalSeconds": 301
+              },
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 12,
+                    "lap": 3,
+                    "service": "parallel",
+                    "vePercent": 5
+                  },
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 13,
+                    "lap": 6,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 3
+                  },
+                  {
+                    "fromLap": 4,
+                    "toLap": 6
+                  },
+                  {
+                    "fromLap": 7,
+                    "toLap": 9
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "calculated"
           },
           "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "state": "ready"
@@ -885,6 +1646,46 @@
       "request": {
         "computeId": 7,
         "method": "strategy.cancel"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "computeId": 7,
+        "index": 1,
+        "lap": 3,
+        "method": "strategy.moveBoundary",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "computeId": 7,
+        "delta": -1,
+        "index": 0,
+        "method": "strategy.moveStop",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "computeId": 7,
+        "method": "strategy.recalculate",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "computeId": 7,
+        "method": "strategy.resetEdit",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     },
     {

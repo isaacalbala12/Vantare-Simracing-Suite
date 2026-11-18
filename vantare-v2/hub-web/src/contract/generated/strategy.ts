@@ -15,8 +15,12 @@ computeId: number | null, result: StrategyCalculationView | null, error: Strateg
 /**
  * The form field behind an `invalidInput` error; `null` when it is not one field.
  */
-errorField: StrategyField | null, };
-export type StrategyPlanState = "uncalculated" | "calculating" | "partial" | "error" | "calculated" | "pendingChanges";
+errorField: StrategyField | null, 
+/**
+ * The editable schedule of a feasible plan; `null` when there is none.
+ */
+edit: StrategyEditView | null, };
+export type StrategyPlanState = "uncalculated" | "calculating" | "partial" | "error" | "calculated" | "pendingChanges" | "edited";
 export type StrategyPlanError = "invalidInput" | "failed";
 export type StrategyField = "name" | "durationMinutes" | "fuelCapacityLiters" | "pitTransitSeconds" | "track" | "class" | "variantName" | "variantNote" | "variantMode" | "startAt" | "team" | "driverName" | "driverInitials" | "basePaceSeconds" | "fuelPerLapLiters" | "raceLaps" | "veCapacityPercent" | "vePerLapPercent" | "tyreLifeLaps" | "degradationSeconds" | "refuelRate" | "veRate" | "tyreServiceSeconds" | "formationSeconds" | "fuelStep" | "veStep" | "reserveLaps" | "serviceMode";
 export type StrategyCalculationView = { certificate: StrategyCertificate | null, steps: StrategyServiceSteps, 
@@ -31,10 +35,38 @@ export type StrategyTimeline = { pilot: string, basePaceSeconds: number, fuelSta
 export type StrategyStint = { fromLap: number, toLap: number, };
 export type StrategyPit = { lap: number, fuelLiters: number, vePercent: number, changeTyres: boolean, service: StrategyPitService, };
 export type StrategyPitService = "parallel" | "sequential";
+export type StrategyEditView = { 
+/**
+ * The edited stints, in order and contiguous from lap 1 to the last lap.
+ */
+stints: Array<StrategyStint>, 
+/**
+ * One stop per boundary between two stints, in order.
+ */
+stops: Array<StrategyEditStop>, 
+/**
+ * `true` when `strategy.resetEdit` would change something.
+ */
+canReset: boolean, 
+/**
+ * Why the last recalculation of this schedule failed; `null` otherwise.
+ */
+error: StrategyEditError | null, };
+export type StrategyEditStop = { 
+/**
+ * The lap completed immediately before the stop.
+ */
+lap: number, 
+/**
+ * The earliest and latest lap the stop can move to without emptying a stint.
+ */
+minLap: number, maxLap: number, fuelLiters: number, vePercent: number, };
+export type StrategyEditError = "invalidSchedule" | "eventRulesConflict" | "scheduleNotPreserved" | "failed";
 export const strategyLimits = {"id":256,"pits":16,"text":512} as const;
 export const strategyFields = ["name","durationMinutes","fuelCapacityLiters","pitTransitSeconds","track","class","variantName","variantNote","variantMode","startAt","team","driverName","driverInitials","basePaceSeconds","fuelPerLapLiters","raceLaps","veCapacityPercent","vePerLapPercent","tyreLifeLaps","degradationSeconds","refuelRate","veRate","tyreServiceSeconds","formationSeconds","fuelStep","veStep","reserveLaps","serviceMode"] as const;
+export const strategyEditErrors = ["invalidSchedule","eventRulesConflict","scheduleNotPreserved","failed"] as const;
 export const strategyStates = ["ready","empty","recovered","protected","importedLegacy"] as const;
-export type StrategyRequest = { "method": "strategy.open", } | { "method": "strategy.view", } | { "method": "strategy.select", eventId: string, strategyId: string, revision: string, } | { "method": "strategy.create", revision: string, fields: StrategyFields, basePaceSeconds: string | null, fuelPerLapLiters: string | null, } | { "method": "strategy.confirm", eventId: string, strategyId: string, revision: string, fields: StrategyFields, } | { "method": "strategy.save", revision: string, } | { "method": "strategy.discard", revision: string, } | { "method": "strategy.compute", eventId: string, strategyId: string, revision: string, form: StrategyComputeForm, } | { "method": "strategy.cancel", computeId: number, };
-export type StrategyReply = { "method": "strategy.open", value: StrategyView, } | { "method": "strategy.view", value: StrategyView, } | { "method": "strategy.select", value: StrategyView, } | { "method": "strategy.create", value: StrategyView, } | { "method": "strategy.confirm", value: StrategyView, } | { "method": "strategy.save", value: StrategyView, } | { "method": "strategy.discard", value: StrategyView, } | { "method": "strategy.compute", value: StrategyView, } | { "method": "strategy.cancel", value: StrategyView, };
-export type StrategyHostError = { "kind": "strategyDirty" } | { "kind": "strategyImportFailed" } | { "kind": "strategyInvalidText" } | { "kind": "strategyConflict", current: StrategyView, };
-export const strategyMethods = ["strategy.cancel","strategy.compute","strategy.confirm","strategy.create","strategy.discard","strategy.open","strategy.save","strategy.select","strategy.view"] as const;
+export type StrategyRequest = { "method": "strategy.open", } | { "method": "strategy.view", } | { "method": "strategy.select", eventId: string, strategyId: string, revision: string, } | { "method": "strategy.create", revision: string, fields: StrategyFields, basePaceSeconds: string | null, fuelPerLapLiters: string | null, } | { "method": "strategy.confirm", eventId: string, strategyId: string, revision: string, fields: StrategyFields, } | { "method": "strategy.save", revision: string, } | { "method": "strategy.discard", revision: string, } | { "method": "strategy.compute", eventId: string, strategyId: string, revision: string, form: StrategyComputeForm, } | { "method": "strategy.cancel", computeId: number, } | { "method": "strategy.moveBoundary", revision: string, computeId: number, index: number, lap: number, } | { "method": "strategy.moveStop", revision: string, computeId: number, index: number, delta: number, } | { "method": "strategy.recalculate", revision: string, computeId: number, } | { "method": "strategy.resetEdit", revision: string, computeId: number, };
+export type StrategyReply = { "method": "strategy.open", value: StrategyView, } | { "method": "strategy.view", value: StrategyView, } | { "method": "strategy.select", value: StrategyView, } | { "method": "strategy.create", value: StrategyView, } | { "method": "strategy.confirm", value: StrategyView, } | { "method": "strategy.save", value: StrategyView, } | { "method": "strategy.discard", value: StrategyView, } | { "method": "strategy.compute", value: StrategyView, } | { "method": "strategy.cancel", value: StrategyView, } | { "method": "strategy.moveBoundary", value: StrategyView, } | { "method": "strategy.moveStop", value: StrategyView, } | { "method": "strategy.recalculate", value: StrategyView, } | { "method": "strategy.resetEdit", value: StrategyView, };
+export type StrategyHostError = { "kind": "strategyDirty" } | { "kind": "strategyEditPending" } | { "kind": "strategyImportFailed" } | { "kind": "strategyInvalidText" } | { "kind": "strategyConflict", current: StrategyView, };
+export const strategyMethods = ["strategy.cancel","strategy.compute","strategy.confirm","strategy.create","strategy.discard","strategy.moveBoundary","strategy.moveStop","strategy.open","strategy.recalculate","strategy.resetEdit","strategy.save","strategy.select","strategy.view"] as const;

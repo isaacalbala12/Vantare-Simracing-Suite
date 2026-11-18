@@ -14,6 +14,9 @@ use vantare_strategy::{
 #[path = "strategy_calculation.rs"]
 mod calculation;
 use calculation::Calculation;
+#[path = "strategy_editing.rs"]
+mod editing;
+pub use editing::{StrategyEditError, StrategyEditStop, StrategyEditView};
 pub use calculation::{
     STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyComputeForm,
     StrategyField, StrategyMetrics, StrategyPit, StrategyPitService, StrategyPlanError,
@@ -423,6 +426,9 @@ impl State {
         if self.calculation.running() {
             return Err(HostError::Busy);
         }
+        if self.calculation.edit_pending() {
+            return Err(HostError::StrategyEditPending);
+        }
         let doc = self.doc.as_ref().ok_or(HostError::Rejected)?;
         let (event, variant) = indices(doc, event_id, strategy_id)?;
         if doc.value()["activeEventId"] != event_id
@@ -452,6 +458,74 @@ impl State {
         Ok(self.view())
     }
 
+    /// Moves the boundary after stint `index` to `lap` (see `Editing::move_boundary`).
+    pub(crate) fn move_boundary(
+        &mut self,
+        revision: &str,
+        compute_id: u32,
+        index: u32,
+        lap: u32,
+    ) -> Result<StrategyView, HostError> {
+        self.edit(revision, compute_id, |editing| {
+            editing.move_boundary(index, lap)
+        })
+    }
+
+    /// Moves stop `index` by one lap (`delta` is -1 or 1).
+    pub(crate) fn move_stop(
+        &mut self,
+        revision: &str,
+        compute_id: u32,
+        index: u32,
+        delta: i8,
+    ) -> Result<StrategyView, HostError> {
+        self.edit(revision, compute_id, |editing| {
+            editing.move_stop(index, delta)
+        })
+    }
+
+    /// Edits only the plan `compute_id` names, and only in memory: the document,
+    /// its revision and `dirty` do not change.
+    fn edit(
+        &mut self,
+        revision: &str,
+        compute_id: u32,
+        edit: impl FnOnce(&mut editing::Editing) -> Result<(), HostError>,
+    ) -> Result<StrategyView, HostError> {
+        self.require_edit(revision)?;
+        match self.calculation.edit(compute_id, edit)? {
+            Some(()) => Ok(self.view()),
+            None => Err(self.conflict()),
+        }
+    }
+
+    /// Recalculates the edited schedule as a constraint, in the calculation worker.
+    pub(crate) fn recalculate(
+        &mut self,
+        revision: &str,
+        compute_id: u32,
+    ) -> Result<StrategyView, HostError> {
+        self.require_edit(revision)?;
+        if self.calculation.view().compute_id != Some(compute_id) {
+            return Err(self.conflict());
+        }
+        self.calculation.recalculate()?;
+        Ok(self.view())
+    }
+
+    /// Discards the edit and returns to the last feasible plan.
+    pub(crate) fn reset_edit(
+        &mut self,
+        revision: &str,
+        compute_id: u32,
+    ) -> Result<StrategyView, HostError> {
+        self.require_edit(revision)?;
+        match self.calculation.reset(compute_id) {
+            Some(()) => Ok(self.view()),
+            None => Err(self.conflict()),
+        }
+    }
+
     pub(crate) fn poll_calculation(&mut self) {
         if let Some(doc) = self.calculation.poll() {
             self.apply_draft(doc);
@@ -464,8 +538,18 @@ impl State {
         run: impl FnOnce(&std::sync::atomic::AtomicBool) -> Document + Send + 'static,
     ) {
         self.calculation
-            .start(move |cancel| Ok((run(cancel), StrategyPlanView::default())))
+            .start(move |cancel| Ok((run(cancel), StrategyPlanView::default(), None)))
             .expect("start controlled calculation");
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_start_recalculation(
+        &mut self,
+        run: impl FnOnce(&std::sync::atomic::AtomicBool) -> editing::Recalculation + Send + 'static,
+    ) {
+        self.calculation
+            .test_recalculate_with(run)
+            .expect("start controlled recalculation");
     }
 
     #[cfg(test)]

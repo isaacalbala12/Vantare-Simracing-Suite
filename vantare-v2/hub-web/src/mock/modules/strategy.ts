@@ -1,6 +1,7 @@
 import type { HostError } from "../../contract/generated/contract";
 import corpus from "../../contract/generated/corpus/strategy.json";
 import type {
+  StrategyEditError,
   StrategyFields,
   StrategyPlanView,
   StrategyView,
@@ -23,6 +24,7 @@ const noPlan: StrategyPlanView = {
   result: null,
   error: null,
   errorField: null,
+  edit: null,
 };
 
 function calculation(state: "calculated" | "error"): StrategyPlanView {
@@ -33,6 +35,79 @@ function calculation(state: "calculated" | "error"): StrategyPlanView {
   )?.result?.value.plan;
   if (!plan) throw Error("Missing strategy calculation fixture");
   return structuredClone(plan) as StrategyPlanView;
+}
+
+// The edited schedule of a plan, kept like the host keeps it: the stop laps,
+// the plan they started from and whether they are recalculated.
+interface Editing {
+  base: StrategyPlanView;
+  shown: StrategyPlanView;
+  laps: number[];
+  raceLaps: number;
+  pending: boolean;
+  error: StrategyEditError | null;
+}
+
+function startEditing(plan: StrategyPlanView): Editing | undefined {
+  const pits = plan.result?.timeline?.pits;
+  const stints = plan.result?.timeline?.stints;
+  if (!pits || !stints || !plan.edit) return undefined;
+  return {
+    base: plan,
+    shown: plan,
+    laps: pits.map((pit) => pit.lap),
+    raceLaps: stints[stints.length - 1].toLap,
+    pending: false,
+    error: null,
+  };
+}
+
+function editView(editing: Editing) {
+  const bounds = [0, ...editing.laps, editing.raceLaps];
+  const pits = editing.base.result?.timeline?.pits ?? [];
+  return {
+    stints: bounds.slice(1).map((toLap, index) => ({
+      fromLap: bounds[index] + 1,
+      toLap,
+    })),
+    stops: editing.laps.map((lap, index) => ({
+      lap,
+      minLap: (editing.laps[index - 1] ?? 0) + 1,
+      maxLap: (editing.laps[index + 1] ?? editing.raceLaps) - 1,
+      fuelLiters: pits[index].fuelLiters,
+      vePercent: pits[index].vePercent,
+    })),
+    canReset: editing.pending || editing.shown !== editing.base,
+    error: editing.error,
+  };
+}
+
+function editedPlan(
+  editing: Editing,
+  computeId: number | null,
+): StrategyPlanView {
+  return {
+    state: editing.pending ? "edited" : editing.shown.state,
+    computeId,
+    result: structuredClone(editing.shown.result),
+    error: null,
+    errorField: null,
+    edit: editView(editing),
+  };
+}
+
+// What the solver returns for a schedule: the mock always keeps it as given.
+function recalculated(editing: Editing, computeId: number): StrategyPlanView {
+  const plan = structuredClone(editing.base);
+  const edit = editView(editing);
+  const timeline = plan.result?.timeline;
+  if (timeline) {
+    timeline.stints = edit.stints;
+    timeline.pits.forEach((pit, index) => {
+      pit.lap = editing.laps[index];
+    });
+  }
+  return { ...plan, computeId, edit };
 }
 
 function validNumber(value: string, minimum: number): boolean {
@@ -76,14 +151,18 @@ export function create(context: MockContext): MockHandler {
   let current = structuredClone(saved);
   let opened = false;
   let sequence = 0;
-  let computeId = 0;
+  let computeSequence = 0;
   let pending:
     | { id: number; fields: StrategyFields; valid: boolean }
     | undefined;
+  let editing: Editing | undefined;
+  let recalculating: number | undefined;
   let generation = context.core.accountGeneration;
 
   function edit(changes: Partial<StrategyView>) {
     pending = undefined;
+    editing = undefined;
+    recalculating = undefined;
     current = {
       ...current,
       plan:
@@ -108,6 +187,10 @@ export function create(context: MockContext): MockHandler {
       request.method !== "strategy.confirm" &&
       request.method !== "strategy.compute" &&
       request.method !== "strategy.cancel" &&
+      request.method !== "strategy.moveBoundary" &&
+      request.method !== "strategy.moveStop" &&
+      request.method !== "strategy.recalculate" &&
+      request.method !== "strategy.resetEdit" &&
       request.method !== "strategy.save" &&
       request.method !== "strategy.discard"
     )
@@ -119,6 +202,8 @@ export function create(context: MockContext): MockHandler {
     if (!allowed || generation !== context.core.accountGeneration) {
       generation = context.core.accountGeneration;
       pending = undefined;
+      editing = undefined;
+      recalculating = undefined;
       current = structuredClone(saved);
       opened = false;
     }
@@ -130,6 +215,8 @@ export function create(context: MockContext): MockHandler {
       if (scenario === "invalidText")
         return failure({ kind: "strategyInvalidText" });
       pending = undefined;
+      editing = undefined;
+      recalculating = undefined;
       current = structuredClone(saved);
       opened = true;
     }
@@ -153,8 +240,69 @@ export function create(context: MockContext): MockHandler {
         });
     }
 
+    if (
+      request.method === "strategy.moveBoundary" ||
+      request.method === "strategy.moveStop" ||
+      request.method === "strategy.recalculate" ||
+      request.method === "strategy.resetEdit"
+    ) {
+      // another or an old plan, or none: the caller restarts from this view
+      if (request.computeId !== current.plan.computeId || !editing)
+        return failure({
+          kind: "strategyConflict",
+          current: structuredClone(current),
+        });
+      if (request.method === "strategy.resetEdit") {
+        recalculating = undefined;
+        editing.laps =
+          editing.base.result?.timeline?.pits.map((pit) => pit.lap) ?? [];
+        editing.shown = editing.base;
+        editing.pending = false;
+        editing.error = null;
+        current.plan = editedPlan(editing, request.computeId);
+      } else if (request.method === "strategy.recalculate") {
+        if (recalculating !== undefined || pending)
+          return failure({ kind: "busy" });
+        if (!editing.pending) return failure({ kind: "rejected" });
+        recalculating = ++computeSequence;
+        current.plan = {
+          ...editedPlan(editing, recalculating),
+          state: "calculating",
+        };
+      } else {
+        if (recalculating !== undefined) return failure({ kind: "busy" });
+        const stop = editView(editing).stops[request.index];
+        const lap =
+          request.method === "strategy.moveBoundary"
+            ? request.lap
+            : (stop?.lap ?? 0) + request.delta;
+        if (
+          !stop ||
+          lap < stop.minLap ||
+          lap > stop.maxLap ||
+          (request.method === "strategy.moveStop" &&
+            request.delta !== 1 &&
+            request.delta !== -1)
+        )
+          return failure({ kind: "rejected" });
+        if (lap !== stop.lap) {
+          editing.laps[request.index] = lap;
+          editing.pending = true;
+          editing.error = null;
+        }
+        current.plan = editedPlan(editing, request.computeId);
+      }
+      return {
+        kind: "response",
+        id,
+        result: { method: request.method, value: structuredClone(current) },
+      };
+    }
     if (request.method === "strategy.compute") {
-      if (pending) return failure({ kind: "busy" });
+      if (pending || recalculating !== undefined)
+        return failure({ kind: "busy" });
+      if (editing?.pending) return failure({ kind: "strategyEditPending" });
+      editing = undefined;
       if (
         request.eventId !== current.activeEventId ||
         request.strategyId !== current.activeStrategyId
@@ -162,7 +310,7 @@ export function create(context: MockContext): MockHandler {
         return failure({ kind: "rejected" });
       const { fields, inputs } = request.form;
       pending = {
-        id: ++computeId,
+        id: ++computeSequence,
         fields,
         valid:
           validForm(fields, false) &&
@@ -172,11 +320,31 @@ export function create(context: MockContext): MockHandler {
       current.plan = { ...noPlan, state: "calculating", computeId: pending.id };
     } else if (
       request.method === "strategy.cancel" &&
+      recalculating === request.computeId &&
+      editing
+    ) {
+      // a cancelled recalculation leaves the edit pending, as it was
+      recalculating = undefined;
+      current.plan = editedPlan(editing, request.computeId);
+    } else if (
+      request.method === "strategy.cancel" &&
       pending?.id === request.computeId
     ) {
       // a stale id (another or a finished calculation) changes nothing
       pending = undefined;
       current.plan = noPlan;
+    } else if (
+      request.method === "strategy.view" &&
+      recalculating !== undefined &&
+      editing
+    ) {
+      const done = recalculated(editing, recalculating);
+      recalculating = undefined;
+      editing.base = done;
+      editing.shown = done;
+      editing.pending = false;
+      editing.error = null;
+      current.plan = editedPlan(editing, done.computeId);
     } else if (request.method === "strategy.view" && pending) {
       const { id, valid, fields } = pending;
       pending = undefined;
@@ -202,6 +370,7 @@ export function create(context: MockContext): MockHandler {
         ...calculation(valid ? "calculated" : "error"),
         computeId: id,
       };
+      editing = valid ? startEditing(current.plan) : undefined;
     }
     if (request.method === "strategy.create") {
       const { fields } = request;
@@ -276,6 +445,8 @@ export function create(context: MockContext): MockHandler {
       saved = structuredClone({ ...current, plan: noPlan });
     } else if (request.method === "strategy.discard") {
       pending = undefined;
+      editing = undefined;
+      recalculating = undefined;
       current = structuredClone(saved);
     }
     return {

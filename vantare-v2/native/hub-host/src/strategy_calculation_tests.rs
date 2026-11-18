@@ -194,6 +194,7 @@ fn cancellation_does_not_reuse_the_worker_slot_or_publish_a_late_result() {
                     state: StrategyPlanState::Calculated,
                     ..StrategyPlanView::default()
                 },
+                None,
             ))
         })
         .unwrap();

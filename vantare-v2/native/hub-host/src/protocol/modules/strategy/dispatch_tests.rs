@@ -415,7 +415,7 @@ fn invalid_compute_input_does_not_modify_the_draft_or_disk() {
 }
 
 #[test]
-fn bounded_strategy_timeline_fits_even_with_a_full_document_view() {
+fn bounded_strategy_timeline_and_edit_fit_even_with_a_full_document_view() {
     use crate::strategy::{
         STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyMetrics,
         StrategyPit, StrategyPitService, StrategyPlanState, StrategyPlanView, StrategyServiceSteps,
@@ -478,6 +478,27 @@ fn bounded_strategy_timeline_fits_even_with_a_full_document_view() {
         })),
         error: None,
         error_field: None,
+        edit: Some(crate::strategy::StrategyEditView {
+            stints: vec![
+                StrategyStint {
+                    from_lap: u32::MAX,
+                    to_lap: u32::MAX
+                };
+                STRATEGY_PIT_LIMIT + 1
+            ],
+            stops: vec![
+                crate::strategy::StrategyEditStop {
+                    lap: u32::MAX,
+                    min_lap: u32::MAX,
+                    max_lap: u32::MAX,
+                    fuel_liters: Number::from_f64(f64::MAX).unwrap(),
+                    ve_percent: Number::from_f64(f64::MAX).unwrap(),
+                };
+                STRATEGY_PIT_LIMIT
+            ],
+            can_reset: true,
+            error: Some(StrategyEditError::ScheduleNotPreserved),
+        }),
     };
     let mut pipe = Pipe::new(Vec::new());
     let message = HostToUi::Response {
@@ -862,4 +883,609 @@ fn invalid_input_names_its_field_only_when_one_field_is_to_blame() {
         assert!(view.plan.compute_id.is_some());
         assert_eq!(view.revision, saved.revision);
     }
+}
+
+// ---- Plan editing (E3) ----
+
+use crate::strategy::{StrategyEditError, StrategyPlanState, StrategyView};
+
+/// A race with a six-lap tank, so that its plan has several stops within milliseconds.
+fn edit_compute(draft: &StrategyView) -> Request {
+    let mut request = compute_with(
+        draft,
+        crate::strategy::StrategySolverFields {
+            race_laps: "22".into(),
+            ..solver_fields()
+        },
+    );
+    if let Request::StrategyCompute { form, .. } = &mut request {
+        form.fields.fuel_capacity_liters = "12".into();
+    }
+    request
+}
+
+fn compute_ok(session: &mut Session, view: &StrategyView) -> StrategyView {
+    let HostToUi::Response {
+        result: Reply::StrategyCompute { value },
+        ..
+    } = request(session, &edit_compute(view))
+    else {
+        panic!("compute Strategy");
+    };
+    value
+}
+
+/// A clean, saved strategy whose calculation (22 laps) is the current plan.
+fn planned_strategy(session: &mut Session) -> StrategyView {
+    let saved = saved_strategy(session);
+    compute_ok(session, &saved);
+    session.strategy.test_join_calculation();
+    let calculated = view_strategy(session);
+    assert_eq!(calculated.plan.state, StrategyPlanState::Calculated);
+    let HostToUi::Response {
+        result: Reply::StrategySave { value },
+        ..
+    } = request(
+        session,
+        &Request::StrategySave {
+            revision: calculated.revision,
+        },
+    )
+    else {
+        panic!("save the calculated draft");
+    };
+    assert!(!value.dirty);
+    assert!(value.plan.edit.is_some(), "the plan is editable");
+    value
+}
+
+fn boundary(view: &StrategyView, index: u32, lap: u32) -> Request {
+    Request::StrategyMoveBoundary {
+        revision: view.revision.clone(),
+        compute_id: view.plan.compute_id.unwrap(),
+        index,
+        lap,
+    }
+}
+
+fn stop(view: &StrategyView, index: u32, delta: i8) -> Request {
+    Request::StrategyMoveStop {
+        revision: view.revision.clone(),
+        compute_id: view.plan.compute_id.unwrap(),
+        index,
+        delta,
+    }
+}
+
+fn recalculate(view: &StrategyView) -> Request {
+    Request::StrategyRecalculate {
+        revision: view.revision.clone(),
+        compute_id: view.plan.compute_id.unwrap(),
+    }
+}
+
+fn reset_edit(view: &StrategyView) -> Request {
+    Request::StrategyResetEdit {
+        revision: view.revision.clone(),
+        compute_id: view.plan.compute_id.unwrap(),
+    }
+}
+
+fn edited(session: &mut Session, sent: &Request) -> StrategyView {
+    match request(session, sent) {
+        HostToUi::Response {
+            result:
+                Reply::StrategyMoveBoundary { value }
+                | Reply::StrategyMoveStop { value }
+                | Reply::StrategyRecalculate { value }
+                | Reply::StrategyResetEdit { value },
+            ..
+        } => value,
+        other => panic!("edit reply: {other:?}"),
+    }
+}
+
+fn failure(session: &mut Session, sent: &Request) -> HostError {
+    match request(session, sent) {
+        HostToUi::Failure { error, .. } => error,
+        other => panic!("expected a failure: {other:?}"),
+    }
+}
+
+fn stop_laps(view: &StrategyView) -> Vec<u32> {
+    view.plan
+        .edit
+        .as_ref()
+        .unwrap()
+        .stops
+        .iter()
+        .map(|stop| stop.lap)
+        .collect()
+}
+
+/// The plan with stop 1 moved one lap (later if it can, else earlier).
+fn moved_plan(session: &mut Session) -> (StrategyView, StrategyView) {
+    let view = planned_strategy(session);
+    let mut moved = edited(session, &stop(&view, 1, 1));
+    if moved.plan.state != StrategyPlanState::Edited {
+        moved = edited(session, &stop(&moved, 1, -1));
+    }
+    assert_eq!(moved.plan.state, StrategyPlanState::Edited);
+    (view, moved)
+}
+
+/// A boundary move after which every stint still fits the six laps of a tank.
+fn a_move_the_tank_allows(view: &StrategyView) -> (u32, u32) {
+    let stops = stop_laps(view);
+    for (index, &lap) in stops.iter().enumerate() {
+        for target in [lap.wrapping_sub(1), lap + 1] {
+            let mut bounds = vec![0];
+            bounds.extend(&stops);
+            bounds.push(22);
+            bounds[index + 1] = target;
+            if bounds
+                .windows(2)
+                .all(|pair| (1..=6).contains(&pair[1].wrapping_sub(pair[0])))
+            {
+                return (u32::try_from(index).unwrap(), target);
+            }
+        }
+    }
+    panic!("no move keeps the plan feasible: {stops:?}");
+}
+
+/// A recalculation that blocks until released, then fails with a recognisable error.
+fn hold_recalculation(session: &mut Session) -> Held {
+    use std::sync::{atomic::Ordering, mpsc};
+    let (ready, started) = mpsc::sync_channel(1);
+    let (release, wait) = mpsc::sync_channel(1);
+    let (cancelled, observed) = mpsc::sync_channel(1);
+    session.strategy.test_start_recalculation(move |cancel| {
+        ready.send(()).unwrap();
+        wait.recv().unwrap();
+        cancelled.send(cancel.load(Ordering::Relaxed)).unwrap();
+        Err(StrategyEditError::EventRulesConflict)
+    });
+    started.recv().unwrap();
+    Held { release, observed }
+}
+
+#[test]
+fn a_feasible_plan_exposes_its_editable_schedule_with_the_solvers_amounts() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    let timeline = view
+        .plan
+        .result
+        .as_ref()
+        .unwrap()
+        .timeline
+        .as_ref()
+        .unwrap();
+    let edit = view.plan.edit.as_ref().unwrap();
+    assert_eq!(edit.stints, timeline.stints);
+    assert_eq!(edit.stops.len(), timeline.pits.len());
+    assert!(edit.stops.len() >= 2);
+    for (stop, pit) in edit.stops.iter().zip(&timeline.pits) {
+        assert_eq!(stop.lap, pit.lap);
+        assert_eq!(stop.fuel_liters, pit.fuel_liters);
+        assert_eq!(stop.ve_percent, pit.ve_percent);
+        assert!((stop.min_lap..=stop.max_lap).contains(&stop.lap));
+    }
+    assert!(!edit.can_reset);
+    assert_eq!(edit.error, None);
+    assert_eq!(view.plan.state, StrategyPlanState::Calculated);
+}
+
+#[test]
+fn a_plan_that_is_not_feasible_or_not_calculated_has_no_edit() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let saved = saved_strategy(&mut session);
+    assert_eq!(saved.plan.edit, None);
+    let started = compute_ok(&mut session, &saved);
+    assert_eq!(started.plan.edit, None, "while it calculates");
+    session.strategy.test_join_calculation();
+    let mut impossible = edit_compute(&view_strategy(&mut session));
+    if let Request::StrategyCompute { form, .. } = &mut impossible {
+        form.fields.fuel_capacity_liters = "1".into(); // less than one lap of fuel
+    }
+    let HostToUi::Response { .. } = request(&mut session, &impossible) else {
+        panic!("compute impossible race");
+    };
+    session.strategy.test_join_calculation();
+    assert_eq!(
+        view_strategy(&mut session).plan.edit,
+        None,
+        "no plan, no edit"
+    );
+}
+
+#[test]
+fn moving_a_boundary_or_a_stop_edits_only_the_plan_in_memory() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    let path = fixture.0.join("hub/strategy-v2.json");
+    let bytes = std::fs::read(&path).unwrap();
+    let stop_1 = view.plan.edit.as_ref().unwrap().stops[1].clone();
+    let lap = if stop_1.lap < stop_1.max_lap {
+        stop_1.lap + 1
+    } else {
+        stop_1.lap - 1
+    };
+
+    let moved = edited(&mut session, &boundary(&view, 1, lap));
+    assert_eq!(moved.plan.state, StrategyPlanState::Edited);
+    assert_eq!(
+        moved.plan.compute_id, view.plan.compute_id,
+        "same plan, same id"
+    );
+    assert_eq!(
+        moved.plan.result, view.plan.result,
+        "the result is still the base plan"
+    );
+    assert_eq!(stop_laps(&moved)[1], lap);
+    assert!(moved.plan.edit.as_ref().unwrap().can_reset);
+    // Decision 6 of the design: the file is not "unsaved" because of a move.
+    assert!(!moved.dirty);
+    assert_eq!(moved.revision, view.revision);
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+
+    let stopped = edited(&mut session, &stop(&moved, 0, -1));
+    assert!(!stopped.dirty);
+    assert_eq!(stopped.revision, view.revision);
+    let HostToUi::Response {
+        result: Reply::StrategySave { value: saved },
+        ..
+    } = request(
+        &mut session,
+        &Request::StrategySave {
+            revision: stopped.revision.clone(),
+        },
+    )
+    else {
+        panic!("save with a pending edit");
+    };
+    assert_eq!(
+        std::fs::read(&path).unwrap(),
+        bytes,
+        "the edit is not saved"
+    );
+    assert_eq!(
+        saved.plan.state,
+        StrategyPlanState::Edited,
+        "it stays pending"
+    );
+}
+
+#[test]
+fn an_obsolete_compute_id_or_revision_is_a_conflict_with_the_current_view() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    let id = view.plan.compute_id.unwrap();
+    let lap = view.plan.edit.as_ref().unwrap().stops[0].lap;
+    for sent in [
+        Request::StrategyMoveBoundary {
+            revision: view.revision.clone(),
+            compute_id: id + 1,
+            index: 0,
+            lap,
+        },
+        Request::StrategyMoveStop {
+            revision: view.revision.clone(),
+            compute_id: id + 1,
+            index: 0,
+            delta: 1,
+        },
+        Request::StrategyRecalculate {
+            revision: view.revision.clone(),
+            compute_id: id + 1,
+        },
+        Request::StrategyResetEdit {
+            revision: view.revision.clone(),
+            compute_id: id + 1,
+        },
+        Request::StrategyMoveStop {
+            revision: "f".repeat(64),
+            compute_id: id,
+            index: 0,
+            delta: 1,
+        },
+    ] {
+        assert_eq!(
+            failure(&mut session, &sent),
+            HostError::StrategyConflict {
+                current: Box::new(view.clone())
+            },
+            "{sent:?}"
+        );
+    }
+    assert_eq!(view_strategy(&mut session), view, "nothing changed");
+}
+
+#[test]
+fn moves_outside_the_range_or_with_a_bad_delta_are_rejected_and_change_nothing() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    let edit = view.plan.edit.as_ref().unwrap();
+    let count = u32::try_from(edit.stops.len()).unwrap();
+    let first = &edit.stops[0];
+    for sent in [
+        boundary(&view, 0, first.min_lap - 1),
+        boundary(&view, 0, first.max_lap + 1),
+        boundary(&view, 0, 0),
+        boundary(&view, 0, 22),
+        boundary(&view, count, 1),
+        stop(&view, count, 1),
+        stop(&view, 0, 0),
+        stop(&view, 0, 2),
+        stop(&view, 0, i8::MIN),
+    ] {
+        assert_eq!(
+            failure(&mut session, &sent),
+            HostError::Rejected,
+            "{sent:?}"
+        );
+    }
+    assert_eq!(view_strategy(&mut session), view);
+}
+
+#[test]
+fn a_new_calculation_is_refused_while_the_edit_is_pending_and_accepted_after_reset() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let (view, moved) = moved_plan(&mut session);
+    assert_eq!(
+        failure(&mut session, &edit_compute(&moved)),
+        HostError::StrategyEditPending
+    );
+    assert_eq!(
+        view_strategy(&mut session),
+        moved,
+        "the edit survives the refusal"
+    );
+    let reset = edited(&mut session, &reset_edit(&moved));
+    assert_eq!(reset.plan, view.plan, "back to the calculated plan");
+    let started = compute_ok(&mut session, &reset);
+    assert_eq!(started.plan.state, StrategyPlanState::Calculating);
+    assert_eq!(
+        started.plan.edit, None,
+        "an accepted calculation drops the edit"
+    );
+    session.strategy.test_join_calculation();
+}
+
+#[test]
+fn recalculating_runs_in_the_worker_with_a_new_id_and_keeps_the_edited_schedule() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    let path = fixture.0.join("hub/strategy-v2.json");
+    let bytes = std::fs::read(&path).unwrap();
+    let (index, target) = a_move_the_tank_allows(&view);
+    let moved = edited(&mut session, &boundary(&view, index, target));
+    let wanted = moved.plan.edit.as_ref().unwrap().clone();
+
+    let started = edited(&mut session, &recalculate(&moved));
+    assert_eq!(started.plan.state, StrategyPlanState::Calculating);
+    let id = started.plan.compute_id.unwrap();
+    assert_ne!(
+        Some(id),
+        view.plan.compute_id,
+        "a recalculation has its own id"
+    );
+    assert_eq!(
+        started.plan.result, view.plan.result,
+        "the base plan stays in view"
+    );
+    assert_eq!(started.plan.edit.as_ref().unwrap().stints, wanted.stints);
+    assert_eq!(
+        failure(&mut session, &recalculate(&started)),
+        HostError::Busy
+    );
+    assert_eq!(
+        failure(&mut session, &stop(&started, 0, 1)),
+        HostError::Busy,
+        "the schedule is frozen while it recalculates"
+    );
+    assert_eq!(
+        failure(&mut session, &edit_compute(&started)),
+        HostError::Busy
+    );
+
+    session.strategy.test_join_calculation();
+    let done = view_strategy(&mut session);
+    assert!(matches!(
+        done.plan.state,
+        StrategyPlanState::Calculated | StrategyPlanState::Partial
+    ));
+    assert_eq!(done.plan.compute_id, Some(id));
+    let timeline = done
+        .plan
+        .result
+        .as_ref()
+        .unwrap()
+        .timeline
+        .as_ref()
+        .unwrap();
+    assert_eq!(
+        timeline.stints, wanted.stints,
+        "the schedule is kept exactly"
+    );
+    assert_eq!(
+        timeline.pits.iter().map(|pit| pit.lap).collect::<Vec<_>>(),
+        wanted.stops.iter().map(|stop| stop.lap).collect::<Vec<_>>()
+    );
+    let edit = done.plan.edit.as_ref().unwrap();
+    assert_eq!(edit.stints, wanted.stints);
+    assert_eq!(edit.error, None);
+    assert!(!edit.can_reset, "the recalculated plan is the new base");
+    // The recalculation never touches the document: the file is not "unsaved".
+    assert!(!done.dirty);
+    assert_eq!(done.revision, view.revision);
+    assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    // The old id is stale now.
+    assert!(matches!(
+        failure(&mut session, &stop(&moved, 0, 1)),
+        HostError::StrategyConflict { .. }
+    ));
+}
+
+#[test]
+fn cancelling_a_recalculation_keeps_the_edit_pending_and_discards_its_late_result() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let (_, moved) = moved_plan(&mut session);
+    let held = hold_recalculation(&mut session);
+    let running = view_strategy(&mut session);
+    assert_eq!(running.plan.state, StrategyPlanState::Calculating);
+    let cancelled = cancel(&mut session, running.plan.compute_id.unwrap());
+    assert_eq!(cancelled.plan.state, StrategyPlanState::Edited);
+    assert_eq!(
+        cancelled.plan.edit.as_ref().unwrap().stints,
+        moved.plan.edit.as_ref().unwrap().stints
+    );
+    assert_eq!(cancelled.plan.result, moved.plan.result);
+    held.release.send(()).unwrap();
+    assert!(held.observed.recv().unwrap(), "the worker saw its own flag");
+    session.strategy.test_join_calculation();
+    let after = view_strategy(&mut session);
+    assert_eq!(after, cancelled, "the late failure is discarded");
+    // The schedule can be recalculated again.
+    let again = edited(&mut session, &recalculate(&after));
+    assert_eq!(again.plan.state, StrategyPlanState::Calculating);
+    session.strategy.test_join_calculation();
+}
+
+#[test]
+fn a_failed_recalculation_names_its_error_and_leaves_the_edit_pending() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let (_, moved) = moved_plan(&mut session);
+    let held = hold_recalculation(&mut session);
+    held.release.send(()).unwrap();
+    session.strategy.test_join_calculation();
+    let failed = view_strategy(&mut session);
+    assert_eq!(failed.plan.state, StrategyPlanState::Edited);
+    let edit = failed.plan.edit.as_ref().unwrap();
+    assert_eq!(edit.error, Some(StrategyEditError::EventRulesConflict));
+    assert_eq!(edit.stints, moved.plan.edit.as_ref().unwrap().stints);
+    assert_eq!(failed.plan.result, moved.plan.result);
+    let again = edited(&mut session, &stop(&failed, 1, -1));
+    assert_eq!(
+        again.plan.edit.as_ref().unwrap().error,
+        None,
+        "a move clears it"
+    );
+}
+
+#[test]
+fn reset_returns_exactly_to_the_calculated_plan_and_does_not_touch_dirty() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let (view, moved) = moved_plan(&mut session);
+    assert!(!moved.dirty);
+    assert_eq!(edited(&mut session, &reset_edit(&moved)), view);
+}
+
+#[test]
+fn resetting_during_a_recalculation_cancels_it_and_discards_its_late_result() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let (view, moved) = moved_plan(&mut session);
+    let held = hold_recalculation(&mut session);
+    let running = view_strategy(&mut session);
+    let reset = edited(&mut session, &reset_edit(&running));
+    assert_eq!(reset.plan.state, StrategyPlanState::Calculated);
+    assert_eq!(reset.plan.result, view.plan.result);
+    assert_eq!(stop_laps(&reset), stop_laps(&view));
+    assert_ne!(stop_laps(&reset), stop_laps(&moved));
+    held.release.send(()).unwrap();
+    assert!(held.observed.recv().unwrap());
+    session.strategy.test_join_calculation();
+    assert_eq!(
+        view_strategy(&mut session),
+        reset,
+        "the late result is discarded"
+    );
+}
+
+#[test]
+fn the_edit_is_dropped_when_the_data_the_account_or_the_document_change() {
+    // Confirming different data invalidates the plan and with it the edit.
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let (view, _) = moved_plan(&mut session);
+    let HostToUi::Response {
+        result: Reply::StrategyConfirm { value },
+        ..
+    } = request(
+        &mut session,
+        &Request::StrategyConfirm {
+            event_id: view.active_event_id.clone().unwrap(),
+            strategy_id: view.active_strategy_id.clone().unwrap(),
+            revision: view.revision.clone(),
+            fields: Box::new(confirm_fields("Changed")),
+        },
+    )
+    else {
+        panic!("confirm");
+    };
+    assert_eq!(value.plan.state, StrategyPlanState::PendingChanges);
+    assert_eq!(value.plan.edit, None);
+
+    // A different account.
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    moved_plan(&mut session);
+    session.current.account_generation = Some("b".repeat(64));
+    assert_eq!(
+        failure(&mut session, &Request::StrategyView {}),
+        HostError::Denied
+    );
+    let reopened = open_strategy(&mut session);
+    assert_eq!(reopened.plan.edit, None);
+    assert_eq!(reopened.plan.state, StrategyPlanState::Uncalculated);
+
+    // Discard, then a calculation that is cancelled.
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let (_, moved) = moved_plan(&mut session);
+    let HostToUi::Response {
+        result: Reply::StrategyDiscard { value },
+        ..
+    } = request(
+        &mut session,
+        &Request::StrategyDiscard {
+            revision: moved.revision,
+        },
+    )
+    else {
+        panic!("discard");
+    };
+    assert_eq!(value.plan.edit, None);
+    assert_eq!(value.plan.state, StrategyPlanState::Uncalculated);
+    let started = compute_ok(&mut session, &value);
+    let cancelled = cancel(&mut session, started.plan.compute_id.unwrap());
+    assert_eq!(cancelled.plan.edit, None);
+    session.strategy.test_join_calculation();
+}
+
+#[test]
+fn retiring_the_session_with_a_recalculation_running_cancels_it_and_leaves_no_edit() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    moved_plan(&mut session);
+    let held = hold_recalculation(&mut session);
+    session.strategy.retire();
+    held.release.send(()).unwrap();
+    assert!(held.observed.recv().unwrap(), "closing cancels the worker");
+    session.strategy.test_join_calculation();
+    let after = session.strategy.view();
+    assert_eq!(after.plan.edit, None);
+    assert_eq!(after.plan.state, StrategyPlanState::Uncalculated);
 }

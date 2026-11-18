@@ -1,5 +1,9 @@
 //! One cancellable scalar calculation per host session.
-use super::{StrategyFields, valid_text};
+use super::{
+    StrategyFields,
+    editing::{Editing, Recalculation, StrategyEditError, StrategyEditView},
+    valid_text,
+};
 use crate::protocol::HostError;
 use serde::{Deserialize, Serialize};
 use serde_json::Number;
@@ -160,6 +164,9 @@ pub enum StrategyPlanState {
     Error,
     Calculated,
     PendingChanges,
+    /// The schedule was edited and is not recalculated yet: `result` still shows
+    /// the plan it started from and `edit` the edited schedule.
+    Edited,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -199,6 +206,8 @@ pub struct StrategyPlanView {
     pub error: Option<StrategyPlanError>,
     /// The form field behind an `invalidInput` error; `null` when it is not one field.
     pub error_field: Option<StrategyField>,
+    /// The editable schedule of a feasible plan; `null` when there is none.
+    pub edit: Option<StrategyEditView>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -294,7 +303,14 @@ impl From<StrategyPlanError> for Failure {
     }
 }
 
-type Work = Result<(Document, StrategyPlanView), Failure>;
+/// A finished calculation: the document it confirmed, its plan and, when the plan
+/// is feasible, the schedule to edit.
+pub(super) type Work = Result<(Document, StrategyPlanView, Option<Editing>), Failure>;
+
+enum Done {
+    Calculation(Work),
+    Recalculation(Recalculation),
+}
 
 #[derive(Default)]
 pub(super) struct Calculation {
@@ -302,13 +318,14 @@ pub(super) struct Calculation {
     generation: u64,
     worker: Option<Worker>,
     view: StrategyPlanView,
+    editing: Option<Editing>,
 }
 
 struct Worker {
     id: u32,
     generation: u64,
     cancel: Arc<AtomicBool>,
-    thread: JoinHandle<Work>,
+    thread: JoinHandle<Done>,
 }
 
 impl Calculation {
@@ -320,20 +337,30 @@ impl Calculation {
         &self.view
     }
 
+    /// `true` while the schedule is edited and not recalculated.
+    pub(super) fn edit_pending(&self) -> bool {
+        self.editing.as_ref().is_some_and(Editing::pending)
+    }
+
     /// Cancels only the calculation the caller names; any other id is stale and ignored.
+    /// A cancelled recalculation leaves the edited schedule pending, as it was.
     pub(super) fn cancel(&mut self, compute_id: u32) {
-        if self.view.state == StrategyPlanState::Calculating
-            && self.view.compute_id == Some(compute_id)
+        if self.view.state != StrategyPlanState::Calculating
+            || self.view.compute_id != Some(compute_id)
         {
+            return;
+        }
+        if self.editing.is_some() {
+            self.stop_worker();
+            self.show_edit(Some(compute_id));
+        } else {
             self.invalidate(false);
         }
     }
 
     pub(super) fn invalidate(&mut self, edited: bool) {
-        self.generation = self.generation.wrapping_add(1);
-        if let Some(worker) = &self.worker {
-            worker.cancel.store(true, Ordering::Relaxed);
-        }
+        self.stop_worker();
+        self.editing = None;
         self.view = StrategyPlanView {
             state: if edited && self.view.state != StrategyPlanState::Uncalculated {
                 StrategyPlanState::PendingChanges
@@ -344,10 +371,73 @@ impl Calculation {
         };
     }
 
+    /// Discards the running worker's result by bumping the generation.
+    fn stop_worker(&mut self) {
+        self.generation = self.generation.wrapping_add(1);
+        if let Some(worker) = &self.worker {
+            worker.cancel.store(true, Ordering::Relaxed);
+        }
+    }
+
+    fn show_edit(&mut self, compute_id: Option<u32>) {
+        if let Some(editing) = &self.editing {
+            self.view = editing.plan_view(compute_id);
+        }
+    }
+
     pub(super) fn start(
         &mut self,
         run: impl FnOnce(&AtomicBool) -> Work + Send + 'static,
     ) -> Result<(), HostError> {
+        let id = self.spawn(move |cancel| Done::Calculation(run(cancel)))?;
+        self.editing = None;
+        self.view = StrategyPlanView {
+            state: StrategyPlanState::Calculating,
+            compute_id: Some(id),
+            ..StrategyPlanView::default()
+        };
+        Ok(())
+    }
+
+    /// Recalculates the edited schedule in the same worker slot, with a new id.
+    pub(super) fn recalculate(&mut self) -> Result<(), HostError> {
+        let Some(editing) = &self.editing else {
+            return Err(HostError::Rejected);
+        };
+        if !editing.pending() {
+            return Err(HostError::Rejected);
+        }
+        self.recalculate_with(editing.job())
+    }
+
+    fn recalculate_with(
+        &mut self,
+        run: impl FnOnce(&AtomicBool) -> Recalculation + Send + 'static,
+    ) -> Result<(), HostError> {
+        let Some(editing) = &self.editing else {
+            return Err(HostError::Rejected);
+        };
+        let mut view = editing.plan_view(None);
+        let id = self.spawn(move |cancel| Done::Recalculation(run(cancel)))?;
+        view.compute_id = Some(id);
+        view.state = StrategyPlanState::Calculating;
+        self.view = view;
+        Ok(())
+    }
+
+    /// Starts a recalculation that runs `run` instead of the solver.
+    #[cfg(test)]
+    pub(super) fn test_recalculate_with(
+        &mut self,
+        run: impl FnOnce(&AtomicBool) -> Recalculation + Send + 'static,
+    ) -> Result<(), HostError> {
+        self.recalculate_with(run)
+    }
+
+    fn spawn(
+        &mut self,
+        run: impl FnOnce(&AtomicBool) -> Done + Send + 'static,
+    ) -> Result<u32, HostError> {
         if self.running() {
             return Err(HostError::Busy);
         }
@@ -365,12 +455,43 @@ impl Calculation {
             cancel,
             thread,
         });
-        self.view = StrategyPlanView {
-            state: StrategyPlanState::Calculating,
-            compute_id: Some(id),
-            ..StrategyPlanView::default()
-        };
-        Ok(())
+        Ok(id)
+    }
+
+    /// Runs `edit` on the edited schedule of the plan `compute_id` names. A plan
+    /// that is not that one, or has no schedule, is stale (`Ok(None)`); while a
+    /// recalculation runs the schedule is `Busy`.
+    pub(super) fn edit(
+        &mut self,
+        compute_id: u32,
+        edit: impl FnOnce(&mut Editing) -> Result<(), HostError>,
+    ) -> Result<Option<()>, HostError> {
+        if self.view.compute_id != Some(compute_id) || self.editing.is_none() {
+            return Ok(None);
+        }
+        if self.view.state == StrategyPlanState::Calculating {
+            return Err(HostError::Busy);
+        }
+        if let Some(editing) = &mut self.editing {
+            edit(editing)?;
+        }
+        self.show_edit(Some(compute_id));
+        Ok(Some(()))
+    }
+
+    /// Drops the edit and shows the last feasible plan, cancelling a recalculation.
+    pub(super) fn reset(&mut self, compute_id: u32) -> Option<()> {
+        if self.view.compute_id != Some(compute_id) || self.editing.is_none() {
+            return None;
+        }
+        if self.view.state == StrategyPlanState::Calculating {
+            self.stop_worker();
+        }
+        if let Some(editing) = &mut self.editing {
+            editing.reset();
+        }
+        self.show_edit(Some(compute_id));
+        Some(())
     }
 
     pub(super) fn poll(&mut self) -> Option<Document> {
@@ -387,29 +508,54 @@ impl Calculation {
 
     pub(super) fn finish(&mut self) -> Option<Document> {
         let worker = self.worker.take()?;
-        let result = worker.thread.join();
+        let done = worker.thread.join();
         if self.generation != worker.generation {
             return None;
         }
-        match result.unwrap_or(Err(StrategyPlanError::Failed.into())) {
-            Ok((document, view)) => {
+        let id = Some(worker.id);
+        match done {
+            Ok(Done::Calculation(Ok((document, view, editing)))) => {
+                self.editing = editing;
                 self.view = StrategyPlanView {
-                    compute_id: Some(worker.id),
+                    compute_id: id,
                     ..view
                 };
                 Some(document)
             }
-            Err(failure) => {
-                self.view = StrategyPlanView {
-                    state: StrategyPlanState::Error,
-                    compute_id: Some(worker.id),
-                    result: None,
-                    error: Some(failure.error),
-                    error_field: failure.field,
-                };
+            Ok(Done::Recalculation(done)) => {
+                if let Some(editing) = &mut self.editing {
+                    editing.apply(done);
+                }
+                self.show_edit(id);
+                None
+            }
+            Ok(Done::Calculation(Err(failure))) => {
+                self.fail(worker.id, failure);
+                None
+            }
+            Err(_) if self.editing.is_some() => {
+                if let Some(editing) = &mut self.editing {
+                    editing.apply(Err(StrategyEditError::Failed));
+                }
+                self.show_edit(id);
+                None
+            }
+            Err(_) => {
+                self.fail(worker.id, StrategyPlanError::Failed.into());
                 None
             }
         }
+    }
+
+    fn fail(&mut self, id: u32, failure: Failure) {
+        self.view = StrategyPlanView {
+            state: StrategyPlanState::Error,
+            compute_id: Some(id),
+            result: None,
+            error: Some(failure.error),
+            error_field: failure.field,
+            edit: None,
+        };
     }
 }
 
@@ -441,8 +587,11 @@ pub(super) fn run(
         .map_err(|_| Failure::from(StrategyPlanError::InvalidInput))?;
     let outcome = application::calculate(&input, SourceStatus::Open, cancel)
         .map_err(|_| StrategyPlanError::Failed)?;
-    let view = project(input.input(), &outcome, manual.driver_name.trim())?;
-    Ok((document, view))
+    let pilot = manual.driver_name.trim();
+    let mut view = project(input.input(), &outcome, pilot)?;
+    let editing = Editing::new(input.input(), &outcome, &view, pilot);
+    view.edit = editing.as_ref().map(Editing::edit_view);
+    Ok((document, view, editing))
 }
 
 /// The first form field whose text is not a number or a whole number as required.
@@ -478,7 +627,7 @@ fn number(value: f64) -> Result<Number, StrategyPlanError> {
     Number::from_f64(value).ok_or(StrategyPlanError::Failed)
 }
 
-fn project(
+pub(super) fn project(
     input: &Input,
     outcome: &SolverOutcome,
     pilot: &str,
@@ -533,6 +682,7 @@ fn project(
         compute_id: None, // the worker slot stamps its own id
         error: None,
         error_field: None,
+        edit: None,
     })
 }
 

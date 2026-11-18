@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   defaultZoom,
   type LauncherView,
@@ -59,8 +59,40 @@ export function Shell() {
     </NotificationsProvider>
   );
 }
+/**
+ * «Hay más» cue for the sidebar profile list: true while the list can still
+ * scroll down. Reads layout only after paint, so the list is measured once it
+ * has its rows.
+ */
+function useMoreBelow() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [more, setMore] = useState(false);
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const update = () =>
+      setMore(node.scrollHeight - node.scrollTop - node.clientHeight > 1);
+    update();
+    node.addEventListener("scroll", update, { passive: true });
+    // jsdom (unit tests) has no ResizeObserver; the web QA and the app do.
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(update);
+    observer?.observe(node);
+    for (const child of Array.from(node.children)) observer?.observe(child);
+    window.addEventListener("resize", update);
+    return () => {
+      node.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      observer?.disconnect();
+    };
+  });
+  return [ref, more] as const;
+}
 function ShellContent() {
   const zoomLimit = useWindowZoomLimit();
+  const [profileList, moreProfiles] = useMoreBelow();
   const host = useHost();
   const query = useQueryClient();
   const settings = useSettings();
@@ -510,12 +542,13 @@ function ShellContent() {
               <section
                 className="v-sidebar-profiles"
                 aria-label={shellText.profiles}
+                data-more={moreProfiles ? "true" : undefined}
               >
                 <div className="v-nav-heading">
                   <TrackedCaps>{shellText.profiles}</TrackedCaps>
                   <span>{launcher.profiles.length}</span>
                 </div>
-                <div className="v-sidebar-profile-list">
+                <div className="v-sidebar-profile-list" ref={profileList}>
                   {launcher.profiles.map((profile) => {
                     const apps = profile.apps.map(
                       (id) =>

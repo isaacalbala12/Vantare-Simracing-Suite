@@ -54,8 +54,24 @@
 .v-sidebar-profiles {
   flex: 1;
   min-height: 0;
+  position: relative;
   display: flex;
   flex-direction: column;
+}
+/* Issue 2632: «hay más» cue. It stays off while every profile is visible and
+   the list turns it off as soon as it reaches the end. */
+.v-sidebar-profiles::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 18px;
+  display: none;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--bg-sidebar));
+}
+.v-sidebar-profiles[data-more="true"]::after {
+  display: block;
 }
 .v-sidebar-profile-list {
   overflow-y: auto;

@@ -21,7 +21,7 @@
                 "frames": 1,
                 "id": "standings-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Clasificación de carrera de tu clase con posición, piloto, gap, intervalo, última vuelta y PIT: Lotterer abre la tabla en P1 y Ben Hanley lleva la etiqueta PIT. El pie resume pista y vueltas estimadas."
               },
               {
                 "frameMs": 1700,
@@ -35,42 +35,42 @@
                 "frames": 12,
                 "id": "standings-functional-combined",
                 "label": "Secuencia combinada · conducción",
-                "watchFor": "Activa Mejor vuelta y Estado en boxes; usa al menos 10 pilotos y Alrededor de 4. Revisa mejoras de vuelta, posiciones, PIT, batalla cercana y entrada/salida de la ventana, en ese orden. Los avisos son breves y las cifras estables; el cambio de ventana no simula adelantamientos."
+                "watchFor": "Doce fotogramas en orden: mejora personal de Giovinazzi, cambio de posición con PIT siguiendo a Albuquerque, récord de sesión, salida de boxes, acento de batalla a 0.65 s que se retira a 1.35 s, entrada en boxes y ventanas en P1, P7 y P9. Mira que los avisos sean breves, las cifras estables y que el cambio de ventana no simule adelantamientos."
               },
               {
                 "frameMs": 1700,
                 "frames": 3,
                 "id": "standings-functional-personal-best",
                 "label": "Mejor vuelta personal",
-                "watchFor": "Activa Mejor vuelta. Un barrido verde destaca la mejora de Antonio Giovinazzi; las cifras conservan su posición y tamaño."
+                "watchFor": "Tres fotogramas: referencia personal, Giovinazzi mejora 0.150 s con un barrido verde y el aviso se retira dejando la nueva vuelta. Mira que las cifras conserven su posición y su tamaño."
               },
               {
                 "frameMs": 1600,
                 "frames": 4,
                 "id": "standings-functional-pit",
                 "label": "Entrada y salida de boxes",
-                "watchFor": "La etiqueta PIT aparece junto a André Lotterer al entrar en boxes y desaparece al salir. Activa Estado en boxes: la etiqueta entra y sale suavemente, ligada a su piloto."
+                "watchFor": "Cuatro fotogramas de Lotterer: en pista, entrada en boxes con la etiqueta PIT, permanencia y vuelta a pista sin ella. Mira que la etiqueta entre y salga suavemente pegada a su piloto."
               },
               {
                 "frameMs": 1600,
                 "frames": 3,
                 "id": "standings-functional-position",
                 "label": "Cambio de posición · por piloto",
-                "watchFor": "Ben Hanley y Filipe Albuquerque intercambian posición. Cada fila se desliza, recibe un acento verde o rojo y muestra temporalmente los puestos ganados o perdidos. Pulsa Reproducir para verlo."
+                "watchFor": "Tres fotogramas: posiciones iniciales, Albuquerque gana la posición a Hanley y la tabla se estabiliza. Mira el deslizamiento de las filas, el acento verde o rojo y el aviso temporal de puestos ganados o perdidos."
               },
               {
                 "frameMs": 1700,
                 "frames": 4,
                 "id": "standings-functional-session-best",
                 "label": "Mejor vuelta de sesión",
-                "watchFor": "Activa Mejor vuelta. El acento morado y el distintivo pasan al nuevo piloto más rápido, sin ampliar ni desplazar los tiempos."
+                "watchFor": "Cuatro fotogramas: Lotterer tiene la referencia, Giovinazzi marca la mejor vuelta, Bovy la mejora y recibe el distintivo, y los avisos se retiran. Mira el acento morado pasar de piloto sin ampliar ni desplazar los tiempos."
               },
               {
                 "frameMs": 1600,
                 "frames": 4,
                 "id": "standings-functional-window",
                 "label": "Entrada y salida de ventana",
-                "watchFor": "La revisión cambia el piloto de referencia entre P1, P7 y P9. Usa al menos 10 pilotos y Alrededor de 4: aparecen y se retiran filas/PIT mientras las demás se recolocan. Todas las posiciones reales permanecen iguales: no aparecen avisos de adelantamiento."
+                "watchFor": "Cuatro fotogramas con la ventana en P1, P7, P9 y de vuelta a P1: entran y salen filas con su PIT mientras las demás se recolocan. Mira que las posiciones reales no cambien y que no aparezcan avisos de adelantamiento."
               },
               {
                 "frameMs": null,
@@ -110,7 +110,7 @@
                 "frames": 1,
                 "id": "radar-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Radar centrado en tu coche con tres marcas cercanas: una solapada 4 m por delante, otra 8 m detrás y 12 m a la derecha, y una tercera 20 m delante y 2 m a la izquierda. El color indica cercanía y solape."
               },
               {
                 "frameMs": 1000,
@@ -143,7 +143,7 @@
                 "frames": 1,
                 "id": "pedals-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Tres carriles verticales C, B y T con su porcentaje encima: embrague 6 %, freno 13 % y acelerador 75 %. El relleno sube desde abajo y el valor se lee sobre cada carril."
               },
               {
                 "frameMs": 700,
@@ -176,7 +176,7 @@
                 "frames": 1,
                 "id": "delta-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Píldora con la etiqueta DELTA y el valor +0.214 s en rojo: vas 0.214 s por detrás de tu mejor vuelta. Es una foto fija; el número se pinta en verde cuando el delta es negativo."
               },
               {
                 "frameMs": 1500,
@@ -216,7 +216,7 @@
                 "frames": 1,
                 "id": "car-damage-visual-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Silueta del coche con Aero, Carrocería, Suspensión y Neumáticos. El daño estructural viene sin dato (guiones) y los neumáticos muestran su desgaste: 2 %, 9 %, 13 % y 7 %. No aparece el aviso de revisar el coche."
               }
             ]
           },
@@ -235,7 +235,7 @@
                 "frames": 1,
                 "id": "input-telemetry-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Trazas de los últimos 6 s con el freno al 13 % y el acelerador al 75 % en los carriles de la derecha (el embrague va oculto). En el centro, 7200 rpm, la marcha 4 y 180 km/h."
               }
             ]
           },
@@ -254,7 +254,7 @@
                 "frames": 1,
                 "id": "multiclass-relative-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Siete filas alrededor de ti juntando las tres clases: delante Hanley a 4.5 s, Estre a 9 s y Giovinazzi a 13.5 s; detrás Pino, Jensen y Engel. Tú ocupas la fila central, en P1."
               }
             ]
           },
@@ -280,7 +280,7 @@
                 "frames": 1,
                 "id": "broadcast-tower-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Tira de torre con once tarjetas agrupadas por clase (HY, LMP y GT3): puesto, nombre abreviado y gap de cada coche, con CARRERA y el tiempo restante en la cabecera. Es una sola foto: revisa el orden de las tarjetas y que ninguna cifra se mueva."
               },
               {
                 "frameMs": 1200,
@@ -294,7 +294,7 @@
                 "frames": 3,
                 "id": "broadcast-tower-fast-inversion",
                 "label": "Inversión rápida",
-                "watchFor": "Al reproducir, las tarjetas se invierten y vuelven rápidamente; la posición permanece legible y los números no se animan."
+                "watchFor": "Tres fotogramas: Hanley P2 y Albuquerque P5, luego se intercambian (Albuquerque P2, Hanley P5) y el tercero vuelve al orden inicial. Mira que el puesto siga legible en cada tarjeta y que las cifras no se animen."
               },
               {
                 "frameMs": 1200,
@@ -327,7 +327,7 @@
                 "frames": 1,
                 "id": "delta-trace-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Panel ancho con la cabecera HISTORIAL DE DELTA · VS TU MEJOR 1:30.964 y el valor +0.214 sobre la curva de 4 s, que aquí solo tiene una muestra. Los sectores S1, S2 y S3 quedan con guion porque la señal no los trae."
               }
             ]
           },
@@ -346,7 +346,7 @@
                 "frames": 1,
                 "id": "track-map-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "El panel avisa PISTA SIN MAPA porque la foto no trae geometría del circuito ni posición de los coches: no se dibuja trazado ni marcadores. Es el estado vacío previsto, no un fallo de carga."
               }
             ]
           },
@@ -365,7 +365,7 @@
                 "frames": 1,
                 "id": "track-weather-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Siete métricas: PISTA 28 °C, AIRE 21 °C, VIENTO 14 km/h, LLUVIA 0 %, HÚMEDO 0 %, SECO 100 % y PRES con guion. La cabecera indica CARRERA y el tiempo restante."
               }
             ]
           },
@@ -384,7 +384,7 @@
                 "frames": 1,
                 "id": "car-damage-numbers-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Cuatro filas: AERO, CARROC., SUSP. y NEUM. La foto no trae daño de aero, carrocería ni suspensión, así que el panel avisa SIN DATOS y deja guiones; solo llega el desgaste de neumáticos, con el máximo al 13 %."
               }
             ]
           },
@@ -403,7 +403,7 @@
                 "frames": 1,
                 "id": "head-to-head-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Duelo H2H · DELANTE con sitio para el rival de delante, tú y el de detrás. En esta foto vas P1, así que no hay nadie por delante y el panel queda con el aviso SIN RIVAL y sin filas."
               },
               {
                 "frameMs": null,
@@ -429,7 +429,7 @@
                 "frames": 1,
                 "id": "fuel-strategy-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Estrategia de combustible con COMBUSTIBLE, MED., VUELTAS, NEC. y EST. META:. La foto deja 42.0 L en el depósito, una media de 2.14 L por vuelta y 79 vueltas por delante."
               },
               {
                 "frameMs": 2600,
@@ -462,7 +462,7 @@
                 "frames": 1,
                 "id": "pedals-telemetry-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Instrumento compacto en una fila: volante, marcha 4, 180 km/h, 7.2k rpm y los tres pedales al 6 %, 13 % y 75 %. Revisa que las barras y el volante queden alineados en esa línea."
               }
             ]
           },
@@ -481,7 +481,7 @@
                 "frames": 1,
                 "id": "relative-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Ventana de tu clase: Lotterer P1 en el centro, Giovinazzi a 4.2 s por delante y, por detrás, Jensen a 9 s, Laursen a 22.5 s y Cameron a 36 s. La cabecera muestra SEBRING y la insignia P1 · HYPERCAR."
               },
               {
                 "frameMs": 1200,
@@ -516,7 +516,7 @@
                 "frames": 9,
                 "id": "relative-functional-sequence",
                 "label": "Secuencia completa",
-                "watchFor": "Usa Reproducir o el deslizador: cruce en ambos sentidos, entrada y salida de Mikkel Jensen y distancias que cambian sin mover filas. En carrera, Antonio Giovinazzi P4 aparece delante con −1 V respecto al jugador."
+                "watchFor": "Nueve fotogramas: Nico Pino se acerca por detrás, cruza a delante y vuelve; Mikkel Jensen entra, sale y reentra en la ventana con el mismo gap. Giovinazzi P4 aparece delante con −1 V. Mira que las filas no se muevan cuando solo cambian las distancias."
               },
               {
                 "frameMs": 1200,
@@ -563,7 +563,7 @@
                 "frames": 1,
                 "id": "racing-flags-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Etiqueta BANDERA con VERDE, la única bandera de la foto: la sesión va en verde y no hay avisos por sector porque esa señal no llega. Comprueba que el rótulo y el verde se leen bien sobre el panel."
               },
               {
                 "frameMs": null,
@@ -589,14 +589,14 @@
                 "frames": 4,
                 "id": "fastest-lap-alert",
                 "label": "Aviso de vuelta rápida",
-                "watchFor": "Reproducir muestra mejor personal, récord de tu clase y una vuelta que consigue ambos (un solo aviso de clase). Cada aviso entra y sale en seis segundos. Ver diseño mantiene el panel visible para ajustar su tamaño."
+                "watchFor": "Cuatro fotogramas con las referencias 1:32.304 personal y 1:30.904 de Hypercar: Lotterer baja a 1:31.202 (aviso personal), Giovinazzi marca 1:29.902 (aviso de clase) y Lotterer firma 1:29.402, que suma las dos marcas en un único aviso de clase. Cada aviso entra y sale a lo largo de seis segundos."
               },
               {
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "fastest-lap-default",
                 "label": "Sin animación",
-                "watchFor": "Datos de demostración del Workshop React."
+                "watchFor": "Dos recuadros: VUELTA RÁPIDA con el mejor tiempo de tu clase (1:30.904) y MEJOR PERSONAL con el tuyo (1:30.964). Revisa que ambos tiempos queden legibles y estables en esta única foto."
               }
             ]
           },

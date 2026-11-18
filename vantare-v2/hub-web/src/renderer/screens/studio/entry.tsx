@@ -31,6 +31,7 @@ export default function StudioEntry() {
       ]
     : undefined;
   const chrome = { title: t.title, tabs, activeTab, onTabChange: setTab };
+  // Taller is read-only and intentionally leaves StudioProvider unmounted.
   if (activeTab === "workshop") return <Workshop core={core} chrome={chrome} />;
   return (
     <StudioProvider>

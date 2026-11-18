@@ -69,6 +69,7 @@ export function usePreviewPhoto(
   const isInstance = !!item;
   const { client, issue } = useHost();
   const cache = useQueryClient();
+  // Workshop leaves StudioProvider unmounted, so execute can be undefined.
   const execute = useOptionalStudio()?.execute;
   const { data: core = offline } = useQuery({
     queryKey: coreKey,

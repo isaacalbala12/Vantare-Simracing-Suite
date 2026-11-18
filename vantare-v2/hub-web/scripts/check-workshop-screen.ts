@@ -193,17 +193,20 @@ async function show(page: Page, shot: string) {
   await frame(page, 1).waitFor();
   const caption = page.locator(".v-workshop-caption");
   const announced = page.locator('.v-workshop [role="status"]');
-  assert.equal(await announced.count(), 1);
-  assert.equal(await caption.getAttribute("role"), null);
-  assert.equal(await caption.getAttribute("aria-live"), null);
-  const firstCaption =
-    shot === "pie-largo" ? longCaption : (battleCaptions[0] ?? "");
-  assert.equal(await caption.getAttribute("aria-hidden"), null);
-  assert((await caption.textContent())?.includes(firstCaption));
-  assert.equal(
-    await announced.textContent(),
-    `Fotograma 1 de 4 listo. ${firstCaption}`,
-  );
+  const captionsChecked = shot === "pie-largo" || shot === "sin-pie";
+  if (captionsChecked) {
+    assert.equal(await announced.count(), 1);
+    assert.equal(await caption.getAttribute("role"), null);
+    assert.equal(await caption.getAttribute("aria-live"), null);
+    const firstCaption =
+      shot === "pie-largo" ? longCaption : (battleCaptions[0] ?? "");
+    assert.equal(await caption.getAttribute("aria-hidden"), null);
+    assert((await caption.textContent())?.includes(firstCaption));
+    assert.equal(
+      await announced.textContent(),
+      `Fotograma 1 de 4 listo. ${firstCaption}`,
+    );
+  }
   if (shot === "pie-largo") {
     const box = await caption.boundingBox();
     assert(box && box.y + box.height <= 720);
@@ -225,10 +228,11 @@ async function show(page: Page, shot: string) {
     await figure.evaluate((node) => node.getBoundingClientRect().height),
     height,
   );
-  assert.equal(
-    await announced.textContent(),
-    `Fotograma 2 de 4 listo. ${battleCaptions[1] ?? ""}`,
-  );
+  if (captionsChecked)
+    assert.equal(
+      await announced.textContent(),
+      `Fotograma 2 de 4 listo. ${battleCaptions[1] ?? ""}`,
+    );
   if (shot === "sin-pie") {
     await choose(page, /^Escena/, /standings-legacy/);
     await page

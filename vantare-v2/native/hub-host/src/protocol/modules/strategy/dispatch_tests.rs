@@ -318,9 +318,9 @@ fn switching_account_generation_clears_a_dirty_strategy_at_dispatch() {
 
 #[test]
 fn calculation_is_nonblocking_and_close_retires_its_result() {
+    use crate::strategy::StrategyPlanState;
     use std::sync::{atomic::Ordering, mpsc};
     use vantare_strategy::document::Document;
-    use crate::strategy::StrategyPlanState;
 
     let fixture = Fixture::new();
     let mut session = fixture.session();
@@ -328,10 +328,11 @@ fn calculation_is_nonblocking_and_close_retires_its_result() {
     let draft = create_strategy(&mut session, &empty.revision, "Original");
     let (ready, started) = mpsc::sync_channel(1);
     let (release, wait) = mpsc::sync_channel(1);
+    let (cancelled, observed) = mpsc::sync_channel(1);
     session.strategy.test_start_calculation(move |cancel| {
         ready.send(()).unwrap();
         wait.recv().unwrap();
-        assert!(cancel.load(Ordering::Relaxed));
+        cancelled.send(cancel.load(Ordering::Relaxed)).unwrap();
         Document::empty("2026-11-18T00:00:00Z").unwrap()
     });
     started.recv().unwrap();
@@ -342,12 +343,18 @@ fn calculation_is_nonblocking_and_close_retires_its_result() {
     ));
 
     let mut pipe = Pipe::new(Vec::new());
-    session.request_close_at(&mut pipe, CloseReason::ControlEof, Instant::now()).unwrap();
+    session
+        .request_close_at(&mut pipe, CloseReason::ControlEof, Instant::now())
+        .unwrap();
     release.send(()).unwrap();
+    assert!(observed.recv().unwrap());
     session.strategy.test_join_calculation();
     assert!(matches!(
         request(&mut session, &Request::StrategyView {}),
-        HostToUi::Failure { error: HostError::Denied, .. }
+        HostToUi::Failure {
+            error: HostError::Denied,
+            ..
+        }
     ));
     assert!(!fixture.0.join("hub/strategy-v2.json").exists());
 }
@@ -384,12 +391,18 @@ fn invalid_compute_input_does_not_modify_the_draft_or_disk() {
             }
         }
     });
-    let UiToHost::Request { request: compute, .. } = serde_json::from_value(request_json).unwrap() else {
+    let UiToHost::Request {
+        request: compute, ..
+    } = serde_json::from_value(request_json).unwrap()
+    else {
         panic!("compute request decoded");
     };
     assert!(matches!(
         request(&mut session, &compute),
-        HostToUi::Response { result: Reply::StrategyCompute { .. }, .. }
+        HostToUi::Response {
+            result: Reply::StrategyCompute { .. },
+            ..
+        }
     ));
     session.strategy.test_join_calculation();
     assert!(matches!(
@@ -399,4 +412,56 @@ fn invalid_compute_input_does_not_modify_the_draft_or_disk() {
                 && value.revision == draft.revision && value.events == draft.events
     ));
     assert!(!fixture.0.join("hub/strategy-v2.json").exists());
+}
+
+#[test]
+fn bounded_strategy_timeline_fits_even_with_a_full_document_view() {
+    use crate::strategy::{
+        STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyMetrics,
+        StrategyPit, StrategyPitService, StrategyPlanState, StrategyPlanView,
+        StrategyServiceSteps, StrategyStint, StrategyTimeline, TEXT_LIMIT,
+    };
+    use serde_json::Number;
+
+    let fixture = Fixture::new();
+    let data = fixture.0.join("hub");
+    std::fs::create_dir_all(&data).unwrap();
+    std::fs::write(data.join("strategy-v2.json"), large_strategy_document(32, 16)).unwrap();
+    let mut value = open_strategy(&mut fixture.session());
+    let amount = Number::from_f64(f64::MAX).unwrap();
+    value.plan = StrategyPlanView {
+        state: StrategyPlanState::Calculated,
+        result: Some(Box::new(StrategyCalculationView {
+            certificate: Some(StrategyCertificate::Proven),
+            steps: StrategyServiceSteps {
+                fuel_liters: Some(amount.clone()),
+                ve_percent: Some(amount.clone()),
+            },
+            metrics: Some(StrategyMetrics {
+                total_seconds: amount.clone(),
+                laps: u32::MAX,
+                pit_count: u32::try_from(STRATEGY_PIT_LIMIT).unwrap(),
+                fuel_reserve_real_laps: Some(amount.clone()),
+                fuel_reserve_required_laps: amount.clone(),
+            }),
+            timeline: Some(StrategyTimeline {
+                pilot: "\"".repeat(TEXT_LIMIT),
+                base_pace_seconds: amount.clone(),
+                fuel_start_liters: amount.clone(),
+                fuel_finish_liters: amount.clone(),
+                ve_start_percent: amount.clone(),
+                ve_finish_percent: amount.clone(),
+                stints: vec![StrategyStint { from_lap: u32::MAX, to_lap: u32::MAX }; STRATEGY_PIT_LIMIT + 1],
+                pits: vec![StrategyPit {
+                    lap: u32::MAX, fuel_liters: amount.clone(), ve_percent: amount,
+                    change_tyres: true, service: StrategyPitService::Sequential,
+                }; STRATEGY_PIT_LIMIT],
+            }),
+        })),
+        error: None,
+    };
+    let mut pipe = Pipe::new(Vec::new());
+    let message = HostToUi::Response { id: 9, result: Reply::StrategyView { value } };
+    frame::write(&mut pipe, &message).unwrap();
+    assert!(pipe.into_inner().len() <= frame::LIMIT);
 }

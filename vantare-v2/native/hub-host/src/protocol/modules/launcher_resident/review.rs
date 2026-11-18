@@ -170,7 +170,7 @@ impl Review {
             .filter(|ticket| ticket.id == id)
             .ok_or(ReviewFailure::Unavailable)?;
         let checked = ticket.check(path, account, now)?;
-        answer::check_review_permission(account).map_err(review_failure)?;
+        answer::check_review_permission(account).map_err(|error| review_failure(&error))?;
         ticket.opened.get_or_insert(now);
         Ok(ReviewContent {
             pages: checked.pages,
@@ -217,7 +217,7 @@ impl Review {
                     &ticket.target.answer_target(ResidentAction::Cancel),
                 ),
             }
-            .map_err(review_failure)?;
+            .map_err(|error| review_failure(&error))?;
             let ResidentQueued::Queued { request } = queued;
             Ok(QueuedDecision {
                 request: request.try_into().map_err(|_| ReviewFailure::Unavailable)?,
@@ -307,8 +307,8 @@ impl Ticket {
         {
             return Err(ReviewFailure::Expired);
         }
-        let checked =
-            answer::checked_review(path, account, &self.target).map_err(review_failure)?;
+        let checked = answer::checked_review(path, account, &self.target)
+            .map_err(|error| review_failure(&error))?;
         if checked.digest() != self.digest {
             return Err(ReviewFailure::Changed);
         }
@@ -316,7 +316,7 @@ impl Ticket {
     }
 }
 
-fn review_failure(error: HostError) -> ReviewFailure {
+fn review_failure(error: &HostError) -> ReviewFailure {
     match error {
         HostError::ResidentAnswerRejected {
             reason:

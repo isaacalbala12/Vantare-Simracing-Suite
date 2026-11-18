@@ -395,10 +395,10 @@ fn valid_review_reaches_the_chain_before_any_program_starts() {
         );
         return;
     };
-    run_import_review_fixture(PathBuf::from(root));
+    run_import_review_fixture(std::path::Path::new(&root));
 }
 
-fn run_import_review_fixture(root: PathBuf) {
+fn run_import_review_fixture(root: &std::path::Path) {
     use vantare_ipc::launcher::{
         answer::ReviewProof,
         review::{frame_pages, review_pages},

@@ -91,6 +91,10 @@ pub(super) fn dispatch(
     if !matches!(request, Request::LauncherResidentGet {}) {
         return Err(io::ErrorKind::InvalidInput.into());
     }
+    resident_view(session, pipe, id)
+}
+
+fn resident_view(session: &mut Session, pipe: &mut Pipe, id: u32) -> io::Result<()> {
     frame::write(
         pipe,
         &HostToUi::Response {

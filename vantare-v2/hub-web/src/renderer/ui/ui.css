@@ -980,6 +980,11 @@ textarea.v-input:read-only {
   min-width: 0;
   margin: 0;
 }
+/* The title block must shrink with the header so the subtitle clips inside it
+   instead of painting under the search field. */
+.v-settings-heading .v-page-header > div {
+  min-width: 0;
+}
 .v-settings-heading h1 {
   font-size: 28px;
   line-height: 32px;

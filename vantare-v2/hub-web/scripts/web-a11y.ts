@@ -248,6 +248,10 @@ try {
   await timed("checkSettingsDensity", () =>
     checkSettingsDensity(page, server.resolvedUrls?.local[0] ?? ""),
   );
+  const { checkSettingsHeading } = await import("./check-settings-heading.ts");
+  await timed("checkSettingsHeading", () =>
+    checkSettingsHeading(page, server.resolvedUrls?.local[0] ?? ""),
+  );
   await timed("checkAccountDensity", () =>
     checkAccountDensity(page, server.resolvedUrls?.local[0] ?? ""),
   );

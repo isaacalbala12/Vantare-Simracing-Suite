@@ -16,6 +16,7 @@ import {
   groupSessionLaps,
   lapDataKind,
   lapTime,
+  orderedSessions,
   recordingBestTime,
   summarizeLaps,
 } from "../../app/analysis-laps";
@@ -200,7 +201,8 @@ export function AnalysisLaps({
           }
           return lap.sealed && !lap.gap && lap.lapTimeApproxMs === best.ms;
         });
-  const latest = opened?.sessions[0];
+  const sessions = orderedSessions(opened?.sessions);
+  const latest = sessions[0]?.session;
   const grouped = (opened?.sessions.length ?? 0) > 1;
   const sharedIdentity = opened?.sessions.every(
     (session) =>
@@ -313,7 +315,9 @@ export function AnalysisLaps({
                   <caption className="v-sr-only">
                     {[
                       t.laps,
-                      summary.approximate ? t.approximate : undefined,
+                      !sessions.length || summary.approximate
+                        ? t.approximate
+                        : undefined,
                       t.speed,
                     ]
                       .filter(Boolean)
@@ -342,10 +346,10 @@ export function AnalysisLaps({
                       ))}
                     </tr>
                   </thead>
-                  {groupSessionLaps(opened.laps, opened.sessions).map(
-                    ({ session, position, laps }) => (
+                  {groupSessionLaps(opened.laps, sessions).map(
+                    ({ session, position, number, laps }) => (
                       <tbody key={position ?? "unassigned"}>
-                        {grouped && session && position !== undefined && (
+                        {grouped && session && number !== undefined && (
                           <tr className="v-an-session-row">
                             {[9, 6].map((columns) => (
                               <th
@@ -362,9 +366,7 @@ export function AnalysisLaps({
                                   session={session}
                                   title={[
                                     sessionType(session) ??
-                                      t.sessionNumber(
-                                        opened.sessions.length - position,
-                                      ),
+                                      t.sessionNumber(number),
                                     ...(sharedIdentity
                                       ? []
                                       : [

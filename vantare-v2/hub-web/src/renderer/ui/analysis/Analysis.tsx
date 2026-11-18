@@ -10,7 +10,7 @@ import {
   recordingGroups,
   recordingZone,
 } from "../../app/analysis-dates";
-import { recordingBestTime } from "../../app/analysis-laps";
+import { orderedSessions, recordingBestTime } from "../../app/analysis-laps";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import {
   date,
@@ -43,6 +43,7 @@ export function AnalysisRail({
   const now = useRecordingClock(clock, timeZone);
   const row = state?.selected;
   const opened = state?.opened;
+  const latest = orderedSessions(opened?.sessions)[0]?.session;
   return (
     <>
       <RailBlock icon="pulse" title={t.automatic}>
@@ -57,14 +58,8 @@ export function AnalysisRail({
           <dl className="v-an-recording-meta">
             {[
               [t.date, recordingDateLabel(row.startedAtMs, now, timeZone)],
-              [
-                t.circuit,
-                <SessionTrack key="track" session={opened.sessions[0]} />,
-              ],
-              [
-                t.carLabel,
-                <SessionVehicle key="car" session={opened.sessions[0]} />,
-              ],
+              [t.circuit, <SessionTrack key="track" session={latest} />],
+              [t.carLabel, <SessionVehicle key="car" session={latest} />],
               [t.laps, opened.laps.length],
               [t.size, size(row.sizeBytes)],
               [
@@ -151,7 +146,9 @@ function RecordingRow({
   const inspection = state.inspections[row.id];
   const readable =
     inspection && ["complete", "unconfirmed"].includes(inspection.state);
-  const latest = readable ? inspection.sessions[0] : undefined;
+  const latest = readable
+    ? orderedSessions(inspection.sessions)[0]?.session
+    : undefined;
   const best = recordingBestTime(
     readable ? inspection.sessions : [],
     readable ? inspection.bestLapApproxMs : null,
@@ -276,7 +273,8 @@ export function AnalysisCatalog({
   }, [state.loading]);
   const needle = search.trim().toLocaleLowerCase("es");
   const rows = state.rows.filter((row) => {
-    const latest = state.inspections[row.id]?.sessions[0];
+    const latest = orderedSessions(state.inspections[row.id]?.sessions)[0]
+      ?.session;
     return `${latest?.trackName || t.track} ${latest?.vehicle || t.car} ${latest?.className ?? ""} ${date(row.startedAtMs, timeZone)}`
       .toLocaleLowerCase("es")
       .includes(needle);

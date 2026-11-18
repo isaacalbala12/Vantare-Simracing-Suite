@@ -16,9 +16,17 @@ import {
   comparisonAxis,
 } from "../../app/analysis-comparison";
 import { recordingZone } from "../../app/analysis-dates";
-import { lapTime, validLapTime } from "../../app/analysis-laps";
+import {
+  lapTime,
+  orderedSessions,
+  validLapTime,
+} from "../../app/analysis-laps";
 import { Icon } from "../../assets/icons/Icon";
-import { analysisText as at, recordingDateLabel } from "../../i18n/analysis.es";
+import {
+  analysisText as at,
+  recordingDateLabel,
+  sessionType,
+} from "../../i18n/analysis.es";
 import { metres, comparisonText as t } from "../../i18n/comparison.es";
 import { Button, IconButton } from "../Button";
 import { Callout, Spinner } from "../Data";
@@ -56,11 +64,42 @@ export function Comparison({
   const data = state.comparison;
   const common = useMemo(() => (data ? commonRanges(data) : []), [data]);
   const laps = state.opened?.laps ?? [];
-  const sessionIndex = laps.find(
-    (lap) => lap.index === (data ?? state.pair)?.a,
-  )?.session;
-  const session =
-    sessionIndex == null ? undefined : state.opened?.sessions[sessionIndex];
+  const summaries = state.opened?.sessions;
+  const sessions = useMemo(() => orderedSessions(summaries), [summaries]);
+  const pair = data ?? state.pair;
+  const [a, b] = (["a", "b"] as const).map((side) => {
+    const original = laps.find((lap) => lap.index === pair?.[side])?.session;
+    return sessions.find(({ position }) => position === original);
+  });
+  const session = a?.session;
+  const differentSessions = a && b && a.position !== b.position;
+  const differentIdentity =
+    differentSessions &&
+    (a.session.trackName !== b.session.trackName ||
+      a.session.vehicle !== b.session.vehicle ||
+      a.session.className !== b.session.className);
+  const aType = sessionType(session);
+  const bType = sessionType(b?.session);
+  const describe = (
+    entry: (typeof sessions)[number],
+    type: string | undefined,
+  ) => {
+    const label =
+      type && aType !== bType ? type : at.sessionNumber(entry.number);
+    return differentIdentity
+      ? [
+          entry.session.trackName || at.track,
+          entry.session.vehicle || at.car,
+          entry.session.className,
+          label,
+        ]
+          .filter(Boolean)
+          .join(" · ")
+      : label;
+  };
+  const crossSession = differentSessions
+    ? t.crossSession(describe(a, aType), describe(b, bType))
+    : undefined;
   const best = Math.min(...laps.map((lap) => validLapTime(lap) ?? Infinity));
   const help = useId();
   const [fraction, setFraction] = useState(0);
@@ -110,10 +149,15 @@ export function Comparison({
         </IconButton>
         <div>
           <p className="v-an-heading-meta">
-            <SessionTrack session={session} />
-            {" · "}
-            <SessionVehicle session={session} />
-            {" · "}
+            {!differentIdentity && (
+              <>
+                <SessionTrack session={session} />
+                {" · "}
+                <SessionVehicle session={session} />
+                {" · "}
+              </>
+            )}
+            {crossSession && `${crossSession} · `}
             {state.selected
               ? recordingDateLabel(state.selected.startedAtMs, now, timeZone)
               : at.dash}

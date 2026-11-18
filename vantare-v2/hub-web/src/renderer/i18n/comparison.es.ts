@@ -1,6 +1,7 @@
 import { decimal, deltaTime, lapTime, analysisText as t } from "./analysis.es";
 export const comparisonText = {
   tab: "Comparar",
+  crossSession: (a: string, b: string) => `${a} (A) / ${b} (B)`,
   title: "Comparar vueltas",
   compare: "Comparar A y B",
   selectFirst: "Elige A y B en Vueltas para compararlas",

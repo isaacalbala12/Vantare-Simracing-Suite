@@ -40,24 +40,42 @@ export function bestApproximateLapTime(laps: readonly AnalysisLap[]) {
 
 export const validLapTime = (lap: AnalysisLap) => lapTime(lap).ms;
 
+// The reply's original position is what lap.session refers to.
+export function orderedSessions(
+  sessions: readonly AnalysisSessionSummary[] = [],
+) {
+  return sessions
+    .map((session, position) => ({ session, position }))
+    .sort((a, b) => b.session.startedAtMs - a.session.startedAtMs)
+    .map((entry, index) => ({ ...entry, number: sessions.length - index }));
+}
+
 export function groupSessionLaps(
   laps: readonly AnalysisLap[],
-  sessions: readonly AnalysisSessionSummary[],
+  sessions: ReturnType<typeof orderedSessions>,
 ) {
-  const groups = sessions.map((session, position) => ({
-    session,
-    position,
-    laps: [] as AnalysisLap[],
-  }));
+  const groups = new Map(
+    sessions.map((entry) => [
+      entry.position,
+      { ...entry, laps: [] as AnalysisLap[] },
+    ]),
+  );
   const unassigned: AnalysisLap[] = [];
   for (const lap of laps) {
-    const group = lap.session === null ? undefined : groups[lap.session];
+    const group = lap.session === null ? undefined : groups.get(lap.session);
     (group?.laps ?? unassigned).push(lap);
   }
   return [
-    ...groups.filter((group) => group.laps.length > 0),
+    ...[...groups.values()].filter((group) => group.laps.length > 0),
     ...(unassigned.length || !sessions.length
-      ? [{ session: undefined, position: undefined, laps: unassigned }]
+      ? [
+          {
+            session: undefined,
+            position: undefined,
+            number: undefined,
+            laps: unassigned,
+          },
+        ]
       : []),
   ];
 }

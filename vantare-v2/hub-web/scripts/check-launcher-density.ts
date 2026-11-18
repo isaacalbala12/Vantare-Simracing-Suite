@@ -15,6 +15,7 @@ export async function checkLauncherDensity(
     for (const [width, height] of [
       [1440, 900],
       [1280, 800],
+      [1280, 720],
     ]) {
       await page.setViewportSize({ width, height });
       await page.goto(`${base}?escena=launcher-base`);
@@ -48,9 +49,15 @@ export async function checkLauncherDensity(
               ),
             ];
             if (!grid || !caption) throw new Error("Launcher layout missing");
+            const section = node.querySelector<HTMLElement>(
+              ".v-launcher-profiles",
+            );
+            if (!section) throw new Error("Launcher profiles section missing");
             return {
               display: getComputedStyle(grid).display,
               caption: getComputedStyle(caption).display,
+              sectionHeight: section.getBoundingClientRect().height,
+              sectionScroll: section.scrollHeight,
               cards: cards.map((card) => {
                 const bounds = card.getBoundingClientRect();
                 const heading = card.querySelector("strong");
@@ -78,6 +85,44 @@ export async function checkLauncherDensity(
         assert.equal(layout.display, height < 820 ? "flex" : "grid");
         assert.equal(layout.caption === "none", height < 820);
         if (height < 820) {
+          // #2626: the compact frame must not collapse the profile list. At
+          // 1280x720 with the sidebar open the hero and the resident controls
+          // left «Tus perfiles» a 12 px box (0 px in taller-content scenes) while
+          // its own content needed 193 px, so the cards fell below the fold and
+          // the heading was clipped. The section must keep its content height and
+          // the shell main must be able to scroll to a whole card.
+          assert.ok(
+            layout.sectionHeight > 0,
+            `Profile section collapsed to ${layout.sectionHeight} px at ${width}x${height} (expanded=${expanded})`,
+          );
+          assert.ok(
+            layout.sectionScroll <= layout.sectionHeight + 1,
+            `Profile section clips its own content at ${width}x${height} (expanded=${expanded}): ${layout.sectionScroll} px of content in ${layout.sectionHeight} px`,
+          );
+          await page.locator(".v-shell-main").evaluate((node) => {
+            node.scrollTop = node.scrollHeight;
+          });
+          const reachable = await page
+            .locator(".v-launcher-profile:not(.v-launcher-profile--new)")
+            .first()
+            .evaluate((node) => {
+              const rect = node.getBoundingClientRect();
+              const scroller = node.closest(".v-shell-main");
+              if (!scroller) return false;
+              const viewport = scroller.getBoundingClientRect();
+              return (
+                rect.height > 0 &&
+                rect.top >= viewport.top - 1 &&
+                rect.bottom <= viewport.bottom + 1
+              );
+            });
+          assert.ok(
+            reachable,
+            `No complete profile card is reachable at ${width}x${height} (expanded=${expanded})`,
+          );
+          await page.locator(".v-shell-main").evaluate((node) => {
+            node.scrollTop = 0;
+          });
           for (const card of layout.cards) {
             assert.equal(card.width, 200);
             assert.ok(

@@ -203,17 +203,10 @@ impl Scenes {
         };
         let mut entries = Vec::new();
         if let Ok(files) = fs::read_dir(&root) {
-            let mut files = files
+            let names = files
                 .filter_map(Result::ok)
-                .filter_map(|file| {
-                    let name = file.file_name().into_string().ok()?;
-                    fixture_name(&name)?;
-                    Some(name)
-                })
-                .take(FILE_LIMIT)
-                .collect::<Vec<_>>();
-            files.sort_unstable();
-            for filename in files {
+                .filter_map(|file| file.file_name().into_string().ok());
+            for filename in sorted_fixture_names(names) {
                 if let Some(entry) = load_entry(&root, filename)
                     && !entries.iter().any(|previous: &Entry| {
                         previous.widget == entry.widget && previous.scene.id == entry.scene.id
@@ -286,6 +279,14 @@ impl Scenes {
             }
         }
     }
+}
+fn sorted_fixture_names(names: impl Iterator<Item = String>) -> Vec<String> {
+    let mut names = names
+        .filter(|name| fixture_name(name).is_some())
+        .collect::<Vec<_>>();
+    names.sort_unstable();
+    names.truncate(FILE_LIMIT);
+    names
 }
 fn load_entry(root: &Path, filename: String) -> Option<Entry> {
     let (id, format) = fixture_name(&filename)?;

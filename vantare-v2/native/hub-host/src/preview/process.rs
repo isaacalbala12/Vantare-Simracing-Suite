@@ -45,6 +45,8 @@ pub(crate) struct State {
     root: PathBuf,
     active: Option<Running>,
     cleaned: bool,
+    #[cfg(test)]
+    test_command: Option<fn(&Path) -> Command>,
 }
 impl State {
     pub(crate) fn new(root: PathBuf) -> Self {
@@ -52,6 +54,8 @@ impl State {
             root,
             active: None,
             cleaned: false,
+            #[cfg(test)]
+            test_command: None,
         }
     }
     pub(crate) fn busy(&self) -> bool {
@@ -68,6 +72,10 @@ impl State {
     ) -> Result<(), HostError> {
         if self.busy() {
             return Err(HostError::Busy);
+        }
+        #[cfg(test)]
+        if let Some(command) = self.test_command {
+            return self.start_with(id, settings, snapshot, generation, now, command);
         }
         let host = std::env::current_exe().map_err(|_| PreviewError::Unavailable)?;
         let executable = sibling(&host)?;

@@ -57,3 +57,58 @@ fn selected_scene_bytes_and_defaults_reach_the_same_private_fake_painter_job() {
     ));
     assert!(!path.exists());
 }
+
+#[test]
+fn scene_scratch_is_removed_on_capture_error_close_and_account_change() {
+    for (mode, closing, changed, error) in [
+        (
+            "gpu",
+            false,
+            false,
+            HostError::PreviewFailed {
+                reason: PreviewError::GpuUnavailable,
+            },
+        ),
+        ("wait", true, false, HostError::Denied),
+        ("wait", false, true, HostError::Denied),
+    ] {
+        let owned = Root::new();
+        let mut state = State::new(owned.path.join("preview"));
+        let now = Instant::now();
+        let ready = Signal::new().expect("child ready");
+        let fixtures = crate::workshop::development_root();
+        let snapshot = crate::workshop::Scenes::load(Some(fixtures))
+            .snapshot(WidgetKind::Relative, "relative-vantare", 1)
+            .expect("scene frame");
+        state
+            .start_with(
+                8,
+                &(WidgetKind::Relative, b"{}".to_vec()),
+                Some(snapshot),
+                "a".repeat(64),
+                now,
+                |root| fake_command(root, mode, Some(&ready)),
+            )
+            .expect("scene starts");
+        let run = state.active.as_mut().expect("running");
+        let scratch = run.scratch.0.clone();
+        assert!(scratch.join("snapshot.json").is_file());
+        let child = crate::test_support::process(run.child.id()).expect("child handle");
+        if mode == "wait" {
+            ready.wait();
+        } else {
+            run.child.wait().expect("fake error");
+        }
+        let mut current = authority();
+        if changed {
+            current.account_generation = Some("b".repeat(64));
+        }
+        assert_eq!(
+            state.poll(now, &current, Some(CatalogAccess::Pro), closing),
+            Some((8, Err(error)))
+        );
+        crate::test_support::terminated(&child);
+        assert!(!scratch.exists());
+        assert!(!state.busy());
+    }
+}

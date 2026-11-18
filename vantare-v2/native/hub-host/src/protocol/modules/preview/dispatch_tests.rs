@@ -99,3 +99,65 @@ fn scene_targets_use_the_same_authority_gate_and_reject_extra_wire_fields() {
         );
     }
 }
+
+#[cfg(windows)]
+#[test]
+fn permitted_scene_starts_a_capture_and_tick_replies_with_the_photo() {
+    use crate::{
+        preview::{PreviewScale, PreviewScene, PreviewTarget},
+        studio::WidgetKind,
+        workshop::Scenes,
+    };
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.core.available = true;
+    session.current.access.verified = true;
+    session.current.account_generation = Some("a".repeat(64));
+    assert!(
+        session
+            .workshop_scenes
+            .set(Scenes::load(Some(crate::workshop::development_root())))
+            .is_ok()
+    );
+    session.preview_state.use_fake_scene_painter();
+
+    let now = Instant::now();
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            42,
+            &Request::PreviewRender {
+                target: PreviewTarget::Scene {
+                    widget: WidgetKind::Standings,
+                    scene_id: "standings-vantare".into(),
+                    frame: 2,
+                },
+                scene: PreviewScene::Demo,
+                scale: PreviewScale::One,
+            },
+        )
+        .unwrap();
+    assert!(session.preview_state.busy());
+    assert!(pipe.get_ref().is_empty());
+    session.preview_state.wait_for_fake_painter();
+    preview_tick::tick_at(&mut session, &mut pipe, now).unwrap();
+    let mut response = Pipe::new(pipe.into_inner());
+    assert_eq!(
+        frame::Reader::default()
+            .next::<HostToUi>(&mut response)
+            .unwrap()
+            .unwrap(),
+        HostToUi::Response {
+            id: 42,
+            result: Reply::PreviewRender {
+                value: crate::preview::PreviewImage {
+                    width: 1,
+                    height: 1,
+                    png_base64: crate::protocol::modules::preview::bindings::PNG.into(),
+                }
+            }
+        }
+    );
+    assert!(!session.preview_state.busy());
+}

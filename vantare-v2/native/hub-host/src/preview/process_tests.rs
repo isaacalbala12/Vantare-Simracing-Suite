@@ -25,25 +25,52 @@ fn start(
         None,
         "a".repeat(64),
         now,
-        |root| {
-            let mut command = Command::new(std::env::current_exe().expect("test executable"));
-            environment(&mut command);
-            command
-                .args([
-                    "--exact",
-                    "preview::process::tests::fake_painter",
-                    "--ignored",
-                    "--nocapture",
-                ])
-                .env("VANTARE_PREVIEW_FAKE", mode)
-                .env("VANTARE_PREVIEW_OUTPUT", root.join("image.png"));
-            if let Some(signal) = signal {
-                command.env("VANTARE_PREVIEW_SIGNAL", &signal.name);
-            }
-            command
-        },
+        |root| fake_command(root, mode, signal),
     )
 }
+fn fake_command(root: &Path, mode: &str, signal: Option<&Signal>) -> Command {
+    let mut command = Command::new(std::env::current_exe().expect("test executable"));
+    environment(&mut command);
+    command
+        .args([
+            "--exact",
+            "preview::process::tests::fake_painter",
+            "--ignored",
+            "--nocapture",
+        ])
+        .env("VANTARE_PREVIEW_FAKE", mode)
+        .env("VANTARE_PREVIEW_OUTPUT", root.join("image.png"));
+    if let Some(signal) = signal {
+        command.env("VANTARE_PREVIEW_SIGNAL", &signal.name);
+    }
+    command
+}
+
+impl State {
+    pub(crate) fn use_fake_scene_painter(&mut self) {
+        self.test_command = Some(|root| {
+            let fixtures = crate::workshop::development_root();
+            let expected = crate::workshop::Scenes::load(Some(fixtures))
+                .snapshot(WidgetKind::Standings, "standings-vantare", 2)
+                .expect("fixture frame");
+            assert_eq!(
+                fs::read(root.join("snapshot.json")).expect("dispatch snapshot"),
+                expected
+            );
+            fake_command(root, "ok", None)
+        });
+    }
+
+    pub(crate) fn wait_for_fake_painter(&mut self) {
+        self.active
+            .as_mut()
+            .expect("fake capture started")
+            .child
+            .wait()
+            .expect("fake child");
+    }
+}
+
 #[test]
 #[ignore = "test-only child invoked explicitly, never the Rune executable"]
 fn fake_painter() {

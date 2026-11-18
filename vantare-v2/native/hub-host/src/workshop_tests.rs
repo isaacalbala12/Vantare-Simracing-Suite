@@ -19,15 +19,41 @@ fn real_fixtures_are_grouped_and_resolved_without_exposing_paths() {
         widgets.iter().map(|entry| entry.kind).collect::<Vec<_>>(),
         WidgetKind::ALL
     );
-    assert_eq!(
-        widgets
-            .iter()
-            .map(|entry| entry.scenes.len())
-            .sum::<usize>(),
-        74
-    );
+    let mut expected = std::collections::BTreeMap::<String, Vec<String>>::new();
+    for entry in fs::read_dir(fixtures()).unwrap() {
+        let path = entry.unwrap().path();
+        let name = path.file_name().unwrap().to_str().unwrap();
+        if let Some(id) = name.strip_suffix(".scene.json") {
+            let scene: serde_json::Value =
+                serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+            expected
+                .entry(scene["widget"].as_str().unwrap().into())
+                .or_default()
+                .push(id.into());
+        } else if let Some(id) = name.strip_suffix(".snapshot.json")
+            && let Some(kind) = WidgetKind::ALL
+                .iter()
+                .map(|kind| kind.id())
+                .filter(|kind| id == *kind || id.starts_with(&format!("{kind}-")))
+                .max_by_key(|kind| kind.len())
+        {
+            expected.entry(kind.into()).or_default().push(id.into());
+        }
+    }
+    for widget in &widgets {
+        let mut ids = expected.remove(widget.kind.id()).unwrap_or_default();
+        ids.sort_unstable();
+        assert_eq!(
+            widget
+                .scenes
+                .iter()
+                .map(|entry| &entry.id)
+                .collect::<Vec<_>>(),
+            ids.iter().collect::<Vec<_>>()
+        );
+    }
+    assert!(expected.is_empty());
     let standings = &widgets[0].scenes;
-    assert_eq!(standings.len(), 12);
     assert!(standings.windows(2).all(|w| w[0].id < w[1].id));
     let scene = standings
         .iter()
@@ -82,6 +108,15 @@ fn invalid_files_are_omitted_and_catalog_is_bounded() {
         "widget":"standings", "label":"a", "frameMs":1, "watchFor":null,
         "frames":vec![serde_json::json!({"snapshot":serde_json::from_slice::<serde_json::Value>(&fs::read(&real).unwrap()).unwrap()}); FRAME_LIMIT+1],
     })).unwrap()).unwrap();
+    let mut unknown: serde_json::Value =
+        serde_json::from_slice(&fs::read(fixtures().join("standings-default.scene.json")).unwrap())
+            .unwrap();
+    unknown["widget"] = "unknown-widget".into();
+    fs::write(
+        root.join("unknown-widget.scene.json"),
+        serde_json::to_vec(&unknown).unwrap(),
+    )
+    .unwrap();
     #[cfg(unix)]
     std::os::unix::fs::symlink(&real, root.join("standings-link.snapshot.json")).unwrap();
     #[cfg(windows)]
@@ -104,6 +139,14 @@ fn invalid_files_are_omitted_and_catalog_is_bounded() {
             .collect::<Vec<_>>(),
         ["standings"]
     );
+    assert_eq!(
+        scenes
+            .widgets()
+            .iter()
+            .map(|widget| widget.scenes.len())
+            .sum::<usize>(),
+        1
+    );
     fs::write(root.join("standings.snapshot.json"), "invalid after scan").unwrap();
     fs::copy(&real, root.join("standings-added.snapshot.json")).unwrap();
     assert_eq!(scenes.widgets()[0].scenes.len(), 1);
@@ -115,14 +158,6 @@ fn invalid_files_are_omitted_and_catalog_is_bounded() {
         scenes.snapshot(WidgetKind::Standings, "standings", 0),
         Err(PreviewError::InvalidInput)
     );
-    for i in 0..=FILE_LIMIT {
-        fs::hard_link(&real, root.join(format!("standings-{i}.snapshot.json"))).unwrap_or_else(
-            |_| {
-                fs::copy(&real, root.join(format!("standings-{i}.snapshot.json"))).unwrap();
-            },
-        );
-    }
-    assert!(Scenes::load(Some(root.clone())).widgets()[0].scenes.len() <= FILE_LIMIT);
     fs::remove_dir_all(root).unwrap();
     let missing = Scenes::load(None);
     assert!(
@@ -138,4 +173,33 @@ fn invalid_files_are_omitted_and_catalog_is_bounded() {
     for (id, valid) in id_cases() {
         assert_eq!(valid_scene_id(&id), valid, "{id:?}");
     }
+}
+
+#[test]
+fn file_cap_selects_the_first_names_in_lexical_order() {
+    let names = (0..=FILE_LIMIT)
+        .map(|index| format!("standings-{index:04}.snapshot.json"))
+        .collect::<Vec<_>>();
+    assert_eq!(
+        sorted_fixture_names(names.iter().rev().cloned()),
+        names[..FILE_LIMIT]
+    );
+    let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
+    fs::create_dir(&root).unwrap();
+    let bytes = fs::read(fixtures().join("standings.snapshot.json")).unwrap();
+    for name in names.iter().rev() {
+        fs::write(root.join(name), &bytes).unwrap();
+    }
+    let scenes = Scenes::load(Some(root.clone()));
+    fs::remove_dir_all(root).unwrap();
+    assert!(
+        scenes.widgets()[0]
+            .scenes
+            .iter()
+            .map(|scene| scene.id.as_str())
+            .eq(names
+                .iter()
+                .take(FILE_LIMIT)
+                .map(|name| name.strip_suffix(".snapshot.json").unwrap()))
+    );
 }

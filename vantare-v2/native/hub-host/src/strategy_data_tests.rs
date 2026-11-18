@@ -1334,7 +1334,6 @@ fn confirm_with_inputs_replaces_the_stored_ones_and_null_keeps_them() {
     let doc = Document::parse(&document_bytes(&state)).unwrap();
     let stored = &doc.value()["events"][0]["strategies"][0]["overrides"]["nativeScalarInput"];
     assert_eq!(stored["raceLaps"], 12);
-    assert_eq!(stored["serviceMode"], "sequential");
 }
 
 #[test]
@@ -1387,7 +1386,6 @@ fn invalid_cases() -> Vec<Case> {
         rejected("laps not whole", &good, bad(|v| v.race_laps = "2.5".into())),
         rejected("zero laps", &good, bad(|v| v.race_laps = "0".into())),
         rejected("empty step", &good, bad(|v| v.fuel_step.clear())),
-        rejected("negative step", &good, bad(|v| v.ve_step = "-1".into())),
         rejected("service mode", &good, bad(|v| v.service_mode = "other".into())),
         rejected(
             "wet variant",

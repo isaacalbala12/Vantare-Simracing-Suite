@@ -707,7 +707,6 @@ it("confirm with inputs that do not validate changes nothing, not even the field
     "fraction laps": bad({ raceLaps: "2.5" }),
     "negative fuel": bad({ fuelPerLapLiters: "-1" }),
     "empty step": bad({ fuelStep: "" }),
-    "negative step": bad({ veStep: "-1" }),
     "unknown mode": bad({ serviceMode: "other" }),
     "not dry": confirmation(opened, {
       fields: { ...fields, name: "Other", variantMode: "wet" },

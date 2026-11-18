@@ -897,7 +897,8 @@ export function create(context: MockContext): MockHandler {
         const unchanged =
           inputs &&
           JSON.stringify(events) === JSON.stringify(current.events) &&
-          JSON.stringify(next) === JSON.stringify(formOf(event, event.strategies[variant]));
+          JSON.stringify(next) ===
+            JSON.stringify(formOf(event, event.strategies[variant]));
         if (!unchanged) {
           forms[key] = next;
           edit({ events });

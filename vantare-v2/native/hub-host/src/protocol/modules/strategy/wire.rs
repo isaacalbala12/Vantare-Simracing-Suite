@@ -86,6 +86,14 @@ pub enum Request {
         #[serde(rename = "computeId")]
         compute_id: u32,
     },
+    /// Asks for «Abrir otro archivo…» (`open`) or «Guardar como…» (`saveAs`). The
+    /// host only records a ticket and acknowledges with the current view; the main
+    /// process opens the dialog and answers with `PickedStrategyFile`.
+    #[serde(rename = "strategy.pickFile")]
+    StrategyPickFile {
+        mode: crate::strategy::StrategyFileMode,
+        revision: String,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -143,6 +151,11 @@ pub enum Reply {
     StrategyResetEdit {
         value: crate::strategy::StrategyView,
     },
+    /// The acknowledgement (the current view) and, later, the final answer.
+    #[serde(rename = "strategy.pickFile")]
+    StrategyPickFile {
+        value: crate::strategy::StrategyView,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -153,6 +166,15 @@ pub enum HostError {
     StrategyEditPending,
     StrategyImportFailed,
     StrategyInvalidText,
+    /// The chosen file cannot be read or written.
+    StrategyFileUnavailable,
+    /// The chosen file is over the 12 MiB limit of a document.
+    StrategyFileTooLarge,
+    /// `saveAs` to a file the host has not observed, or to the primary file from
+    /// another document: it is never overwritten.
+    StrategyTargetExists,
+    /// The ticket of the dialog expired (120 s) before the main process answered.
+    StrategyPickExpired,
     StrategyConflict {
         current: Box<crate::strategy::StrategyView>,
     },

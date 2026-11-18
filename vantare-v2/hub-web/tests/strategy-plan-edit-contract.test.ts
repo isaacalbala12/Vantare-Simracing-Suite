@@ -2,10 +2,9 @@ import { expect, it } from "vitest";
 import corpus from "../src/contract/generated/corpus/strategy.json";
 import { isError, isReply, isRequest } from "../src/contract/modules/strategy";
 import { createMockHost } from "../src/mock/host";
+import { requestOf, requests } from "./strategy-corpus";
 
-const compute = corpus.ui.find(
-  (message) => message.request.method === "strategy.compute",
-)?.request;
+const compute = requestOf("strategy.compute");
 if (compute?.method !== "strategy.compute")
   throw Error("Missing Strategy calculation sample");
 
@@ -33,7 +32,7 @@ const edits = {
 };
 
 it("accepts the four edit requests of the corpus and nothing looser", () => {
-  const sent = corpus.ui.map((message) => message.request);
+  const sent = requests;
   for (const method of [
     "strategy.moveBoundary",
     "strategy.moveStop",

@@ -2,7 +2,7 @@
 //! recalculate with the edited schedule as a constraint, or reset to the last
 //! feasible plan. The document is never touched: the schedule lives only here.
 use super::calculation::{
-    STRATEGY_PIT_LIMIT, StrategyPlanState, StrategyPlanView, StrategyStint, project,
+    STRATEGY_PIT_LIMIT, StrategyPlanState, StrategyPlanView, StrategyStint, project_with,
 };
 use crate::protocol::HostError;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use std::sync::atomic::AtomicBool;
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 use vantare_strategy::{
-    application::{EditedPlan, recalculate_edited_plan},
+    application::{EditedPlan, Fallback, recalculate_edited_plan},
     solver::{Input, SolverOutcome},
 };
 
@@ -291,7 +291,9 @@ pub(super) fn recalculate(
 ) -> Recalculation {
     let outcome =
         recalculate_edited_plan(input, edited, cancel).map_err(|error| edit_error(&error))?;
-    let view = project(input, &outcome, pilot).map_err(|_| StrategyEditError::Failed)?;
+    // The edited schedule is a constraint: no solution is about it.
+    let view = project_with(input, &outcome, pilot, true, Fallback::NotApplicable)
+        .map_err(|_| StrategyEditError::Failed)?;
     Ok(Recalculated {
         view,
         feasible: outcome.result.feasible,

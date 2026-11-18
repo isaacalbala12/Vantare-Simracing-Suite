@@ -2,10 +2,9 @@ import { expect, it } from "vitest";
 import corpus from "../src/contract/generated/corpus/strategy.json";
 import { isRequest } from "../src/contract/modules/strategy";
 import { createMockHost } from "../src/mock/host";
+import { requestOf, requests } from "./strategy-corpus";
 
-const sample = corpus.ui.find(
-  (message) => message.request.method === "strategy.create",
-)?.request;
+const sample = requestOf("strategy.create");
 if (sample?.method !== "strategy.create" || !sample.fields)
   throw Error("Missing Strategy creation sample");
 const creationFields = sample.fields;

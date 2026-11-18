@@ -3,8 +3,12 @@ import {
   type StrategySolverFields,
   strategyEditErrors,
   strategyFields,
+  strategyFileModes,
+  strategyFileNameMax,
   strategyLimits,
   strategyMethods,
+  strategyPickPathMax,
+  strategyReasons,
   strategyStates,
 } from "../generated/strategy";
 import { exact, integer, oneOf, record } from "../validation-common";
@@ -25,6 +29,36 @@ function text(value: unknown): boolean {
     typeof value === "string" &&
     bytes.encode(value).length <= strategyLimits.text &&
     !/\p{Cc}/u.test(value)
+  );
+}
+// The file of the document is only its name: one segment, no separators, no
+// controls, never "." or "..". The path never reaches the renderer.
+function fileName(value: unknown): boolean {
+  return (
+    typeof value === "string" &&
+    value !== "" &&
+    value !== "." &&
+    value !== ".." &&
+    bytes.encode(value).length <= strategyFileNameMax &&
+    // separators, the stream colon, controls and bidirectional marks, as in Rust
+    !/[\\/:]|\p{Cc}|[\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/u.test(value)
+  );
+}
+function file(value: unknown): boolean {
+  return (
+    value === null ||
+    (record(value) && exact(value, ["name"]) && fileName(value.name))
+  );
+}
+// The trusted answer of the main process; the renderer port never admits it.
+export function isPickedStrategyFile(value: Record<string, unknown>): boolean {
+  return (
+    exact(value, ["kind", "id", "path"]) &&
+    integer(value.id) &&
+    (value.path === null ||
+      (typeof value.path === "string" &&
+        !value.path.includes("\0") &&
+        bytes.encode(value.path).length <= strategyPickPathMax))
   );
 }
 function revision(value: unknown): boolean {
@@ -131,10 +165,29 @@ function computeId(value: unknown): boolean {
 function result(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["certificate", "steps", "degraded", "metrics", "timeline"]) &&
+    exact(value, [
+      "certificate",
+      "steps",
+      "degraded",
+      "reason",
+      "metrics",
+      "timeline",
+    ]) &&
     typeof value.degraded === "boolean" &&
     (value.certificate === null ||
       oneOf(value.certificate, ["proven", "not_proven", "no_solution"])) &&
+    // a reason exactly when the result is not a proven plan, and one of those its
+    // certificate allows: the search did not finish (partial, with or without a
+    // plan) or no plan fits (the rules, or nothing at all)
+    (value.certificate === "proven"
+      ? value.reason === null
+      : value.certificate === "no_solution"
+        ? oneOf(value.reason, ["constraintsUnsatisfiable", "noFeasiblePlan"])
+        : oneOf(value.reason, [
+            "searchBudgetExhausted",
+            "fineGridNoFallback",
+          ])) &&
+    (value.reason === null || oneOf(value.reason, strategyReasons)) &&
     record(value.steps) &&
     exact(value.steps, ["fuelLiters", "vePercent"]) &&
     measure(value.steps.fuelLiters) &&
@@ -257,8 +310,10 @@ function view(value: unknown): boolean {
       "activeStrategyId",
       "dirty",
       "plan",
+      "file",
     ]) &&
     revision(value.revision) &&
+    file(value.file) &&
     oneOf(value.state, strategyStates) &&
     Array.isArray(value.events) &&
     value.events.every(event) &&
@@ -397,6 +452,12 @@ export function isRequest(value: Record<string, unknown>): boolean {
         revision(value.revision) &&
         computeId(value.computeId)
       );
+    case "strategy.pickFile":
+      return (
+        exact(value, ["method", "mode", "revision"]) &&
+        oneOf(value.mode, strategyFileModes) &&
+        revision(value.revision)
+      );
     case "strategy.save":
     case "strategy.discard":
       return exact(value, ["method", "revision"]) && revision(value.revision);
@@ -418,6 +479,10 @@ export function isError(value: Record<string, unknown>): boolean {
       "strategyEditPending",
       "strategyImportFailed",
       "strategyInvalidText",
+      "strategyFileUnavailable",
+      "strategyFileTooLarge",
+      "strategyTargetExists",
+      "strategyPickExpired",
     ])
   )
     return exact(value, ["kind"]);

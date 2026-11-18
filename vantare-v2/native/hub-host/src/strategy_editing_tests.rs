@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 use super::*;
 use crate::strategy::calculation::{Calculation, StrategyPlanView as PlanView};
-use crate::strategy::calculation::{StrategyCertificate, StrategyPlanState};
+use crate::strategy::calculation::{StrategyCertificate, StrategyPlanState, project};
 use vantare_strategy::{
     application::{self, EditedPlan, SourceStatus, recalculate_edited_plan},
     document::Document,
@@ -331,6 +331,11 @@ fn a_schedule_that_has_no_solution_is_shown_and_can_be_reset() {
     let shown = editing.plan_view(Some(2));
     let result = shown.result.as_ref().unwrap();
     assert_eq!(result.certificate, Some(StrategyCertificate::NoSolution));
+    // the edited schedule is the constraint nothing satisfies (E4a)
+    assert_eq!(
+        result.reason,
+        Some(crate::strategy::calculation::StrategyReason::ConstraintsUnsatisfiable)
+    );
     assert!(result.metrics.is_none() && result.timeline.is_none());
     assert!(shown.edit.as_ref().unwrap().can_reset);
     editing.reset();

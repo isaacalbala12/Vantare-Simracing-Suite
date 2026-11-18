@@ -1,12 +1,14 @@
 use crate::protocol::bindings::{declare, sample_response};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 use crate::strategy::{
-    ID_LIMIT, STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate,
+    ID_LIMIT, STRATEGY_FILE_NAME_MAX, STRATEGY_PICK_COOLDOWN_MS, STRATEGY_PICK_LIFETIME_SECONDS,
+    STRATEGY_PICK_PATH_MAX, STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate,
     StrategyComputeForm, StrategyEditError, StrategyEditStop, StrategyEditView,
-    StrategyEventSummary, StrategyField, StrategyFields, StrategyMetrics, StrategyPit,
-    StrategyPitService, StrategyPlanError, StrategyPlanState, StrategyPlanView,
-    StrategyServiceSteps, StrategySolverFields, StrategyState, StrategyStint, StrategyTimeline,
-    StrategyVariant, StrategyView, TEXT_LIMIT,
+    StrategyEventSummary, StrategyField, StrategyFields, StrategyFile, StrategyFileMode,
+    StrategyFileSelection, StrategyMetrics, StrategyPit, StrategyPitService, StrategyPlanError,
+    StrategyPlanState, StrategyPlanView, StrategyReason, StrategyServiceSteps,
+    StrategySolverFields, StrategyState, StrategyStint, StrategyTimeline, StrategyVariant,
+    StrategyView, TEXT_LIMIT,
 };
 use serde_json::json;
 
@@ -34,6 +36,24 @@ pub(crate) fn typescript() -> String {
     declare::<StrategyEditView>(&mut text);
     declare::<StrategyEditStop>(&mut text);
     declare::<StrategyEditError>(&mut text);
+    declare::<StrategyReason>(&mut text);
+    declare::<StrategyFile>(&mut text);
+    declare::<StrategyFileMode>(&mut text);
+    declare::<StrategyFileSelection>(&mut text);
+    crate::protocol::bindings::constants!(&mut text, "strategyReasons", StrategyReason::ALL);
+    crate::protocol::bindings::constants!(&mut text, "strategyFileModes", StrategyFileMode::ALL);
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "strategyPickLifetimeSeconds",
+        STRATEGY_PICK_LIFETIME_SECONDS
+    );
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "strategyPickCooldownMs",
+        STRATEGY_PICK_COOLDOWN_MS
+    );
+    crate::protocol::bindings::constants!(&mut text, "strategyPickPathMax", STRATEGY_PICK_PATH_MAX);
+    crate::protocol::bindings::constants!(&mut text, "strategyFileNameMax", STRATEGY_FILE_NAME_MAX);
     crate::protocol::bindings::constants!(
         &mut text,
         "strategyLimits",
@@ -88,6 +108,9 @@ fn ready_sample() -> StrategyView {
         active_strategy_id: Some("variant-1".into()),
         dirty: false,
         plan: StrategyPlanView::default(),
+        file: Some(StrategyFile {
+            name: "strategy-v2.json".into(),
+        }),
     }
 }
 
@@ -102,6 +125,9 @@ pub(crate) fn corpus() -> serde_json::Value {
         active_strategy_id: None,
         dirty: false,
         plan: StrategyPlanView::default(),
+        file: Some(StrategyFile {
+            name: "strategy-v2.json".into(),
+        }),
     };
     let mut host = vec![sample_response(Reply::StrategyOpen {
         value: ready.clone(),
@@ -151,70 +177,99 @@ pub(crate) fn corpus() -> serde_json::Value {
             HostError::StrategyEditPending,
             HostError::StrategyImportFailed,
             HostError::StrategyInvalidText,
+            HostError::StrategyFileUnavailable,
+            HostError::StrategyFileTooLarge,
+            HostError::StrategyTargetExists,
+            HostError::StrategyPickExpired,
         ]
         .map(|error| HostToUi::Failure { id: 1, error }),
     );
     let fields = sample_fields();
     host.extend(calculation_samples(&dirty));
     host.extend(edit_samples(&dirty));
-    let ui = [
-        Request::StrategyOpen {},
-        Request::StrategyView {},
-        Request::StrategySelect {
-            event_id: "event-1".into(),
-            strategy_id: "variant-2".into(),
-            revision: "a".repeat(64),
-        },
-        Request::StrategyCreate {
-            revision: "a".repeat(64),
-            fields: Box::new(fields.clone()),
-            base_pace_seconds: Some("90.472".into()),
-            fuel_per_lap_liters: Some("1.83".into()),
-        },
-        Request::StrategyConfirm {
-            event_id: "event-1".into(),
-            strategy_id: "variant-1".into(),
-            revision: "b".repeat(64),
-            fields: Box::new(fields.clone()),
-        },
-        Request::StrategyCompute {
-            event_id: "event-1".into(),
-            strategy_id: "variant-1".into(),
-            revision: "a".repeat(64),
-            form: Box::new(StrategyComputeForm {
-                fields,
-                inputs: solver_sample(),
+    host.extend(reason_samples(&dirty));
+    // the acknowledgement and the final answer are both the view
+    host.push(sample_response(Reply::StrategyPickFile {
+        value: StrategyView {
+            file: Some(StrategyFile {
+                name: "carreras-2026.json".into(),
             }),
+            ..ready_sample()
         },
-        Request::StrategyCancel { compute_id: 7 },
-        Request::StrategyMoveBoundary {
-            revision: "b".repeat(64),
-            compute_id: 7,
-            index: 1,
-            lap: 3,
-        },
-        Request::StrategyMoveStop {
-            revision: "b".repeat(64),
-            compute_id: 7,
-            index: 0,
-            delta: -1,
-        },
-        Request::StrategyRecalculate {
-            revision: "b".repeat(64),
-            compute_id: 7,
-        },
-        Request::StrategyResetEdit {
-            revision: "b".repeat(64),
-            compute_id: 7,
-        },
-        Request::StrategySave {
-            revision: "b".repeat(64),
-        },
-        Request::StrategyDiscard {
-            revision: "b".repeat(64),
-        },
-    ]
-    .map(|request| UiToHost::Request { id: 1, request });
+    }));
+    let mut ui = Vec::from(
+        [
+            Request::StrategyOpen {},
+            Request::StrategyView {},
+            Request::StrategySelect {
+                event_id: "event-1".into(),
+                strategy_id: "variant-2".into(),
+                revision: "a".repeat(64),
+            },
+            Request::StrategyCreate {
+                revision: "a".repeat(64),
+                fields: Box::new(fields.clone()),
+                base_pace_seconds: Some("90.472".into()),
+                fuel_per_lap_liters: Some("1.83".into()),
+            },
+            Request::StrategyConfirm {
+                event_id: "event-1".into(),
+                strategy_id: "variant-1".into(),
+                revision: "b".repeat(64),
+                fields: Box::new(fields.clone()),
+            },
+            Request::StrategyCompute {
+                event_id: "event-1".into(),
+                strategy_id: "variant-1".into(),
+                revision: "a".repeat(64),
+                form: Box::new(StrategyComputeForm {
+                    fields,
+                    inputs: solver_sample(),
+                }),
+            },
+            Request::StrategyCancel { compute_id: 7 },
+            Request::StrategyMoveBoundary {
+                revision: "b".repeat(64),
+                compute_id: 7,
+                index: 1,
+                lap: 3,
+            },
+            Request::StrategyMoveStop {
+                revision: "b".repeat(64),
+                compute_id: 7,
+                index: 0,
+                delta: -1,
+            },
+            Request::StrategyRecalculate {
+                revision: "b".repeat(64),
+                compute_id: 7,
+            },
+            Request::StrategyResetEdit {
+                revision: "b".repeat(64),
+                compute_id: 7,
+            },
+            Request::StrategyPickFile {
+                mode: StrategyFileMode::Open,
+                revision: "a".repeat(64),
+            },
+            Request::StrategyPickFile {
+                mode: StrategyFileMode::SaveAs,
+                revision: "b".repeat(64),
+            },
+            Request::StrategySave {
+                revision: "b".repeat(64),
+            },
+            Request::StrategyDiscard {
+                revision: "b".repeat(64),
+            },
+        ]
+        .map(|request| UiToHost::Request { id: 1, request }),
+    );
+    // the trusted answer of the main process (never sent by the renderer)
+    ui.push(UiToHost::PickedStrategyFile(StrategyFileSelection {
+        id: 0x8000_0000,
+        path: None,
+    }));
     json!({"host":host,"ui":ui})
 }
 
@@ -263,6 +318,7 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
             ve_percent: Some(1.into()),
         },
         degraded: false,
+        reason: None,
         metrics: Some(StrategyMetrics {
             total_seconds: 301.into(),
             laps: 3,
@@ -345,6 +401,7 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                 result: Some(Box::new(StrategyCalculationView {
                     certificate: None,
                     degraded: true,
+                    reason: Some(StrategyReason::SearchBudgetExhausted),
                     metrics: None,
                     timeline: None,
                     ..completed
@@ -386,6 +443,125 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
     ]
 }
 
+fn view_with(dirty: &StrategyView, plan: StrategyPlanView) -> HostToUi {
+    sample_response(Reply::StrategyView {
+        value: StrategyView {
+            plan,
+            ..dirty.clone()
+        },
+    })
+}
+
+/// One result for each of the other closed reasons of a partial or infeasible plan.
+#[allow(clippy::too_many_lines)] // One flat list of wire samples.
+fn reason_samples(dirty: &StrategyView) -> Vec<HostToUi> {
+    let result = |certificate, degraded, reason, plan: bool| StrategyCalculationView {
+        certificate,
+        steps: StrategyServiceSteps {
+            fuel_liters: Some(1.into()),
+            ve_percent: None,
+        },
+        degraded,
+        reason: Some(reason),
+        metrics: plan.then(|| StrategyMetrics {
+            total_seconds: 301.into(),
+            laps: 3,
+            pit_count: 0,
+            fuel_reserve_real_laps: Some(10.into()),
+            fuel_reserve_required_laps: 1.into(),
+        }),
+        timeline: None,
+    };
+    let view = |state, result| {
+        sample_response(Reply::StrategyView {
+            value: StrategyView {
+                plan: StrategyPlanView {
+                    state,
+                    compute_id: Some(7),
+                    result: Some(Box::new(result)),
+                    ..StrategyPlanView::default()
+                },
+                ..dirty.clone()
+            },
+        })
+    };
+    // the plan being edited and the plan being recalculated keep the reason of the
+    // result they show
+    let schedule = StrategyEditView {
+        stints: vec![
+            StrategyStint {
+                from_lap: 1,
+                to_lap: 2,
+            },
+            StrategyStint {
+                from_lap: 3,
+                to_lap: 3,
+            },
+        ],
+        stops: vec![StrategyEditStop {
+            lap: 2,
+            min_lap: 1,
+            max_lap: 2,
+            fuel_liters: 3.into(),
+            ve_percent: 5.into(),
+        }],
+        can_reset: true,
+        error: None,
+    };
+    let shown = |state| {
+        view_with(
+            dirty,
+            StrategyPlanView {
+                state,
+                compute_id: Some(7),
+                result: Some(Box::new(result(
+                    Some(StrategyCertificate::NotProven),
+                    false,
+                    StrategyReason::SearchBudgetExhausted,
+                    true,
+                ))),
+                edit: Some(schedule.clone()),
+                ..StrategyPlanView::default()
+            },
+        )
+    };
+    vec![
+        shown(StrategyPlanState::Edited),
+        shown(StrategyPlanState::Calculating),
+        view(
+            StrategyPlanState::Partial,
+            result(
+                Some(StrategyCertificate::NotProven),
+                false,
+                StrategyReason::SearchBudgetExhausted,
+                true,
+            ),
+        ),
+        view(
+            StrategyPlanState::Partial,
+            result(None, true, StrategyReason::FineGridNoFallback, false),
+        ),
+        view(
+            StrategyPlanState::Calculated,
+            result(
+                Some(StrategyCertificate::NoSolution),
+                false,
+                StrategyReason::NoFeasiblePlan,
+                false,
+            ),
+        ),
+        view(
+            StrategyPlanState::Calculated,
+            result(
+                Some(StrategyCertificate::NoSolution),
+                false,
+                StrategyReason::ConstraintsUnsatisfiable,
+                false,
+            ),
+        ),
+    ]
+}
+
 /// A three-stint plan whose boundaries moved (`edited`), the same plan while it
 /// recalculates (`calculating`), a recalculation that failed, and the infeasible answer.
 #[allow(clippy::too_many_lines)] // One flat list of wire samples.
@@ -408,6 +584,7 @@ fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
             ve_percent: Some(1.into()),
         },
         degraded: false,
+        reason: (!feasible).then_some(StrategyReason::ConstraintsUnsatisfiable),
         metrics: feasible.then(|| StrategyMetrics {
             total_seconds: 301.into(),
             laps: 9,

@@ -113,7 +113,7 @@ pub struct Picker {
     pending: Option<Pick>,
     dialog: Option<Dialog>,
 }
-fn unambiguous_path(path: &Path) -> bool {
+pub(crate) fn unambiguous_path(path: &Path) -> bool {
     let Some(raw) = path.to_str() else {
         return false;
     };

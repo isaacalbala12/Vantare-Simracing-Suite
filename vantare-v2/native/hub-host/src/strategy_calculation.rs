@@ -17,9 +17,9 @@ use std::{
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 use vantare_strategy::{
-    application::{self, ManualEvent, ManualField, SourceStatus},
+    application::{self, Fallback, ManualEvent, ManualField, SourceStatus},
     document::Document,
-    solver::{self, Input, OptimalityStatus, SolverOutcome},
+    solver::{self, GreedyRefusal, Input, OptimalityStatus, SolverOutcome},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -186,6 +186,77 @@ pub enum StrategyCertificate {
     NoSolution,
 }
 
+/// Why a result is not a proven plan: a closed set, never free text. It is
+/// present exactly when the certificate is not `proven` (a partial result, with
+/// or without a plan, or no solution) and `null` otherwise.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase")]
+pub enum StrategyReason {
+    /// The search stopped before finishing: candidates, iterations, memory or time
+    /// ran out (the greedy fallback plan, when there is one, replaced its result).
+    SearchBudgetExhausted,
+    /// The search ran out on a service grid too fine for its budget and there is no
+    /// plan to fall back to (#2635).
+    FineGridNoFallback,
+
+    /// No plan satisfies the event rules or the edited schedule.
+    ConstraintsUnsatisfiable,
+    /// The search finished and no plan fits the race.
+    NoFeasiblePlan,
+}
+
+impl StrategyReason {
+    pub const ALL: &'static [Self] = &[
+        Self::SearchBudgetExhausted,
+        Self::FineGridNoFallback,
+        Self::ConstraintsUnsatisfiable,
+        Self::NoFeasiblePlan,
+    ];
+}
+
+/// Maps the crate's account of a calculation to the closed reason from typed
+/// facts only: the certificate status and the crate's `Fallback`. The crate's
+/// `certificate.reason` is free text and is never read here. `constrained` says
+/// that event rules or an edited schedule bind the plan.
+///
+/// | crate | reason |
+/// |---|---|
+/// | proven | none |
+/// | no solution, rules or edited schedule | `constraintsUnsatisfiable` |
+/// | no solution, nothing binds the plan | `noFeasiblePlan` |
+/// | not proven, `Refused(NotScalar)` | `fineGridNoFallback` |
+/// | not proven, any other fallback (`Applied`, other refusals, `NotApplicable`) | `searchBudgetExhausted` |
+///
+/// On a coarsened grid a complete search proves "no plan" only for the effective
+/// steps, which the same result reports (`steps`, `degraded`).
+pub(super) fn reason_of(
+    status: OptimalityStatus,
+    fallback: Fallback,
+    constrained: bool,
+) -> Option<StrategyReason> {
+    match status {
+        OptimalityStatus::Proven => None,
+        OptimalityStatus::NoSolution if constrained => {
+            Some(StrategyReason::ConstraintsUnsatisfiable)
+        }
+        OptimalityStatus::NoSolution => Some(StrategyReason::NoFeasiblePlan),
+        OptimalityStatus::NotProven => Some(match fallback {
+            Fallback::Refused(GreedyRefusal::NotScalar) => StrategyReason::FineGridNoFallback,
+            _ => StrategyReason::SearchBudgetExhausted,
+        }),
+    }
+}
+
+/// Rules that bind the plan whatever the form says.
+fn has_rules(input: &Input) -> bool {
+    let rules = &input.event_rules;
+    rules.min_pit_stops.is_some()
+        || rules.max_pit_stops.is_some()
+        || !rules.required_windows.is_empty()
+        || !rules.extra.is_empty()
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase")]
@@ -218,6 +289,8 @@ pub struct StrategyCalculationView {
     pub steps: StrategyServiceSteps,
     /// `true` when a service step is coarser than the one requested in the form.
     pub degraded: bool,
+    /// Why the result is not proven; `null` exactly when `certificate` is `proven`.
+    pub reason: Option<StrategyReason>,
     pub metrics: Option<StrategyMetrics>,
     pub timeline: Option<StrategyTimeline>,
 }
@@ -587,11 +660,11 @@ pub(super) fn run(
     let input = application::prepare_manual(input).map_err(invalid)?;
     super::validate_projection(&document, HostError::StrategyInvalidText)
         .map_err(|_| Failure::from(StrategyPlanError::InvalidInput))?;
-    let outcome = application::calculate(&input, SourceStatus::Open, cancel)
+    let calculation = application::calculate_detailed(&input, SourceStatus::Open, cancel)
         .map_err(|_| StrategyPlanError::Failed)?;
     let pilot = manual.driver_name.trim();
-    let mut view = project(input.input(), &outcome, pilot)?;
-    let editing = Editing::new(input.input(), &outcome, &view, pilot);
+    let mut view = project_calculated(input.input(), &calculation, pilot)?;
+    let editing = Editing::new(input.input(), &calculation.outcome, &view, pilot);
     view.edit = editing.as_ref().map(Editing::edit_view);
     Ok((document, view, editing))
 }
@@ -629,10 +702,40 @@ fn number(value: f64) -> Result<Number, StrategyPlanError> {
     Number::from_f64(value).ok_or(StrategyPlanError::Failed)
 }
 
+/// A plan of the search with no account of a fallback (a recalculation of an
+/// edited schedule, or a plan the search itself returned).
+#[cfg(test)]
 pub(super) fn project(
     input: &Input,
     outcome: &SolverOutcome,
     pilot: &str,
+) -> Result<StrategyPlanView, StrategyPlanError> {
+    project_with(input, outcome, pilot, has_rules(input), Fallback::NotApplicable)
+}
+
+/// A calculation of the manual bridge, with the crate's account of its fallback.
+pub(super) fn project_calculated(
+    input: &Input,
+    calculation: &application::Calculation,
+    pilot: &str,
+) -> Result<StrategyPlanView, StrategyPlanError> {
+    project_with(
+        input,
+        &calculation.outcome,
+        pilot,
+        has_rules(input),
+        calculation.fallback,
+    )
+}
+
+/// `constrained`: the plan is bound by rules or by an edited schedule, so an
+/// infeasible answer is about those constraints.
+pub(super) fn project_with(
+    input: &Input,
+    outcome: &SolverOutcome,
+    pilot: &str,
+    constrained: bool,
+    fallback: Fallback,
 ) -> Result<StrategyPlanView, StrategyPlanError> {
     let status = outcome.certificate.status;
     let result = &outcome.result;
@@ -657,6 +760,7 @@ pub(super) fn project(
     };
     let degraded = coarser(grid.fuel_liters, input.discretization.fuel_liters)
         || coarser(grid.ve_percent, input.discretization.ve_percent);
+    let reason = reason_of(status, fallback, constrained);
     let (metrics, timeline) = if result.feasible {
         (
             Some(metrics(input, result)?),
@@ -678,6 +782,7 @@ pub(super) fn project(
             certificate,
             steps,
             degraded,
+            reason,
             metrics,
             timeline,
         })),

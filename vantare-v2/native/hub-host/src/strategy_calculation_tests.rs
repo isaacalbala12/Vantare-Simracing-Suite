@@ -290,3 +290,267 @@ fn a_plan_beyond_the_timeline_limit_keeps_its_summary_when_it_comes_from_the_fal
     assert!(result.timeline.is_none(), "22 stops exceed the timeline limit");
     assert_eq!(result.metrics.unwrap().pit_count, 22);
 }
+
+// ---- E4a: the closed reason of a partial or infeasible result
+
+/// What the host sees of a real calculation: the crate's typed account of it.
+fn detailed(input: Input) -> (application::Calculation, StrategyPlanView) {
+    let prepared = application::prepare_manual(input).unwrap();
+    let calculation =
+        application::calculate_detailed(&prepared, SourceStatus::Open, &AtomicBool::new(false))
+            .unwrap();
+    let view = project_calculated(prepared.input(), &calculation, "Pilot").unwrap();
+    (calculation, view)
+}
+
+const REFUSALS: [solver::GreedyRefusal; 6] = [
+    solver::GreedyRefusal::NotScalar,
+    solver::GreedyRefusal::ResourceTooSmall,
+    solver::GreedyRefusal::MaxStops,
+    solver::GreedyRefusal::MinStops,
+    solver::GreedyRefusal::WindowUnreachable,
+    solver::GreedyRefusal::ServiceGrid,
+];
+
+fn fallbacks() -> Vec<application::Fallback> {
+    let mut all = vec![application::Fallback::NotApplicable, application::Fallback::Applied];
+    all.extend(REFUSALS.map(application::Fallback::Refused));
+    all
+}
+
+#[test]
+fn the_reason_is_mapped_from_the_typed_account_of_the_crate() {
+    use OptimalityStatus::{NoSolution, NotProven, Proven};
+    use StrategyReason::{
+        ConstraintsUnsatisfiable, FineGridNoFallback, NoFeasiblePlan, SearchBudgetExhausted,
+    };
+    for fallback in fallbacks() {
+        for constrained in [false, true] {
+            // proven: nothing to explain
+            assert_eq!(reason_of(Proven, fallback, constrained), None);
+            // a complete search that found nothing, whatever the fallback says
+            assert_eq!(
+                reason_of(NoSolution, fallback, constrained),
+                Some(if constrained {
+                    ConstraintsUnsatisfiable
+                } else {
+                    NoFeasiblePlan
+                }),
+                "{fallback:?} {constrained}"
+            );
+            // the search did not finish: the budget, but for a grid the greedy
+            // plan could not follow (#2635)
+            let expected = if fallback
+                == application::Fallback::Refused(solver::GreedyRefusal::NotScalar)
+            {
+                FineGridNoFallback
+            } else {
+                SearchBudgetExhausted
+            };
+            assert_eq!(
+                reason_of(NotProven, fallback, constrained),
+                Some(expected),
+                "{fallback:?} {constrained}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_reason_always_agrees_with_the_certificate() {
+    use OptimalityStatus::{NoSolution, NotProven, Proven};
+    use StrategyReason::{
+        ConstraintsUnsatisfiable, FineGridNoFallback, NoFeasiblePlan, SearchBudgetExhausted,
+    };
+    for status in [Proven, NotProven, NoSolution] {
+        for fallback in fallbacks() {
+            for constrained in [false, true] {
+                let allowed: &[StrategyReason] = match status {
+                    Proven => &[],
+                    NotProven => &[SearchBudgetExhausted, FineGridNoFallback],
+                    NoSolution => &[ConstraintsUnsatisfiable, NoFeasiblePlan],
+                };
+                match reason_of(status, fallback, constrained) {
+                    None => assert!(allowed.is_empty(), "{status:?} needs a reason"),
+                    Some(reason) => assert!(
+                        allowed.contains(&reason),
+                        "{status:?} {fallback:?} cannot be {reason:?}"
+                    ),
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn the_reason_names_are_the_documented_wire_values() {
+    assert_eq!(
+        serde_json::to_value(StrategyReason::ALL).unwrap(),
+        serde_json::json!([
+            "searchBudgetExhausted",
+            "fineGridNoFallback",
+            "constraintsUnsatisfiable",
+            "noFeasiblePlan"
+        ])
+    );
+    assert!(
+        serde_json::from_value::<StrategyReason>(serde_json::json!("initialLoadNotProven"))
+            .is_err()
+    );
+}
+
+#[test]
+fn a_partial_plan_of_the_search_names_the_budget() {
+    let mut input = fuji();
+    input.budget.p95_millis = 60_000;
+    let (calculation, view) = detailed(input);
+    assert_eq!(calculation.fallback, application::Fallback::NotApplicable);
+    let result = view.result.unwrap();
+    assert_eq!(result.certificate, Some(StrategyCertificate::NotProven));
+    assert_eq!(result.reason, Some(StrategyReason::SearchBudgetExhausted));
+}
+
+#[test]
+fn a_plan_of_the_greedy_seed_is_not_proven_and_names_the_budget() {
+    // A small tank and a budget of one candidate: the search ends without a plan
+    // and the seed's plan is shown, never as proven (#2628).
+    let mut input = scalar();
+    input.race_laps = 100;
+    input.fuel_capacity_liters.value = 40.0;
+    input.budget.max_candidates = 1;
+    let (calculation, view) = detailed(input);
+    assert_eq!(calculation.fallback, application::Fallback::Applied);
+    assert_eq!(calculation.route, application::CalculationRoute::Greedy);
+    assert!(calculation.outcome.result.feasible);
+    assert_eq!(view.state, StrategyPlanState::Partial);
+    let result = view.result.unwrap();
+    assert_eq!(result.certificate, Some(StrategyCertificate::NotProven));
+    assert_eq!(result.reason, Some(StrategyReason::SearchBudgetExhausted));
+    assert!(result.metrics.is_some());
+}
+
+#[test]
+fn a_search_without_a_plan_whose_fallback_refused_for_the_rules_names_the_budget() {
+    let mut input = scalar();
+    input.race_laps = 100;
+    input.budget.max_candidates = 1;
+    input.event_rules.max_pit_stops = Some(1); // 100 laps need two stops
+    let (calculation, view) = detailed(input);
+    assert_eq!(
+        calculation.fallback,
+        application::Fallback::Refused(solver::GreedyRefusal::MaxStops)
+    );
+    let result = view.result.unwrap();
+    assert_eq!(result.certificate, None);
+    assert_eq!(result.reason, Some(StrategyReason::SearchBudgetExhausted));
+}
+
+#[test]
+fn a_grid_too_fine_for_the_budget_and_no_plan_is_its_own_reason() {
+    // #2635: 0.25 L steps on a 90-litre tank are more than 200 levels; the seed
+    // does not act on a coarsened grid, so there is nothing to fall back to.
+    let mut input = scalar();
+    input.race_laps = 100;
+    input.fuel_capacity_liters.value = 90.0;
+    input.ve_capacity_percent.value = 0.0;
+    input.ve_per_lap_percent.value = 0.0;
+    input.discretization.fuel_liters = 0.25;
+    input.budget.max_candidates = 1;
+    let (calculation, view) = detailed(input);
+    assert_eq!(
+        calculation.fallback,
+        application::Fallback::Refused(solver::GreedyRefusal::NotScalar)
+    );
+    assert_eq!(calculation.outcome.certificate.status, OptimalityStatus::NotProven);
+    assert!(!calculation.outcome.result.feasible);
+    let result = view.result.unwrap();
+    assert!(result.degraded);
+    assert_eq!(result.certificate, None);
+    assert_eq!(result.reason, Some(StrategyReason::FineGridNoFallback));
+}
+
+#[test]
+fn an_impossible_race_says_there_is_no_feasible_plan() {
+    let mut input = scalar();
+    input.race_laps = 5;
+    input.fuel_capacity_liters.value = 1.0;
+    let (calculation, view) = detailed(input);
+    assert_eq!(calculation.fallback, application::Fallback::NotApplicable);
+    assert_eq!(
+        view.result.unwrap().reason,
+        Some(StrategyReason::NoFeasiblePlan)
+    );
+}
+
+#[test]
+fn a_coarsened_grid_with_no_solution_reports_the_steps_it_proved_it_on() {
+    // "No plan" is proven on the effective steps; the same result carries them
+    // and `degraded`, so the claim is never stronger than what was searched.
+    let mut input = scalar();
+    input.race_laps = 5;
+    input.fuel_capacity_liters.value = 90.0;
+    input.fuel_per_lap_liters.value = 200.0; // a lap does not fit the tank
+    input.ve_capacity_percent.value = 0.0;
+    input.ve_per_lap_percent.value = 0.0;
+    input.discretization.fuel_liters = 0.25;
+    let (_, view) = detailed(input);
+    let result = view.result.unwrap();
+    assert_eq!(result.certificate, Some(StrategyCertificate::NoSolution));
+    assert!(result.degraded);
+    assert!(result.steps.fuel_liters.is_some());
+    assert_eq!(result.reason, Some(StrategyReason::NoFeasiblePlan));
+}
+
+#[test]
+fn event_rules_nothing_satisfies_name_the_constraints() {
+    let mut input = scalar();
+    input.race_laps = 5;
+    input.ve_capacity_percent.value = 0.0;
+    input.ve_per_lap_percent.value = 0.0;
+    input.event_rules.min_pit_stops = Some(8); // more stops than laps
+    let (calculation, view) = detailed(input);
+    assert_eq!(calculation.outcome.certificate.status, OptimalityStatus::NoSolution);
+    assert_eq!(
+        view.result.unwrap().reason,
+        Some(StrategyReason::ConstraintsUnsatisfiable)
+    );
+}
+
+#[test]
+fn a_proven_plan_has_no_reason_and_only_unproven_results_have_one() {
+    let mut input = scalar();
+    input.race_laps = 3;
+    let (_, view) = detailed(input);
+    let result = view.result.unwrap();
+    assert_eq!(result.certificate, Some(StrategyCertificate::Proven));
+    assert_eq!(result.reason, None);
+    assert_eq!(
+        serde_json::to_value(&result).unwrap()["reason"],
+        serde_json::Value::Null
+    );
+    // every result the host builds: a reason exactly when it is not proven, and
+    // one of the values its certificate allows
+    for (laps, candidates, tank) in [(3, 250_000, 80.0), (100, 1, 40.0), (5, 250_000, 1.0)] {
+        let mut input = scalar();
+        input.race_laps = laps;
+        input.budget.max_candidates = candidates;
+        input.fuel_capacity_liters.value = tank;
+        let result = detailed(input).1.result.unwrap();
+        assert_eq!(
+            result.reason.is_some(),
+            result.certificate != Some(StrategyCertificate::Proven),
+            "{laps} laps"
+        );
+        match result.certificate {
+            Some(StrategyCertificate::NoSolution) => assert!(matches!(
+                result.reason,
+                Some(StrategyReason::NoFeasiblePlan | StrategyReason::ConstraintsUnsatisfiable)
+            )),
+            Some(StrategyCertificate::NotProven) | None => assert!(matches!(
+                result.reason,
+                Some(StrategyReason::SearchBudgetExhausted | StrategyReason::FineGridNoFallback)
+            )),
+            Some(StrategyCertificate::Proven) => {}
+        }
+    }
+}

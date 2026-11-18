@@ -7,7 +7,7 @@ use ts_rs::TS;
 #[cfg(any(test, feature = "bindings"))]
 pub mod bindings;
 include!(concat!(env!("OUT_DIR"), "/wire.rs"));
-pub const VERSION: u32 = 62;
+pub const VERSION: u32 = 63;
 pub const DEMO_NAME_LIMIT: usize = 128;
 pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -113,6 +113,7 @@ pub enum UiToHost {
     ReviewContentRequest(crate::launcher_resident::ReviewContentRequest),
     ReviewDecision(crate::launcher_resident::ReviewDecision),
     PickedExecutable(crate::launcher::apps::ExecutableSelection),
+    PickedStrategyFile(crate::strategy::StrategyFileSelection),
     Hello { version: u32 },
     Request { id: u32, request: Request },
     Subscribe { topic: Topic },

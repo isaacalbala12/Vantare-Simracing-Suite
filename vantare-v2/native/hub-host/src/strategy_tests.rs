@@ -56,14 +56,14 @@ fn legacy(version: &str, drafts: &str) -> String {
 fn missing_and_valid_empty_are_read_only() {
     let root = Root::new();
     let mut state = root.state();
-    let empty = state.open();
+    let empty = state.open().unwrap();
     assert_eq!(empty.state, StrategyState::Empty);
     assert_eq!(empty.revision, vantare_services::content_hash(b""));
     assert_eq!(empty, state.view());
     assert!(!root.primary().exists());
     let bytes = br#"{"contractVersion":"strategy.v2","schemaVersion":"2.1.0","generatedAt":"2026-11-18T00:00:00Z","events":[]}"#;
     fs::write(root.primary(), bytes).unwrap();
-    assert_eq!(state.open().state, StrategyState::Empty);
+    assert_eq!(state.open().unwrap().state, StrategyState::Empty);
     assert_eq!(state.view().revision, vantare_services::content_hash(bytes));
     assert_eq!(fs::read(root.primary()).unwrap(), bytes);
 }
@@ -75,7 +75,7 @@ fn selection_changes_only_the_two_spans_in_both_supported_schemas() {
         let before = document(schema);
         fs::write(root.primary(), &before).unwrap();
         let mut state = root.state();
-        let opened = state.open();
+        let opened = state.open().unwrap();
         assert_eq!(opened.state, StrategyState::Ready);
         let selected = state
             .select("event-2", "variant-2", &opened.revision)
@@ -107,7 +107,7 @@ fn corruption_quarantined_and_future_or_oversized_originals_protected() {
     let mut state = root.state();
     let corrupt = b"{ damaged";
     fs::write(root.primary(), corrupt).unwrap();
-    let opened = state.open();
+    let opened = state.open().unwrap();
     assert_eq!(opened.state, StrategyState::Recovered);
     assert_eq!(opened.revision, vantare_services::content_hash(corrupt));
     assert_eq!(
@@ -124,7 +124,7 @@ fn corruption_quarantined_and_future_or_oversized_originals_protected() {
         " ".repeat(vantare_strategy::document::MAX_BYTES + 1),
     ] {
         fs::write(root.primary(), &future).unwrap();
-        let opened = state.open();
+        let opened = state.open().unwrap();
         assert_eq!(opened.state, StrategyState::Protected);
         assert_eq!(
             state.select("event-1", "variant-1", &opened.revision),
@@ -149,7 +149,7 @@ fn only_the_last_legacy_draft_is_imported_and_source_bytes_and_mtime_are_untouch
             .unwrap();
         let before = fs::metadata(root.legacy()).unwrap().modified().unwrap();
         let mut state = root.state();
-        assert_eq!(state.open().state, StrategyState::ImportedLegacy);
+        assert_eq!(state.open().unwrap().state, StrategyState::ImportedLegacy);
         assert_eq!(fs::read(root.primary()).unwrap(), newer.as_bytes());
         assert_eq!(fs::read(root.legacy()).unwrap(), source.as_bytes());
         assert_eq!(
@@ -157,7 +157,7 @@ fn only_the_last_legacy_draft_is_imported_and_source_bytes_and_mtime_are_untouch
             before
         );
         fs::write(root.legacy(), b"unreadable JSON").unwrap();
-        assert_eq!(root.state().open().state, StrategyState::Empty);
+        assert_eq!(root.state().open().unwrap().state, StrategyState::Empty);
         assert_eq!(fs::read(root.primary()).unwrap(), newer.as_bytes());
     }
 }
@@ -174,7 +174,7 @@ fn rejects_legacy_bad_hash_duplicate_keys_and_future_envelope_without_writes() {
         let root = Root::new();
         fs::write(root.legacy(), &source).unwrap();
         let mut state = root.state();
-        assert_eq!(state.open().state, StrategyState::Protected);
+        assert_eq!(state.open().unwrap().state, StrategyState::Protected);
         assert!(!root.primary().exists());
         assert_eq!(fs::read(root.legacy()).unwrap(), source.as_bytes());
     }
@@ -185,8 +185,8 @@ fn two_hubs_compare_observed_bytes_and_only_explicit_retry_changes_the_winner() 
     fs::write(root.primary(), document("2.1.0")).unwrap();
     let mut a = root.state();
     let mut b = root.state();
-    let r0 = a.open();
-    assert_eq!(r0, b.open());
+    let r0 = a.open().unwrap();
+    assert_eq!(r0, b.open().unwrap());
     let winner = a.select("event-2", "variant-2", &r0.revision).unwrap();
     let bytes = fs::read(root.primary()).unwrap();
     let conflict = b.select("event-1", "variant-2", &r0.revision).unwrap_err();
@@ -214,7 +214,7 @@ fn invalid_selection_and_busy_writer_preserve_document_and_view() {
     let bytes = document("2.1.0");
     fs::write(root.primary(), &bytes).unwrap();
     let mut state = root.state();
-    let before = state.open();
+    let before = state.open().unwrap();
     for (event, strategy) in [
         ("missing", "variant-1"),
         ("event-1", "missing"),

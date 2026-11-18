@@ -19,6 +19,9 @@ const OPTIONS: Options = Options {
 };
 pub const ID_LIMIT: usize = 256;
 pub const TEXT_LIMIT: usize = 512;
+// With maximal escaped strings this leaves over 64 KiB for the wire envelope.
+const EVENT_LIMIT: usize = 32;
+const VARIANT_LIMIT: usize = 16;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -93,16 +96,17 @@ impl State {
             self.generation = generation.map(str::to_owned);
         }
     }
-    pub(crate) fn open(&mut self) -> StrategyView {
+    pub(crate) fn open(&mut self) -> Result<StrategyView, HostError> {
         let path = self.root.join(PRIMARY);
-        match std::fs::symlink_metadata(&path) {
+        let result = match std::fs::symlink_metadata(&path) {
             Err(error) if error.kind() == io::ErrorKind::NotFound => self.import(),
             _ => self.read_primary(),
-        }
+        };
         self.opened = true;
-        self.view()
+        result?;
+        Ok(self.view())
     }
-    fn import(&mut self) {
+    fn import(&mut self) -> Result<(), HostError> {
         self.doc = None;
         self.revision = hash(b"");
         self.status = StrategyState::Protected;
@@ -110,8 +114,11 @@ impl State {
             Ok(None) => self.status = StrategyState::Empty,
             Ok(Some(bytes)) => {
                 let Ok(doc) = Document::parse(&bytes) else {
-                    return;
+                    return Ok(());
                 };
+                if !summary_fits(&doc) {
+                    return Err(HostError::Protected);
+                }
                 match files::save(
                     &self.root.join(PRIMARY),
                     &bytes,
@@ -123,21 +130,28 @@ impl State {
                         self.doc = Some(doc);
                         self.status = StrategyState::ImportedLegacy;
                     }
-                    Err(error) if error.kind().is_conflict() => self.read_primary(),
+                    Err(error) if error.kind().is_conflict() => return self.read_primary(),
                     Err(_) => {}
                 }
             }
             Err(_) => {}
         }
+        Ok(())
     }
-    fn read_primary(&mut self) {
+    fn read_primary(&mut self) -> Result<(), HostError> {
         let mut revision = hash(b"");
+        let mut oversized = false;
         let opened = Doc::open_or_quarantine(
             &self.root.join(PRIMARY),
             &OPTIONS,
             |bytes| {
                 revision = hash(bytes);
-                parse_primary(bytes).map(Some)
+                let doc = parse_primary(bytes)?;
+                oversized = !summary_fits(&doc);
+                if oversized {
+                    return Err(files::Error::Unsupported("strategy summary limits".into()));
+                }
+                Ok(Some(doc))
             },
             || None,
         );
@@ -153,6 +167,10 @@ impl State {
             (None, false, _) => StrategyState::Empty,
         };
         self.doc = opened.value;
+        if oversized {
+            return Err(HostError::Protected);
+        }
+        Ok(())
     }
     pub(crate) fn view(&self) -> StrategyView {
         let value = self.doc.as_ref().map_or(&Value::Null, Document::value);
@@ -200,7 +218,7 @@ impl State {
             return Err(HostError::Rejected);
         }
         if revision != self.revision {
-            self.read_primary();
+            self.read_primary()?;
             return Err(HostError::StrategyConflict {
                 current: self.view(),
             });
@@ -230,7 +248,7 @@ impl State {
                 Ok(self.view())
             }
             Err(error) if error.kind().is_conflict() => {
-                self.read_primary();
+                self.read_primary()?;
                 Err(HostError::StrategyConflict {
                     current: self.view(),
                 })
@@ -261,6 +279,13 @@ fn parse_primary(bytes: &[u8]) -> Result<Document, files::Error> {
         }
     }
     Document::parse(bytes).map_err(files::Error::InvalidInput)
+}
+fn summary_fits(doc: &Document) -> bool {
+    let events = array(&doc.value()["events"]);
+    events.len() <= EVENT_LIMIT
+        && events
+            .iter()
+            .all(|event| array(&event["strategies"]).len() <= VARIANT_LIMIT)
 }
 fn document_state(doc: &Document) -> StrategyState {
     if array(&doc.value()["events"]).is_empty() {

@@ -13,9 +13,7 @@ pub(super) fn dispatch(
     strategy.observe(session.current.account_generation.as_deref(), allowed);
     let result = if allowed {
         match request {
-            Request::StrategyOpen {} => Ok(Reply::StrategyOpen {
-                value: strategy.open(),
-            }),
+            Request::StrategyOpen {} => strategy.open().map(|value| Reply::StrategyOpen { value }),
             Request::StrategyView {} => Ok(Reply::StrategyView {
                 value: strategy.view(),
             }),
@@ -35,15 +33,5 @@ pub(super) fn dispatch(
         Ok(result) => HostToUi::Response { id, result },
         Err(error) => HostToUi::Failure { id, error },
     };
-    if serde_json::to_vec(&message).is_ok_and(|bytes| bytes.len() <= frame::LIMIT) {
-        frame::write(pipe, &message)
-    } else {
-        frame::write(
-            pipe,
-            &HostToUi::Failure {
-                id,
-                error: HostError::Rejected,
-            },
-        )
-    }
+    frame::write(pipe, &message)
 }

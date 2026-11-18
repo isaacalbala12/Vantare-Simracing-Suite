@@ -1,7 +1,7 @@
 use crate::protocol::bindings::{declare, sample_response};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 use crate::strategy::{
-    ID_LIMIT, StrategyEvent, StrategyState, StrategyVariant, StrategyView, TEXT_LIMIT,
+    ID_LIMIT, StrategyEventSummary, StrategyState, StrategyVariant, StrategyView, TEXT_LIMIT,
 };
 use serde_json::json;
 
@@ -9,7 +9,7 @@ pub(crate) fn typescript() -> String {
     let mut text = String::new();
     declare::<StrategyState>(&mut text);
     declare::<StrategyVariant>(&mut text);
-    declare::<StrategyEvent>(&mut text);
+    declare::<StrategyEventSummary>(&mut text);
     declare::<StrategyView>(&mut text);
     crate::protocol::bindings::constants!(
         &mut text,
@@ -33,7 +33,7 @@ pub(crate) fn corpus() -> serde_json::Value {
     let ready = StrategyView {
         revision: "a".repeat(64),
         state: StrategyState::Ready,
-        events: vec![StrategyEvent {
+        events: vec![StrategyEventSummary {
             id: "event-1".into(),
             name: "Practice".into(),
             class: "GT3".into(),

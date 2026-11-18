@@ -43,7 +43,7 @@ pub struct StrategyVariant {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(deny_unknown_fields)]
-pub struct StrategyEvent {
+pub struct StrategyEventSummary {
     pub id: String,
     pub name: String,
     pub class: String,
@@ -58,7 +58,7 @@ pub struct StrategyEvent {
 pub struct StrategyView {
     pub revision: String,
     pub state: StrategyState,
-    pub events: Vec<StrategyEvent>,
+    pub events: Vec<StrategyEventSummary>,
     pub active_event_id: Option<String>,
     pub active_strategy_id: Option<String>,
     #[cfg_attr(any(test, feature = "bindings"), ts(type = "false"))]
@@ -294,8 +294,8 @@ fn text(value: &Value) -> String {
         .unwrap_or_default()
         .to_owned()
 }
-fn project_event(value: &Value) -> Option<StrategyEvent> {
-    Some(StrategyEvent {
+fn project_event(value: &Value) -> Option<StrategyEventSummary> {
+    Some(StrategyEventSummary {
         id: id(&value["id"])?,
         name: text(&value["name"]),
         class: text(&value["cls"]),

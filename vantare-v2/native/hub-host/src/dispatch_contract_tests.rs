@@ -410,3 +410,7 @@ mod analysis_dispatch_tests;
 
 #[path = "protocol/modules/strategy/dispatch_tests.rs"]
 mod strategy_dispatch_tests;
+
+#[cfg(windows)]
+#[path = "analysis_e2e.rs"]
+mod analysis_e2e;

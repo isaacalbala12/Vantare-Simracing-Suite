@@ -53,52 +53,84 @@ pub struct StrategyComputeForm {
 
 impl StrategyComputeForm {
     pub(super) fn manual(&self) -> Result<ManualEvent, HostError> {
-        let mut manual = self.fields.manual()?;
-        for (entry, target) in [
-            (
-                &self.inputs.base_pace_seconds,
-                &mut manual.base_pace_seconds,
-            ),
-            (
-                &self.inputs.fuel_per_lap_liters,
-                &mut manual.fuel_per_lap_liters,
-            ),
-            (&self.inputs.race_laps, &mut manual.race_laps),
-            (
-                &self.inputs.ve_capacity_percent,
-                &mut manual.ve_capacity_percent,
-            ),
-            (
-                &self.inputs.ve_per_lap_percent,
-                &mut manual.ve_per_lap_percent,
-            ),
-            (&self.inputs.tyre_life_laps, &mut manual.tyre_life_laps),
-            (
-                &self.inputs.degradation_seconds,
-                &mut manual.degradation_seconds,
-            ),
-            (&self.inputs.refuel_rate, &mut manual.refuel_rate),
-            (&self.inputs.ve_rate, &mut manual.ve_rate),
-            (
-                &self.inputs.tyre_service_seconds,
-                &mut manual.tyre_service_seconds,
-            ),
-            (
-                &self.inputs.formation_seconds,
-                &mut manual.formation_seconds,
-            ),
-            (&self.inputs.fuel_step, &mut manual.fuel_step),
-            (&self.inputs.ve_step, &mut manual.ve_step),
-            (&self.inputs.reserve_laps, &mut manual.reserve_laps),
-            (&self.inputs.service_mode, &mut manual.service_mode),
-        ] {
-            if !valid_text(entry) {
-                return Err(HostError::StrategyInvalidText);
-            }
-            target.clone_from(entry);
-        }
-        Ok(manual)
+        manual_with(&self.fields, &self.inputs)
     }
+
+    /// The entries a document holds for one variant, as the form that
+    /// `strategy.compute` takes. `None` when any of the 28 texts is not valid wire
+    /// text (over the limit or with a control character): a text is never cut or
+    /// emptied to make it fit.
+    pub(super) fn read(manual: &ManualEvent) -> Option<Self> {
+        ManualField::ALL
+            .iter()
+            .all(|&field| valid_text(&manual[field]))
+            .then(|| Self {
+                fields: StrategyFields {
+                    name: manual.name.clone(),
+                    duration_minutes: manual.duration_minutes.clone(),
+                    fuel_capacity_liters: manual.fuel_capacity_liters.clone(),
+                    pit_transit_seconds: manual.pit_transit_seconds.clone(),
+                    track: manual.track.clone(),
+                    class: manual.class.clone(),
+                    variant_name: manual.variant_name.clone(),
+                    variant_note: manual.variant_note.clone(),
+                    variant_mode: manual.variant_mode.clone(),
+                    start_at: manual.start_at.clone(),
+                    team: manual.team.clone(),
+                    driver_name: manual.driver_name.clone(),
+                    driver_initials: manual.driver_initials.clone(),
+                },
+                inputs: StrategySolverFields {
+                    base_pace_seconds: manual.base_pace_seconds.clone(),
+                    fuel_per_lap_liters: manual.fuel_per_lap_liters.clone(),
+                    race_laps: manual.race_laps.clone(),
+                    ve_capacity_percent: manual.ve_capacity_percent.clone(),
+                    ve_per_lap_percent: manual.ve_per_lap_percent.clone(),
+                    tyre_life_laps: manual.tyre_life_laps.clone(),
+                    degradation_seconds: manual.degradation_seconds.clone(),
+                    refuel_rate: manual.refuel_rate.clone(),
+                    ve_rate: manual.ve_rate.clone(),
+                    tyre_service_seconds: manual.tyre_service_seconds.clone(),
+                    formation_seconds: manual.formation_seconds.clone(),
+                    fuel_step: manual.fuel_step.clone(),
+                    ve_step: manual.ve_step.clone(),
+                    reserve_laps: manual.reserve_laps.clone(),
+                    service_mode: manual.service_mode.clone(),
+                },
+            })
+    }
+}
+
+/// The 13 fields and the 15 inputs as one manual event: `compute` and `create` with
+/// inputs read them the same way (every text valid, then the crate's checks).
+pub(super) fn manual_with(
+    fields: &StrategyFields,
+    inputs: &StrategySolverFields,
+) -> Result<ManualEvent, HostError> {
+    let mut manual = fields.manual()?;
+    for (entry, target) in [
+        (&inputs.base_pace_seconds, &mut manual.base_pace_seconds),
+        (&inputs.fuel_per_lap_liters, &mut manual.fuel_per_lap_liters),
+        (&inputs.race_laps, &mut manual.race_laps),
+        (&inputs.ve_capacity_percent, &mut manual.ve_capacity_percent),
+        (&inputs.ve_per_lap_percent, &mut manual.ve_per_lap_percent),
+        (&inputs.tyre_life_laps, &mut manual.tyre_life_laps),
+        (&inputs.degradation_seconds, &mut manual.degradation_seconds),
+        (&inputs.refuel_rate, &mut manual.refuel_rate),
+        (&inputs.ve_rate, &mut manual.ve_rate),
+        (&inputs.tyre_service_seconds, &mut manual.tyre_service_seconds),
+        (&inputs.formation_seconds, &mut manual.formation_seconds),
+        (&inputs.fuel_step, &mut manual.fuel_step),
+        (&inputs.ve_step, &mut manual.ve_step),
+        (&inputs.reserve_laps, &mut manual.reserve_laps),
+        (&inputs.service_mode, &mut manual.service_mode),
+    ] {
+        if !valid_text(entry) {
+            return Err(HostError::StrategyInvalidText);
+        }
+        target.clone_from(entry);
+    }
+    Ok(manual)
 }
 
 macro_rules! strategy_fields {

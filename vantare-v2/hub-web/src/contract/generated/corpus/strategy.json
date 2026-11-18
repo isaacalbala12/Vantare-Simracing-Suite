@@ -13,6 +13,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -30,6 +31,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -57,6 +92,7 @@
           "file": {
             "name": "strategy-v2.json"
           },
+          "form": null,
           "plan": {
             "computeId": null,
             "edit": null,
@@ -83,6 +119,7 @@
           "file": {
             "name": "strategy-v2.json"
           },
+          "form": null,
           "plan": {
             "computeId": null,
             "edit": null,
@@ -109,6 +146,7 @@
           "file": {
             "name": "strategy-v2.json"
           },
+          "form": null,
           "plan": {
             "computeId": null,
             "edit": null,
@@ -135,6 +173,7 @@
           "file": {
             "name": "strategy-v2.json"
           },
+          "form": null,
           "plan": {
             "computeId": null,
             "edit": null,
@@ -161,6 +200,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -178,6 +218,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -205,6 +279,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -222,6 +297,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -249,6 +358,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -266,6 +376,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -293,6 +437,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -310,6 +455,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -337,6 +516,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -354,6 +534,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -381,6 +595,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -398,6 +613,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -422,6 +671,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -439,6 +689,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -525,6 +809,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -542,6 +827,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -569,6 +888,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -586,6 +906,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -677,6 +1031,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -694,6 +1049,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -731,6 +1120,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -748,6 +1138,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -775,6 +1199,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -792,6 +1217,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 8,
@@ -819,6 +1278,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -836,6 +1296,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -863,6 +1357,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -880,6 +1375,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -907,6 +1436,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -924,6 +1454,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -1037,6 +1601,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1054,6 +1619,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -1167,6 +1766,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1184,6 +1784,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 8,
@@ -1297,6 +1931,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1314,6 +1949,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 8,
@@ -1427,6 +2096,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1444,6 +2114,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 8,
@@ -1514,6 +2218,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1531,6 +2236,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -1644,6 +2383,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1661,6 +2401,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -1726,6 +2500,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1743,6 +2518,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -1808,6 +2617,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1825,6 +2635,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -1868,6 +2712,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1885,6 +2730,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -1922,6 +2801,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1939,6 +2819,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -1976,6 +2890,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -1993,6 +2908,40 @@
           ],
           "file": {
             "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": 7,
@@ -2021,6 +2970,85 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": false,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": false,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "",
+              "formationSeconds": "",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "",
+              "raceLaps": "",
+              "refuelRate": "",
+              "reserveLaps": "",
+              "serviceMode": "",
+              "tyreLifeLaps": "",
+              "tyreServiceSeconds": "",
+              "veCapacityPercent": "",
+              "vePerLapPercent": "",
+              "veRate": "",
+              "veStep": ""
+            }
+          },
+          "plan": {
+            "computeId": null,
+            "edit": null,
+            "error": null,
+            "errorField": null,
+            "result": null,
+            "state": "uncalculated"
+          },
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "strategy.pickFile",
         "value": {
           "activeEventId": "event-1",
@@ -2030,6 +3058,7 @@
             {
               "class": "GT3",
               "drivers": 1,
+              "hasInputs": true,
               "id": "event-1",
               "name": "Practice",
               "strategies": [
@@ -2047,6 +3076,40 @@
           ],
           "file": {
             "name": "carreras-2026.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
           },
           "plan": {
             "computeId": null,
@@ -2108,6 +3171,49 @@
           "variantNote": ""
         },
         "fuelPerLapLiters": "1.83",
+        "inputs": null,
+        "method": "strategy.create",
+        "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "basePaceSeconds": null,
+        "fields": {
+          "class": "GT3",
+          "driverInitials": "PI",
+          "driverName": "Pilot",
+          "durationMinutes": "90",
+          "fuelCapacityLiters": "82",
+          "name": "Practice",
+          "pitTransitSeconds": "25",
+          "startAt": "",
+          "team": "",
+          "track": "Fuji",
+          "variantMode": "dry",
+          "variantName": "Base",
+          "variantNote": ""
+        },
+        "fuelPerLapLiters": null,
+        "inputs": {
+          "basePaceSeconds": "90.472",
+          "degradationSeconds": "0",
+          "formationSeconds": "0",
+          "fuelPerLapLiters": "1.83",
+          "fuelStep": "1",
+          "raceLaps": "3",
+          "refuelRate": "1",
+          "reserveLaps": "1",
+          "serviceMode": "parallel",
+          "tyreLifeLaps": "30",
+          "tyreServiceSeconds": "10",
+          "veCapacityPercent": "100",
+          "vePerLapPercent": "5",
+          "veRate": "1",
+          "veStep": "1"
+        },
         "method": "strategy.create",
         "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       }

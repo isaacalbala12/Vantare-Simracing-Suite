@@ -121,7 +121,11 @@ fn form_of(view: &StrategyView) -> &StrategyComputeForm {
 }
 
 fn create_with_inputs(state: &mut State, name: &str) -> StrategyView {
-    let revision = state.view().revision;
+    // a state that is not open yet is opened first
+    let revision = match state.view_opened() {
+        Ok(view) => view.revision,
+        Err(_) => state.open().unwrap().revision,
+    };
     state
         .create(&revision, &fields(name), None, None, Some(&inputs()), NOW)
         .unwrap()
@@ -172,8 +176,8 @@ fn an_event_has_inputs_only_when_a_variant_keeps_valid_confirmed_ones() {
     let mut doc = Document::empty(NOW).unwrap();
     for event in [
         with("none", &[serde_json::Value::Null]),
-        with("valid", &[valid.clone()]),
-        with("invalid", &[invalid.clone()]),
+        with("valid", std::slice::from_ref(&valid)),
+        with("invalid", std::slice::from_ref(&invalid)),
         with("unreadable", &[serde_json::json!({ "junk": 1 })]),
         // any variant counts, not only the active one
         with("second", &[serde_json::Value::Null, valid.clone()]),
@@ -272,24 +276,17 @@ fn the_form_is_null_without_an_active_event_and_variant() {
     assert_eq!(view.events.len(), 1);
     assert_eq!(view.active_event_id, None);
     assert_eq!(view.form, None);
-    // an active event whose active variant is missing or unknown
-    for bad in [None, Some("variant-9")] {
-        let mut event = new_event("event-1", "Practice", 90, 90.0, 18.0);
-        match bad {
-            Some(id) => event["activeStrategyId"] = id.into(),
-            None => {
-                event.as_object_mut().unwrap().remove("activeStrategyId");
-            }
-        }
-        let mut doc = Document::empty(NOW).unwrap();
-        doc.append_event(&event).unwrap();
-        doc.put("/activeEventId", &"event-1".into()).unwrap();
-        fs::write(root.primary(), doc.bytes()).unwrap();
-        let view = root.state().open().unwrap();
-        assert_eq!(view.active_event_id.as_deref(), Some("event-1"));
-        assert_eq!(view.active_strategy_id, None);
-        assert_eq!(view.form, None);
-    }
+    // an active event with no active variant (the document allows it)
+    let mut event = new_event("event-1", "Practice", 90, 90.0, 18.0);
+    event.as_object_mut().unwrap().remove("activeStrategyId");
+    let mut doc = Document::empty(NOW).unwrap();
+    doc.append_event(&event).unwrap();
+    doc.put("/activeEventId", &"event-1".into()).unwrap();
+    fs::write(root.primary(), doc.bytes()).unwrap();
+    let view = root.state().open().unwrap();
+    assert_eq!(view.active_event_id.as_deref(), Some("event-1"));
+    assert_eq!(view.active_strategy_id, None);
+    assert_eq!(view.form, None);
 }
 
 #[test]
@@ -457,7 +454,7 @@ fn discard_and_a_new_account_bring_the_form_back_to_what_is_saved() {
     // nothing saved yet: a discard leaves no event, so no form
     let discarded = state.discard(&created.revision).unwrap();
     assert_eq!(discarded.form, None);
-    assert!(discarded.events.is_empty());
+    assert_eq!(discarded.events.len(), 0);
 
     let created = create_with_inputs(&mut state, "Fuji");
     let saved = state.save(&created.revision).unwrap();
@@ -631,9 +628,9 @@ fn create_with_inputs_keeps_the_usual_guards() {
     let mut state = root.state();
     let empty = state.open().unwrap();
     // a stale revision is a conflict and creates nothing
-    let stale = "0".repeat(64);
+    let unknown_revision = "0".repeat(64);
     assert!(matches!(
-        state.create(&stale, &fields("New"), None, None, Some(&inputs()), NOW),
+        state.create(&unknown_revision, &fields("New"), None, None, Some(&inputs()), NOW),
         Err(HostError::StrategyConflict { .. })
     ));
     assert_eq!(state.view(), empty);

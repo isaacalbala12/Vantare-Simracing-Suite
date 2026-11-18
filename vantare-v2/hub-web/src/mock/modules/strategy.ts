@@ -9,6 +9,7 @@ import type {
   StrategyFields,
   StrategyPlanView,
   StrategyReason,
+  StrategySolverFields,
   StrategyView,
 } from "../../contract/generated/strategy";
 import { strategyReasons } from "../../contract/generated/strategy";
@@ -24,6 +25,47 @@ function sample(state: string): StrategyView {
   )?.result?.value;
   if (!value) throw Error("Unknown strategy fixture");
   return structuredClone(value) as StrategyView;
+}
+
+type Form = NonNullable<StrategyView["form"]>;
+type Summary = StrategyView["events"][number];
+
+// The scene of an event that holds no confirmed inputs: the sample of the corpus.
+function withoutInputs(): StrategyView {
+  const value = corpus.host.find(
+    (item) =>
+      item.result?.method === "strategy.view" &&
+      item.result.value.events[0]?.hasInputs === false,
+  )?.result?.value;
+  if (!value) throw Error("Missing strategy fixture without inputs");
+  return structuredClone(value) as StrategyView;
+}
+
+const noInputs: StrategySolverFields = {
+  basePaceSeconds: "",
+  fuelPerLapLiters: "",
+  raceLaps: "",
+  veCapacityPercent: "",
+  vePerLapPercent: "",
+  tyreLifeLaps: "",
+  degradationSeconds: "",
+  refuelRate: "",
+  veRate: "",
+  tyreServiceSeconds: "",
+  formationSeconds: "",
+  fuelStep: "",
+  veStep: "",
+  reserveLaps: "",
+  serviceMode: "",
+};
+
+const formKey = (event: string, variant: string) => `${event}/${variant}`;
+
+// The host trims every text it writes.
+function trimmed(fields: StrategyFields): StrategyFields {
+  return Object.fromEntries(
+    Object.entries(fields).map(([key, value]) => [key, value.trim()]),
+  ) as unknown as StrategyFields;
 }
 
 const noPlan: StrategyPlanView = {
@@ -167,6 +209,34 @@ function validForm(fields: StrategyFields, creating: boolean): boolean {
   );
 }
 
+// What the host checks in the 15 inputs, as compute does: whole laps, positive
+// pace and rates, the other numbers not negative, a known service mode.
+function validInputs(inputs: StrategySolverFields): boolean {
+  const number = (value: string, minimum: number, positive = false) =>
+    validNumber(value, positive ? Number.MIN_VALUE : minimum);
+  return (
+    /^[+]?[0-9]+$/.test(inputs.raceLaps.trim()) &&
+    Number(inputs.raceLaps) >= 1 &&
+    Number(inputs.raceLaps) <= 100000 &&
+    number(inputs.basePaceSeconds, 0, true) &&
+    number(inputs.refuelRate, 0, true) &&
+    number(inputs.veRate, 0, true) &&
+    number(inputs.fuelPerLapLiters, 0) &&
+    number(inputs.veCapacityPercent, 0) &&
+    Number(inputs.veCapacityPercent) <= 100 &&
+    number(inputs.vePerLapPercent, 0) &&
+    number(inputs.tyreLifeLaps, 0) &&
+    Number.isInteger(Number(inputs.tyreLifeLaps)) &&
+    number(inputs.degradationSeconds, 0) &&
+    number(inputs.tyreServiceSeconds, 0) &&
+    number(inputs.formationSeconds, 0) &&
+    number(inputs.fuelStep, 0) &&
+    number(inputs.veStep, 0) &&
+    number(inputs.reserveLaps, 0) &&
+    ["parallel", "sequential"].includes(inputs.serviceMode.trim())
+  );
+}
+
 export function create(context: MockContext): MockHandler {
   const scenario = context.sceneName.startsWith("strategy-")
     ? context.sceneName.slice(9)
@@ -175,23 +245,85 @@ export function create(context: MockContext): MockHandler {
     context.core.access.verified = true;
     context.core.accountGeneration = "a".repeat(64);
   }
-  // the recalculation, reason, file and error scenes (QA) start from a ready document
-  const opening = ["recalc", "reason", "file", "target", "pick"].some(
-    (prefix) => scenario.startsWith(prefix),
-  )
+  // the recalculation, reason, file, data and error scenes (QA) start from a ready document
+  const opening = [
+    "recalc",
+    "reason",
+    "file",
+    "target",
+    "pick",
+    "noInputs",
+    "planned",
+  ].some((prefix) => scenario.startsWith(prefix))
     ? "ready"
     : scenario;
-  let saved = sample(
-    ["ready", "recovered", "protected", "importedLegacy"].includes(opening)
-      ? opening
-      : "empty",
-  );
+  let saved =
+    scenario === "noInputs"
+      ? withoutInputs()
+      : sample(
+          ["ready", "recovered", "protected", "importedLegacy"].includes(
+            opening,
+          )
+            ? opening
+            : "empty",
+        );
   let current = structuredClone(saved);
+  // The entries of each variant written in this session (create, confirm and a
+  // calculation), as the host keeps them in the document; the others are the
+  // sample's. `saved` and `savedForms` move together.
+  let forms: Record<string, Form> = {};
+  let savedForms: Record<string, Form> = {};
+  const initial = current.form;
+  if (initial && current.activeEventId && current.activeStrategyId)
+    forms[formKey(current.activeEventId, current.activeStrategyId)] =
+      structuredClone(initial);
+  savedForms = structuredClone(forms);
+
+  // The form of a variant: what was written, or the sample's form named after it.
+  function formOf(
+    event: Summary,
+    variant: Summary["strategies"][number],
+  ): Form {
+    const written = forms[formKey(event.id, variant.id)];
+    if (written) return structuredClone(written);
+    const base = structuredClone(
+      (initial ?? sample("ready").form) as Form,
+    ) as Form;
+    base.fields = {
+      ...base.fields,
+      name: event.name,
+      class: event.class,
+      track: event.track,
+      variantName: variant.name,
+    };
+    if (!event.hasInputs) base.inputs = { ...noInputs };
+    return base;
+  }
+  function activeForm(view: StrategyView): Form | null {
+    const event = view.events.find(({ id }) => id === view.activeEventId);
+    const variant = event?.strategies.find(
+      ({ id }) => id === view.activeStrategyId,
+    );
+    return event && variant ? formOf(event, variant) : null;
+  }
+  function commit() {
+    saved = structuredClone({ ...current, plan: noPlan });
+    savedForms = structuredClone(forms);
+  }
+  function restore() {
+    current = structuredClone(saved);
+    forms = structuredClone(savedForms);
+  }
   let opened = false;
   let sequence = 0;
   let computeSequence = 0;
   let pending:
-    | { id: number; fields: StrategyFields; valid: boolean }
+    | {
+        id: number;
+        fields: StrategyFields;
+        inputs: StrategySolverFields;
+        valid: boolean;
+      }
     | undefined;
   let editing: Editing | undefined;
   let recalculating: number | undefined;
@@ -227,10 +359,12 @@ export function create(context: MockContext): MockHandler {
         track: "Spa",
         drivers: 1,
         strategies: [{ id: "variant-1", name: "Base" }],
+        hasInputs: true,
       },
     ];
     view.activeEventId = "event-9";
     view.activeStrategyId = "variant-1";
+    view.form = null; // set below, once the other document is the current one
     view.revision = (0x1000 + ++sequence).toString(16).padStart(64, "0");
     view.file = { name };
     return view;
@@ -285,7 +419,11 @@ export function create(context: MockContext): MockHandler {
       editing = undefined;
       recalculating = undefined;
       saved = otherDocument(name);
+      forms = {};
       current = structuredClone(saved);
+      current.form = activeForm(current);
+      saved = structuredClone(current);
+      savedForms = {};
       return respond();
     }
     if (name !== current.file?.name) {
@@ -296,7 +434,7 @@ export function create(context: MockContext): MockHandler {
       current.file = { name };
     }
     current.dirty = false;
-    saved = structuredClone({ ...current, plan: noPlan });
+    commit();
     return respond();
   }
 
@@ -342,6 +480,7 @@ export function create(context: MockContext): MockHandler {
       state: "ready",
       dirty: true,
     };
+    current.form = activeForm(current);
   }
 
   return (message) => {
@@ -374,7 +513,7 @@ export function create(context: MockContext): MockHandler {
       pending = undefined;
       editing = undefined;
       recalculating = undefined;
-      current = structuredClone(saved);
+      restore();
       opened = false;
     }
     if (!allowed) return failure({ kind: "denied" });
@@ -387,8 +526,16 @@ export function create(context: MockContext): MockHandler {
       pending = undefined;
       editing = undefined;
       recalculating = undefined;
-      current = structuredClone(saved);
+      restore();
       opened = true;
+      if (scenario === "planned") {
+        // QA: a document with its plan already calculated and editable
+        current.plan = {
+          ...calculation("calculated"),
+          computeId: ++computeSequence,
+        };
+        editing = startEditing(current.plan);
+      }
     }
     if (!opened) return failure({ kind: "denied" });
     if (request.method === "strategy.pickFile") {
@@ -510,6 +657,7 @@ export function create(context: MockContext): MockHandler {
       pending = {
         id: ++computeSequence,
         fields,
+        inputs,
         valid:
           validForm(fields, false) &&
           validNumber(inputs.basePaceSeconds, Number.MIN_VALUE) &&
@@ -556,14 +704,21 @@ export function create(context: MockContext): MockHandler {
       }
       current.plan = editedPlan(editing, finished);
     } else if (request.method === "strategy.view" && pending) {
-      const { id, valid, fields } = pending;
+      const { id, valid, fields, inputs } = pending;
       pending = undefined;
       if (valid) {
+        // a calculation confirms its inputs, whatever it finds (the host keeps no plan)
+        if (current.activeEventId && current.activeStrategyId)
+          forms[formKey(current.activeEventId, current.activeStrategyId)] = {
+            fields: trimmed(fields),
+            inputs: { ...inputs },
+          };
         const events = current.events.map((event) =>
           event.id !== current.activeEventId
             ? event
             : {
                 ...event,
+                hasInputs: true,
                 name: fields.name.trim(),
                 class: fields.class.trim(),
                 track: fields.track.trim(),
@@ -585,14 +740,22 @@ export function create(context: MockContext): MockHandler {
       editing = valid ? startEditing(current.plan) : undefined;
     }
     if (request.method === "strategy.create") {
-      const { fields } = request;
+      const { fields, inputs } = request;
       if (current.events.length >= 32)
         return failure({ kind: "strategyInvalidText" });
       if (
         !validForm(fields, true) ||
         [request.basePaceSeconds, request.fuelPerLapLiters].some(
           (value) => value?.trim() && !validNumber(value, Number.MIN_VALUE),
-        )
+        ) ||
+        // QA: the host refuses every creation with inputs
+        (inputs && scenario === "createRejected") ||
+        // the inputs replace the loose pair; they are checked as compute does
+        (inputs &&
+          (request.basePaceSeconds !== null ||
+            request.fuelPerLapLiters !== null ||
+            !validInputs(inputs) ||
+            fields.variantMode.trim() !== "dry"))
       )
         return failure({ kind: "rejected" });
       let number = 1;
@@ -609,6 +772,17 @@ export function create(context: MockContext): MockHandler {
         strategies: [
           { id: "variant-1", name: fields.variantName.trim() || "Base" },
         ],
+        hasInputs: inputs !== null,
+      };
+      forms[formKey(event.id, "variant-1")] = {
+        fields: trimmed(fields),
+        inputs: inputs
+          ? { ...inputs }
+          : {
+              ...noInputs,
+              basePaceSeconds: request.basePaceSeconds?.trim() ?? "",
+              fuelPerLapLiters: request.fuelPerLapLiters?.trim() ?? "",
+            },
       };
       edit({
         events: [...current.events, event],
@@ -641,6 +815,10 @@ export function create(context: MockContext): MockHandler {
         updated.class = fields.class.trim();
         updated.track = fields.track.trim();
         updated.strategies[variant].name = fields.variantName.trim();
+        forms[formKey(updated.id, updated.strategies[variant].id)] = {
+          fields: trimmed(fields),
+          inputs: formOf(event, event.strategies[variant]).inputs,
+        };
         edit({ events });
       } else if (!active) {
         edit({
@@ -649,17 +827,17 @@ export function create(context: MockContext): MockHandler {
         });
         current.plan = noPlan;
         current.dirty = false;
-        saved = structuredClone({ ...current, plan: noPlan });
+        commit();
       }
     }
     if (request.method === "strategy.save") {
       current.dirty = false;
-      saved = structuredClone({ ...current, plan: noPlan });
+      commit();
     } else if (request.method === "strategy.discard") {
       pending = undefined;
       editing = undefined;
       recalculating = undefined;
-      current = structuredClone(saved);
+      restore();
     }
     return {
       kind: "response",

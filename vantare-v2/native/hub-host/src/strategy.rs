@@ -7,8 +7,9 @@ use std::{io, path::PathBuf};
 use ts_rs::TS;
 use vantare_ipc::files::{self, Doc, Mode, Options};
 use vantare_strategy::{
-    application::{ManualEvent, repository::import_last_draft, select_event},
+    application::{self, ManualEvent, repository::import_last_draft, select_event},
     document::{Document, MAX_BYTES, SCHEMA_VERSION_V2, SCHEMA_VERSION_V2_RULES},
+    solver::Input,
 };
 
 #[path = "strategy_calculation.rs"]
@@ -100,8 +101,9 @@ pub struct StrategyView {
     /// them: the 13 `fields` and the 15 `inputs`, the same strings
     /// `strategy.compute` takes. `null` without an active event and variant, or
     /// when a stored text is over the text limit or has a control character (it is
-    /// never cut or emptied). Without confirmed calculation inputs `inputs` are empty
-    /// strings, apart from the pace and consumption the event may hold.
+    /// never cut or emptied). Without confirmed calculation inputs (`hasInputs`
+    /// false) `inputs` are empty strings, apart from the pace and consumption the
+    /// event may hold. Numbers are spelled as the document stores them (`82.0`).
     pub form: Option<Box<StrategyComputeForm>>,
 }
 
@@ -334,6 +336,7 @@ impl State {
                 .find(|variant| variant.id == id)
                 .map(|variant| variant.id.clone())
         });
+        let form = self.form(active_event_id.as_deref(), active_strategy_id.as_deref());
         StrategyView {
             revision: self.revision.clone(),
             state: self.status,
@@ -343,8 +346,19 @@ impl State {
             dirty: self.dirty(),
             plan: self.calculation.view().clone(),
             file: self.file(),
-            form: None,
+            form,
         }
+    }
+
+    /// The entries of the active variant, read from the document or its draft.
+    fn form(
+        &self,
+        event_id: Option<&str>,
+        strategy_id: Option<&str>,
+    ) -> Option<Box<StrategyComputeForm>> {
+        let doc = self.doc.as_ref()?;
+        let (event, variant) = indices(doc, event_id?, strategy_id?).ok()?;
+        StrategyComputeForm::read(&ManualEvent::read(doc, event, variant)).map(Box::new)
     }
     pub(crate) fn select(
         &mut self,
@@ -383,24 +397,42 @@ impl State {
         fields: &StrategyFields,
         pace: Option<&str>,
         consumption: Option<&str>,
-        _inputs: Option<&StrategySolverFields>,
+        inputs: Option<&StrategySolverFields>,
         now: &str,
     ) -> Result<StrategyView, HostError> {
         self.require_clean()?;
         self.require_edit(revision)?;
-        let mut manual = fields.manual()?;
-        let pace = pace.unwrap_or_default();
-        let consumption = consumption.unwrap_or_default();
-        if !valid_text(pace) || !valid_text(consumption) {
-            return Err(HostError::StrategyInvalidText);
-        }
-        manual.base_pace_seconds = pace.into();
-        manual.fuel_per_lap_liters = consumption.into();
+        let manual = match inputs {
+            // the inputs replace the loose pair; sending both is ambiguous
+            Some(_) if pace.is_some() || consumption.is_some() => {
+                return Err(HostError::Rejected);
+            }
+            Some(inputs) => calculation::manual_with(fields, inputs)?,
+            None => {
+                let mut manual = fields.manual()?;
+                let pace = pace.unwrap_or_default();
+                let consumption = consumption.unwrap_or_default();
+                if !valid_text(pace) || !valid_text(consumption) {
+                    return Err(HostError::StrategyInvalidText);
+                }
+                manual.base_pace_seconds = pace.into();
+                manual.fuel_per_lap_liters = consumption.into();
+                manual
+            }
+        };
         let mut next = self
             .doc
             .clone()
             .map_or_else(|| Document::empty(now).map_err(|_| HostError::Io), Ok)?;
-        manual.append(&mut next).map_err(|_| HostError::Rejected)?;
+        let event = manual.append(&mut next).map_err(|_| HostError::Rejected)?;
+        if inputs.is_some() {
+            // the confirmation `compute` makes, without the calculation: the same
+            // checks, in a draft of its own, so a failure creates nothing
+            let input = manual
+                .prepare(&mut next, event, 0)
+                .map_err(|_| HostError::Rejected)?;
+            application::prepare_manual(input).map_err(|_| HostError::Rejected)?;
+        }
         self.set_draft(next)
     }
 
@@ -784,6 +816,13 @@ fn valid_revision(revision: &str) -> bool {
 fn id(value: &Value) -> Option<String> {
     value.as_str().filter(|id| valid_id(id)).map(str::to_owned)
 }
+/// The confirmed calculation inputs of a variant, when they read as the solver
+/// input and pass its checks: a plan can be calculated from them.
+fn valid_inputs(value: &Value) -> bool {
+    value.is_object()
+        && serde_json::from_value::<Input>(value.clone())
+            .is_ok_and(|input| input.validate().is_ok())
+}
 fn text(value: &Value) -> String {
     value["value"].as_str().unwrap_or_default().to_owned()
 }
@@ -803,7 +842,9 @@ fn project_event(value: &Value) -> Option<StrategyEventSummary> {
                 })
             })
             .collect(),
-        has_inputs: false,
+        has_inputs: array(&value["strategies"])
+            .iter()
+            .any(|variant| valid_inputs(&variant["overrides"]["nativeScalarInput"])),
     })
 }
 #[cfg(test)]

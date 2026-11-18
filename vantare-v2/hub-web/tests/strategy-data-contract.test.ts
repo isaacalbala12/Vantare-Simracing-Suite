@@ -32,11 +32,12 @@ function session(scene: string) {
   const view = (request: unknown): StrategyView => {
     const reply = send(request);
     if (reply?.kind !== "response") throw Error(JSON.stringify(reply));
-    return reply.result.value as unknown as StrategyView;
+    return (reply.result as { value: unknown }).value as StrategyView;
   };
   const failure = (request: unknown) => {
     const reply = send(request);
-    if (reply?.kind !== "failure") throw Error(JSON.stringify(reply));
+    if (reply?.kind !== "failure")
+      throw Error(`${JSON.stringify(request)} -> ${JSON.stringify(reply)}`);
     return reply.error;
   };
   const open = () => view({ method: "strategy.open" });
@@ -85,7 +86,10 @@ it("a create has the key inputs, with the exact 15 texts of compute or null", ()
       `long ${key}`,
     ).toBe(false);
     expect(
-      isRequest({ ...full, inputs: { ...inputs, [key]: "x".repeat(strategyLimits.text) } }),
+      isRequest({
+        ...full,
+        inputs: { ...inputs, [key]: "x".repeat(strategyLimits.text) },
+      }),
       `limit ${key}`,
     ).toBe(true);
     expect(
@@ -131,11 +135,16 @@ it("every sample view has the flag in each event and a form or null", () => {
   for (const result of views) {
     expect(isReply(result as unknown as Loose)).toBe(true);
     const value = result.value as unknown as StrategyView;
-    expect(value.events.every((event) => typeof event.hasInputs === "boolean"))
-      .toBe(true);
+    expect(
+      value.events.every((event) => typeof event.hasInputs === "boolean"),
+    ).toBe(true);
   }
-  expect(views.some((r) => (r.value as unknown as StrategyView).form === null)).toBe(true);
-  expect(views.some((r) => (r.value as unknown as StrategyView).form !== null)).toBe(true);
+  expect(
+    views.some((r) => (r.value as unknown as StrategyView).form === null),
+  ).toBe(true);
+  expect(
+    views.some((r) => (r.value as unknown as StrategyView).form !== null),
+  ).toBe(true);
   // an event with no inputs, whose form holds empty inputs apart from pace and consumption
   const noInputs = views
     .map((r) => r.value as unknown as StrategyView)
@@ -178,8 +187,14 @@ it("a form is the 13 fields and the 15 inputs as texts within the limit", () => 
   };
   for (const path of ["fields", "inputs"] as const)
     for (const key of Object.keys(ready.form[path])) {
-      expect(isReply(reply(set(path, key, "x".repeat(strategyLimits.text)))), key).toBe(true);
-      expect(isReply(reply(set(path, key, "x".repeat(strategyLimits.text + 1)))), key).toBe(false);
+      expect(
+        isReply(reply(set(path, key, "x".repeat(strategyLimits.text)))),
+        key,
+      ).toBe(true);
+      expect(
+        isReply(reply(set(path, key, "x".repeat(strategyLimits.text + 1)))),
+        key,
+      ).toBe(false);
       expect(isReply(reply(set(path, key, "a\u0007"))), key).toBe(false);
       expect(isReply(reply(set(path, key, 1))), key).toBe(false);
     }
@@ -194,9 +209,18 @@ it("a form is the 13 fields and the 15 inputs as texts within the limit", () => 
 it("a form exists only with an active event and variant, and the error views follow", () => {
   const ready = sampleView() as Loose;
   for (const lost of [{ activeEventId: null }, { activeStrategyId: null }])
-    expect(isReply(reply({ ...ready, ...lost })), JSON.stringify(lost)).toBe(false);
+    expect(isReply(reply({ ...ready, ...lost })), JSON.stringify(lost)).toBe(
+      false,
+    );
   expect(
-    isReply(reply({ ...ready, activeEventId: null, activeStrategyId: null, form: null })),
+    isReply(
+      reply({
+        ...ready,
+        activeEventId: null,
+        activeStrategyId: null,
+        form: null,
+      }),
+    ),
   ).toBe(true);
   // an active variant may have no form: a text over the limit in the document
   expect(isReply(reply({ ...ready, form: null }))).toBe(true);
@@ -239,7 +263,11 @@ it("create without inputs keeps the fields and no inputs; with them it keeps all
   const first = session("strategy-empty");
   const empty = first.open();
   const created = first.view(
-    first.create(empty.revision, { inputs: null, basePaceSeconds: "90.472", fuelPerLapLiters: "1.83" }),
+    first.create(empty.revision, {
+      inputs: null,
+      basePaceSeconds: "90.472",
+      fuelPerLapLiters: "1.83",
+    }),
   );
   expect(created).toMatchObject({ dirty: true });
   expect(created.events[0]?.hasInputs).toBe(false);
@@ -263,7 +291,9 @@ it("create without inputs keeps the fields and no inputs; with them it keeps all
   expect(withInputs.plan.state).toBe("uncalculated");
   expect(isReply({ method: "strategy.create", value: withInputs })).toBe(true);
   // the view says the same as the creation did
-  expect(second.view({ method: "strategy.view" }).form).toEqual(withInputs.form);
+  expect(second.view({ method: "strategy.view" }).form).toEqual(
+    withInputs.form,
+  );
 });
 
 it("inputs that do not validate create nothing and keep the form", () => {
@@ -283,17 +313,17 @@ it("inputs that do not validate create nothing and keep the form", () => {
     "not dry": host.create(empty.revision, {
       fields: { ...fields, variantMode: "wet" },
     }),
-    "with the loose pace": host.create(empty.revision, {
-      basePaceSeconds: "90.5",
-    }),
-    "with the loose consumption": host.create(empty.revision, {
-      fuelPerLapLiters: "1.83",
-    }),
     "no name": host.create(empty.revision, { fields: { ...fields, name: "" } }),
   })) {
     expect(host.failure(request), case_).toEqual({ kind: "rejected" });
     expect(host.view({ method: "strategy.view" }), case_).toEqual(empty);
   }
+  // the loose pair with inputs never reaches the host: the port refuses it
+  for (const loose of [
+    { basePaceSeconds: "90.5" },
+    { fuelPerLapLiters: "1.83" },
+  ])
+    expect(host.send(host.create(empty.revision, loose))).toBeNull();
 });
 
 it("create keeps the usual guards: a stale revision, an unsaved draft", () => {
@@ -311,14 +341,19 @@ it("create keeps the usual guards: a stale revision, an unsaved draft", () => {
   });
   const scene = session("strategy-createRejected");
   const start = scene.open();
-  expect(scene.failure(scene.create(start.revision))).toEqual({ kind: "rejected" });
+  expect(scene.failure(scene.create(start.revision))).toEqual({
+    kind: "rejected",
+  });
 });
 
 it("the form follows create, confirm and compute and returns to the saved one on discard", () => {
   const host = session("strategy-empty");
   const empty = host.open();
   const created = host.view(host.create(empty.revision));
-  const saved = host.view({ method: "strategy.save", revision: created.revision });
+  const saved = host.view({
+    method: "strategy.save",
+    revision: created.revision,
+  });
   expect(saved.form).toEqual(created.form);
 
   const edited = host.view({
@@ -328,11 +363,15 @@ it("the form follows create, confirm and compute and returns to the saved one on
     revision: saved.revision,
     fields: { ...fields, name: "Changed", team: "Local team" },
   });
-  expect(edited.form?.fields).toMatchObject({ name: "Changed", team: "Local team" });
+  expect(edited.form?.fields).toMatchObject({
+    name: "Changed",
+    team: "Local team",
+  });
   expect(edited.form?.inputs).toEqual(inputs);
 
-  expect(host.view({ method: "strategy.discard", revision: edited.revision }).form)
-    .toEqual(saved.form);
+  expect(
+    host.view({ method: "strategy.discard", revision: edited.revision }).form,
+  ).toEqual(saved.form);
 
   const confirmed = host.view({
     method: "strategy.confirm",

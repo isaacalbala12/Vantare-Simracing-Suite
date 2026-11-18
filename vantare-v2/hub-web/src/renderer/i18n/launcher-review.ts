@@ -23,8 +23,8 @@ export const residentReviewText = {
     },
     unconfirmed: {
       tone: "info",
-      title: "Confirmación pendiente",
-      text: "El resultado de la revisión está pendiente de confirmación. Consulta los resultados del lanzamiento.",
+      title: "Esperando confirmación",
+      text: "Tu decisión se ha enviado. Vantare está esperando la respuesta; el resultado aparecerá en el lanzamiento.",
     },
     trusted: {
       tone: "info",
@@ -60,7 +60,7 @@ export const residentReviewText = {
   live: {
     question: "",
     reviewing: "",
-    unconfirmed: "El resultado de la revisión está pendiente de confirmación.",
+    unconfirmed: "Decisión enviada. Esperando confirmación.",
     trusted: "Confianza aceptada. El lanzamiento sigue en curso.",
     declined:
       "No has confiado en el perfil. Se cancela el lanzamiento; no se ha abierto ninguna aplicación.",

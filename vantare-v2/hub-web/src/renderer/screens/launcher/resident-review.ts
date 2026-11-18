@@ -32,6 +32,7 @@ type ReviewQuestion = {
 export type ResidentReviewPanel = ReviewQuestion & {
   state: ReviewState;
   open?: () => Promise<void>;
+  cancelOffered?: boolean;
 };
 type ReviewAttempt = {
   scope: AnswerScope;
@@ -252,7 +253,14 @@ export function useResidentReview(
     availability !== "available" ||
     !["question", "changed", "expired"].includes(state)
   )
-    return { ...panel, state };
+    return {
+      ...panel,
+      state,
+      cancelOffered:
+        !!healthy &&
+        !!scope &&
+        question?.actions.some(({ id }) => id === "cancel"),
+    };
   return {
     ...panel,
     state,

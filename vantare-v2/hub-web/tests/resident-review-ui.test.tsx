@@ -384,21 +384,47 @@ it.each(["interrupted", "unconfirmed"] as const)(
   },
 );
 
-it("shows uncertainty after an interrupted submission without implying nothing opened", async () => {
-  const { hook, reviewTrust } = reviewHook();
+it("announces the sent decision and removes Cancel when the host withdraws it", async () => {
+  const { hook, value, reviewTrust } = reviewHook();
   reviewTrust.mockResolvedValueOnce("unconfirmed");
   await act(async () => {
     await hook.result.current?.open?.();
   });
   expect(hook.result.current?.state).toBe("unconfirmed");
   if (!hook.result.current) throw new Error("Missing review panel");
-  render(view(hook.result.current));
+  const panel = render(view(hook.result.current));
   const drawer = within(screen.getByRole("dialog"));
-  expect(drawer.getByText("Confirmación pendiente")).toBeTruthy();
+  expect(drawer.getByText("Esperando confirmación")).toBeTruthy();
+  expect(
+    drawer.getByText(
+      "Tu decisión se ha enviado. Vantare está esperando la respuesta; el resultado aparecerá en el lanzamiento.",
+    ),
+  ).toBeTruthy();
+  expect(screen.getAllByRole("status").map((node) => node.textContent)).toEqual(
+    ["Decisión enviada. Esperando confirmación."],
+  );
   expect(drawer.queryByText(t.help)).toBeNull();
   expect(drawer.queryByRole("button", { name: t.review })).toBeNull();
   fireEvent.click(drawer.getByRole("button", { name: t.cancel }));
   expect(cancel).toHaveBeenCalledExactlyOnceWith("cancel", scope);
+
+  const current = structuredClone(value);
+  if (current.decision)
+    current.decision.actions = current.decision.actions.filter(
+      ({ id }) => id !== "cancel",
+    );
+  hook.rerender({ current });
+  if (!hook.result.current) throw new Error("Missing review panel");
+  panel.rerender(view(hook.result.current));
+  expect(hook.result.current.state).toBe("unconfirmed");
+  expect(drawer.queryByRole("button", { name: t.cancel })).toBeNull();
+
+  hook.rerender({ current: value });
+  hook.rerender({ current: { ...value, decision: null } });
+  if (!hook.result.current) throw new Error("Missing retained review panel");
+  panel.rerender(view(hook.result.current));
+  expect(hook.result.current.state).toBe("unconfirmed");
+  expect(drawer.queryByRole("button", { name: t.cancel })).toBeNull();
 });
 
 it("deduplicates a double click on Revisar el perfil", async () => {

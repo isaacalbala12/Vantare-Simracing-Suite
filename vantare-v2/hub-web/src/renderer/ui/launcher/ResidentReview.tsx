@@ -29,9 +29,10 @@ export function ResidentReview({
   const retry = state === "changed" || state === "expired";
   const notice = state === "question" ? undefined : t.states[state];
   const canCancel = !!scope && answer?.available("cancel");
+  const showCancel = !unconfirmed || review.cancelOffered;
   return (
     <>
-      <Dialog.Description>{t.description}</Dialog.Description>
+      {!unconfirmed && <Dialog.Description>{t.description}</Dialog.Description>}
       <section aria-label={t.profileLabel} className="v-resident-review-card">
         <span className="v-resident-review-chip">{t.chip}</span>
         {profile && (
@@ -49,7 +50,13 @@ export function ResidentReview({
           className={`v-resident-review-notice v-callout v-callout--${notice.tone}`}
         >
           <strong>{notice.title}</strong>
-          <div id={busy ? busyNote : undefined}>{notice.text}</div>
+          {unconfirmed ? (
+            <Dialog.Description render={<div />}>
+              {notice.text}
+            </Dialog.Description>
+          ) : (
+            <div id={busy ? busyNote : undefined}>{notice.text}</div>
+          )}
         </div>
       )}
       {!ended && (
@@ -82,19 +89,21 @@ export function ResidentReview({
           {state === "too-long" && (
             <p className="v-resident-review-note">{t.tooLongWayOut}</p>
           )}
-          <Button
-            focusableWhenDisabled
-            aria-disabled={busy || !canCancel}
-            aria-describedby={
-              busy ? busyNote : canCancel ? undefined : cancelNote
-            }
-            onClick={() => {
-              if (scope && canCancel) void answer?.answer("cancel", scope);
-            }}
-          >
-            {t.cancel}
-          </Button>
-          {!busy && !canCancel && (
+          {showCancel && (
+            <Button
+              focusableWhenDisabled
+              aria-disabled={busy || !canCancel}
+              aria-describedby={
+                busy ? busyNote : canCancel ? undefined : cancelNote
+              }
+              onClick={() => {
+                if (scope && canCancel) void answer?.answer("cancel", scope);
+              }}
+            >
+              {t.cancel}
+            </Button>
+          )}
+          {showCancel && !busy && !canCancel && (
             <p id={cancelNote} className="v-resident-review-note">
               {residentText.answerUnavailable}
             </p>

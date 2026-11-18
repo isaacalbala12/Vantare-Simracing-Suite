@@ -45,7 +45,7 @@ export function createMockHostWithTrustedReview(
     ) ??
     studioStateVisual.exec(sceneName) ??
     studioFieldVisual.exec(sceneName) ??
-    /^visual-(dark|light):(launcher-review-(?:question|reviewing|trusted|declined|changed|expired|unavailable|too-long|unconfirmed))$/.exec(
+    /^visual-(dark|light):(launcher-review-(?:question|reviewing|trusted|declined|changed|expired|unavailable|too-long|awaiting-confirmation))$/.exec(
       sceneName,
     ) ??
     /^visual-(dark|light):(launcher-notice-(?:completed|accepted|rejected|gap))$/.exec(

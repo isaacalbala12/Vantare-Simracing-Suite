@@ -177,7 +177,7 @@ export function create(
       const { target } = pending;
       pending = undefined;
       if (reviewScene === "reviewing") return new Promise(() => {});
-      if (reviewScene === "unconfirmed") return "submitted";
+      if (reviewScene === "awaiting-confirmation") return "submitted";
       if (
         reviewScene === "trusted" ||
         reviewScene === "declined" ||

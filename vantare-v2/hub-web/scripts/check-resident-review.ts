@@ -15,7 +15,7 @@ export const reviewScenes = [
   ["expired", "caducado"],
   ["unavailable", "no-disponible"],
   ["too-long", "demasiado-largo"],
-  ["unconfirmed", "confirmacion-pendiente"],
+  ["unconfirmed", "esperando-confirmacion", "awaiting-confirmation"],
 ] as const;
 
 export async function openReviewScene(
@@ -60,13 +60,16 @@ export async function checkResidentReview(
   const page = await owner.context().newPage();
   try {
     await page.setViewportSize({ width: 1440, height: 900 });
-    for (const [index, [state, name]] of reviewScenes.entries()) {
+    for (const [
+      index,
+      [state, name, scene = state],
+    ] of reviewScenes.entries()) {
       for (const [scheme, theme] of [
         ["dark", "oscuro"],
         ["light", "claro"],
       ] as const) {
         await page.goto(
-          `${base}?escena=visual-${scheme}:launcher-review-${state}`,
+          `${base}?escena=visual-${scheme}:launcher-review-${scene}`,
         );
         const drawer = await openReviewScene(page, state);
         await page.evaluate(() => document.fonts.ready);

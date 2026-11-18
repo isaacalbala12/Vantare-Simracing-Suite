@@ -84,7 +84,9 @@ foreach($invalidPython in @('python','python.exe','./python.exe','C:/python.exe;
  $rejected=$false;try {Assert-TandaPython $invalidPython -SyntaxOnly} catch {$rejected=$true}
  Require $rejected "Unsafe Python path accepted: $invalidPython"
 }
-$script:PythonExe=(Get-Command python.exe -CommandType Application -ErrorAction Stop|Select-Object -First 1).Source
+$pythonCandidates=@(Get-Command python.exe -CommandType Application -All|ForEach-Object Source|Where-Object {$_ -notlike '*\WindowsApps\*'})
+$script:PythonExe=$pythonCandidates|Where-Object {(Get-TandaPythonVersion $_) -ge [version]'3.11'}|Select-Object -First 1
+Require $script:PythonExe 'No Python 3.11+ interpreter for the fake run'
 Assert-TandaPython $script:PythonExe
 # Same validator Assert-TandaPython applies to the probed interpreter version.
 $rejected=$false;try {Assert-TandaPythonVersion ([version]'3.10')} catch {$rejected=$_.Exception.Message -like '*3.11*'}

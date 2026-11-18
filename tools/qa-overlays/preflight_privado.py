@@ -134,8 +134,11 @@ def main():
         patterns = signatures(read_key(args.private_key))
         for path in args.paths:
             scan(path, patterns, approved_zip)
-    except (OSError, RuntimeError, ValueError):
-        # No exception text, path or matching bytes reach the console or logs.
+    except Exception:
+        # Any failure, expected (ValueError/OSError) or not (for example
+        # AttributeError when hashlib.file_digest needs Python 3.11), keeps the
+        # fixed verdict: no exception text, path or matching bytes reach the
+        # console or logs, and no traceback is printed.
         print("QA_PRIVATE_PREFLIGHT_FAILED", file=sys.stderr)
         return 1
     print("QA_PRIVATE_PREFLIGHT_OK")

@@ -1,4 +1,10 @@
-import { useCallback, useLayoutEffect, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import type { StrategyComputeForm } from "../../../contract/generated/strategy";
 import { Icon } from "../../assets/icons/Icon";
 import { strategy as t } from "../../i18n/strategy";
@@ -195,6 +201,7 @@ export function RaceTab({
   pending,
   edit,
   cancel,
+  clearError,
   confirm,
 }: {
   form: StrategyComputeForm | null;
@@ -202,7 +209,8 @@ export function RaceTab({
   pending: boolean;
   edit: () => void;
   cancel: () => void;
-  confirm: (form: StrategyComputeForm) => void;
+  clearError: () => void;
+  confirm: (form: StrategyComputeForm) => Promise<boolean>;
 }) {
   const restore = useRef<number | undefined>(undefined);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
@@ -219,6 +227,7 @@ export function RaceTab({
         form={form}
         pending={pending}
         cancel={cancel}
+        clearError={clearError}
         confirm={confirm}
       />
     );
@@ -259,13 +268,21 @@ function RaceEditor({
   form,
   pending,
   cancel,
+  clearError,
   confirm,
 }: {
   form: StrategyComputeForm;
   pending: boolean;
   cancel: () => void;
-  confirm: (form: StrategyComputeForm) => void;
+  clearError: () => void;
+  confirm: (form: StrategyComputeForm) => Promise<boolean>;
 }) {
+  const submit = useRef<HTMLButtonElement>(null);
+  const [failures, setFailures] = useState(0);
+  // after a failed confirmation the focus goes back to the confirm button
+  useEffect(() => {
+    if (failures) submit.current?.focus();
+  }, [failures]);
   const original = formValues(form);
   const { v, field, errorSummary, validate } = useStrategyForm(original);
   const focusTitle = useCallback(
@@ -280,7 +297,12 @@ function RaceEditor({
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        if (!pending && validate(editable)) confirm(toForm(v));
+        if (pending) return;
+        clearError();
+        if (validate(editable))
+          void confirm(toForm(v, form)).then((done) => {
+            if (!done) setFailures((count) => count + 1);
+          });
       }}
     >
       <div className="strategy-race-editor-body">
@@ -321,7 +343,7 @@ function RaceEditor({
         >
           {t.cancelEdit}
         </Button>
-        <Button type="submit" variant="primary" disabled={pending}>
+        <Button ref={submit} type="submit" variant="primary" disabled={pending}>
           <Icon name="check" />
           {t.confirm}
         </Button>

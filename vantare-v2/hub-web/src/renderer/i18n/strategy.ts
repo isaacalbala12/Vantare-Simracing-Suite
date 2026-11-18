@@ -52,6 +52,8 @@ export const strategy = {
   openOther: "Abrir otro archivo…",
   discard: "Descartar cambios",
   conflict: "No se ha guardado: el archivo ha cambiado fuera de esta pantalla.",
+  confirmConflict:
+    "Los datos de la carrera han cambiado fuera de esta pantalla. Revisa lo que has escrito y vuelve a confirmar.",
   saved: "Guardado.",
   created: "Carrera creada.",
   loading: "Abriendo estrategias…",
@@ -137,6 +139,7 @@ export const strategy = {
     "Los campos marcados están vacíos o no son válidos. No se ha guardado nada a medias.",
   required: "Completa este campo.",
   length: "Acorta este texto.",
+  control: "No uses saltos de línea ni caracteres de control.",
   positive: "Tiene que ser mayor que 0.",
   integer: "Escribe un número entero mayor que 0.",
   range: "Escribe un número dentro del intervalo indicado.",

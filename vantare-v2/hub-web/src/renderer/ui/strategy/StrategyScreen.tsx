@@ -1,5 +1,6 @@
 import { Menu } from "@base-ui/react/menu";
 import { useEffect, useState } from "react";
+import type { HostError } from "../../../contract/generated/contract";
 import type {
   StrategyComputeForm,
   StrategyEventSummary,
@@ -36,6 +37,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
   );
   const [tab, setTab] = useState("race");
   const [editing, setEditing] = useState(false);
+  const [confirmConflict, setConfirmConflict] = useState<HostError>();
   const [announcement, setAnnouncement] = useState("");
   const [dismissed, setDismissed] = useState<Notice>();
   const [blocked, setBlocked] = useState<Selection>();
@@ -46,18 +48,32 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
   const actions = view && fileActions(view, editing);
   const showRace = screen === "race" && !!active && !!variant;
   const conflict = error?.kind === "strategyConflict";
+  const editConflict = conflict && error === confirmConflict;
+  const hasForm = !!view?.form;
+  // The form can vanish under the editor (another view, another session): the
+  // draft goes with it, and nothing stays locked.
+  useEffect(() => {
+    if (editing && !hasForm) {
+      setEditing(false);
+      clearError();
+    }
+  }, [editing, hasForm, clearError]);
 
+  // Returns whether the data were confirmed. On a conflict the host's view
+  // replaces ours but the editor stays open with what the user wrote.
   async function confirm(form: StrategyComputeForm) {
-    if (!active || !variant) return;
+    if (!active || !variant) return false;
     setAnnouncement("");
     const result = await strategyConfirm(act, active.id, variant.id, form);
-    if (!result) return;
+    if (!result) return false;
     if ("value" in result) {
       setEditing(false);
       setAnnouncement(t.confirmed);
-    } else if (result.error.kind === "strategyConflict") {
-      setEditing(false);
+      return true;
     }
+    if (result.error.kind === "strategyConflict")
+      setConfirmConflict(result.error);
+    return false;
   }
 
   async function save() {
@@ -255,11 +271,18 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
         )}
         <div
           role="status"
-          className={conflict ? "strategy-notice" : "v-sr-only"}
+          className={
+            conflict && !editConflict ? "strategy-notice" : "v-sr-only"
+          }
           data-tone="error"
         >
-          {conflict ? t.conflict : announcement}
+          {conflict && !editConflict ? t.conflict : announcement}
         </div>
+        {editConflict && (
+          <div className="strategy-notice" data-tone="error" role="alert">
+            {t.confirmConflict}
+          </div>
+        )}
         {fileError && (
           <div className="strategy-notice" data-tone="error" role="alert">
             {fileError}
@@ -329,7 +352,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                     clearError();
                     setEditing(false);
                   }}
-                  confirm={(form) => void confirm(form)}
+                  clearError={clearError}
+                  confirm={confirm}
                 />
               )}
             </SectionPanel>

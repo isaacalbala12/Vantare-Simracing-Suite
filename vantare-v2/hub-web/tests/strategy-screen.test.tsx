@@ -21,7 +21,7 @@ import { StrategyScreen } from "../src/renderer/ui/strategy/StrategyScreen";
 
 afterEach(cleanup);
 
-function mount(
+function clientFor(
   scene: string,
   override?: (request: Request) => HostError | undefined,
   cancelPicker = false,
@@ -46,12 +46,17 @@ function mount(
     }
     throw Error("Missing strategy response");
   });
-  render(
-    <SectionChromeProvider>
-      <SectionTabsSlot />
-      <StrategyScreen client={{ request }} />
-    </SectionChromeProvider>,
-  );
+  return request;
+}
+const shell = (request: ReturnType<typeof clientFor>) => (
+  <SectionChromeProvider>
+    <SectionTabsSlot />
+    <StrategyScreen client={{ request }} />
+  </SectionChromeProvider>
+);
+function mount(...args: Parameters<typeof clientFor>) {
+  const request = clientFor(...args);
+  render(shell(request));
   return request;
 }
 const button = (name: string) => screen.getByRole("button", { name });
@@ -529,4 +534,380 @@ it("returns focus to the Editar button that opened the form after confirming", a
   click("Confirmar datos");
   await screen.findByText("Pilot Two (PI)");
   expect(document.activeElement).toBe(button("Editar piloto"));
+});
+
+// ---- E4c-1 review: conflict, exact payload, lock, resets and validators ----
+
+const disabled = (node: HTMLElement) =>
+  (node as HTMLButtonElement).disabled ||
+  node.getAttribute("aria-disabled") === "true" ||
+  node.hasAttribute("data-disabled");
+const editedConflict =
+  (seen: { view?: StrategyView }, mutate?: (view: StrategyView) => void) =>
+  (r: Request) => {
+    if (r.method !== "strategy.confirm" || !seen.view?.form) return undefined;
+    const current = structuredClone(seen.view);
+    if (current.form) current.form.fields.name = "Cambiado fuera";
+    current.events[0].name = "Cambiado fuera";
+    current.revision = "b".repeat(64);
+    mutate?.(current);
+    return { kind: "strategyConflict", current } as HostError;
+  };
+function watch() {
+  const seen: { view?: StrategyView } = {};
+  return {
+    seen,
+    map: (view: StrategyView) => {
+      seen.view ??= structuredClone(view);
+      return view;
+    },
+  };
+}
+
+it("keeps the draft and says the data changed when confirming hits a conflict", async () => {
+  const { seen, map } = watch();
+  mount("ready", editedConflict(seen), false, map);
+  await openRace();
+  click("Editar carrera");
+  fill({ "Nombre de la carrera": "Mi nombre", Depósito: "90" });
+  click("Confirmar datos");
+  const alert = await screen.findByRole("alert");
+  expect(alert.textContent).toBe(
+    "Los datos de la carrera han cambiado fuera de esta pantalla. Revisa lo que has escrito y vuelve a confirmar.",
+  );
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+  expect(field("Nombre de la carrera").value).toBe("Mi nombre");
+  expect(field("Depósito").value).toBe("90");
+  expect(document.body.textContent).not.toContain("No se ha guardado");
+  click("Cancelar edición");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("heading", { name: "Cambiado fuera" })).toBeTruthy();
+});
+
+it("resets the editor when the form disappears under it", async () => {
+  const { seen, map } = watch();
+  mount(
+    "ready",
+    editedConflict(seen, (view) => {
+      view.form = null;
+    }),
+    false,
+    map,
+  );
+  await openRace();
+  click("Editar carrera");
+  click("Confirmar datos");
+  await screen.findByText("No se pueden mostrar los datos de esta carrera.");
+  expect(screen.queryByRole("button", { name: "Cancelar edición" })).toBeNull();
+  expect(disabled(button("Más acciones de archivo"))).toBe(false);
+});
+
+it("resets the editor when the client changes", async () => {
+  const view = render(shell(clientFor("ready")));
+  await openRace();
+  click("Editar carrera");
+  view.rerender(shell(clientFor("ready")));
+  expect(
+    await screen.findByRole("button", { name: "Editar carrera" }),
+  ).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Cancelar edición" })).toBeNull();
+  expect(disabled(button("Más acciones de archivo"))).toBe(false);
+});
+
+const allFields = {
+  "Nombre de la carrera": "Copa Fuji",
+  Circuito: "Suzuka",
+  "Clase o coche": "LMP2",
+  Salida: "2026-12-06T13:00:00+01:00",
+  Duración: "361",
+  "Vueltas que vas a dar": "237",
+  "Vuelta de formación": "1",
+  Depósito: "83,5",
+  "Consumo por vuelta": "1,9",
+  "Reserva al final": "0,9",
+  "Ritmo por vuelta": "91,5",
+  "Energía virtual máxima": "99",
+  "Energía virtual por vuelta": "2,4",
+  "Vida del neumático": "44",
+  "Pérdida por desgaste": "0,3",
+  "Tránsito por boxes": "26",
+  "Velocidad de repostaje": "4,5",
+  "Velocidad de recarga de energía": "2,7",
+  "Cambio de neumáticos": "31",
+  "Cargar combustible de": "2",
+  "Cargar energía de": "3",
+  "Nombre del piloto": "Ana Pérez",
+  Iniciales: "AP",
+  "Nombre de esta estrategia": "Húmedo B",
+  Nota: "Nota larga",
+};
+type Confirm = Extract<Request, { method: "strategy.confirm" }>;
+const confirmSent = (request: ReturnType<typeof clientFor>) =>
+  request.mock.calls.find(
+    ([r]) => r.method === "strategy.confirm",
+  )?.[0] as Confirm;
+
+it("sends every field and every input to the right place, all values different", async () => {
+  const request = mount("ready", undefined, false, (view) => {
+    if (view.form) view.form.fields.team = "Equipo Z";
+    return view;
+  });
+  await openRace();
+  click("Editar carrera");
+  fill(allFields);
+  fireEvent.click(screen.getByRole("radio", { name: "Uno tras otro" }));
+  click("Confirmar datos");
+  await screen.findByRole("heading", { name: "Copa Fuji" });
+  const sent = confirmSent(request);
+  expect(sent.fields).toEqual({
+    name: "Copa Fuji",
+    track: "Suzuka",
+    class: "LMP2",
+    durationMinutes: "361",
+    fuelCapacityLiters: "83.5",
+    pitTransitSeconds: "26",
+    startAt: "2026-12-06T12:00:00.000Z",
+    driverName: "Ana Pérez",
+    driverInitials: "AP",
+    team: "Equipo Z",
+    variantName: "Húmedo B",
+    variantMode: "dry",
+    variantNote: "Nota larga",
+  });
+  expect(sent.inputs).toEqual({
+    basePaceSeconds: "91.5",
+    fuelPerLapLiters: "1.9",
+    raceLaps: "237",
+    veCapacityPercent: "99",
+    vePerLapPercent: "2.4",
+    tyreLifeLaps: "44",
+    degradationSeconds: "0.3",
+    refuelRate: "4.5",
+    veRate: "2.7",
+    tyreServiceSeconds: "31",
+    formationSeconds: "1",
+    fuelStep: "2",
+    veStep: "3",
+    reserveLaps: "0.9",
+    serviceMode: "sequential",
+  });
+});
+
+it("confirming without changes sends the saved texts as they are", async () => {
+  const saved: { form?: StrategyView["form"] } = {};
+  const request = mount("ready", undefined, false, (view) => {
+    if (view.form) {
+      Object.assign(view.form.fields, {
+        fuelCapacityLiters: "82.0",
+        pitTransitSeconds: "25.00",
+        startAt: "2026-12-06T12:00:00Z",
+      });
+      view.form.inputs.refuelRate = "4.0";
+      view.form.inputs.reserveLaps = "0.80";
+      saved.form = structuredClone(view.form);
+    }
+    return view;
+  });
+  await openRace();
+  click("Editar carrera");
+  click("Confirmar datos");
+  await screen.findByText("Datos confirmados.");
+  const sent = confirmSent(request);
+  expect(sent.fields).toEqual(saved.form?.fields);
+  expect(sent.inputs).toEqual(saved.form?.inputs);
+});
+
+it("confirming again without changes does not move the revision", async () => {
+  const request = mount("ready");
+  await openRace();
+  click("Editar carrera");
+  fill({ Depósito: "83" });
+  click("Confirmar datos");
+  await screen.findByText("Datos confirmados.");
+  for (let again = 0; again < 2; again++) {
+    click("Editar carrera");
+    click("Confirmar datos");
+    await waitFor(() =>
+      expect(
+        request.mock.calls.filter(([r]) => r.method === "strategy.confirm"),
+      ).toHaveLength(2 + again),
+    );
+    await screen.findByText("Datos confirmados.");
+  }
+  const revisions = request.mock.calls
+    .filter(([r]) => r.method === "strategy.confirm")
+    .map(([r]) => (r as Confirm).revision);
+  expect(revisions[1]).not.toBe(revisions[0]);
+  expect(revisions[2]).toBe(revisions[1]);
+});
+
+it("blocks everything else while the form has unconfirmed data", async () => {
+  const request = mount("ready");
+  await openRace();
+  // an earlier confirmed change makes the file unsaved, so Ctrl+S would be live
+  click("Editar piloto");
+  fill({ "Nombre de la carrera": "Copa Fuji" });
+  click("Confirmar datos");
+  await screen.findByText("Datos confirmados.");
+  expect(screen.getByText("Sin guardar")).toBeTruthy();
+
+  click("Editar carrera");
+  expect(screen.getByText("Datos sin confirmar")).toBeTruthy();
+  fireEvent.keyDown(window, { key: "s", ctrlKey: true });
+  expect(request.mock.calls.some(([r]) => r.method === "strategy.save")).toBe(
+    false,
+  );
+  expect(disabled(button("Más acciones de archivo"))).toBe(true);
+  expect(disabled(button("Guardar"))).toBe(true);
+  expect(disabled(button("← Tus estrategias"))).toBe(true);
+  expect(disabled(screen.getByRole("combobox", { name: "Estrategia" }))).toBe(
+    true,
+  );
+  fireEvent.click(screen.getByRole("tab", { name: "Plan" }));
+  expect(
+    screen.getByRole("tab", { name: "Carrera" }).getAttribute("aria-selected"),
+  ).toBe("true");
+  expect(button("Confirmar datos")).toBeTruthy();
+
+  click("Cancelar edición");
+  expect(screen.getByText("Sin guardar")).toBeTruthy();
+  expect(disabled(button("Más acciones de archivo"))).toBe(false);
+  click("Editar carrera");
+  click("Confirmar datos");
+  await screen.findByText("Datos confirmados.");
+  expect(screen.getByText("Sin guardar")).toBeTruthy();
+});
+
+it("shows a clean file as saved again after cancelling an edit", async () => {
+  mount("ready");
+  await openRace();
+  click("Editar carrera");
+  expect(screen.getByText("Datos sin confirmar")).toBeTruthy();
+  click("Cancelar edición");
+  expect(screen.getByText("Guardado")).toBeTruthy();
+});
+
+it("clears the host error when confirming again, so only one alert shows", async () => {
+  let failures = 1;
+  mount("ready", (r) =>
+    r.method === "strategy.confirm" && failures-- > 0
+      ? { kind: "rejected" }
+      : undefined,
+  );
+  await openRace();
+  click("Editar carrera");
+  fill({ "Nombre de la carrera": "Copa Fuji" });
+  click("Confirmar datos");
+  await screen.findByText("No se ha podido completar la acción.");
+  // the focus goes back to a sensible place: the confirm button
+  await waitFor(() =>
+    expect(document.activeElement).toBe(button("Confirmar datos")),
+  );
+  fill({ Depósito: "" });
+  click("Confirmar datos");
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+  expect(screen.getByRole("alert").textContent).toContain("Revisa 1 dato");
+});
+
+it("aligns the renderer with the host rules: positive rates, control characters, length", async () => {
+  const request = mount("ready");
+  await openRace();
+  click("Editar carrera");
+  fill({
+    "Velocidad de repostaje": "0",
+    "Velocidad de recarga de energía": "0",
+    Circuito: "Fu\u0007ji",
+    "Nombre de la carrera": "é".repeat(257),
+  });
+  click("Confirmar datos");
+  expect(screen.getByRole("alert").textContent).toContain("Revisa 4 datos");
+  for (const name of [
+    "Velocidad de repostaje",
+    "Velocidad de recarga de energía",
+    "Circuito",
+    "Nombre de la carrera",
+  ])
+    expect(field(name).getAttribute("aria-invalid")).toBe("true");
+  expect(screen.getAllByText(/^Tiene que ser mayor que 0./)).toHaveLength(2);
+  expect(
+    screen.getByText(/^No uses saltos de línea ni caracteres de control./),
+  ).toBeTruthy();
+  expect(screen.getByText(/^Acorta este texto./)).toBeTruthy();
+  expect(confirmSent(request)).toBeUndefined();
+});
+
+it("marks empty, non numeric and badly separated numbers in their field", async () => {
+  mount("ready");
+  await openRace();
+  click("Editar carrera");
+  fill({
+    "Nombre de la carrera": "",
+    Depósito: "abc",
+    "Consumo por vuelta": "1,2,3",
+    "Ritmo por vuelta": "",
+    Duración: "",
+  });
+  click("Confirmar datos");
+  expect(screen.getByRole("alert").textContent).toContain("Revisa 5 datos");
+  for (const name of [
+    "Nombre de la carrera",
+    "Depósito",
+    "Consumo por vuelta",
+    "Ritmo por vuelta",
+    "Duración",
+  ])
+    expect(field(name).getAttribute("aria-invalid")).toBe("true");
+  fill({ Depósito: "82,5", "Consumo por vuelta": "1,83" });
+  for (const name of ["Depósito", "Consumo por vuelta"])
+    expect(field(name).getAttribute("aria-invalid")).toBeNull();
+});
+
+it("does not block incoherent duration and laps: the plan uses the laps", async () => {
+  const request = mount("ready");
+  await openRace();
+  click("Editar carrera");
+  fill({ Duración: "180", "Vueltas que vas a dar": "3" });
+  click("Confirmar datos");
+  await screen.findByText("Datos confirmados.");
+  const sent = confirmSent(request);
+  expect(sent.fields.durationMinutes).toBe("180");
+  expect(sent.inputs?.raceLaps).toBe("3");
+});
+
+it("does not bring the draft back after cancelling and editing again", async () => {
+  mount("ready");
+  await openRace();
+  click("Editar carrera");
+  fill({ Depósito: "99" });
+  click("Cancelar edición");
+  click("Editar carrera");
+  expect(field("Depósito").value).toBe("82");
+});
+
+it("sends a single request on a double click on Confirmar datos", async () => {
+  const request = mount("ready");
+  await openRace();
+  click("Editar carrera");
+  fill({ Depósito: "83" });
+  const confirm = button("Confirmar datos");
+  fireEvent.click(confirm);
+  fireEvent.click(confirm);
+  await screen.findByText("Datos confirmados.");
+  expect(
+    request.mock.calls.filter(([r]) => r.method === "strategy.confirm"),
+  ).toHaveLength(1);
+});
+
+it("puts aria-invalid only where the role allows it", async () => {
+  mount("noInputs");
+  await openRace();
+  click("Editar carrera");
+  click("Confirmar datos");
+  const group = screen.getByRole("radiogroup", { name: "En la parada" });
+  expect(group.getAttribute("aria-invalid")).toBe("true");
+  expect(
+    screen
+      .queryAllByRole("group")
+      .filter((n) => n.hasAttribute("aria-invalid")),
+  ).toHaveLength(0);
 });

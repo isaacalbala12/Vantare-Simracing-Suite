@@ -59,12 +59,15 @@ const units: Partial<Record<Field, string>> = {
   veStep: "%",
   basePaceSeconds: "s",
 };
+// The crate asks for a pace and both service rates above zero.
 const positive = new Set<Field>([
   "durationMinutes",
   "raceLaps",
   "fuelCapacityLiters",
   "fuelPerLapLiters",
   "basePaceSeconds",
+  "refuelRate",
+  "veRate",
   "fuelStep",
   "veStep",
 ]);
@@ -85,6 +88,8 @@ export const decimal = (value: string) => value.trim().replace(",", ".");
 
 function validation(field: Field, value: string): string | undefined {
   const text = value.trim();
+  // the host refuses control characters in any text it stores
+  if (/\p{Cc}/u.test(text)) return t.control;
   if (field === "serviceMode")
     return (serviceModes as readonly string[]).includes(value)
       ? undefined
@@ -119,7 +124,25 @@ function validation(field: Field, value: string): string | undefined {
     return t.range;
 }
 
-export function toForm(v: Values): StrategyComputeForm {
+// `base` is the form the editor started from: what the user did not touch
+// travels exactly as saved (no trailing zeros dropped, no date rewritten).
+export function toForm(
+  v: Values,
+  base?: StrategyComputeForm,
+): StrategyComputeForm {
+  const form = typed(v);
+  if (!base) return form;
+  const shown = formValues(base);
+  for (const group of ["fields", "inputs"] as const)
+    for (const key of Object.keys(form[group]) as (keyof Values)[])
+      if (v[key] === shown[key])
+        (form[group] as Record<string, string>)[key] = (
+          base[group] as Record<string, string>
+        )[key];
+  return form;
+}
+
+function typed(v: Values): StrategyComputeForm {
   return {
     fields: {
       name: v.name.trim(),
@@ -266,14 +289,19 @@ export function useStrategyForm(initialValues: Values) {
     const key = "serviceMode";
     const help = errors[key] || t.serviceHelp;
     const helpId = `${id}-${key}-help`;
+    const labelId = `${id}-${key}-label`;
     return (
-      <fieldset
+      <div
         className="strategy-field strategy-service"
+        role="radiogroup"
         key={key}
+        aria-labelledby={labelId}
         aria-describedby={helpId}
         aria-invalid={errors[key] ? true : undefined}
       >
-        <legend>{t.labels[key]}</legend>
+        <span id={labelId} className="strategy-legend">
+          {t.labels[key]}
+        </span>
         <div>
           {serviceModes.map((option) => (
             <label key={option}>
@@ -290,7 +318,7 @@ export function useStrategyForm(initialValues: Values) {
         <small id={helpId} data-error={!!errors[key]}>
           {help}
         </small>
-      </fieldset>
+      </div>
     );
   }
 

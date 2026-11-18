@@ -39,21 +39,40 @@ export function useHomePhotos(
   const allowed = !!client && !issue && previewAuthority(core, account);
   const count = layout?.state === "ready" ? layout.widgets.length : 0;
   const eligible = count > 0 && count <= maxPhotos;
+  const layoutKey =
+    eligible && layout
+      ? JSON.stringify([
+          layout.width,
+          layout.height,
+          layout.widgets.map(({ kind, x, y, w, h, opacity }) => [
+            kind,
+            x,
+            y,
+            w,
+            h,
+            opacity,
+          ]),
+        ])
+      : undefined;
+  const kinds = eligible
+    ? layout?.widgets.map(({ kind }) => kind).join(",")
+    : undefined;
   const hasLayout = layout !== undefined;
-  const started = useRef(false);
+  const started = useRef<string>(undefined);
   const [complete, setComplete] = useState<{
     key: string;
+    layoutKey: string;
     snapshot: Snapshot;
   }>();
 
   useEffect(() => {
-    if (!eligible) {
-      if (hasLayout)
+    if (!layoutKey || (started.current && started.current !== layoutKey)) {
+      if (hasLayout || started.current)
         cache.removeQueries({ queryKey: homePhotosKey, exact: true });
       return;
     }
     if (!allowed || !client || started.current) return;
-    started.current = true;
+    started.current = layoutKey;
     // The only retained set lives with the renderer's existing QueryClient.
     // An empty slot also lets the existing core handler revoke in-flight work.
     cache.setQueryDefaults(homePhotosKey, { gcTime: Infinity });
@@ -78,7 +97,7 @@ export function useHomePhotos(
         if (
           value.state !== "ready" ||
           !value.canvas ||
-          value.instances.length !== count
+          value.instances.map(({ kind }) => kind).join(",") !== kinds
         ) {
           cache.removeQueries({ queryKey: homePhotosKey, exact: true });
           return;
@@ -89,7 +108,7 @@ export function useHomePhotos(
           snapshot.instances.map((item) => [item.id, previewFingerprint(item)]),
         ]);
         if (cache.getQueryData<RetainedPhotos>(homePhotosKey)?.key === key) {
-          setComplete({ key, snapshot });
+          setComplete({ key, layoutKey, snapshot });
           return;
         }
         cache.setQueryData<RetainedPhotos>(homePhotosKey, {
@@ -119,7 +138,7 @@ export function useHomePhotos(
           photos: new Map(staged),
           visit,
         });
-        setComplete({ key, snapshot });
+        setComplete({ key, layoutKey, snapshot });
       } catch {
         // All-or-nothing: every failure leaves the drawing until the next visit.
       } finally {
@@ -130,10 +149,9 @@ export function useHomePhotos(
       active = false;
       staged.clear();
     };
-  }, [account, allowed, cache, client, count, eligible, hasLayout]);
+  }, [account, allowed, cache, client, hasLayout, kinds, layoutKey]);
 
-  if (!allowed || !eligible || complete?.snapshot.instances.length !== count)
-    return;
+  if (!allowed || !complete || complete.layoutKey !== layoutKey) return;
   const retained = cache.getQueryData<RetainedPhotos>(homePhotosKey);
   if (retained?.key === complete.key)
     return { snapshot: complete.snapshot, photos: retained.photos };

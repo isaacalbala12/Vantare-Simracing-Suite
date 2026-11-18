@@ -368,10 +368,12 @@ it.each(["unmount", "account", "live", "disconnected"])(
     expect(photos()).toHaveLength(1);
   },
 );
-it.each(["count", "protected", "missing"])(
+it.each(["count", "kind", "order", "protected", "missing"])(
   "never pairs Home slots by index with a mismatching snapshot: %s",
   async (mode) => {
     if (mode === "count") snapshot.instances.pop();
+    else if (mode === "kind") layout.widgets[0].kind = "radar";
+    else if (mode === "order") layout.widgets.reverse();
     else snapshot.state = mode as "protected" | "missing";
     mount();
     await waitFor(() => expect(reads()).toHaveLength(1));
@@ -380,6 +382,39 @@ it.each(["count", "protected", "missing"])(
     expect(screen.queryAllByRole("img")).toHaveLength(0);
   },
 );
+it.each(["before Studio reply", "during photos", "after photos"])(
+  "discards the composition when Home changes %s",
+  async (when) => {
+    const pending = held();
+    const studio: Reply = {
+      method: "studio.get",
+      value: structuredClone(snapshot),
+    };
+    request.mockImplementation(async (value) => {
+      if (value.method === "studio.get")
+        return when === "before Studio reply" ? pending.promise : studio;
+      return when === "during photos" ? pending.promise : image;
+    });
+    const ui = mount();
+    await waitFor(() => expect(reads()).toHaveLength(1));
+    if (when === "after photos") await ready();
+    if (when === "during photos")
+      await waitFor(() => expect(photos()).toHaveLength(1));
+    const attempted = photos().length;
+    const changed = structuredClone(layout);
+    changed.widgets[0].x += 10;
+    ui.rerender(<Probe value={changed} />);
+    expect(screen.queryAllByRole("img")).toHaveLength(0);
+    await act(async () =>
+      pending.resolve(when === "before Studio reply" ? studio : image),
+    );
+    ui.rerender(<Probe value={layout} />);
+    expect(screen.queryAllByRole("img")).toHaveLength(0);
+    expect(reads()).toHaveLength(1);
+    expect(photos()).toHaveLength(attempted);
+  },
+);
+
 it("composes only confirmed snapshot geometry, preserving valid transparent PNG and focus", async () => {
   snapshot.instances[0].x = 125.5;
   snapshot.instances[0].y = -40;

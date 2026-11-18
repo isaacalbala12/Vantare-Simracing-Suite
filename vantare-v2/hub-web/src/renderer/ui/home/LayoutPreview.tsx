@@ -43,7 +43,32 @@ export function LayoutPreview({
   );
   return (
     <div className="v-home-preview" ref={ref}>
-      {photos ? (
+      {widgets.length ? (
+        <div className="v-home-drawing-layer" aria-hidden={!!photos}>
+          {widgets.map((w, index) => (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: Stateless snapshot slots may contain identical widgets at identical coordinates.
+              key={index}
+              role="img"
+              aria-label={t.widgets[w.kind] ?? w.kind}
+              className="v-home-widget"
+              style={{
+                position: "absolute",
+                left: (size.w - width * scale) / 2 + (w.x - left) * scale,
+                top: (size.h - height * scale) / 2 + (w.y - top) * scale,
+                width: w.w * scale,
+                height: w.h * scale,
+                opacity: w.opacity / 100,
+              }}
+            >
+              <WidgetThumb kind={w.kind} fit="fill" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <span>{t.noWidgets}</span>
+      )}
+      {photos && (
         <div className="v-home-photo-layer">
           {photos.snapshot.instances.map((item) => {
             const photo = photos.photos.get(item.id);
@@ -78,28 +103,6 @@ export function LayoutPreview({
             );
           })}
         </div>
-      ) : widgets.length ? (
-        widgets.map((w, index) => (
-          <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: Stateless snapshot slots may contain identical widgets at identical coordinates.
-            key={index}
-            role="img"
-            aria-label={t.widgets[w.kind] ?? w.kind}
-            className="v-home-widget"
-            style={{
-              position: "absolute",
-              left: (size.w - width * scale) / 2 + (w.x - left) * scale,
-              top: (size.h - height * scale) / 2 + (w.y - top) * scale,
-              width: w.w * scale,
-              height: w.h * scale,
-              opacity: w.opacity / 100,
-            }}
-          >
-            <WidgetThumb kind={w.kind} fit="fill" />
-          </div>
-        ))
-      ) : (
-        <span>{t.noWidgets}</span>
       )}
     </div>
   );

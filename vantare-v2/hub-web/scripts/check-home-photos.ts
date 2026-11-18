@@ -47,16 +47,19 @@ export async function checkHomePhotos(
   ] as const;
   const results = [];
   for (const { mode, scheme, width, height } of cases) {
-    if (!evidence && width === 1280) continue;
+    const reduced = width === 1280;
     const page = await context.newPage();
     try {
       await page.setViewportSize({ width, height });
-      if (width === 1280) await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.emulateMedia({
+        reducedMotion: reduced ? "reduce" : "no-preference",
+      });
       await page.addInitScript(
         ({ mode, scheme, images }) => {
           const send = MessagePort.prototype.postMessage;
           const previews = new Map<number, string>();
           const calls: string[] = [];
+          let heldFirstPhoto = false;
           Reflect.set(window, "homePhotoCalls", calls);
           MessagePort.prototype.postMessage = function (message, options) {
             if (message?.kind === "hello")
@@ -73,20 +76,29 @@ export async function checkHomePhotos(
                 calls.push("preview.render");
               }
             }
-            if (mode === "limite") {
-              const view: HomeView | undefined =
-                message?.kind === "event" && message.event.topic === "home"
-                  ? message.event.value
-                  : message?.kind === "response" &&
-                      message.result.method === "home.get"
-                    ? message.result.value
-                    : undefined;
-              if (view) {
-                view.layout.widgets = Array.from(
-                  { length: 9 },
-                  () => view.layout.widgets[0],
-                );
-              }
+            const home: HomeView | undefined =
+              message?.kind === "event" && message.event.topic === "home"
+                ? message.event.value
+                : message?.kind === "response" &&
+                    message.result.method === "home.get"
+                  ? message.result.value
+                  : undefined;
+            if (home && mode === "limite") {
+              home.layout.widgets = Array.from(
+                { length: 9 },
+                () => home.layout.widgets[0],
+              );
+            } else if (home && (mode === "fotos" || mode === "respaldo")) {
+              home.layout.widgets = images.map(
+                ({ kind, x, y, width, height }) => ({
+                  kind: kind as HomeView["layout"]["widgets"][number]["kind"],
+                  x,
+                  y,
+                  w: width,
+                  h: height,
+                  opacity: 100,
+                }),
+              );
             }
             if (message?.kind === "response") {
               if (message.result.method === "settings.get")
@@ -96,6 +108,11 @@ export async function checkHomePhotos(
                 mode !== "catalogo"
               ) {
                 const view = message.result.value as StudioView;
+                view.instances.sort(
+                  (a, b) =>
+                    images.findIndex(({ kind }) => kind === a.kind) -
+                    images.findIndex(({ kind }) => kind === b.kind),
+                );
                 for (const item of view.instances) {
                   const photo = images.find(
                     (image) => image.kind === item.kind,
@@ -124,6 +141,17 @@ export async function checkHomePhotos(
                     value: { width, height, pngBase64 },
                   },
                 };
+                if (!heldFirstPhoto) {
+                  heldFirstPhoto = true;
+                  Reflect.set(window, "releaseHomePhoto", () =>
+                    send.call(
+                      this,
+                      message,
+                      options as StructuredSerializeOptions,
+                    ),
+                  );
+                  return;
+                }
               } else {
                 message = {
                   kind: "failure",
@@ -155,11 +183,73 @@ export async function checkHomePhotos(
         await page.getByRole("button", { name: "Inicio", exact: true }).click();
         const preview = page.locator(".v-home-preview");
         const seal = page.locator(".v-home-photo-seal");
+        if (mode === "fotos") {
+          await seal.getByText(homeText.drawing, { exact: true }).waitFor();
+          await page.waitForFunction(() =>
+            Reflect.has(window, "releaseHomePhoto"),
+          );
+          await preview.evaluate((box) => {
+            const heightBefore = box.getBoundingClientRect().height;
+            const observer = new MutationObserver(() => {
+              const photo = box.querySelector(".v-home-photo-layer");
+              if (!photo) return;
+              observer.disconnect();
+              const drawing = box.querySelector(".v-home-drawing-layer");
+              const animations = [
+                ...photo.getAnimations(),
+                ...(drawing?.getAnimations() ?? []),
+              ];
+              const sample = (layer: Element | null) =>
+                layer && {
+                  opacity: Number(getComputedStyle(layer).opacity),
+                  visibility: getComputedStyle(layer).visibility,
+                };
+              for (const animation of animations) {
+                animation.pause();
+                animation.currentTime = 90;
+              }
+              const overlap = [sample(drawing), sample(photo)];
+              for (const animation of animations) animation.finish();
+              Reflect.set(window, "homePhotoSwap", {
+                heightBefore,
+                heightAfter: box.getBoundingClientRect().height,
+                animations: animations.length,
+                overlap,
+                final: [sample(drawing), sample(photo)],
+              });
+            });
+            observer.observe(box, { childList: true });
+            Reflect.get(window, "releaseHomePhoto")();
+            Reflect.deleteProperty(window, "releaseHomePhoto");
+          });
+        }
         await seal
           .getByText(mode === "fotos" ? homeText.photos : homeText.drawing, {
             exact: true,
           })
           .waitFor();
+        if (mode === "fotos") {
+          const swap = await page.evaluate(() =>
+            Reflect.get(window, "homePhotoSwap"),
+          );
+          assert(swap.heightBefore > 0);
+          assert.equal(
+            swap.heightAfter,
+            swap.heightBefore,
+            "Preview height stays fixed",
+          );
+          assert.equal(swap.animations, reduced ? 0 : 2);
+          if (!reduced)
+            for (const layer of swap.overlap) {
+              assert.equal(layer?.visibility, "visible");
+              assert(layer.opacity > 0 && layer.opacity < 1);
+            }
+          assert.equal(swap.final[0]?.visibility, "hidden");
+          assert.deepEqual(swap.final[1], {
+            opacity: 1,
+            visibility: "visible",
+          });
+        }
         const labels = await preview
           .getByRole("img")
           .evaluateAll((nodes) =>

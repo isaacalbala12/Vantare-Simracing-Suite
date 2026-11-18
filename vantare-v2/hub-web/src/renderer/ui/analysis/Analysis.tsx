@@ -20,6 +20,7 @@ import {
   size,
   analysisText as t,
 } from "../../i18n/analysis.es";
+import { recordingStatusText } from "../../i18n/recording-status.es";
 import { Button } from "../Button";
 import { Badge, Callout, Skeleton, Spinner } from "../Data";
 import { SearchInput } from "../Forms";
@@ -28,14 +29,10 @@ import { SessionTrack, SessionVehicle } from "./SessionIdentity";
 import "./analysis.css";
 import { useRecordingClock } from "./useRecordingClock";
 export function AnalysisRail({
-  enabled,
-  recording,
   state,
   clock = Date.now,
   timeZone = recordingZone(),
 }: {
-  enabled: boolean;
-  recording: boolean;
   state?: AnalysisSnapshot;
   clock?: () => number;
   timeZone?: string;
@@ -45,13 +42,6 @@ export function AnalysisRail({
   const opened = state?.opened;
   return (
     <>
-      <RailBlock icon="pulse" title={t.automatic}>
-        <p>
-          <strong>{enabled ? t.enabled : t.disabled}</strong>
-        </p>
-        {recording && <p>{t.recording}</p>}
-        <p>{enabled ? t.idle : t.offExisting}</p>
-      </RailBlock>
       {row && opened && (
         <RailBlock icon="pulse" title={t.thisRecording}>
           <dl className="v-an-recording-meta">
@@ -106,20 +96,6 @@ export function AnalysisNotice({
         {help && <p>{help}</p>}
         <div className="v-an-actions">{children}</div>
       </div>
-    </div>
-  );
-}
-export function RecordingStrip({
-  enabled,
-  recording,
-}: {
-  enabled: boolean;
-  recording: boolean;
-}) {
-  return (
-    <div className="v-an-strip" role="status">
-      {`${t.automatic}: ${enabled ? t.enabled : t.disabled}`}
-      {recording && <strong>{t.recording}</strong>}
     </div>
   );
 }
@@ -252,6 +228,8 @@ export function AnalysisCatalog({
   controller,
   enabled,
   settings,
+  statusStrip,
+  pruneNotice,
   clock = Date.now,
   timeZone = recordingZone(),
 }: {
@@ -259,6 +237,8 @@ export function AnalysisCatalog({
   controller?: AnalysisController;
   enabled: boolean;
   settings: () => void;
+  statusStrip?: ReactNode;
+  pruneNotice?: ReactNode;
   clock?: () => number;
   timeZone?: string;
 }) {
@@ -302,10 +282,16 @@ export function AnalysisCatalog({
           )
         }
       />
-      <div className="v-an-strip" role="status">
-        {`${t.automatic}: ${enabled ? t.enabled : t.disabled}`}
-        {state.rows.some((r) => r.recording) && <strong>{t.recording}</strong>}
-      </div>
+      {statusStrip}
+      {pruneNotice}
+      {state.recordingStatus && !state.loading && !state.error && (
+        <p className="v-an-catalog-usage">
+          {recordingStatusText.catalogUsage(
+            state.rows.length,
+            state.rows.reduce((total, row) => total + row.sizeBytes, 0),
+          )}
+        </p>
+      )}
       {!enabled && state.rows.length > 0 && (
         <Callout
           title={t.off}

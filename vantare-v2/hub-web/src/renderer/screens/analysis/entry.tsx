@@ -1,5 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useRef } from "react";
 import { useAnalysis } from "../../app/AnalysisState";
+import { deletedRecordings } from "../../app/analysis-recording-status";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { useSettings } from "../../app/SettingsState";
 import { useUi } from "../../app/UiState";
@@ -14,6 +16,11 @@ import { Comparison } from "../../ui/analysis/Comparison";
 import { ComparisonRail } from "../../ui/analysis/ComparisonRail";
 import { CompareAction } from "../../ui/analysis/LapChoices";
 import { AnalysisLaps } from "../../ui/analysis/RecordingDetail";
+import {
+  RecordingPruneNotice,
+  RecordingPruneRail,
+  RecordingStatus,
+} from "../../ui/analysis/RecordingStatus";
 import { Button } from "../../ui/Button";
 import { SectionPageHeader } from "../../ui/Frame";
 export default function Analysis({
@@ -26,7 +33,23 @@ export default function Analysis({
   const state = useAnalysis();
   const settings = useSettings();
   const navigate = useUi((s) => s.navigate);
+  const collapsed = useUi((s) => s.railCollapsed);
+  const toggleRail = useUi((s) => s.toggleRail);
   const cache = useQueryClient();
+  const dismissed = useUi((s) => s.acknowledgedAnalysisPrune);
+  const acknowledge = useUi((s) => s.acknowledgeAnalysisPrune);
+  const pruneHeading = useRef<HTMLParagraphElement>(null);
+  const focusPrune = useRef(false);
+  const registerPruneHeading = useCallback(
+    (node: HTMLParagraphElement | null) => {
+      pruneHeading.current = node;
+      if (node && focusPrune.current) {
+        focusPrune.current = false;
+        node.focus();
+      }
+    },
+    [],
+  );
   const enabled = settings.view?.general.grabacion ?? true;
   const current = state.compareView
     ? "compare"
@@ -39,6 +62,24 @@ export default function Analysis({
   };
   const denied =
     !state.access.analysis || !state.access.verified || state.access.blocked;
+  const batch = deletedRecordings(state.recordingStatus);
+  const initial = settings.recordingAtStart;
+  const statusProps = {
+    state,
+    enabled,
+    enabledAtStart: initial,
+    settings: () => goSettings("privacy"),
+    undo:
+      initial !== undefined && enabled !== initial
+        ? () => settings.update({ field: "grabacion", value: initial })
+        : undefined,
+    undoDisabled:
+      settings.pending || settings.view?.protected || !!settings.error,
+    timeZone,
+  };
+  const statusStrip = (
+    <RecordingStatus {...statusProps} compact railCollapsed={collapsed} />
+  );
   return (
     <>
       <SectionChrome
@@ -73,22 +114,33 @@ export default function Analysis({
             state.controller?.compare();
         }}
         rail={
-          state.compareView ? (
-            <ComparisonRail state={state} controller={state.controller} />
-          ) : (
+          denied ? undefined : (
             <>
-              <AnalysisRail
-                clock={clock}
-                timeZone={timeZone}
-                enabled={enabled}
-                state={state}
-                recording={state.rows.some((r) => r.recording)}
-              />
-              {state.opened && (
-                <CompareAction
-                  state={state}
-                  controller={state.controller}
-                  quick
+              <RecordingStatus {...statusProps} />
+              {state.compareView ? (
+                <ComparisonRail state={state} controller={state.controller} />
+              ) : (
+                <>
+                  <AnalysisRail
+                    clock={clock}
+                    timeZone={timeZone}
+                    state={state}
+                  />
+                  {state.opened && (
+                    <CompareAction
+                      state={state}
+                      controller={state.controller}
+                      quick
+                    />
+                  )}
+                </>
+              )}
+              {batch && (
+                <RecordingPruneRail
+                  batch={batch}
+                  clock={clock}
+                  timeZone={timeZone}
+                  headingRef={registerPruneHeading}
                 />
               )}
             </>
@@ -123,7 +175,7 @@ export default function Analysis({
             controller={state.controller}
             clock={clock}
             timeZone={timeZone}
-            enabled={enabled}
+            statusStrip={statusStrip}
             updates={() => goSettings("updates")}
           />
         ) : state.selected ? (
@@ -132,7 +184,7 @@ export default function Analysis({
             timeZone={timeZone}
             state={state}
             controller={state.controller}
-            enabled={enabled}
+            statusStrip={statusStrip}
             updates={() => goSettings("updates")}
           />
         ) : (
@@ -142,6 +194,25 @@ export default function Analysis({
             state={state}
             controller={state.controller}
             enabled={enabled}
+            statusStrip={statusStrip}
+            pruneNotice={
+              batch &&
+              batch.key !== dismissed && (
+                <RecordingPruneNotice
+                  batch={batch}
+                  clock={clock}
+                  timeZone={timeZone}
+                  show={() => {
+                    if (pruneHeading.current) pruneHeading.current.focus();
+                    else if (collapsed) {
+                      focusPrune.current = true;
+                      toggleRail();
+                    }
+                  }}
+                  acknowledge={() => acknowledge(batch.key)}
+                />
+              )
+            }
             settings={() => goSettings("privacy")}
           />
         )}

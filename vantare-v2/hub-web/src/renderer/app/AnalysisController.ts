@@ -1,4 +1,5 @@
 import type {
+  AnalysisRecordingStatus,
   AnalysisReply,
   AnalysisRequest,
   AnalysisRow,
@@ -29,6 +30,7 @@ export type AnalysisSnapshot = {
   compareError?: HostError["kind"];
   zoom?: [number, number];
   rows: AnalysisRow[];
+  recordingStatus?: AnalysisRecordingStatus | null;
   inspections: Record<string, Inspection>;
   rowErrors: Record<string, HostError["kind"]>;
   loading: boolean;
@@ -53,6 +55,7 @@ export class AnalysisController {
   private listeners = new Set<() => void>();
   private active = true;
   private generation = 0;
+  private statusGeneration = 0;
   private visible = new Set<string>();
   private lane: Promise<void> = Promise.resolve();
   private timer?: ReturnType<typeof setTimeout>;
@@ -145,8 +148,10 @@ export class AnalysisController {
   }
   load = () => {
     const generation = ++this.generation;
+    const statusGeneration = ++this.statusGeneration;
     this.publish({
       loading: true,
+      recordingStatus: undefined,
       opening: false,
       error: undefined,
       selected: undefined,
@@ -164,7 +169,13 @@ export class AnalysisController {
     this.enqueue(async () => {
       await cancelled;
       await this.close();
-      const r = await this.request({ method: "analysis.catalog" }, generation);
+      let r: Reply | undefined;
+      try {
+        r = await this.request({ method: "analysis.catalog" }, generation);
+      } finally {
+        if (this.active && generation === this.generation)
+          void this.readRecordingStatus(statusGeneration);
+      }
       if (r?.method !== "analysis.catalog" || generation !== this.generation)
         return;
       this.publish({
@@ -173,6 +184,18 @@ export class AnalysisController {
       });
     });
   };
+  private async readRecordingStatus(generation: number) {
+    try {
+      const reply = await this.client.request({ method: "analysis.status" });
+      if (
+        reply.method === "analysis.status" &&
+        generation === this.statusGeneration
+      )
+        this.publish({ recordingStatus: reply.status });
+    } catch {
+      // The browser and reader remain usable if the status is unavailable.
+    }
+  }
   visibleRow = (id: string, visible: boolean) => {
     if (visible) this.visible.add(id);
     else this.visible.delete(id);

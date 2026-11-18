@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type ReactNode,
   useEffect,
   useId,
   useMemo,
@@ -23,7 +24,7 @@ import { metres, comparisonText as t } from "../../i18n/comparison.es";
 import { Button, IconButton } from "../Button";
 import { Callout, Spinner } from "../Data";
 import { Segmented, Select } from "../Forms";
-import { AnalysisError, AnalysisNotice, RecordingStrip } from "./Analysis";
+import { AnalysisError, AnalysisNotice } from "./Analysis";
 import { ComparisonPlot, plotLeft, plotWidth } from "./ComparisonPlot";
 import {
   ComparisonGapNotes,
@@ -37,14 +38,14 @@ import "./comparison.css";
 export function Comparison({
   state,
   controller,
-  enabled,
+  statusStrip,
   updates,
   clock = Date.now,
   timeZone = recordingZone(),
 }: {
   state: AnalysisSnapshot;
   controller?: AnalysisController;
-  enabled: boolean;
+  statusStrip?: ReactNode;
   updates: () => void;
   clock?: () => number;
   timeZone?: string;
@@ -123,10 +124,7 @@ export function Comparison({
           </h1>
         </div>
       </header>
-      <RecordingStrip
-        enabled={enabled}
-        recording={state.rows.some((row) => row.recording)}
-      />
+      {statusStrip}
       <div className="v-an-selectors">
         {(["a", "b"] as const).map((side, i) => (
           <div className={`v-an-selector v-an-series-${side}`} key={side}>

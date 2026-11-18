@@ -1,0 +1,42 @@
+.v-an-status-message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.v-an-status-message p {
+  margin: 0;
+}
+.v-an-catalog-usage {
+  margin: 0;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-small);
+}
+.v-an-status-message > span:last-child:not(.v-badge) {
+  font-family: var(--font-mono);
+}
+.v-an-strip.v-an-status-strip:not([data-rail-collapsed]) {
+  display: none;
+}
+.v-an-strip.v-an-status-strip[data-rail-collapsed] {
+  display: flex;
+  flex-wrap: wrap;
+}
+.v-an-prune-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.v-an-prune-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.v-an-prune-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-block: var(--space-2);
+  border-top: 1px solid var(--line-1);
+}

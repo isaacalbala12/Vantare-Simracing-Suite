@@ -244,6 +244,7 @@ try {
   }
   await checkMainScreens(page, server.resolvedUrls?.local[0] ?? "", evidence);
   await checkLightContrast(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  const { checkRecordingStatus } = await import("./analysis-status-web.ts");
   const { checkAnalysisComparison } = await import("./analysis-compare-web.ts");
   const { checkAnalysisSessions } = await import("./analysis-sessions-web.ts");
   const comparisonContext = await browser.newContext({
@@ -265,6 +266,11 @@ try {
       comparisonPage,
       server.resolvedUrls?.local[0] ?? "",
       resolve(evidence, "analysis-sessions"),
+    );
+    await checkRecordingStatus(
+      comparisonPage,
+      server.resolvedUrls?.local[0] ?? "",
+      resolve(evidence, "analysis-recording-status"),
     );
   } finally {
     failures.push(...comparisonFailures);

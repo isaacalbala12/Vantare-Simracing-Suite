@@ -9,8 +9,10 @@ import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
 import type { HostError } from "../../../contract/generated/contract";
 import { useAccountSession } from "../../app/AccountSession";
+import { deletedRecordings } from "../../app/analysis-recording-status";
 import { useHost } from "../../app/Host";
 import { notices as text } from "../../i18n/notifications";
+import { recordingStatusText } from "../../i18n/recording-status.es";
 import { seedNotificationScene } from "../../qa/notifications-scene";
 import { type Center, type Filter, type NoticeInput, publish } from "./center";
 import { connectEmitters } from "./emitters";
@@ -50,7 +52,11 @@ export function createNotifications() {
       })),
     clear: () => {
       for (const record of get().records) {
-        if (record.source === "report" || record.source === "updater")
+        if (
+          record.source === "report" ||
+          record.source === "updater" ||
+          record.dedupeKey.startsWith("analysis.prune.")
+        )
           dismissed.add(record.dedupeKey);
       }
       set({ records: [] });
@@ -87,6 +93,23 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       session,
     );
     const dispose = client?.listen((message) => {
+      if (
+        message.kind === "response" &&
+        message.result.method === "analysis.status"
+      ) {
+        const batch = deletedRecordings(message.result.status);
+        if (batch)
+          store.getState().add(
+            {
+              source: "system",
+              severity: "info",
+              dedupeKey: `analysis.prune.${batch.atMs}`,
+              title: recordingStatusText.notification,
+              text: recordingStatusText.notice(batch.items.length),
+            },
+            batch.atMs,
+          );
+      }
       if (
         message.kind === "response" &&
         message.result.method === "notifications.test"

@@ -34,7 +34,7 @@ import { comparisonText } from "../../i18n/comparison.es";
 import { Button, IconButton } from "../Button";
 import { Badge, Card } from "../Data";
 import { TrackedCaps } from "../TrackedCaps";
-import { AnalysisError, AnalysisNotice, RecordingStrip } from "./Analysis";
+import { AnalysisError, AnalysisNotice } from "./Analysis";
 import { CompareAction, LapChoices } from "./LapChoices";
 import { RecordingChart } from "./RecordingChart";
 import { SessionTrack, SessionVehicle } from "./SessionIdentity";
@@ -171,14 +171,14 @@ export function AnalysisLaps({
   state,
   controller,
   updates,
-  enabled,
+  statusStrip,
   clock = Date.now,
   timeZone = recordingZone(),
 }: {
   state: AnalysisSnapshot;
   controller?: AnalysisController;
   updates: () => void;
-  enabled: boolean;
+  statusStrip?: ReactNode;
   clock?: () => number;
   timeZone?: string;
 }) {
@@ -263,10 +263,7 @@ export function AnalysisLaps({
           )}
         </div>
       </header>
-      <RecordingStrip
-        enabled={enabled}
-        recording={state.rows.some((row) => row.recording)}
-      />
+      {statusStrip}
       {state.opening ? (
         <AnalysisNotice title={t.opening} help={t.openingHelp} loading>
           <Button onClick={back}>{t.cancel}</Button>

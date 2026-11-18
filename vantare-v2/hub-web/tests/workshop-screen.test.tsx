@@ -56,7 +56,8 @@ function held() {
 }
 function photoRequests() {
   return requests.filter(
-    (request): request is PhotoRequest => request.method === "preview.render",
+    (request): request is PhotoRequest =>
+      request.method === "preview.render" && request.target.kind === "scene",
   );
 }
 function button(name: string) {
@@ -155,7 +156,10 @@ beforeEach(() => {
     close: vi.fn(),
     async request(request: Request): Promise<Reply> {
       requests.push(request);
-      const response = respond?.(request);
+      const response =
+        request.method === "preview.render" && request.target.kind !== "scene"
+          ? undefined
+          : respond?.(request);
       if (response) return response;
       const result = mock({ kind: "request", id: 1, request });
       if (result?.kind === "response") return result.result;

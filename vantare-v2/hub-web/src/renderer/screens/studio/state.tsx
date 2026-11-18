@@ -286,8 +286,11 @@ export function StudioProvider({ children }: { children: ReactNode }) {
     <Context.Provider value={useStateValue()}>{children}</Context.Provider>
   );
 }
+export function useOptionalStudio() {
+  return useContext(Context);
+}
 export function useStudio() {
-  const value = useContext(Context);
+  const value = useOptionalStudio();
   if (!value) throw Error("Studio provider missing");
   return value;
 }

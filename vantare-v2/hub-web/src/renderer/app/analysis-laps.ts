@@ -12,14 +12,41 @@ export function lapTime(lap: AnalysisLap | undefined): {
   return { ms: lap.lapTimeApproxMs, official: false };
 }
 
+export function recordingBestTime(
+  sessions: readonly AnalysisSessionSummary[],
+  approximate: number | null = null,
+) {
+  let best: number | null = null;
+  for (const { bestLapMs } of sessions) {
+    if (bestLapMs !== null && (best === null || bestLapMs < best))
+      best = bestLapMs;
+  }
+  return { ms: best ?? approximate, official: best !== null };
+}
+
+export function bestApproximateLapTime(laps: readonly AnalysisLap[]) {
+  let best: number | null = null;
+  for (const { sealed, gap, lapTimeApproxMs } of laps) {
+    if (
+      sealed &&
+      !gap &&
+      lapTimeApproxMs !== null &&
+      (best === null || lapTimeApproxMs < best)
+    )
+      best = lapTimeApproxMs;
+  }
+  return best;
+}
+
 export const validLapTime = (lap: AnalysisLap) => lapTime(lap).ms;
 
 export function groupSessionLaps(
   laps: readonly AnalysisLap[],
   sessions: readonly AnalysisSessionSummary[],
 ) {
-  const groups = sessions.map((session) => ({
+  const groups = sessions.map((session, position) => ({
     session,
+    position,
     laps: [] as AnalysisLap[],
   }));
   const unassigned: AnalysisLap[] = [];
@@ -30,7 +57,7 @@ export function groupSessionLaps(
   return [
     ...groups.filter((group) => group.laps.length > 0),
     ...(unassigned.length || !sessions.length
-      ? [{ session: undefined, laps: unassigned }]
+      ? [{ session: undefined, position: undefined, laps: unassigned }]
       : []),
   ];
 }

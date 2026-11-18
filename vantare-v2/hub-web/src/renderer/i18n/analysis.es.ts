@@ -20,7 +20,7 @@ export const analysisText = {
     count === 1
       ? "1 sesión más en esta grabación"
       : `${count} sesiones más en esta grabación`,
-  latestSessionBest: "Mejor vuelta oficial de la sesión más reciente",
+  recordingBest: "Mejor vuelta de la grabación",
   practice: "Práctica",
   qualifying: "Clasificación",
   race: "Carrera",

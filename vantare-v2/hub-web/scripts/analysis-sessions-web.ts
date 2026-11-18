@@ -3,11 +3,32 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
-import { chromium, type Page } from "playwright-core";
+import { chromium, type Locator, type Page } from "playwright-core";
 import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
 import { analysisText as t } from "../src/renderer/i18n/analysis.es.ts";
 import { writeAnalysisSheet } from "./analysis-sheet.ts";
 import { webQaPreview } from "./web-qa.ts";
+
+async function assertSessionColumns(table: Locator, columns: number) {
+  const headings = table.locator("thead th:visible");
+  const groups = table.locator('th[scope="rowgroup"]:visible');
+  assert.equal(await headings.count(), columns);
+  assert.deepEqual(
+    await groups.evaluateAll((cells) =>
+      cells.map((cell) => (cell as HTMLTableCellElement).colSpan),
+    ),
+    [columns, columns],
+  );
+  const lastColumn = await headings.last().boundingBox();
+  const firstGroup = await groups.first().boundingBox();
+  assert.ok(lastColumn && firstGroup);
+  assert.ok(
+    Math.abs(
+      firstGroup.x + firstGroup.width - lastColumn.x - lastColumn.width,
+    ) < 1,
+    "session heading reaches the last visible column",
+  );
+}
 
 export async function checkAnalysisSessions(
   page: Page,
@@ -60,9 +81,9 @@ export async function checkAnalysisSessions(
           assert.match(
             (await real
               .locator("xpath=ancestor::tr")
-              .getByText("1:52.225", { exact: true })
+              .getByText("1:51.625", { exact: true })
               .getAttribute("aria-description")) ?? "",
-            /sesión más reciente/,
+            /^Mejor vuelta de la grabación$/,
           );
         } else {
           await (scene === "legacy" ? legacy : real).click();
@@ -72,10 +93,11 @@ export async function checkAnalysisSessions(
             await page
               .getByRole("heading", { name: "Spa · Porsche 911 GT3 R · GT3" })
               .waitFor();
-            assert.equal(
-              await table.locator('th[scope="rowgroup"]').count(),
-              2,
-            );
+            await assertSessionColumns(table, 9);
+            await page
+              .locator(".v-an-stats")
+              .getByText("1:51.625", { exact: true })
+              .waitFor();
             await table
               .getByText("Warm-up", { exact: false })
               .first()
@@ -91,7 +113,13 @@ export async function checkAnalysisSessions(
               0,
             );
             await table.getByText("≈1:51.6", { exact: true }).waitFor();
+            await page.getByText(t.approximate, { exact: true }).waitFor();
           }
+        }
+        if (name === "sessions-dark-900") {
+          await page.setViewportSize({ width: 720, height: 1400 });
+          await assertSessionColumns(page.locator(".v-an-laps"), 6);
+          await page.setViewportSize({ width, height: 1400 });
         }
         const report = await new AxeBuilder({ page })
           .include(".v-shell")

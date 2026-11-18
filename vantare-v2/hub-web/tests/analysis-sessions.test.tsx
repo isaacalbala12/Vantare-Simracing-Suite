@@ -66,11 +66,8 @@ const clock = () => 1700005000000;
 const timeZone = "UTC";
 const handler = vi.fn();
 
-it("shows the latest session's identity and official best with accessible context", () => {
-  const { state, inspection } = recording();
-  inspection.sessions[0].bestLapMs = 112225;
-  inspection.sessions[1].trackName = "Monza";
-  render(
+function renderCatalog(state: AnalysisSnapshot) {
+  return render(
     <AnalysisCatalog
       state={state}
       enabled
@@ -79,60 +76,10 @@ it("shows the latest session's identity and official best with accessible contex
       timeZone={timeZone}
     />,
   );
-  const row = screen.getByRole("button", {
-    name: /Spa.*Porsche.*GT3.*\+1 sesión$/,
-  });
-  expect(row.getAttribute("aria-description")).toContain("1 sesión más");
-  expect(within(row).getByText("+1 sesión").getAttribute("title")).toContain(
-    "1 sesión más",
-  );
-  const cell = screen.getByRole("cell", { name: "1:52.225" });
-  expect(cell.getAttribute("aria-description")).toContain(
-    "sesión más reciente",
-  );
-  expect(screen.queryByText("Monza")).toBeNull();
-  expect(screen.queryByText("1:51.625")).toBeNull();
-});
+}
 
-it.each([
-  [1, "+1 sesión"],
-  [2, "+2 sesiones"],
-])("inflects the additional session count %s", (count, label) =>
-  expect(analysisText.moreSessions(count)).toBe(label),
-);
-
-it("falls back to the approximate recording time when the latest session has no official best", () => {
-  const { state, inspection } = recording();
-  inspection.sessions[0].bestLapMs = null;
-  render(
-    <AnalysisCatalog
-      state={state}
-      enabled
-      settings={handler}
-      clock={clock}
-      timeZone={timeZone}
-    />,
-  );
-  expect(screen.getByRole("cell", { name: "≈1:51.6" })).toBeTruthy();
-  expect(screen.queryByText("1:51.625")).toBeNull();
-});
-
-it("preserves the v1 catalog and flat detail with unidentified names and approximate times", () => {
-  const { state } = recording("analysis-v1");
-  const { unmount } = render(
-    <AnalysisCatalog
-      state={state}
-      enabled
-      settings={handler}
-      clock={clock}
-      timeZone={timeZone}
-    />,
-  );
-  expect(screen.getByText("Circuito sin identificar").tagName).toBe("EM");
-  expect(screen.getByText("Coche sin identificar").tagName).toBe("EM");
-  expect(screen.getByRole("cell", { name: "≈1:51.6" })).toBeTruthy();
-  unmount();
-  render(
+function renderLaps(state: AnalysisSnapshot) {
+  return render(
     <TooltipProvider>
       <AnalysisLaps
         state={state}
@@ -143,6 +90,75 @@ it("preserves the v1 catalog and flat detail with unidentified names and approxi
       />
     </TooltipProvider>,
   );
+}
+
+function expectRecordingBest(state: AnalysisSnapshot, time: string) {
+  const { unmount } = renderCatalog(state);
+  const cell = screen.getByRole("cell", { name: time });
+  expect(cell.getAttribute("aria-description")).toBe(
+    "Mejor vuelta de la grabación",
+  );
+  unmount();
+  renderLaps(state);
+  const best = screen.getByText(analysisText.best, { selector: "dt" });
+  expect(best.nextElementSibling?.querySelector("strong")?.textContent).toBe(
+    time,
+  );
+}
+
+it("shows the latest session identity but uses the older session's faster official time in both views", () => {
+  const { state, inspection, opened } = recording();
+  for (const sessions of [inspection.sessions, opened.sessions]) {
+    sessions[0].bestLapMs = 110000;
+    sessions[1].bestLapMs = 108000;
+    sessions[1].trackName = "Monza";
+  }
+  const { unmount } = renderCatalog(state);
+  const row = screen.getByRole("button", {
+    name: /Spa.*Porsche.*GT3.*\+1 sesión$/,
+  });
+  expect(row.getAttribute("aria-description")).toContain("1 sesión más");
+  expect(within(row).getByText("+1 sesión").getAttribute("title")).toContain(
+    "1 sesión más",
+  );
+  expect(screen.queryByText("Monza")).toBeNull();
+  unmount();
+  expectRecordingBest(state, "1:48.000");
+});
+
+it.each([
+  [1, "+1 sesión"],
+  [2, "+2 sesiones"],
+])("inflects the additional session count %s", (count, label) =>
+  expect(analysisText.moreSessions(count)).toBe(label),
+);
+
+it("keeps the older official best when the newest session is unsealed", () => {
+  const { state, inspection, opened } = recording();
+  for (const sessions of [inspection.sessions, opened.sessions]) {
+    sessions[0].sealed = false;
+    sessions[0].bestLapMs = null;
+  }
+  expectRecordingBest(state, "1:51.625");
+});
+
+it("marks the recording best approximate when neither session supplies an official best", () => {
+  const { state, inspection, opened } = recording();
+  for (const session of [...inspection.sessions, ...opened.sessions])
+    session.bestLapMs = null;
+  expectRecordingBest(state, "≈1:51.6");
+});
+
+it("preserves the v1 catalog and flat detail with unidentified names and approximate times", () => {
+  const { state } = recording("analysis-v1");
+  const { unmount } = renderCatalog(state);
+  expect(screen.getByText("Circuito sin identificar").tagName).toBe("EM");
+  expect(screen.getByText("Coche sin identificar").tagName).toBe("EM");
+  unmount();
+  expectRecordingBest(state, "≈1:51.6");
+  expect(
+    screen.getByText(analysisText.approximate, { selector: "p" }),
+  ).toBeTruthy();
   const table = screen.getByRole("table") as HTMLTableElement;
   expect(table.tBodies).toHaveLength(1);
   expect(table.tBodies[0].querySelector('[scope="rowgroup"]')).toBeNull();
@@ -205,16 +221,13 @@ it("groups crossings by the reply indices and omits the approximate note for off
     "Clasificación · Posición al cerrar la sesión: 3",
   );
   expect(within(groups[0]).getByText("Vuelta 4")).toBeTruthy();
-  expect(within(groups[0]).getByText(/Interrumpida/)).toBeTruthy();
   expect(within(groups[1]).getByText("1:51.625")).toBeTruthy();
-  expect(
-    within(groups[1]).getByText(/Posición al cerrar la sesión: 3/),
-  ).toBeTruthy();
   expect(within(groups[2]).getByText("Vuelta 9")).toBeTruthy();
   expect(groups[2].querySelector('[scope="rowgroup"]')).toBeNull();
-  expect(table.caption?.textContent).not.toContain(
-    "Tiempos aproximados, no oficiales.",
-  );
+  expect(table.caption?.textContent).not.toContain(analysisText.approximate);
+  expect(
+    screen.queryByText(analysisText.approximate, { selector: "p" }),
+  ).toBeNull();
 });
 
 it("keeps session identities in the groups when the circuit differs", () => {
@@ -233,7 +246,36 @@ it("keeps session identities in the groups when the circuit differs", () => {
   );
   const headers = screen
     .getByRole("table")
-    .querySelectorAll('th[scope="rowgroup"]');
+    .querySelectorAll('th[scope="rowgroup"][colspan="9"]');
   expect(headers[0]?.textContent).toContain("Spa · Porsche 911 GT3 R · GT3");
   expect(headers[1]?.textContent).toContain("Monza · Porsche 911 GT3 R · GT3");
 });
+
+it("numbers unnamed sessions from oldest to newest by their position in the reply", () => {
+  const { state, opened } = recording();
+  for (const session of opened.sessions) {
+    session.kind = "unknown";
+    session.kindText = null;
+  }
+  renderLaps(state);
+  const table = screen.getByRole("table") as HTMLTableElement;
+  const groupTitle = (group: HTMLTableSectionElement) =>
+    group.querySelector('th[scope="rowgroup"]')?.textContent;
+  expect(groupTitle(table.tBodies[0])).toContain("Sesión 2");
+  expect(within(table.tBodies[0]).getByText("Vuelta 4")).toBeTruthy();
+  expect(groupTitle(table.tBodies[1])).toContain("Sesión 1");
+  expect(within(table.tBodies[1]).getByText("Vuelta 1")).toBeTruthy();
+});
+
+it.each([-1, 2])(
+  "shows laps with session %s in the untitled group",
+  (session) => {
+    const { state, opened } = recording();
+    opened.laps.push({ ...opened.laps[0], index: 9, lap: 9, session });
+    renderLaps(state);
+    const table = screen.getByRole("table") as HTMLTableElement;
+    const group = table.tBodies[table.tBodies.length - 1];
+    expect(within(group).getByText("Vuelta 9")).toBeTruthy();
+    expect(group.querySelector('th[scope="rowgroup"]')).toBeNull();
+  },
+);

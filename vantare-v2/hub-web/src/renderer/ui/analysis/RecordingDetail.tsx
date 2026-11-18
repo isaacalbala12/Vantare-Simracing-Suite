@@ -11,10 +11,12 @@ import type {
 } from "../../app/AnalysisController";
 import { recordingZone } from "../../app/analysis-dates";
 import {
+  bestApproximateLapTime,
   estimatedLap,
   groupSessionLaps,
   lapDataKind,
   lapTime,
+  recordingBestTime,
   summarizeLaps,
 } from "../../app/analysis-laps";
 import { Icon } from "../../assets/icons/Icon";
@@ -183,6 +185,21 @@ export function AnalysisLaps({
   const now = useRecordingClock(clock, timeZone);
   const opened = state.opened;
   const summary = summarizeLaps(opened?.laps ?? []);
+  const inspection = state.selected && state.inspections[state.selected.id];
+  const best = recordingBestTime(
+    opened?.sessions ?? [],
+    inspection?.bestLapApproxMs ?? bestApproximateLapTime(opened?.laps ?? []),
+  );
+  const bestLap =
+    best.ms === null
+      ? undefined
+      : opened?.laps.find((lap) => {
+          if (best.official) {
+            const time = lapTime(lap);
+            return time.ms === best.ms && time.official;
+          }
+          return lap.sealed && !lap.gap && lap.lapTimeApproxMs === best.ms;
+        });
   const latest = opened?.sessions[0];
   const grouped = (opened?.sessions.length ?? 0) > 1;
   const sharedIdentity = opened?.sessions.every(
@@ -195,8 +212,8 @@ export function AnalysisLaps({
   const metrics: [string, ReactNode, string][] = [
     [
       t.best,
-      formatLapTime(summary.bestTime, summary.bestOfficial),
-      summary.best ? t.lapNumber(summary.best.lap) : t.dash,
+      formatLapTime(best.ms, best.official),
+      bestLap ? t.lapNumber(bestLap.lap) : t.dash,
     ],
     [
       t.mean,
@@ -283,7 +300,7 @@ export function AnalysisLaps({
             bestTime={summary.bestTime}
             bestLap={summary.best?.lap}
           />
-          {latest && summary.approximate && (
+          {summary.approximate && (
             <p className="v-an-lap-note">{t.approximate}</p>
           )}
           <div className="v-an-laps-card">
@@ -326,28 +343,41 @@ export function AnalysisLaps({
                     </tr>
                   </thead>
                   {groupSessionLaps(opened.laps, opened.sessions).map(
-                    ({ session, laps }) => (
-                      <tbody key={session?.index ?? "unassigned"}>
-                        {grouped && session && (
+                    ({ session, position, laps }) => (
+                      <tbody key={position ?? "unassigned"}>
+                        {grouped && session && position !== undefined && (
                           <tr className="v-an-session-row">
-                            <th scope="rowgroup" colSpan={4}>
-                              <SessionMeta
-                                session={session}
-                                title={[
-                                  sessionType(session) ??
-                                    t.sessionNumber(session.index + 1),
-                                  ...(sharedIdentity
-                                    ? []
-                                    : [
-                                        session.trackName,
-                                        session.vehicle,
-                                        session.className,
-                                      ]),
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              />
-                            </th>
+                            {[9, 6].map((columns) => (
+                              <th
+                                key={columns}
+                                scope="rowgroup"
+                                colSpan={columns}
+                                className={
+                                  columns === 9
+                                    ? "v-an-lap-secondary"
+                                    : "v-an-session-narrow"
+                                }
+                              >
+                                <SessionMeta
+                                  session={session}
+                                  title={[
+                                    sessionType(session) ??
+                                      t.sessionNumber(
+                                        opened.sessions.length - position,
+                                      ),
+                                    ...(sharedIdentity
+                                      ? []
+                                      : [
+                                          session.trackName,
+                                          session.vehicle,
+                                          session.className,
+                                        ]),
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                />
+                              </th>
+                            ))}
                           </tr>
                         )}
                         {laps.map((lap) => (

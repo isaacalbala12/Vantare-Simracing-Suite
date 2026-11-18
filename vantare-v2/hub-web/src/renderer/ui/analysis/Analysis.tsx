@@ -10,6 +10,7 @@ import {
   recordingGroups,
   recordingZone,
 } from "../../app/analysis-dates";
+import { recordingBestTime } from "../../app/analysis-laps";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import {
   date,
@@ -151,7 +152,10 @@ function RecordingRow({
   const readable =
     inspection && ["complete", "unconfirmed"].includes(inspection.state);
   const latest = readable ? inspection.sessions[0] : undefined;
-  const official = latest?.bestLapMs ?? null;
+  const best = recordingBestTime(
+    readable ? inspection.sessions : [],
+    readable ? inspection.bestLapApproxMs : null,
+  );
   const more = readable ? Math.max(0, inspection.sessions.length - 1) : 0;
   const description = date(row.startedAtMs, timeZone);
   const error = state.rowErrors[row.id];
@@ -210,12 +214,9 @@ function RecordingRow({
       <td className="v-an-secondary">{readable ? inspection.laps : t.dash}</td>
       <td
         className="v-an-secondary v-an-number"
-        aria-description={official !== null ? t.latestSessionBest : undefined}
+        aria-description={best.ms !== null ? t.recordingBest : undefined}
       >
-        {lapTime(
-          official ?? (readable ? inspection.bestLapApproxMs : null),
-          official !== null,
-        )}
+        {lapTime(best.ms, best.official)}
       </td>
       <td className="v-an-number">{size(row.sizeBytes)}</td>
       <td>

@@ -28,6 +28,11 @@
               "track": "Fuji"
             }
           ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "state": "ready"
         }
@@ -43,6 +48,11 @@
           "activeStrategyId": null,
           "dirty": false,
           "events": [],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "state": "empty"
         }
@@ -58,6 +68,11 @@
           "activeStrategyId": null,
           "dirty": false,
           "events": [],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "state": "recovered"
         }
@@ -73,6 +88,11 @@
           "activeStrategyId": null,
           "dirty": false,
           "events": [],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "state": "protected"
         }
@@ -88,6 +108,11 @@
           "activeStrategyId": null,
           "dirty": false,
           "events": [],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
           "state": "importedLegacy"
         }
@@ -121,6 +146,11 @@
               "track": "Fuji"
             }
           ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "state": "ready"
         }
@@ -154,6 +184,11 @@
               "track": "Fuji"
             }
           ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "state": "ready"
         }
@@ -187,6 +222,11 @@
               "track": "Fuji"
             }
           ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "state": "ready"
         }
@@ -220,6 +260,11 @@
               "track": "Fuji"
             }
           ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "state": "ready"
         }
@@ -253,6 +298,11 @@
               "track": "Fuji"
             }
           ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "state": "ready"
         }
@@ -286,6 +336,11 @@
               "track": "Fuji"
             }
           ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "state": "ready"
         }
@@ -316,6 +371,11 @@
               "track": "Fuji"
             }
           ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
           "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "state": "ready"
         },
@@ -344,6 +404,282 @@
       },
       "id": 1,
       "kind": "failure"
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.compute",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "calculating"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "error": null,
+            "result": {
+              "certificate": "proven",
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 3,
+                "pitCount": 1,
+                "totalSeconds": 301
+              },
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 3,
+                    "lap": 2,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 2
+                  },
+                  {
+                    "fromLap": 3,
+                    "toLap": 3
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "calculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "error": null,
+            "result": {
+              "certificate": null,
+              "metrics": null,
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": null
+            },
+            "state": "partial"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "error": "invalidInput",
+            "result": null,
+            "state": "error"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.confirm",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "pendingChanges"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.cancel",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "error": null,
+            "result": null,
+            "state": "uncalculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
     }
   ],
   "ui": [
@@ -419,6 +755,57 @@
         "method": "strategy.confirm",
         "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "strategyId": "variant-1"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "eventId": "event-1",
+        "form": {
+          "fields": {
+            "class": "GT3",
+            "driverInitials": "PI",
+            "driverName": "Pilot",
+            "durationMinutes": "90",
+            "fuelCapacityLiters": "82",
+            "name": "Practice",
+            "pitTransitSeconds": "25",
+            "startAt": "",
+            "team": "",
+            "track": "Fuji",
+            "variantMode": "dry",
+            "variantName": "Base",
+            "variantNote": ""
+          },
+          "inputs": {
+            "basePaceSeconds": "90.472",
+            "degradationSeconds": "0",
+            "formationSeconds": "0",
+            "fuelPerLapLiters": "1.83",
+            "fuelStep": "1",
+            "raceLaps": "3",
+            "refuelRate": "1",
+            "reserveLaps": "1",
+            "serviceMode": "parallel",
+            "tyreLifeLaps": "30",
+            "tyreServiceSeconds": "10",
+            "veCapacityPercent": "100",
+            "vePerLapPercent": "5",
+            "veRate": "1",
+            "veStep": "1"
+          }
+        },
+        "method": "strategy.compute",
+        "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "strategyId": "variant-1"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "strategy.cancel"
       }
     },
     {

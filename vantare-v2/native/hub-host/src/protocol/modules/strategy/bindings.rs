@@ -213,7 +213,7 @@ fn solver_sample() -> StrategySolverFields {
     }
 }
 
-fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 5] {
+fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 6] {
     let completed = StrategyCalculationView {
         certificate: Some(StrategyCertificate::Proven),
         steps: StrategyServiceSteps {
@@ -221,9 +221,9 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 5] {
             ve_percent: Some(1.into()),
         },
         metrics: Some(StrategyMetrics {
-            total_seconds: 271.into(),
+            total_seconds: 301.into(),
             laps: 3,
-            pit_count: 0,
+            pit_count: 1,
             fuel_reserve_real_laps: Some(10.into()),
             fuel_reserve_required_laps: 1.into(),
         }),
@@ -234,11 +234,23 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 5] {
             fuel_finish_liters: 24.into(),
             ve_start_percent: 100.into(),
             ve_finish_percent: 85.into(),
-            stints: vec![StrategyStint {
-                from_lap: 1,
-                to_lap: 3,
+            stints: vec![
+                StrategyStint {
+                    from_lap: 1,
+                    to_lap: 2,
+                },
+                StrategyStint {
+                    from_lap: 3,
+                    to_lap: 3,
+                },
+            ],
+            pits: vec![StrategyPit {
+                lap: 2,
+                fuel_liters: 3.into(),
+                ve_percent: 5.into(),
+                change_tyres: true,
+                service: StrategyPitService::Parallel,
             }],
-            pits: vec![],
         }),
     };
     let with_plan = |plan| StrategyView {
@@ -276,6 +288,12 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 5] {
                 state: StrategyPlanState::Error,
                 result: None,
                 error: Some(StrategyPlanError::InvalidInput),
+            }),
+        }),
+        sample_response(Reply::StrategyConfirm {
+            value: with_plan(StrategyPlanView {
+                state: StrategyPlanState::PendingChanges,
+                ..StrategyPlanView::default()
             }),
         }),
         sample_response(Reply::StrategyCancel {

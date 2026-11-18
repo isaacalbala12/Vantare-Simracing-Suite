@@ -17,7 +17,9 @@ fn fuji_reports_the_grid_passed_to_the_solver_and_the_returned_laps() {
     let outcome =
         application::calculate(&input, SourceStatus::Open, &AtomicBool::new(false)).unwrap();
     let view = project(input.input(), &outcome, "Pilot").unwrap();
+    assert_eq!(view.state, StrategyPlanState::Partial);
     let result = view.result.unwrap();
+    assert_eq!(result.certificate, Some(StrategyCertificate::NotProven));
     assert_eq!(result.steps.fuel_liters, Number::from_f64(1.0));
     assert_eq!(result.steps.ve_percent, Number::from_f64(1.0));
     let metrics = result.metrics.unwrap();

@@ -1398,3 +1398,81 @@ fn the_selection_hides_its_path_when_debug_printed() {
         assert!(text.contains("id: 1"), "{text}");
     }
 }
+
+// ---- any local drive letter, not only the one of the data directory
+
+/// A folder on a drive other than the one of `root`, when this machine has one:
+/// the folder of the test binary, the sources, or a new folder at the top of
+/// another lettered drive. `None` means there is no second drive to use.
+#[cfg(windows)]
+fn on_another_drive(root: &Root) -> Option<Root> {
+    use std::path::Component;
+    let letter = |path: &Path| match path.components().next() {
+        Some(Component::Prefix(prefix)) => match prefix.kind() {
+            std::path::Prefix::Disk(letter) | std::path::Prefix::VerbatimDisk(letter) => {
+                Some(letter.to_ascii_uppercase())
+            }
+            _ => None,
+        },
+        _ => None,
+    };
+    let here = letter(&root.0)?;
+    let mut places: Vec<PathBuf> = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(Path::to_path_buf))
+        .into_iter()
+        .chain([PathBuf::from(env!("CARGO_MANIFEST_DIR"))])
+        .collect();
+    places.extend(('A'..='Z').map(|drive| PathBuf::from(format!("{drive}:\\"))));
+    for place in places {
+        let Ok(place) = fs::canonicalize(&place) else {
+            continue;
+        };
+        if letter(&place).is_none_or(|other| other == here) {
+            continue;
+        }
+        let path = place.join(format!(
+            "vantare-e4a-{}",
+            vantare_services::random_id().unwrap()
+        ));
+        if fs::create_dir(&path).is_ok() {
+            let path = path
+                .to_str()
+                .and_then(|text| text.strip_prefix(r"\\?\"))
+                .map_or(path.clone(), PathBuf::from);
+            return Some(Root(path));
+        }
+    }
+    None
+}
+
+#[cfg(windows)]
+#[test]
+fn a_file_on_another_local_drive_opens_and_a_document_saves_there() {
+    let root = Root::new();
+    let Some(other) = on_another_drive(&root) else {
+        eprintln!("SKIPPED: this machine has no second writable lettered drive");
+        return;
+    };
+    let (mut state, _) = opened(&root);
+    fs::write(other.file("lejos.json"), document("event-9")).unwrap();
+    // open from the other drive
+    let view = choose(&mut state, StrategyFileMode::Open, &other.text("lejos.json")).unwrap();
+    assert_eq!(view.file.as_ref().unwrap().name, "lejos.json");
+    assert_eq!(view.events[0].id, "event-9");
+    // save the draft to a new file on the other drive, and the primary stays
+    let primary = fs::read(root.primary()).unwrap();
+    let draft = dirty(&mut state);
+    let saved = choose(&mut state, StrategyFileMode::SaveAs, &other.text("copia.json")).unwrap();
+    assert_eq!(saved.file.as_ref().unwrap().name, "copia.json");
+    assert!(!saved.dirty);
+    assert_eq!(saved.revision, draft.revision);
+    assert_eq!(
+        fs::read(other.file("copia.json")).unwrap(),
+        state.doc.as_ref().unwrap().bytes()
+    );
+    assert_eq!(fs::read(root.primary()).unwrap(), primary);
+    // and back: the saved copy opens again
+    let again = choose(&mut state, StrategyFileMode::Open, &other.text("copia.json")).unwrap();
+    assert_eq!(again.events, draft.events);
+}

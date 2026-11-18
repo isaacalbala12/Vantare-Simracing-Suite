@@ -406,7 +406,7 @@ fn out_of_range_text_does_not_disappear_or_trigger_quarantine() {
         let view = state.view_opened().unwrap();
         assert_eq!(view.state, StrategyState::Protected);
         assert_eq!(view.revision, hash(invalid.as_bytes()));
-        assert!(view.events.is_empty());
+        assert_eq!(view.events, Vec::<StrategyEventSummary>::new());
         assert!(!view.dirty);
         assert_eq!(fs::read(root.primary()).unwrap(), invalid.as_bytes());
         assert!(!root.0.join("strategy-v2.json.invalid").exists());

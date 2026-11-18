@@ -199,6 +199,202 @@ mod windows {
         URL_SAFE_NO_PAD.encode(SigningKey::from_bytes(&bytes).verifying_key().as_bytes())
     }
 
+    const TRANSFER_DEVICE: &str =
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const TRUST_REGISTRY: &str = "VANTARE_LICENSE_PUBLIC_KEYS";
+
+    fn sign_args(private: &Path, out: &Path) -> [OsString; 7] {
+        [
+            "sign".into(),
+            "--key".into(),
+            private.into(),
+            "--fingerprint".into(),
+            TRANSFER_DEVICE.into(),
+            "--out".into(),
+            out.into(),
+        ]
+    }
+
+    fn sign_transfer(
+        private: &Path,
+        out: &Path,
+        env: impl Fn(&str) -> Option<OsString>,
+    ) -> cli::Result<Option<String>> {
+        cli::run(
+            &sign_args(private, out),
+            env,
+            || unreachable!("sign uses only the requested fingerprint"),
+            now,
+        )
+    }
+
+    fn transfer_args(credential: &Path, root: &Path) -> [OsString; 5] {
+        [
+            "install-credential".into(),
+            "--credential".into(),
+            credential.into(),
+            "--qa-root".into(),
+            root.into(),
+        ]
+    }
+
+    fn install_transfer(
+        credential: &Path,
+        root: &Path,
+        registry: Option<&str>,
+        device: &str,
+        clock: DateTime<Utc>,
+    ) -> cli::Result<Option<String>> {
+        cli::run(
+            &transfer_args(credential, root),
+            |name| {
+                if name == TRUST_REGISTRY {
+                    registry.map(Into::into)
+                } else {
+                    None
+                }
+            },
+            || Ok(device.into()),
+            || clock,
+        )
+    }
+
+    #[test]
+    fn fingerprint_only_reports_the_local_value() {
+        let fixture = Fixture::new();
+        let value = cli::run(
+            &["fingerprint".into()],
+            |_| None,
+            || Ok(TRANSFER_DEVICE.into()),
+            || unreachable!("fingerprint does not need a clock"),
+        )
+        .expect("read-only fingerprint");
+        assert_eq!(value.as_deref(), Some(TRANSFER_DEVICE));
+        assert_eq!(fs::read_dir(&fixture.0).expect("empty fixture").count(), 0);
+    }
+
+    #[test]
+    fn sign_uses_the_requested_fingerprint_and_limits_validity() {
+        let fixture = Fixture::new();
+        let (public, private) = fixture.keygen();
+        let out = fixture.0.join("credential.json");
+        assert!(
+            sign_transfer(&private, &out, |_| None)
+                .expect("sign")
+                .is_none()
+        );
+        let encoded = fs::read_to_string(&out).expect("signed credential");
+        let credential: CredentialV1 = serde_json::from_str(&encoded).expect("credential JSON");
+        let verifier = Verifier::public_keys(&public).expect("QA key");
+        let subject = &credential.claims.subject;
+        assert!(verifier.v1(&credential, subject, TRANSFER_DEVICE).is_ok());
+        assert!(matches!(
+            verifier.v1(&credential, subject, DEVICE),
+            Err(Error::InvalidCredential)
+        ));
+        let [grant] = credential.claims.capabilities.as_slice() else {
+            panic!("one Owner grant")
+        };
+        assert_eq!(grant.key, OWNER);
+        assert!(!grant.perpetual);
+        assert_eq!(
+            grant.paid_through,
+            (now() + TimeDelta::hours(24)).to_rfc3339()
+        );
+        assert!(sign_transfer(&private, &out, |_| None).is_err());
+        assert_eq!(
+            fs::read_to_string(&out).expect("unchanged credential"),
+            encoded
+        );
+    }
+
+    #[test]
+    fn sign_refuses_git_private_and_real_output_paths() {
+        let fixture = Fixture::new();
+        let (_, private) = fixture.keygen();
+        let git = fixture.0.join("worktree");
+        let nested = git.join("nested");
+        fs::create_dir_all(&nested).expect("repository fixture");
+        fs::write(git.join(".git"), "gitdir: elsewhere").expect("worktree marker");
+        let private_parent = private.parent().expect("private key directory");
+        let prohibited = private_parent.join("nested");
+        fs::create_dir(&prohibited).expect("nested private directory");
+        for out in [
+            nested.join("credential.json"),
+            prohibited.join("credential.json"),
+        ] {
+            assert!(sign_transfer(&private, &out, |_| None).is_err());
+            assert!(!out.exists());
+        }
+        for variable in ["LOCALAPPDATA", "APPDATA", "VANTARE_NATIVE_DATA_ROOT"] {
+            let real = fixture.0.join(variable);
+            fs::create_dir(&real).expect("real root fixture");
+            let out = real.join("credential.json");
+            assert!(
+                sign_transfer(&private, &out, |name| (name == variable)
+                    .then(|| real.clone().into_os_string()))
+                .is_err()
+            );
+            assert!(!out.exists());
+        }
+    }
+
+    #[test]
+    fn credential_install_checks_signature_device_and_expiry_without_private_key() {
+        let fixture = Fixture::new();
+        let (public, private) = fixture.keygen();
+        let credential = fixture.0.join("credential.json");
+        sign_transfer(&private, &credential, |_| None).expect("sign transfer");
+        fs::remove_file(&private).expect("private key unavailable on the receiving PC");
+        let root = fixture.0.join("qa-core");
+        let (id, _) = public.split_once(':').expect("QA registry");
+        let other = format!("{id}:{}", different_public());
+        for (registry, device, clock) in [
+            (Some(public.as_str()), DEVICE, now()),
+            (Some(other.as_str()), TRANSFER_DEVICE, now()),
+            (
+                Some(public.as_str()),
+                TRANSFER_DEVICE,
+                now() + TimeDelta::hours(24),
+            ),
+            (None, TRANSFER_DEVICE, now()),
+        ] {
+            assert!(install_transfer(&credential, &root, registry, device, clock).is_err());
+            assert!(
+                !root.exists(),
+                "invalid credential must be rejected before touching the profile"
+            );
+        }
+        let mut args = transfer_args(&credential, &root).to_vec();
+        args.extend([OsString::from("--key"), private.into_os_string()]);
+        assert!(
+            cli::run(
+                &args,
+                |name| (name == TRUST_REGISTRY).then(|| public.clone().into()),
+                || unreachable!("unexpected --key must be rejected before installation"),
+                now
+            )
+            .is_err()
+        );
+        assert!(!root.exists());
+        assert!(
+            install_transfer(&credential, &root, Some(&public), TRANSFER_DEVICE, now())
+                .expect("install signed credential without private key")
+                .is_none()
+        );
+        let binding = Owner::open(
+            &root.join("Vantare/native/rights/nightly"),
+            Some(&public),
+            Devices {
+                legacy: TRANSFER_DEVICE.into(),
+            },
+            2,
+            now(),
+        )
+        .expect("reopen transfer binding");
+        assert!(binding.account_generation().is_some());
+    }
+
     #[test]
     fn qa_binding_reopens_and_distribution_rejects_it() {
         let fixture = Fixture::new();

@@ -135,7 +135,7 @@ function Picker({
           {count === t.loose && <small>{count}</small>}
           <Icon name="down" />
         </Select.Trigger>
-        <Select.Portal>
+        <Select.Portal render={<section aria-label={heading} />}>
           <Select.Positioner
             className="v-positioner"
             alignItemWithTrigger={false}

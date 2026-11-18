@@ -277,12 +277,46 @@ export async function checkWorkshopScreen(
           await page.waitForFunction(
             () => document.documentElement.style.zoom === "1.25",
           );
+        const list = page.getByRole("listbox");
+        const open = await list.isVisible();
+        const axe = new AxeBuilder({ page });
+        // Base UI's nonmodal portal redirects focus from these hidden sentinels.
+        if (open) axe.exclude('[data-base-ui-focus-guard][aria-hidden="true"]');
         assert.deepEqual(
-          (await new AxeBuilder({ page }).analyze()).violations,
+          (await axe.analyze()).violations,
           [],
           `Workshop ${scheme}/${shot}`,
         );
         await evidence?.capture(page, shot, scheme);
+        if (open) {
+          const trigger = page.getByRole("combobox", { expanded: true });
+          const name = await trigger.getAttribute("aria-label");
+          assert(name);
+          await page.keyboard.press("Escape");
+          await list.waitFor({ state: "hidden" });
+          const closed = page.getByRole("combobox", {
+            name,
+            exact: true,
+            expanded: false,
+          });
+          assert(
+            await closed.evaluate((node) => node === document.activeElement),
+          );
+          await closed.press("Enter");
+          await list.waitFor();
+          await page.keyboard.press("Tab");
+          await list.waitFor({ state: "hidden" });
+          assert(
+            await page.evaluate(
+              () =>
+                document.activeElement instanceof HTMLElement &&
+                document.activeElement !== document.body &&
+                !document.activeElement.hasAttribute(
+                  "data-base-ui-focus-guard",
+                ),
+            ),
+          );
+        }
       } finally {
         await page.close();
       }

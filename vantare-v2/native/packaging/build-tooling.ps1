@@ -189,6 +189,7 @@ function Assert-RuneLock([string]$Path,[string]$ExpectedHash) {
 function Assert-PublicInventory([string]$Payload,[object]$Inventory,$HubFiles=@()) {
     $null=Assert-PublicExternalBins $Inventory
     $listed=@($Inventory.executables)
+    foreach($name in $listed){$null=Get-PublicArtifact $name $Inventory}
     if($Inventory.schema -ne 1 -or -not $listed.Count -or @($listed|Where-Object {$_ -cnotmatch '^vantare(?:-[a-z0-9]+)*\.exe$'}).Count -or @($listed|Sort-Object -Unique).Count -ne $listed.Count){throw 'Inventario público inválido'}
     if(@($Inventory.resources|Where-Object {$_ -cmatch '(^|/)\.\.?(/|$)' -or $_ -cmatch '^/' -or $_ -cmatch '\\|:' -or $_ -cmatch '^(layouts|telemetry-real)/'}).Count){throw 'Ruta de recurso inválida'}
     foreach($required in @('standings-design-system.sequence.json','session-alerts.snapshot.json')){
@@ -217,12 +218,14 @@ function Get-PublicArtifact([string]$Name,[object]$Inventory) {
         }
     }
     $override=if($overrides){$overrides.Value.PSObject.Properties[$Name]}else{$null}
-    if($override){$override.Value}else{$Name}
+    $artifact=if($override){$override.Value}else{$Name}
+    if($Name -ieq 'vantare-qa-license.exe' -or $artifact -ieq 'vantare-qa-license.exe'){throw 'QA license binary in public inventory.'}
+    $artifact
 }
 function Assert-PublicBins([string[]]$Available,[object]$Inventory) {
     $external=@(Assert-PublicExternalBins $Inventory)
     $public=@($Inventory.executables|Where-Object {$_ -cnotin $external}|ForEach-Object {[IO.Path]::GetFileNameWithoutExtension((Get-PublicArtifact $_ $Inventory))})
-    $internal=@('vantare-admin','vantare-setup','vantare-uninstall','vantare-grabar-lmu-completo','vantare-verificar-lmu','vantare-workshop','root-launch-probe','vantare-hub')
+    $internal=@('vantare-admin','vantare-setup','vantare-uninstall','vantare-grabar-lmu-completo','vantare-verificar-lmu','vantare-workshop','root-launch-probe','vantare-hub','vantare-qa-license')
     if(@($public|Where-Object {$_ -cnotin $Available}).Count -or @($Available|Where-Object {$_ -cnotin $public -and $_ -cnotin $internal}).Count){throw 'Binarios públicos incompatibles'}
 }
 

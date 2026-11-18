@@ -23,7 +23,9 @@ function Get-NativeLicensePublicKeyBytes([string]$Encoded) {
 function Assert-NativeLicensePublicKey([string]$Encoded, $Approved) {
     $bytes=Get-NativeLicensePublicKeyBytes $Encoded
     if($null -eq $bytes){throw 'Invalid distribution license public key.'}
-    $fingerprint=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+    $sha=[Security.Cryptography.SHA256]::Create()
+    try {$fingerprint=[BitConverter]::ToString($sha.ComputeHash($bytes)).Replace('-','').ToLowerInvariant()}
+    finally {$sha.Dispose()}
     if($fingerprint -cnotin @($Approved)){throw 'Unapproved license public key in distribution payload.'}
 }
 function Assert-NativeDistributionConfigFile([string]$Channel,[string]$ConfigFile) {
@@ -38,13 +40,14 @@ function Assert-NativeDistributionLicenseRegistry([string]$Registry,[switch]$Req
     }
     $approved=@(Get-NativeProductionLicenseKeyFingerprints)
     foreach($pair in $Registry.Split(',')) {
-        if($pair -cnotmatch '^[A-Za-z0-9_.-]{1,64}:([A-Za-z0-9_-]{43})$'){throw 'Invalid distribution license registry.'}
-        Assert-NativeLicensePublicKey $Matches[1] $approved
+        if($pair -cnotmatch '^([A-Za-z0-9_.-]{1,64}):([A-Za-z0-9_-]{43})$'){throw 'Invalid distribution license registry.'}
+        if($Matches[1].StartsWith('qa-',[StringComparison]::OrdinalIgnoreCase)){throw 'QA license key ID in distribution registry.'}
+        Assert-NativeLicensePublicKey $Matches[2] $approved
     }
 }
 # Distribution boundary: inspect resolved features AND the bytes actually copied.
 function Assert-NativeDistributionFeatures($Features) {
-    if (@($Features | Where-Object { $_ -cin @('qa-e2e','parity-capture','hub-update-qa') }).Count) { throw 'QA feature in distribution graph.' }
+    if (@($Features | Where-Object { $_ -cin @('qa-e2e','parity-capture','hub-update-qa','qa-license') }).Count) { throw 'QA feature in distribution graph.' }
 }
 function Get-NativeKnownTestLicenseMarkers {
     $markers=@()

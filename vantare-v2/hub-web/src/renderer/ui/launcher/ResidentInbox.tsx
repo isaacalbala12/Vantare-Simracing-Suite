@@ -27,9 +27,9 @@ export function ResidentInbox({
   const popup = useRef<HTMLDivElement>(null);
   const reopen = useRef<HTMLButtonElement>(null);
   const reviewButton = useRef<HTMLButtonElement>(null);
-  const priorReview = useRef<ResidentReviewPanel["state"] | undefined>(
-    undefined,
-  );
+  const priorReview = useRef<
+    { identity: string; state: ResidentReviewPanel["state"] } | undefined
+  >(undefined);
   const [dismissed, setDismissed] = useState<string>();
   const rendered = answerScope(view);
   const [retained, setRetained] = useState<
@@ -90,9 +90,14 @@ export function ResidentInbox({
   const open = !!decision && dismissed !== identity;
   const reviewState = review?.state;
   useLayoutEffect(() => {
-    if (priorReview.current === reviewState) return;
-    priorReview.current = reviewState;
+    const prior = priorReview.current;
+    priorReview.current = reviewState
+      ? { identity, state: reviewState }
+      : undefined;
     if (
+      !prior ||
+      prior.identity !== identity ||
+      prior.state === reviewState ||
       reviewState === undefined ||
       reviewState === "question" ||
       reviewState === "reviewing" ||
@@ -100,10 +105,14 @@ export function ResidentInbox({
     )
       return;
     if (!open) reopen.current?.focus();
-    else if (reviewState === "trusted" || reviewState === "declined")
+    else if (
+      reviewState === "trusted" ||
+      reviewState === "declined" ||
+      reviewState === "unconfirmed"
+    )
       popup.current?.focus();
     else reviewButton.current?.focus();
-  }, [reviewState, open]);
+  }, [identity, reviewState, open]);
   const liveReview = reviewState && residentReviewText.live[reviewState];
   // Keep the existing Callout live region mounted even when its visual summary
   // is clipped. This avoids a second, competing status region when closed.

@@ -21,9 +21,11 @@ export function ResidentReview({
   const busyNote = useId();
   const cancelNote = useId();
   const { state, profile, scope } = review;
-  const ended = state === "trusted" || state === "declined";
+  const ended =
+    state === "trusted" || state === "declined" || state === "unconfirmed";
   const busy = state === "reviewing";
   const unavailable = state === "unavailable";
+  const disabled = unavailable || (!busy && !review.open);
   const retry = state === "changed" || state === "expired";
   const notice = state === "question" ? undefined : t.states[state];
   const canCancel = !!scope && answer?.available("cancel");
@@ -58,21 +60,21 @@ export function ResidentReview({
               aria-haspopup="dialog"
               busy={busy}
               focusableWhenDisabled
-              aria-disabled={unavailable || busy}
-              aria-describedby={
-                unavailable ? reason : busy ? busyNote : undefined
-              }
-              onClick={() => void review.open()}
+              aria-disabled={disabled || busy}
+              aria-describedby={disabled ? reason : busy ? busyNote : undefined}
+              onClick={() => void review.open?.()}
             >
               {retry ? t.reviewAgain : t.review}
             </Button>
           )}
-          {unavailable && (
+          {disabled && state !== "too-long" && (
             <p
               id={reason}
               className="v-resident-review-note v-resident-review-reason"
             >
-              {t.unavailableReason}
+              {unavailable
+                ? t.unavailableReason
+                : residentText.answerUnavailable}
             </p>
           )}
           {state === "too-long" && (

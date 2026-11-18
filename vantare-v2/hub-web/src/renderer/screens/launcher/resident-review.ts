@@ -18,7 +18,12 @@ import {
 } from "./resident-answer-model";
 import { useLauncherSnapshot } from "./state";
 
-type ReviewState = ResidentReviewState | "question" | "reviewing" | "too-long";
+type ReviewState =
+  | ResidentReviewState
+  | "question"
+  | "reviewing"
+  | "unconfirmed"
+  | "too-long";
 type ReviewQuestion = {
   question: ResidentQuestion;
   scope?: AnswerScope;
@@ -26,11 +31,11 @@ type ReviewQuestion = {
 };
 export type ResidentReviewPanel = ReviewQuestion & {
   state: ReviewState;
-  open: () => Promise<void>;
+  open?: () => Promise<void>;
 };
 type ReviewAttempt = {
   scope: AnswerScope;
-  state: ResidentReviewState | "reviewing";
+  state: ResidentReviewState | "reviewing" | "unconfirmed";
   ignored?: ResidentReviewState;
 };
 
@@ -171,11 +176,17 @@ export function useResidentReview(
       return;
     setRetained({ question, scope, profile });
   }, [question, scope, profile, retained]);
-  // Invalidate the promise even if the same question arrives on a new transport.
+  // Discard callbacks from the old transport. Keep uncertainty for the same account.
   // biome-ignore lint/correctness/useExhaustiveDependencies: changing the transport or account discards the outstanding intent.
   useLayoutEffect(() => {
     inflight.current = undefined;
-    setAttempt(undefined);
+    setAttempt((previous) =>
+      previous &&
+      previous.scope.accountGeneration === core.accountGeneration &&
+      (previous.state === "reviewing" || previous.state === "unconfirmed")
+        ? { ...previous, state: "unconfirmed" }
+        : undefined,
+    );
     return () => {
       inflight.current = undefined;
     };
@@ -189,34 +200,38 @@ export function useResidentReview(
     }
   }, [attempt, current, relevant]);
 
-  if (!panel) return undefined;
+  if (
+    !panel ||
+    (currentScope && currentScope.accountGeneration !== core.accountGeneration)
+  )
+    return undefined;
   const declined =
     cancellation?.kind === "accepted" ||
     (cancellation?.kind === "finished" &&
       cancellation.outcome.kind === "cancelled");
-  const state: ReviewState = declined
-    ? "declined"
-    : hostState === "trusted" || hostState === "declined"
-      ? hostState
-      : panel.question.review === "too-long"
-        ? "too-long"
-        : !question && current?.state === "reviewing"
-          ? "reviewing"
-          : !canReview || panel.question.review !== "available"
-            ? "unavailable"
-            : (hostState ?? current?.state ?? "question");
+  const availability = panel.question.review;
+  let state: ReviewState = "unavailable";
+  if (declined) state = "declined";
+  else if (hostState) state = hostState;
+  else if (current?.state === "unconfirmed") state = "unconfirmed";
+  else if (availability === "too-long") state = "too-long";
+  else if (current?.state === "reviewing") state = "reviewing";
+  else if (canReview && availability === "available")
+    state = current?.state ?? "question";
+
+  if (
+    !scope ||
+    !client ||
+    !canReview ||
+    availability !== "available" ||
+    !["question", "changed", "expired"].includes(state)
+  )
+    return { ...panel, state };
   return {
     ...panel,
     state,
     async open() {
-      if (
-        !scope ||
-        !client ||
-        !canReview ||
-        inflight.current ||
-        !["question", "changed", "expired"].includes(state)
-      )
-        return;
+      if (inflight.current) return;
       const next = {
         scope,
         state: "reviewing",
@@ -234,8 +249,11 @@ export function useResidentReview(
           reply.method === "launcher.resident.reviewOpen"
             ? await client.reviewTrust(reply.value.ticket)
             : "unavailable";
-        if (inflight.current === next && result !== "submitted")
-          setAttempt({ ...next, state: result });
+        if (inflight.current === next)
+          setAttempt({
+            ...next,
+            state: result === "submitted" ? "unconfirmed" : result,
+          });
       } catch (error) {
         if (inflight.current === next)
           setAttempt({ ...next, state: openFailure(error) });

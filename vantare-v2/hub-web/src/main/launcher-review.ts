@@ -105,7 +105,8 @@ export function launcherReview(
     if (!review || review.signal.signal.aborted) return;
     clearTimeout(review.timer);
     review.signal.abort();
-    review.resolve(reason);
+    // The resident may have received the decision before the transport failed.
+    review.resolve(review.phase === "receipt" ? "unconfirmed" : reason);
     // Keep the slot until its outstanding response or native dialog returns.
     // R1 private frames have no correlation ID and must never reach a new review.
   }
@@ -246,7 +247,7 @@ export function launcherReview(
               (message.kind === "response" &&
               message.result.method === "launcher.resident.get"
                 ? "submitted"
-                : "unavailable"),
+                : "unconfirmed"),
           );
         }
         return true;

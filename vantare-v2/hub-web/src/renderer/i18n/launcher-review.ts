@@ -21,6 +21,11 @@ export const residentReviewText = {
       title: "Revisión abierta en una ventana de Windows",
       text: "Lee los pasos y responde allí. Hasta que respondas, no se abre nada.",
     },
+    unconfirmed: {
+      tone: "info",
+      title: "Confirmación pendiente",
+      text: "El resultado de la revisión está pendiente de confirmación. Consulta los resultados del lanzamiento.",
+    },
     trusted: {
       tone: "info",
       title: "Confianza aceptada",
@@ -55,6 +60,7 @@ export const residentReviewText = {
   live: {
     question: "",
     reviewing: "",
+    unconfirmed: "El resultado de la revisión está pendiente de confirmación.",
     trusted: "Confianza aceptada. El lanzamiento sigue en curso.",
     declined:
       "No has confiado en el perfil. Se cancela el lanzamiento; no se ha abierto ninguna aplicación.",

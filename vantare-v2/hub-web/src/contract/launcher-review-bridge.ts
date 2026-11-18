@@ -1,6 +1,7 @@
 export const launcherReviewChannel = "vantare:review-trust";
 export type LauncherReviewResult =
   | "submitted"
+  | "unconfirmed"
   | "changed"
   | "expired"
   | "unavailable";
@@ -17,6 +18,7 @@ export function reviewTicket(args: readonly unknown[]): string | undefined {
 export function reviewResult(value: unknown): LauncherReviewResult {
   switch (value) {
     case "submitted":
+    case "unconfirmed":
     case "changed":
     case "expired":
       return value;

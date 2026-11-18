@@ -11,7 +11,7 @@ use std::sync::atomic::AtomicBool;
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 use vantare_strategy::{
-    application::{EditedPlan, recalculate_edited_plan},
+    application::{EditedPlan, Fallback, recalculate_edited_plan},
     solver::{Input, SolverOutcome},
 };
 
@@ -292,7 +292,8 @@ pub(super) fn recalculate(
     let outcome =
         recalculate_edited_plan(input, edited, cancel).map_err(|error| edit_error(&error))?;
     // The edited schedule is a constraint: no solution is about it.
-    let view = project_with(input, &outcome, pilot, true).map_err(|_| StrategyEditError::Failed)?;
+    let view = project_with(input, &outcome, pilot, true, Fallback::NotApplicable)
+        .map_err(|_| StrategyEditError::Failed)?;
     Ok(Recalculated {
         view,
         feasible: outcome.result.feasible,

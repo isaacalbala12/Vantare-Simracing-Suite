@@ -577,8 +577,10 @@ div.v-launcher-app-tile {
   .v-launcher-profiles {
     display: flex;
     flex-direction: column;
-    flex: 1;
-    min-height: 0;
+    /* Issue 2626: grow into the free space but never below its own heading and
+       card row. With the hero and the resident controls taller than the viewport
+       the shell main scrolls; the list no longer collapses to a 0-12 px box. */
+    flex: 1 0 auto;
   }
   .v-launcher-heading {
     min-height: 38px;

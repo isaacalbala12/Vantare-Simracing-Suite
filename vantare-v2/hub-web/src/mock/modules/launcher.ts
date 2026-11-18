@@ -26,6 +26,7 @@ export function create(context: MockContext): MockHandler {
     launcherFixture,
   ) as import("../../contract/generated/contract").LauncherView;
   context.launcherData = launcher;
+  if (sceneName === "launcher-importado") launcher.profiles[0].imported = true;
   if (
     sceneName.startsWith("launcher-control-") ||
     sceneName.startsWith("launcher-results-")
@@ -76,6 +77,7 @@ export function create(context: MockContext): MockHandler {
       name: profile.name,
       description: profile.description,
       favorite: profile.favorite,
+      imported: false,
       apps: [...profile.apps],
       launchable: true,
       options: { ...options },
@@ -168,7 +170,12 @@ export function create(context: MockContext): MockHandler {
   let profileSerial = 0;
   let keySerial = 0;
   let profileRead:
-    | { profile: string | null; revision: string; prepared: boolean }
+    | {
+        profile: string | null;
+        revision: string;
+        prepared: boolean;
+        imported?: boolean;
+      }
     | undefined;
   const stepKeys = new Map<
     string,
@@ -250,6 +257,8 @@ export function create(context: MockContext): MockHandler {
           profile: draft.id,
           revision: launcher.revision,
           prepared: true,
+          imported: launcher.profiles.find(({ id }) => id === request.id)
+            ?.imported,
         };
         for (const step of draft.steps) {
           step.key = (++keySerial).toString(16).padStart(64, "0");
@@ -379,6 +388,10 @@ export function create(context: MockContext): MockHandler {
           name: request.draft.name,
           description: request.draft.description,
           favorite: request.draft.favorite,
+          imported:
+            consumed.imported ??
+            launcher.profiles.find(({ id }) => id === profileId)?.imported ??
+            false,
           apps: request.draft.steps.map((step) => step.appId),
           launchable: true,
           options: {

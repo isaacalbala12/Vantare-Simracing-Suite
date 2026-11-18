@@ -78,6 +78,19 @@ const screens: Screen[] = [
     },
   },
   {
+    id: "launcher-perfiles-importado",
+    name: "Launcher · Perfiles importados",
+    mock: "launcher-importado",
+
+    prepare: async (page) => {
+      await mainNav(page)
+        .getByRole("button", { name: /^Launcher(, ?\d+)?$/ })
+        .click();
+      await page.locator(".v-launcher-profiles").waitFor();
+      await selectTab(page, "Perfiles");
+    },
+  },
+  {
     id: "launcher-aplicaciones",
     name: "Launcher · Aplicaciones",
     mock: "launcher-aplicaciones",

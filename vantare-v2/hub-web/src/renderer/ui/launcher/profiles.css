@@ -226,6 +226,25 @@
   line-height: 30px;
   font-weight: 600;
 }
+.v-launcher-origin {
+  align-self: flex-start;
+  max-inline-size: 100%;
+}
+.v-launcher-origin .v-badge--warn.v-badge--dot {
+  min-height: 0;
+  gap: 6px;
+  padding: 2px 9px;
+  border: 1px solid var(--warn);
+  color: var(--text-1);
+  background: transparent;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.v-launcher-origin .v-badge-dot {
+  inline-size: 6px;
+  block-size: 6px;
+}
 .v-launcher-profile > small {
   color: var(--text-3);
   font-size: 12px;

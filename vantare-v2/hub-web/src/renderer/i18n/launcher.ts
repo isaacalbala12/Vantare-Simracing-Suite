@@ -1,4 +1,5 @@
 export const launcherText = {
+  importedOrigin: "Importado · origen no verificado",
   runningOptionsReadOnly:
     "Solo lectura durante el lanzamiento. Podrás cambiar estos ajustes cuando termine.",
   title: "Launcher",

@@ -72,6 +72,7 @@ export function isLauncher(value: unknown): boolean {
         "name",
         "description",
         "favorite",
+        "imported",
         "apps",
         "launchable",
         "options",
@@ -80,6 +81,7 @@ export function isLauncher(value: unknown): boolean {
       !id(profile.name) ||
       typeof profile.description !== "string" ||
       typeof profile.favorite !== "boolean" ||
+      typeof profile.imported !== "boolean" ||
       typeof profile.launchable !== "boolean" ||
       !Array.isArray(profile.apps) ||
       profile.apps.length > launcherLimits.profiles ||

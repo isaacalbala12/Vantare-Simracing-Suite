@@ -2,10 +2,11 @@
 export type StrategyState = "ready" | "empty" | "recovered" | "protected" | "importedLegacy";
 export type StrategyVariant = { id: string, name: string, };
 export type StrategyEventSummary = { id: string, name: string, class: string, track: string, drivers: number, strategies: Array<StrategyVariant>, };
-export type StrategyView = { revision: string, state: StrategyState, events: Array<StrategyEventSummary>, activeEventId: string | null, activeStrategyId: string | null, dirty: false, };
+export type StrategyView = { revision: string, state: StrategyState, events: Array<StrategyEventSummary>, activeEventId: string | null, activeStrategyId: string | null, dirty: boolean, };
+export type StrategyFields = { name: string, durationMinutes: string, fuelCapacityLiters: string, pitTransitSeconds: string, track: string, class: string, variantName: string, variantNote: string, variantMode: string, startAt: string, team: string, driverName: string, driverInitials: string, };
 export const strategyLimits = {"id":256,"text":512} as const;
 export const strategyStates = ["ready","empty","recovered","protected","importedLegacy"] as const;
-export type StrategyRequest = { "method": "strategy.open", } | { "method": "strategy.view", } | { "method": "strategy.select", eventId: string, strategyId: string, revision: string, };
-export type StrategyReply = { "method": "strategy.open", value: StrategyView, } | { "method": "strategy.view", value: StrategyView, } | { "method": "strategy.select", value: StrategyView, };
-export type StrategyHostError = { "kind": "strategyConflict", current: StrategyView, };
-export const strategyMethods = ["strategy.open","strategy.select","strategy.view"] as const;
+export type StrategyRequest = { "method": "strategy.open", } | { "method": "strategy.view", } | { "method": "strategy.select", eventId: string, strategyId: string, revision: string, } | { "method": "strategy.create", revision: string, fields: StrategyFields, basePaceSeconds: string | null, fuelPerLapLiters: string | null, } | { "method": "strategy.confirm", eventId: string, strategyId: string, revision: string, fields: StrategyFields, } | { "method": "strategy.save", revision: string, } | { "method": "strategy.discard", revision: string, };
+export type StrategyReply = { "method": "strategy.open", value: StrategyView, } | { "method": "strategy.view", value: StrategyView, } | { "method": "strategy.select", value: StrategyView, } | { "method": "strategy.create", value: StrategyView, } | { "method": "strategy.confirm", value: StrategyView, } | { "method": "strategy.save", value: StrategyView, } | { "method": "strategy.discard", value: StrategyView, };
+export type StrategyHostError = { "kind": "strategyDirty" } | { "kind": "strategyImportFailed" } | { "kind": "strategyInvalidText" } | { "kind": "strategyConflict", current: StrategyView, };
+export const strategyMethods = ["strategy.confirm","strategy.create","strategy.discard","strategy.open","strategy.save","strategy.select","strategy.view"] as const;

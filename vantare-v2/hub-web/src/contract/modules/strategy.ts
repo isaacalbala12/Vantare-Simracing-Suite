@@ -1,4 +1,5 @@
 import {
+  type StrategyFields,
   strategyLimits,
   strategyMethods,
   strategyStates,
@@ -70,18 +71,76 @@ function view(value: unknown): boolean {
     value.events.every(event) &&
     (value.activeEventId === null || id(value.activeEventId)) &&
     (value.activeStrategyId === null || id(value.activeStrategyId)) &&
-    value.dirty === false
+    typeof value.dirty === "boolean"
   );
 }
+const fieldKeys = [
+  "name",
+  "durationMinutes",
+  "fuelCapacityLiters",
+  "pitTransitSeconds",
+  "track",
+  "class",
+  "variantName",
+  "variantNote",
+  "variantMode",
+  "startAt",
+  "team",
+  "driverName",
+  "driverInitials",
+] satisfies (keyof StrategyFields)[];
+
+function fields(value: unknown): boolean {
+  return (
+    record(value) &&
+    exact(value, fieldKeys) &&
+    fieldKeys.every((key) => text(value[key]))
+  );
+}
+
 export function isRequest(value: Record<string, unknown>): boolean {
-  if (value.method === "strategy.select")
-    return (
-      exact(value, ["method", "eventId", "strategyId", "revision"]) &&
-      id(value.eventId) &&
-      id(value.strategyId) &&
-      revision(value.revision)
-    );
-  return oneOf(value.method, strategyMethods) && exact(value, ["method"]);
+  switch (value.method) {
+    case "strategy.select":
+      return (
+        exact(value, ["method", "eventId", "strategyId", "revision"]) &&
+        id(value.eventId) &&
+        id(value.strategyId) &&
+        revision(value.revision)
+      );
+    case "strategy.confirm":
+      return (
+        exact(value, [
+          "method",
+          "eventId",
+          "strategyId",
+          "revision",
+          "fields",
+        ]) &&
+        id(value.eventId) &&
+        id(value.strategyId) &&
+        revision(value.revision) &&
+        fields(value.fields)
+      );
+    case "strategy.create":
+      return (
+        exact(value, [
+          "method",
+          "revision",
+          "fields",
+          "basePaceSeconds",
+          "fuelPerLapLiters",
+        ]) &&
+        revision(value.revision) &&
+        fields(value.fields) &&
+        (value.basePaceSeconds === null || text(value.basePaceSeconds)) &&
+        (value.fuelPerLapLiters === null || text(value.fuelPerLapLiters))
+      );
+    case "strategy.save":
+    case "strategy.discard":
+      return exact(value, ["method", "revision"]) && revision(value.revision);
+    default:
+      return oneOf(value.method, strategyMethods) && exact(value, ["method"]);
+  }
 }
 export function isReply(value: Record<string, unknown>): boolean {
   return (
@@ -91,6 +150,14 @@ export function isReply(value: Record<string, unknown>): boolean {
   );
 }
 export function isError(value: Record<string, unknown>): boolean {
+  if (
+    oneOf(value.kind, [
+      "strategyDirty",
+      "strategyImportFailed",
+      "strategyInvalidText",
+    ])
+  )
+    return exact(value, ["kind"]);
   return (
     value.kind === "strategyConflict" &&
     exact(value, ["kind", "current"]) &&

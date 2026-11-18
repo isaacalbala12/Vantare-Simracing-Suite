@@ -14,9 +14,9 @@ pub(super) fn dispatch(
     let result = if allowed {
         match request {
             Request::StrategyOpen {} => strategy.open().map(|value| Reply::StrategyOpen { value }),
-            Request::StrategyView {} => Ok(Reply::StrategyView {
-                value: strategy.view(),
-            }),
+            Request::StrategyView {} => strategy
+                .view_opened()
+                .map(|value| Reply::StrategyView { value }),
             Request::StrategySelect {
                 event_id,
                 strategy_id,
@@ -24,6 +24,34 @@ pub(super) fn dispatch(
             } => strategy
                 .select(event_id, strategy_id, revision)
                 .map(|value| Reply::StrategySelect { value }),
+            Request::StrategyCreate {
+                revision,
+                fields,
+                base_pace_seconds,
+                fuel_per_lap_liters,
+            } => strategy
+                .create(
+                    revision,
+                    fields,
+                    base_pace_seconds.as_deref(),
+                    fuel_per_lap_liters.as_deref(),
+                    &chrono::Utc::now().to_rfc3339(),
+                )
+                .map(|value| Reply::StrategyCreate { value }),
+            Request::StrategyConfirm {
+                event_id,
+                strategy_id,
+                revision,
+                fields,
+            } => strategy
+                .confirm(event_id, strategy_id, revision, fields)
+                .map(|value| Reply::StrategyConfirm { value }),
+            Request::StrategySave { revision } => strategy
+                .save(revision)
+                .map(|value| Reply::StrategySave { value }),
+            Request::StrategyDiscard { revision } => strategy
+                .discard(revision)
+                .map(|value| Reply::StrategyDiscard { value }),
             _ => Err(HostError::Rejected),
         }
     } else {

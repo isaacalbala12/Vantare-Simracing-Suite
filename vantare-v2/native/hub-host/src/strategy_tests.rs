@@ -433,3 +433,18 @@ fn the_import_lock_returns_busy_and_can_be_retried_without_touching_legacy() {
     assert_eq!(state.open().unwrap().state, StrategyState::ImportedLegacy);
     assert_eq!(fs::read(root.legacy()).unwrap(), source.as_bytes());
 }
+
+#[test]
+fn a_failed_legacy_open_keeps_the_previously_open_document() {
+    let root = Root::new();
+    fs::write(root.primary(), document("2.1.0")).unwrap();
+    let mut state = root.state();
+    let before = state.open().unwrap();
+    fs::remove_file(root.primary()).unwrap();
+    let legacy = b"{broken";
+    fs::write(root.legacy(), legacy).unwrap();
+    assert_eq!(state.open(), Err(HostError::StrategyImportFailed));
+    assert_eq!(state.view_opened().unwrap(), before);
+    assert_eq!(fs::read(root.legacy()).unwrap(), legacy);
+    assert!(!root.primary().exists());
+}

@@ -1,3 +1,10 @@
+/* The browser QA runner zooms the root with CSS. Fixed insets keep the frame
+   inside the viewport even when its viewport-unit height would be scaled. */
+.v-shell:has(.strategy-screen) {
+  position: fixed;
+  inset: 0;
+  height: auto;
+}
 .v-shell-main > .v-content-stack:has(> .strategy-screen) {
   height: 100%;
   min-height: 0;

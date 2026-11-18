@@ -173,6 +173,14 @@ async function verify(
     true,
     `horizontal overflow: ${scene}`,
   );
+  assert(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollHeight <=
+        document.documentElement.clientHeight + 1,
+    ),
+    `document scrolls outside strategy at ${scene}`,
+  );
   const text = (await scope.textContent()) ?? "";
   assert(
     !/[a-z]:[\\/]|\\\\|(^|\s)\/(?:[^\s]+\/)+/im.test(text),
@@ -373,6 +381,9 @@ export async function checkStrategyScreen(
       await combination(page);
       await button(page, "Continuar").click();
       await rules(page);
+      await page.locator(".strategy-wizard-body").evaluate((node) => {
+        node.scrollTop = 0;
+      });
       await verify(page, prefix, scheme, width);
       if (evidence)
         await page.screenshot({

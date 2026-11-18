@@ -713,23 +713,34 @@ it("takes an open Analysis route back to Home when the beta is disabled", async 
     cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
     cache.setQueryData(settingsKey, preference(true));
   });
-  const analysis = await screen.findByRole("button", {
-    name: "Análisis",
-    exact: true,
-  });
+  const analysis = await screen.findByRole("button", { name: "Análisis" });
   fireEvent.click(analysis);
   await waitFor(() =>
     expect(analysis.getAttribute("aria-current")).toBe("page"),
   );
   act(() => cache.setQueryData(settingsKey, preference(false)));
   await waitFor(() => {
-    expect(
-      screen.queryByRole("button", { name: "Análisis", exact: true }),
-    ).toBeNull();
+    expect(screen.queryByRole("button", { name: "Análisis" })).toBeNull();
     expect(
       screen
-        .getByRole("button", { name: "Inicio", exact: true })
+        .getByRole("button", { name: "Inicio" })
         .getAttribute("aria-current"),
     ).toBe("page");
   });
+});
+
+it("offers the Analysis beta switch in Settings only on the nightly channel", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  act(() =>
+    cache.setQueryData(["updates"], { ...updates, channel: "testers" }),
+  );
+  fireEvent.click(screen.getByRole("tab", { name: "Privacidad" }));
+  await screen.findByRole("switch", { name: "Enviar informes de fallos" });
+  expect(screen.queryByText("Funciones en pruebas")).toBeNull();
+  act(() =>
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" }),
+  );
+  await screen.findByText("Funciones en pruebas");
+  expect(screen.getByRole("switch", { name: "Análisis (beta)" })).toBeTruthy();
 });

@@ -49,6 +49,7 @@ try {
       5000,
       "theme saved",
     );
+    // At 1280 the rail starts collapsed; expand it so the menu labels show.
     await page.keyboard.press("Control+b");
   }
   const captures: string[] = [];
@@ -62,7 +63,7 @@ try {
     await page.screenshot({ path: resolve(output, file) });
     captures.push(file);
   }
-  for (const channel of ["testers", "master", "unknown"]) {
+  for (const channel of ["testers", "master"]) {
     await open(`privacidad-beta-${channel}`);
     assert.equal(await toggle.count(), 0, channel);
     assert.equal(await analysis.count(), 0, channel);

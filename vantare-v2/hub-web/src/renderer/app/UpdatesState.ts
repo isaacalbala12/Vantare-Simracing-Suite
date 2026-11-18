@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import type { UpdatesView } from "../../contract/generated/contract";
 import { useHost } from "./Host";
 
 export function useUpdates() {
@@ -29,7 +30,12 @@ export function useUpdates() {
   });
 }
 
+// Shell loads and refreshes the updates view; settings only read the channel
+// from that shared cache so the screen keeps working with partial hosts.
 export function useUpdatesChannel() {
-  const updates = useUpdates();
-  return updates.isError ? undefined : updates.data?.channel;
+  const { data } = useQuery<UpdatesView>({
+    queryKey: ["updates"],
+    enabled: false,
+  });
+  return data?.channel;
 }

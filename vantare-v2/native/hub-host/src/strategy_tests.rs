@@ -403,6 +403,11 @@ fn out_of_range_text_does_not_disappear_or_trigger_quarantine() {
     ] {
         fs::write(root.primary(), &invalid).unwrap();
         assert_eq!(state.open(), Err(HostError::StrategyInvalidText));
+        let view = state.view_opened().unwrap();
+        assert_eq!(view.state, StrategyState::Protected);
+        assert_eq!(view.revision, hash(invalid.as_bytes()));
+        assert!(view.events.is_empty());
+        assert!(!view.dirty);
         assert_eq!(fs::read(root.primary()).unwrap(), invalid.as_bytes());
         assert!(!root.0.join("strategy-v2.json.invalid").exists());
     }
@@ -450,4 +455,197 @@ fn a_failed_legacy_open_keeps_the_previously_open_document() {
     assert_eq!(state.view_opened().unwrap(), before);
     assert_eq!(fs::read(root.legacy()).unwrap(), legacy);
     assert!(!root.primary().exists());
+}
+
+#[test]
+fn a_generation_change_discards_the_draft_and_requires_reopening() {
+    let root = Root::new();
+    let bytes = document("2.1.0");
+    fs::write(root.primary(), &bytes).unwrap();
+    let mut state = root.state();
+    state.observe(Some("account-a"), true);
+    let saved = state.open().unwrap();
+    let draft = state
+        .create(&saved.revision, &fields("Unsaved"), None, None, NOW)
+        .unwrap();
+    assert!(draft.dirty);
+    state.observe(Some("account-a"), true);
+    assert_eq!(state.view_opened().unwrap(), draft);
+
+    state.observe(Some("account-b"), true);
+    assert_eq!(state.view_opened(), Err(HostError::Denied));
+    assert_eq!(state.save(&draft.revision), Err(HostError::Denied));
+    assert_eq!(state.open().unwrap(), saved);
+    assert_eq!(fs::read(root.primary()).unwrap(), bytes);
+}
+
+#[test]
+fn a_dirty_document_rejects_confirmation_for_another_event() {
+    let root = Root::new();
+    let bytes = document("2.1.0");
+    fs::write(root.primary(), &bytes).unwrap();
+    let mut state = root.state();
+    let opened = state.open().unwrap();
+    let draft = state
+        .confirm("event-1", "variant-1", &opened.revision, &fields("Edited"))
+        .unwrap();
+    assert!(draft.dirty);
+    assert_eq!(
+        state.confirm("event-2", "variant-1", &draft.revision, &fields("Other")),
+        Err(HostError::StrategyDirty)
+    );
+    assert_eq!(state.view_opened().unwrap(), draft);
+    assert_eq!(fs::read(root.primary()).unwrap(), bytes);
+}
+
+#[test]
+fn a_contended_save_preserves_the_dirty_draft_for_a_retry() {
+    let root = Root::new();
+    let bytes = document("2.1.0");
+    fs::write(root.primary(), &bytes).unwrap();
+    let mut state = root.state();
+    let opened = state.open().unwrap();
+    let draft = state
+        .create(&opened.revision, &fields("Unsaved"), None, None, NOW)
+        .unwrap();
+    let lock = fs::File::options()
+        .write(true)
+        .create_new(true)
+        .open(root.0.join("strategy-v2.json.lock"))
+        .unwrap();
+    lock.try_lock().unwrap();
+    assert_eq!(state.save(&draft.revision), Err(HostError::Busy));
+    assert_eq!(state.view_opened().unwrap(), draft);
+    assert_eq!(fs::read(root.primary()).unwrap(), bytes);
+    drop(lock);
+    assert!(!state.save(&draft.revision).unwrap().dirty);
+}
+
+#[test]
+fn confirm_and_create_reject_control_characters_before_applying_changes() {
+    let root = Root::new();
+    let bytes = document("2.1.0");
+    fs::write(root.primary(), &bytes).unwrap();
+    let mut state = root.state();
+    let opened = state.open().unwrap();
+    let mut form = fields("Changed");
+    form.variant_note = "one\ntwo".into();
+    assert_eq!(
+        state.confirm("event-1", "variant-1", &opened.revision, &form),
+        Err(HostError::StrategyInvalidText)
+    );
+    for (pace, consumption) in [(Some("90.472\t"), None), (None, Some("1.83\r"))] {
+        assert_eq!(
+            state.create(&opened.revision, &fields("New"), pace, consumption, NOW),
+            Err(HostError::StrategyInvalidText)
+        );
+    }
+    assert_eq!(state.view_opened().unwrap(), opened);
+    assert_eq!(fs::read(root.primary()).unwrap(), bytes);
+}
+
+#[test]
+fn invalid_creation_leaves_the_existing_collection_byte_identical() {
+    let root = Root::new();
+    let bytes = document("2.1.0");
+    fs::write(root.primary(), &bytes).unwrap();
+    let mut state = root.state();
+    let opened = state.open().unwrap();
+
+    let cases = [
+        (fields(""), None, None),
+        (
+            StrategyFields {
+                duration_minutes: "0".into(),
+                ..fields("New")
+            },
+            None,
+            None,
+        ),
+        (
+            StrategyFields {
+                duration_minutes: "2.5".into(),
+                ..fields("New")
+            },
+            None,
+            None,
+        ),
+        (
+            StrategyFields {
+                fuel_capacity_liters: "-1".into(),
+                ..fields("New")
+            },
+            None,
+            None,
+        ),
+        (
+            StrategyFields {
+                pit_transit_seconds: "NaN".into(),
+                ..fields("New")
+            },
+            None,
+            None,
+        ),
+        (fields("New"), Some("0"), None),
+        (fields("New"), None, Some("-2")),
+        (
+            StrategyFields {
+                start_at: "2026-09-30 17:00".into(),
+                ..fields("New")
+            },
+            None,
+            None,
+        ),
+    ];
+    for (form, pace, consumption) in cases {
+        assert_eq!(
+            state.create(&opened.revision, &form, pace, consumption, NOW),
+            Err(HostError::Rejected)
+        );
+        assert_eq!(state.view_opened().unwrap(), opened);
+        assert_eq!(fs::read(root.primary()).unwrap(), bytes);
+    }
+}
+
+fn crowded_document(events: usize) -> Document {
+    let mut doc = Document::empty(NOW).unwrap();
+    for number in 0..events {
+        let event = vantare_strategy::document::new_event(
+            &format!("event-{number}"),
+            "Practice",
+            90,
+            90.0,
+            18.0,
+        );
+        doc.append_event(&event).unwrap();
+    }
+    doc
+}
+
+#[test]
+fn an_additional_event_at_the_limit_rejects_the_proposal_without_protecting_the_file() {
+    let root = Root::new();
+    let doc = crowded_document(EVENT_LIMIT);
+    fs::write(root.primary(), doc.bytes()).unwrap();
+    let mut state = root.state();
+    let opened = state.open().unwrap();
+    assert_eq!(
+        state.create(&opened.revision, &fields("One too many"), None, None, NOW),
+        Err(HostError::StrategyInvalidText)
+    );
+    assert_eq!(state.view_opened().unwrap(), opened);
+    assert_eq!(fs::read(root.primary()).unwrap(), doc.bytes());
+}
+
+#[test]
+fn a_legacy_collection_over_the_limit_is_rejected_without_creating_a_primary() {
+    let root = Root::new();
+    let compact = serde_json::to_string(crowded_document(EVENT_LIMIT + 1).value()).unwrap();
+    let source = legacy("strategy.repository.v2", &compact);
+    fs::write(root.legacy(), &source).unwrap();
+    let mut state = root.state();
+    assert_eq!(state.open(), Err(HostError::StrategyInvalidText));
+    assert_eq!(state.view_opened(), Err(HostError::Denied));
+    assert!(!root.primary().exists());
+    assert_eq!(fs::read(root.legacy()).unwrap(), source.as_bytes());
 }

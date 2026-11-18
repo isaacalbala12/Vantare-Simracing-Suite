@@ -139,7 +139,17 @@ fn strategy_bounds_event_and_variant_projections_before_opening() {
         HostToUi::Response { result: Reply::StrategyOpen { value }, .. }
             if value.state == StrategyState::Ready
                 && value.events.len() == 32
-                && value.events.iter().all(|event| event.strategies.len() == 16)
+                && value.events.iter().all(|event| {
+                    use crate::strategy::{ID_LIMIT, TEXT_LIMIT};
+                    event.id.len() == ID_LIMIT
+                        && event.name.len() == TEXT_LIMIT
+                        && event.class.len() == TEXT_LIMIT
+                        && event.track.len() == TEXT_LIMIT
+                        && event.strategies.len() == 16
+                        && event.strategies.iter().all(|variant| {
+                            variant.id.len() == ID_LIMIT && variant.name.len() == TEXT_LIMIT
+                        })
+                })
     ));
 
     for (events, variants) in [(33, 1), (1, 17)] {
@@ -277,4 +287,31 @@ fn strategy_save_creates_the_primary_only_under_the_host_data_dir() {
     let doc = vantare_strategy::document::Document::parse(&written).unwrap();
     assert_eq!(doc.value()["events"][0]["name"]["value"], "Saved");
     assert!(!outside.exists());
+}
+
+#[test]
+fn switching_account_generation_clears_a_dirty_strategy_at_dispatch() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.account_generation = Some("a".repeat(64));
+    let empty = open_strategy(&mut session);
+    let draft = create_strategy(&mut session, &empty.revision, "Account A only");
+
+    session.current.account_generation = Some("b".repeat(64));
+    let denied = HostToUi::Failure {
+        id: 9,
+        error: HostError::Denied,
+    };
+    assert_eq!(request(&mut session, &Request::StrategyView {}), denied);
+    assert_eq!(
+        request(
+            &mut session,
+            &Request::StrategySave {
+                revision: draft.revision
+            }
+        ),
+        denied
+    );
+    assert_eq!(open_strategy(&mut session), empty);
+    assert!(!fixture.0.join("hub/strategy-v2.json").exists());
 }

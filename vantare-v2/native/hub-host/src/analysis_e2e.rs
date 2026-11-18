@@ -303,6 +303,7 @@ fn verify_comparison(session: &mut Session, token: &str, laps: &[AnalysisLap]) {
     assert_eq!(delta.last().unwrap().value.as_f64(), Some(2.0));
 }
 
+#[allow(clippy::too_many_lines)] // un solo recorrido legible de catalog → inspect → open → status
 fn verify(fixture: &Fixture, helper: PathBuf, interrupted: bool) {
     let mut session = session_for(fixture, helper);
 

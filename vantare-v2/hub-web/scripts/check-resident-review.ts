@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "playwright-core";
-import { residentText } from "../src/renderer/i18n/launcher-resident";
-import { residentReviewText as text } from "../src/renderer/i18n/launcher-review";
-import { until } from "./wait-for";
+import { residentText } from "../src/renderer/i18n/launcher-resident.ts";
+import { residentReviewText as text } from "../src/renderer/i18n/launcher-review.ts";
+import { until } from "./wait-for.ts";
 
 export const reviewScenes = [
   ["question", "pregunta"],

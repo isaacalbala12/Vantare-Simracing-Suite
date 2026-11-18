@@ -154,13 +154,16 @@ it("restores focus to the retry button or drawer following native review", () =>
 
 it("drops a native completion arriving after another question replaces it", async () => {
   const account = scope.accountGeneration;
-  const native = Promise.withResolvers<"expired">();
+  let expire = () => {};
+  const native = new Promise<"expired">((resolve) => {
+    expire = () => resolve("expired");
+  });
   const client = {
     request: vi.fn(async () => ({
       method: "launcher.resident.reviewOpen",
       value: { ticket: "e".repeat(32) },
     })),
-    reviewTrust: vi.fn(() => native.promise),
+    reviewTrust: vi.fn(() => native),
   };
   const observe = vi
     .spyOn(host, "useHost")
@@ -209,7 +212,7 @@ it("drops a native completion arriving after another question replaces it", asyn
     screen.rerender({ value: makeView("3") });
     expect(screen.result.current?.state).toBe("question");
     await act(async () => {
-      native.resolve("expired");
+      expire();
       await finished;
     });
     expect(screen.result.current).toMatchObject({
@@ -219,4 +222,16 @@ it("drops a native completion arriving after another question replaces it", asyn
   } finally {
     observe.mockRestore();
   }
+});
+
+it("returns to Ver decisión when the drawer is dismissed during the review", async () => {
+  const mounted = render(view(make("reviewing")));
+  fireEvent.click(screen.getByRole("button", { name: /^Cerrar$/ }));
+  const reveal = await screen.findByRole("button", {
+    name: "Ver decisión",
+  });
+  mounted.rerender(view(make("declined")));
+  expect(document.activeElement).toBe(reveal);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(cancel).not.toHaveBeenCalled();
 });

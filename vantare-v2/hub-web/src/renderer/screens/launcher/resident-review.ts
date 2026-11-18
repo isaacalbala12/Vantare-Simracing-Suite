@@ -125,7 +125,11 @@ export function useResidentReview(
     : !view?.decision &&
         sameRun &&
         (outcome?.question === retainedScope?.decision ||
-          (attempt && sameAnswerScope(attempt.scope, retainedScope)))
+          (view?.running &&
+            attempt &&
+            sameAnswerScope(attempt.scope, retainedScope)) ||
+          (answer.attempt?.target.action === "cancel" &&
+            sameAnswerScope(answer.attempt.target, retainedScope)))
       ? retained
       : undefined;
   const currentScope = panel?.scope;
@@ -186,18 +190,21 @@ export function useResidentReview(
   }, [attempt, current, relevant]);
 
   if (!panel) return undefined;
-  const state: ReviewState =
+  const declined =
     cancellation?.kind === "accepted" ||
     (cancellation?.kind === "finished" &&
-      cancellation.outcome.kind === "cancelled")
-      ? "declined"
-      : (hostState ??
-        current?.state ??
-        (panel.question.review === "too-long"
-          ? "too-long"
-          : panel.question.review === "available" && canReview
-            ? "question"
-            : "unavailable"));
+      cancellation.outcome.kind === "cancelled");
+  const state: ReviewState = declined
+    ? "declined"
+    : hostState === "trusted" || hostState === "declined"
+      ? hostState
+      : panel.question.review === "too-long"
+        ? "too-long"
+        : !question && current?.state === "reviewing"
+          ? "reviewing"
+          : !canReview || panel.question.review !== "available"
+            ? "unavailable"
+            : (hostState ?? current?.state ?? "question");
   return {
     ...panel,
     state,

@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import coreFixture from "../fixtures/core-offline.json";
 import type {
+  CoreStatus,
   HostToUi,
   ResidentView,
+  UiToHost,
 } from "../src/contract/generated/contract";
 import { postHostMessageToRenderer } from "../src/contract/validation";
 import { launcherReview } from "../src/main/launcher-review";
@@ -22,7 +25,13 @@ const empty = "Este perfil importado no tiene pasos";
 
 function fixture() {
   let now = 100;
-  const send = vi.fn();
+  let signalFence = () => {};
+  const fenced = new Promise<void>((resolve) => {
+    signalFence = resolve;
+  });
+  const send = vi.fn((message: UiToHost) => {
+    if (message.kind === "request") signalFence();
+  });
   type Dialog = Parameters<typeof launcherReview>[0];
   const show = vi.fn<Dialog>();
   const review = launcherReview(show, send, () => now);
@@ -51,7 +60,7 @@ function fixture() {
     review,
     show,
     send,
-    view,
+    fenced,
     changed: () =>
       review.receive({
         kind: "event",
@@ -74,7 +83,8 @@ function fixture() {
       review.receive({ kind: "reviewContent", pages }),
     flushed: () => {
       const last = send.mock.lastCall?.[0];
-      expect(last?.request).toEqual({ method: "launcher.resident.get" });
+      if (last?.kind !== "request") throw new Error("Missing receipt fence");
+      expect(last.request).toEqual({ method: "launcher.resident.get" });
       review.receive({
         kind: "response",
         id: last.id,
@@ -97,7 +107,7 @@ describe("trusted native review", () => {
   it.each([1, 2, 3])(
     "visits %i page(s) and stamps only final confirmation",
     async (count) => {
-      const { review, show, send, clickAt, pages, flushed, outcome } =
+      const { review, show, send, clickAt, pages, fenced, flushed, outcome } =
         fixture();
       const visits =
         count === 1 ? [0] : count === 2 ? [0, 1, 0, 1] : [0, 1, 2, 1, 2];
@@ -146,11 +156,10 @@ describe("trusted native review", () => {
             `${count === 1 ? title : `Revisa los 3 pasos de este perfil importado (parte ${index + 1} de ${count})`}\n${detail} ${index + 1}`,
         ),
       );
-      await vi.waitFor(() =>
-        expect(outcome()).toEqual([
-          { kind: "reviewDecision", ticket, decision: "trust", issuedMs: 9876 },
-        ]),
-      );
+      await fenced;
+      expect(outcome()).toEqual([
+        { kind: "reviewDecision", ticket, decision: "trust", issuedMs: 9876 },
+      ]);
       flushed();
       expect(await result).toBe("submitted");
       expect(await review.open(ticket)).toBe("unavailable");
@@ -161,33 +170,31 @@ describe("trusted native review", () => {
   it.each(["Cancelar", "Escape", "✕", "Intro"])(
     "maps %s to Cancelar without a timestamp",
     async () => {
-      const { review, show, pages, flushed, outcome } = fixture();
+      const { review, show, pages, fenced, flushed, outcome } = fixture();
       show.mockImplementationOnce(async (options) => options.cancelId);
       const result = review.open(ticket);
       pages(`${title}\n${detail}`);
-      await vi.waitFor(() =>
-        expect(outcome()).toEqual([
-          { kind: "reviewDecision", ticket, decision: "cancel" },
-        ]),
-      );
+      await fenced;
+      expect(outcome()).toEqual([
+        { kind: "reviewDecision", ticket, decision: "cancel" },
+      ]);
       flushed();
       expect(await result).toBe("submitted");
     },
   );
 
   it("never offers trust on a profile with no steps", async () => {
-    const { review, show, pages, flushed, outcome } = fixture();
+    const { review, show, pages, fenced, flushed, outcome } = fixture();
     show.mockImplementationOnce(async (options) => {
       expect(options.buttons).toEqual(["Cancelar"]);
       return options.cancelId;
     });
     const result = review.open(ticket);
     pages(`${empty}\n${detail}`);
-    await vi.waitFor(() =>
-      expect(outcome()).toEqual([
-        { kind: "reviewDecision", ticket, decision: "cancel" },
-      ]),
-    );
+    await fenced;
+    expect(outcome()).toEqual([
+      { kind: "reviewDecision", ticket, decision: "cancel" },
+    ]);
     flushed();
     expect(await result).toBe("submitted");
   });
@@ -239,12 +246,46 @@ describe("trusted native review", () => {
     expect(review.expect(5, { ...target, decision: "3" })).toBe(true);
   });
 
+  it("aborts on account replacement or shutdown without answering", async () => {
+    const signals: HostToUi[] = [
+      { kind: "closeRequested", reason: "window" },
+      {
+        kind: "event",
+        event: {
+          topic: "core",
+          value: {
+            ...(coreFixture as CoreStatus),
+            services: "connected",
+            accountGeneration: "f".repeat(64),
+          },
+        },
+      },
+    ];
+    for (const signal of signals) {
+      const { review, show, pages, outcome } = fixture();
+      show.mockImplementationOnce(
+        (options) =>
+          new Promise((done) =>
+            options.signal.addEventListener("abort", () =>
+              done(options.cancelId),
+            ),
+          ),
+      );
+      const result = review.open(ticket);
+      pages(`${title}\n${detail}`);
+      review.receive(signal);
+      expect(await result).toBe("changed");
+      expect(outcome()).toEqual([]);
+    }
+  });
+
   it("returns the host failure after confirmation even if the decision was sent", async () => {
-    const { review, show, pages, flushed, outcome } = fixture();
+    const { review, show, pages, fenced, flushed, outcome } = fixture();
     show.mockResolvedValueOnce(0);
     const result = review.open(ticket);
     pages(`${title}\n${detail}`);
-    await vi.waitFor(() => expect(outcome()).toHaveLength(1));
+    await fenced;
+    expect(outcome()).toHaveLength(1);
     review.receive({ kind: "reviewFailure", reason: "changed" });
     flushed();
     expect(await result).toBe("changed");
@@ -256,6 +297,15 @@ describe("trusted native review", () => {
     review.receive({ kind: "reviewFailure", reason: "unavailable" });
     expect(await result).toBe("unavailable");
     expect(show).not.toHaveBeenCalled();
+    expect(outcome()).toEqual([]);
+  });
+
+  it("does not expose an error from the native dialog", async () => {
+    const { review, show, pages, outcome } = fixture();
+    show.mockRejectedValueOnce(new Error(detail));
+    const result = review.open(ticket);
+    pages(`${title}\n${detail}`);
+    expect(await result).toBe("unavailable");
     expect(outcome()).toEqual([]);
   });
 

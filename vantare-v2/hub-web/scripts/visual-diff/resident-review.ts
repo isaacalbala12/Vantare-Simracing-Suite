@@ -1,5 +1,5 @@
-import { openReviewScene, reviewScenes } from "../check-resident-review";
-import type { VisualScene } from "./scenes";
+import { openReviewScene, reviewScenes } from "../check-resident-review.ts";
+import type { VisualScene } from "./scenes.ts";
 
 export const residentReviewScenes = Object.fromEntries(
   reviewScenes.map(([state]) => [

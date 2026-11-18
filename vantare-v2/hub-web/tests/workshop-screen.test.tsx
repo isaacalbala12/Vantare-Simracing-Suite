@@ -263,13 +263,10 @@ it("keeps the previous photo while pending and drops all clicks and shortcuts wi
   expect(photoRequests()).toHaveLength(before + 1);
   await act(async () => pending.resolve(png));
   expect(photoRequests()).toHaveLength(before + 1);
-  expect(
-    screen
-      .getAllByRole("status")
-      .map((node) => node.textContent)
-      .filter((label) => label?.startsWith("Fotograma"))
-      .join(""),
-  ).toMatch(/^Fotograma 2 de 4 listo\./);
+  expect(screen.getByRole("status").textContent).toBe(
+    "Fotograma 2 de 4 listo.",
+  );
+  expect(screen.queryByText("Fotograma 2 de 4", { exact: true })).toBeNull();
 });
 
 const failures: { error: HostError; text: string | RegExp; retry: boolean }[] =

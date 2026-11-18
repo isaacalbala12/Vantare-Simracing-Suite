@@ -664,12 +664,6 @@ export function Workshop({
               )}
             </div>
           </figure>
-          {scene && (
-            <div className="v-workshop-caption">
-              <strong>{t.frame(n, frames)}</strong>
-              {loose && <p>{t.noDescription}</p>}
-            </div>
-          )}
           <span role="status" className="v-sr-only">
             {ready ? `${t.frame(n, frames)} listo.` : ""}
           </span>

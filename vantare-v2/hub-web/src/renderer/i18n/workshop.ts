@@ -51,7 +51,6 @@ export const workshopText = {
     "El Taller solo enseña las escenas que vienen con Vantare. Hoy todos los widgets traen al menos dos; si ves esto en todos, faltan los archivos de escenas de la instalación.",
   noScenesFrames: "Sin escenas no hay fotogramas que recorrer.",
   noScene: "Sin escena elegida.",
-  noDescription: "Las fotos sueltas no traen descripción.",
   oneLoose: "Es una foto suelta: solo tiene un fotograma.",
   oneFrame: "Esta escena solo tiene un fotograma.",
   rights: "Tu cuenta no puede hacer fotos en el Taller",

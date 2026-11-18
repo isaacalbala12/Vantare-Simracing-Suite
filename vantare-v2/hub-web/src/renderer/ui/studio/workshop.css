@@ -104,7 +104,6 @@
   text-transform: uppercase;
 }
 .v-workshop-photo,
-.v-workshop-caption,
 .v-workshop-rights {
   margin: 0;
   border: 1px solid var(--edge);
@@ -182,15 +181,6 @@
 }
 .v-workshop-message h2 {
   font-size: 17px;
-}
-.v-workshop-caption {
-  padding: 12px 18px 13px;
-}
-.v-workshop-caption strong {
-  color: var(--text-1);
-  font: 700 12px var(--font-display);
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
 }
 .v-workshop-rights {
   padding: 10px 14px;

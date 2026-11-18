@@ -88,7 +88,7 @@ const fieldKeys = [
   "team",
   "driverName",
   "driverInitials",
-] as const satisfies readonly (keyof StrategyFields)[];
+] satisfies (keyof StrategyFields)[];
 
 function fields(value: unknown): boolean {
   return (

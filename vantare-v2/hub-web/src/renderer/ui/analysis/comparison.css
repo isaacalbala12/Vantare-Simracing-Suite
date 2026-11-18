@@ -310,7 +310,10 @@
   color: var(--analysis-gain);
 }
 .v-an-compare-loss {
-  color: var(--analysis-a);
+  color: light-dark(
+    var(--analysis-a),
+    color-mix(in srgb, var(--err) 50%, var(--text-1))
+  );
 }
 
 .v-an-cursor-values dt {

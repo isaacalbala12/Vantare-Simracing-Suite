@@ -3,13 +3,50 @@ import { access, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import AxeBuilder from "@axe-core/playwright";
-import { chromium, type Page } from "playwright-core";
+import { chromium, type Locator, type Page } from "playwright-core";
 import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
 import { analysisText as at } from "../src/renderer/i18n/analysis.es.ts";
 import { comparisonText as t } from "../src/renderer/i18n/comparison.es.ts";
 import { t as shellText } from "../src/renderer/i18n/es.ts";
 import { writeAnalysisSheet } from "./analysis-sheet.ts";
 import { webQaPreview } from "./web-qa.ts";
+
+async function lossTextContrast(loss: Locator) {
+  return loss.evaluate(async (node) => {
+    const button = node.closest("button");
+    const rail = node.closest("aside");
+    const pixel = document.createElement("canvas").getContext("2d");
+    if (!button || !rail || !pixel)
+      throw new Error("Missing loss text surface");
+    await Promise.all(
+      button.getAnimations().map((animation) => animation.finished),
+    );
+    const luminance = () => {
+      const [r, g, b] = Array.from(
+        pixel.getImageData(0, 0, 1, 1).data,
+        (value) => {
+          const channel = value / 255;
+          return channel <= 0.04045
+            ? channel / 12.92
+            : ((channel + 0.055) / 1.055) ** 2.4;
+        },
+      );
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    for (const element of [rail, button]) {
+      pixel.fillStyle = getComputedStyle(element).backgroundColor;
+      pixel.fillRect(0, 0, 1, 1);
+    }
+    const background = luminance();
+    pixel.fillStyle = getComputedStyle(node).color;
+    pixel.fillRect(0, 0, 1, 1);
+    const foreground = luminance();
+    return (
+      (Math.max(foreground, background) + 0.05) /
+      (Math.min(foreground, background) + 0.05)
+    );
+  });
+}
 
 const scenes = [
   "rail",
@@ -614,6 +651,23 @@ export async function checkAnalysisComparison(
         );
         await page.screenshot({ path: resolve(output, `${name}.png`) });
         assert.deepEqual(report.violations, [], `${name}: axe violations`);
+        if (scene === "cursor" && width === 1280) {
+          const loss = page.locator(".v-an-compare-loss:visible").first();
+          const rest = await lossTextContrast(loss);
+          assert.ok(
+            rest >= 4.5,
+            `${name}: loss text contrast at rest: ${rest}`,
+          );
+          await loss.hover();
+          const hover = await lossTextContrast(loss);
+          assert.ok(
+            hover >= 4.5,
+            `${name}: loss text contrast on hover: ${hover}`,
+          );
+          console.log(
+            `${name}: loss text contrast ${rest.toFixed(2)} at rest, ${hover.toFixed(2)} on hover`,
+          );
+        }
         const ref =
           scene === "selection"
             ? "02-grabacion"

@@ -136,7 +136,7 @@ if(-not $missingRejected){throw 'Missing whitelist admitted configured registry.
 'Unapproved config and empty/missing/malformed whitelist rejected PASS'
 # An approved fingerprint cannot override the literal known-test denylist.
 $testKey='11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
-$testRegistry='qa-rfc8032:'+$testKey
+$testRegistry='approved-fixture:'+$testKey
 $testHash=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData((Get-NativeLicensePublicKeyBytes $testKey))).ToLowerInvariant()
 [IO.File]::WriteAllText($policyList,$testHash)
 Assert-NativeDistributionLicenseRegistry $testRegistry

@@ -1,8 +1,10 @@
 ﻿[CmdletBinding()]
-param([Parameter(Mandatory)][string]$TargetDirectory)
+param([Parameter(Mandatory)][string]$TargetDirectory,[switch]$ControlsOnly)
 $ErrorActionPreference='Stop'
 $target=[IO.Path]::GetFullPath($TargetDirectory)
 $native=Split-Path $PSScriptRoot
+& (Join-Path $native 'packaging/qa-license-distribution-tests.ps1') -EvidenceDirectory $target
+if($ControlsOnly){return}
 . (Join-Path $native 'packaging/no-qa.ps1')
 . (Join-Path $native 'packaging/build-tooling.ps1')
 & (Join-Path $native 'packaging/hub-notices-real-tests.ps1') -Project (Join-Path $native '../hub-web') -EvidenceDirectory $target

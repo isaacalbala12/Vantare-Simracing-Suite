@@ -398,7 +398,7 @@ fn the_form_follows_create_confirm_and_compute() {
     edited.driver_initials = "OT".into();
     edited.variant_note = "New note".into();
     let confirmed = state
-        .confirm("native-event-1", "variant-1", &created.revision, &edited)
+        .confirm("native-event-1", "variant-1", &created.revision, &edited, None)
         .unwrap();
     let form = form_of(&confirmed);
     assert_eq!(form.fields.name, "Edited");
@@ -435,7 +435,7 @@ fn the_form_shows_the_running_draft_and_not_the_saved_file() {
     let mut edited = fields("Unsaved");
     edited.team = "Draft team".into();
     let draft = state
-        .confirm("native-event-1", "variant-1", &saved.revision, &edited)
+        .confirm("native-event-1", "variant-1", &saved.revision, &edited, None)
         .unwrap();
     assert!(draft.dirty);
     assert_eq!(form_of(&draft).fields.team, "Draft team");
@@ -461,14 +461,14 @@ fn discard_and_a_new_account_bring_the_form_back_to_what_is_saved() {
     let mut edited = fields("Unsaved");
     edited.variant_note = "draft".into();
     let draft = state
-        .confirm("native-event-1", "variant-1", &saved.revision, &edited)
+        .confirm("native-event-1", "variant-1", &saved.revision, &edited, None)
         .unwrap();
     assert_ne!(draft.form, saved.form);
     assert_eq!(state.discard(&draft.revision).unwrap().form, saved.form);
 
     // an unsaved draft, then another account: the new account reads the file
     let draft = state
-        .confirm("native-event-1", "variant-1", &saved.revision, &edited)
+        .confirm("native-event-1", "variant-1", &saved.revision, &edited, None)
         .unwrap();
     assert_ne!(draft.form, saved.form);
     state.observe(Some("account-b"), true);
@@ -1242,4 +1242,306 @@ fn the_guards_of_create_run_in_a_fixed_order() {
         create(&mut closed, "short", &fields("Two"), None, &inputs()),
         Err(HostError::Denied)
     );
+}
+
+// ---- confirm with inputs (#2662) ----
+
+/// A saved event made with `fields("Fuji")` and no inputs, as the old flow leaves
+/// it: the confirmation has something to add.
+fn saved_without_inputs(state: &mut State) -> StrategyView {
+    let empty = state.open().unwrap();
+    let draft = state
+        .create(&empty.revision, &fields("Fuji"), None, None, None, NOW)
+        .unwrap();
+    state.save(&draft.revision).unwrap()
+}
+
+/// A saved event with inputs, so a failed confirmation has something to damage.
+fn saved_with(state: &mut State) -> StrategyView {
+    let created = create_with_inputs(state, "Fuji");
+    state.save(&created.revision).unwrap()
+}
+
+fn confirm_with(
+    state: &mut State,
+    view: &StrategyView,
+    form: &StrategyFields,
+    solver: Option<&StrategySolverFields>,
+) -> Result<StrategyView, HostError> {
+    state.confirm(
+        view.active_event_id.as_deref().unwrap(),
+        view.active_strategy_id.as_deref().unwrap(),
+        &view.revision,
+        form,
+        solver,
+    )
+}
+
+fn document_bytes(state: &State) -> Vec<u8> {
+    state.doc.as_ref().unwrap().bytes().to_vec()
+}
+
+#[test]
+fn confirm_with_inputs_keeps_them_in_the_draft_without_writing_the_file() {
+    let root = Root::new();
+    let mut state = root.state();
+    let saved = saved_without_inputs(&mut state);
+    assert!(!saved.events[0].has_inputs);
+    let file = fs::read(root.primary()).unwrap();
+
+    let draft = confirm_with(&mut state, &saved, &distinct_fields(), Some(&distinct_inputs()))
+        .unwrap();
+    assert!(draft.dirty);
+    assert_ne!(draft.revision, saved.revision);
+    assert!(draft.events[0].has_inputs);
+    assert_eq!(draft.plan.state, StrategyPlanState::Uncalculated, "nothing was calculated");
+    // field by field, with no normalising comparison
+    assert_eq!(form_of(&draft).fields, distinct_fields());
+    assert_eq!(form_of(&draft).inputs, distinct_inputs());
+    assert_eq!(draft.events[0].name, "Fuji 6 h");
+    assert_eq!(state.view(), draft);
+    assert_eq!(fs::read(root.primary()).unwrap(), file, "not written before Save");
+
+    // Save writes it and a restart reads the same
+    let written = state.save(&draft.revision).unwrap();
+    assert!(!written.dirty);
+    let reopened = root.state().open().unwrap();
+    assert_eq!(reopened, written);
+    assert_eq!(form_of(&reopened).inputs, distinct_inputs());
+
+    // and discard returns to the saved file
+    let mut other = root.state();
+    let again = other.open().unwrap();
+    let draft = confirm_with(&mut other, &again, &distinct_fields(), Some(&inputs())).unwrap();
+    assert_eq!(other.discard(&draft.revision).unwrap(), again);
+}
+
+#[test]
+fn confirm_with_inputs_replaces_the_stored_ones_and_null_keeps_them() {
+    let root = Root::new();
+    let mut state = root.state();
+    let created = saved_with(&mut state);
+    assert!(same_inputs(&form_of(&created).inputs, &inputs()));
+
+    // inputs null: the fields only, the stored inputs stay (as before)
+    let kept = confirm_with(&mut state, &created, &fields("Renamed"), None).unwrap();
+    assert!(same_inputs(&form_of(&kept).inputs, &inputs()));
+
+    // inputs given: every one of the 15 is the new one
+    let replaced =
+        confirm_with(&mut state, &kept, &distinct_fields(), Some(&distinct_inputs())).unwrap();
+    assert_eq!(form_of(&replaced).inputs, distinct_inputs());
+    let doc = Document::parse(&document_bytes(&state)).unwrap();
+    let stored = &doc.value()["events"][0]["strategies"][0]["overrides"]["nativeScalarInput"];
+    assert_eq!(stored["raceLaps"], 12);
+}
+
+#[test]
+fn confirm_with_inputs_is_idempotent_and_agrees_with_compute() {
+    let root = Root::new();
+    let mut state = root.state();
+    let saved = saved_without_inputs(&mut state);
+    let first =
+        confirm_with(&mut state, &saved, &distinct_fields(), Some(&distinct_inputs())).unwrap();
+    let bytes = document_bytes(&state);
+    // the same data again changes nothing: not the revision, not the document
+    let second =
+        confirm_with(&mut state, &first, &distinct_fields(), Some(&distinct_inputs())).unwrap();
+    assert_eq!(second, first);
+    assert_eq!(document_bytes(&state), bytes);
+    // a calculation of the same form finds nothing more to confirm
+    compute_form(&mut state, &second, form_of(&second));
+    assert_eq!(state.view().revision, first.revision);
+    assert_eq!(document_bytes(&state), bytes);
+}
+
+#[test]
+fn confirm_with_the_form_a_creation_with_inputs_gave_changes_nothing() {
+    let root = Root::new();
+    let mut state = root.state();
+    let created = create_with_inputs(&mut state, "Fuji");
+    let again = confirm_with(&mut state, &created, &fields("Fuji"), Some(&inputs())).unwrap();
+    assert_eq!(again, created);
+}
+
+type Case = (&'static str, StrategyFields, StrategySolverFields, HostError);
+
+fn invalid_cases() -> Vec<Case> {
+    let good = distinct_fields();
+    let bad = |change: fn(&mut StrategySolverFields)| {
+        let mut value = distinct_inputs();
+        change(&mut value);
+        value
+    };
+    let big = "9".repeat(TEXT_LIMIT + 1);
+    let rejected = |name, form: &StrategyFields, solver| -> Case {
+        (name, form.clone(), solver, HostError::Rejected)
+    };
+    let text = |name, form: StrategyFields, solver| -> Case {
+        (name, form, solver, HostError::StrategyInvalidText)
+    };
+    vec![
+        rejected("empty pace", &good, bad(|v| v.base_pace_seconds.clear())),
+        rejected("zero pace", &good, bad(|v| v.base_pace_seconds = "0".into())),
+        rejected("laps not whole", &good, bad(|v| v.race_laps = "2.5".into())),
+        rejected("zero laps", &good, bad(|v| v.race_laps = "0".into())),
+        rejected("empty step", &good, bad(|v| v.fuel_step.clear())),
+        rejected("service mode", &good, bad(|v| v.service_mode = "other".into())),
+        rejected(
+            "wet variant",
+            &StrategyFields { variant_mode: "wet".into(), ..good.clone() },
+            distinct_inputs(),
+        ),
+        rejected(
+            "no name",
+            &StrategyFields { name: String::new(), ..good.clone() },
+            distinct_inputs(),
+        ),
+        text(
+            "input over the limit",
+            good.clone(),
+            with_input_text(&distinct_inputs(), "degradationSeconds", &big),
+        ),
+        text(
+            "input control",
+            good.clone(),
+            with_input_text(&distinct_inputs(), "reserveLaps", "1\u{7}"),
+        ),
+        text(
+            "input line break",
+            good.clone(),
+            with_input_text(&distinct_inputs(), "serviceMode", "parallel\n"),
+        ),
+        text("field over the limit", with_text(&good, "team", &big), distinct_inputs()),
+        text("field control", with_text(&good, "variantNote", "a\u{1b}b"), distinct_inputs()),
+    ]
+}
+
+#[test]
+fn confirm_with_invalid_inputs_changes_nothing_not_even_the_fields() {
+    let root = Root::new();
+    let mut state = root.state();
+    let saved = saved_with(&mut state);
+    let file = fs::read(root.primary()).unwrap();
+    let bytes = document_bytes(&state);
+    for (case, form, solver, error) in invalid_cases() {
+        assert_eq!(confirm_with(&mut state, &saved, &form, Some(&solver)), Err(error), "{case}");
+        assert_eq!(state.view_opened().unwrap(), saved, "{case}");
+        assert_eq!(document_bytes(&state), bytes, "{case}");
+        assert_eq!(fs::read(root.primary()).unwrap(), file, "{case}");
+    }
+    // over an unsaved draft the draft stays as it was
+    let draft = confirm_with(&mut state, &saved, &fields("Draft"), None).unwrap();
+    let bytes = document_bytes(&state);
+    for (case, form, solver, error) in invalid_cases() {
+        assert_eq!(confirm_with(&mut state, &draft, &form, Some(&solver)), Err(error), "{case}");
+        assert_eq!(state.view(), draft, "{case}");
+        assert_eq!(document_bytes(&state), bytes, "{case}");
+    }
+}
+
+#[test]
+fn confirm_with_inputs_on_a_missing_event_or_variant_is_rejected_as_ever() {
+    let root = Root::new();
+    let mut state = root.state();
+    let saved = saved_with(&mut state);
+    let long = with_input_text(&distinct_inputs(), "serviceMode", &"x".repeat(TEXT_LIMIT + 1));
+    for (event, variant) in [("event-9", "variant-1"), ("native-event-1", "variant-9"), ("", "")] {
+        for solver in [distinct_inputs(), long.clone()] {
+            assert_eq!(
+                state.confirm(event, variant, &saved.revision, &distinct_fields(), Some(&solver)),
+                Err(HostError::Rejected),
+                "{event}/{variant}"
+            );
+        }
+    }
+    assert_eq!(state.view(), saved);
+}
+
+#[test]
+fn the_guards_of_confirm_run_in_a_fixed_order() {
+    // protected, not open, a malformed revision, a stale one, no event or variant,
+    // changes pending in another event, a text, and last the checks of the crate
+    let root = Root::new();
+    let mut state = root.state();
+    let saved = saved_with(&mut state);
+    let outdated = "0".repeat(64);
+    let long = with_input_text(&distinct_inputs(), "serviceMode", &"x".repeat(TEXT_LIMIT + 1));
+    let mut zero = distinct_inputs();
+    zero.base_pace_seconds = "0".into();
+    let confirm = |state: &mut State, event: &str, revision: &str, solver: &StrategySolverFields| {
+        state.confirm(event, "variant-1", revision, &distinct_fields(), Some(solver))
+    };
+
+    // a malformed revision is `rejected`; a stale one a conflict
+    assert_eq!(confirm(&mut state, "native-event-1", "short", &long), Err(HostError::Rejected));
+    assert!(matches!(
+        confirm(&mut state, "event-9", &outdated, &long),
+        Err(HostError::StrategyConflict { .. })
+    ));
+    // a missing event beats the texts
+    assert_eq!(confirm(&mut state, "event-9", &saved.revision, &long), Err(HostError::Rejected));
+    // a text beats the checks of the crate (a zero pace as well)
+    let mut both = long;
+    both.base_pace_seconds = "0".into();
+    assert_eq!(
+        confirm(&mut state, "native-event-1", &saved.revision, &both),
+        Err(HostError::StrategyInvalidText)
+    );
+    assert_eq!(
+        confirm(&mut state, "native-event-1", &saved.revision, &zero),
+        Err(HostError::Rejected)
+    );
+
+    // pending changes in the active event 2 beat the texts for event 1
+    let second = state
+        .create(&saved.revision, &fields("Second"), None, None, Some(&inputs()), NOW)
+        .unwrap();
+    assert!(second.dirty);
+    assert_eq!(
+        confirm(&mut state, "native-event-1", &second.revision, &both),
+        Err(HostError::StrategyDirty)
+    );
+    assert_eq!(state.view(), second);
+    // while the active event takes the confirmation over its own draft
+    assert!(confirm(&mut state, "native-event-2", &second.revision, &distinct_inputs()).is_ok());
+
+    // protected beats the revision; a state that is not open is `denied`
+    let future = br#"{"contractVersion":"strategy.v2","schemaVersion":"9.0.0","events":[]}"#;
+    fs::write(root.primary(), future).unwrap();
+    let mut protected = root.state();
+    protected.open().unwrap();
+    assert_eq!(
+        confirm(&mut protected, "native-event-1", &outdated, &distinct_inputs()),
+        Err(HostError::Protected)
+    );
+    let mut closed = root.state();
+    assert_eq!(
+        confirm(&mut closed, "native-event-1", "short", &distinct_inputs()),
+        Err(HostError::Denied)
+    );
+}
+
+#[test]
+fn confirm_with_inputs_on_an_event_the_solver_cannot_take_is_rejected_and_changes_nothing() {
+    // an event with two drivers is outside what the scalar solver admits: the same
+    // answer as compute, and the document stays as it was
+    let root = Root::new();
+    stored_with(&root, |event| {
+        let driver = event["drivers"][0].clone();
+        event["drivers"].as_array_mut().unwrap().push(driver);
+    });
+    let mut reopened = root.state();
+    let opened = reopened.open().unwrap();
+    assert_eq!(
+        reopened.confirm(
+            "native-event-1",
+            "variant-1",
+            &opened.revision,
+            &distinct_fields(),
+            Some(&distinct_inputs())
+        ),
+        Err(HostError::Rejected)
+    );
+    assert_eq!(reopened.view_opened().unwrap(), opened);
 }

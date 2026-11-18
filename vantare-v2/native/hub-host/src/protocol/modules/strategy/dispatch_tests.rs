@@ -970,6 +970,7 @@ fn confirming_during_a_calculation_discards_its_late_document() {
             strategy_id: saved.active_strategy_id.clone().unwrap(),
             revision: saved.revision.clone(),
             fields: Box::new(confirm_fields("Changed")),
+            inputs: None,
         },
     )
     else {
@@ -1003,6 +1004,7 @@ fn a_licence_refresh_on_the_same_account_keeps_the_dirty_draft_and_the_calculati
                 strategy_id: saved.active_strategy_id.clone().unwrap(),
                 revision: saved.revision.clone(),
                 fields: Box::new(confirm_fields("Dirty")),
+                inputs: None,
             },
         )
         else {
@@ -1625,6 +1627,7 @@ fn the_edit_is_dropped_when_the_data_the_account_or_the_document_change() {
             strategy_id: view.active_strategy_id.clone().unwrap(),
             revision: view.revision.clone(),
             fields: Box::new(confirm_fields("Changed")),
+            inputs: None,
         },
     )
     else {
@@ -2081,4 +2084,122 @@ fn losing_verification_consumes_the_ticket() {
         denied,
         "the ticket did not survive the interruption"
     );
+}
+
+// ---- confirm with inputs (#2662) ----
+
+fn solver_inputs() -> crate::strategy::StrategySolverFields {
+    crate::strategy::StrategySolverFields {
+        base_pace_seconds: "91.25".into(),
+        fuel_per_lap_liters: "2.5".into(),
+        race_laps: "12".into(),
+        ve_capacity_percent: "80".into(),
+        ve_per_lap_percent: "4".into(),
+        tyre_life_laps: "25".into(),
+        degradation_seconds: "0.05".into(),
+        refuel_rate: "3.5".into(),
+        ve_rate: "2.25".into(),
+        tyre_service_seconds: "28".into(),
+        formation_seconds: "7".into(),
+        fuel_step: "2".into(),
+        ve_step: "5".into(),
+        reserve_laps: "1.5".into(),
+        service_mode: "sequential".into(),
+    }
+}
+
+#[test]
+fn confirm_with_inputs_answers_the_view_with_them_and_a_failure_keeps_the_draft() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let saved = saved_strategy(&mut session);
+    let confirm = |session: &mut Session, solver: crate::strategy::StrategySolverFields| {
+        request(
+            session,
+            &Request::StrategyConfirm {
+                event_id: saved.active_event_id.clone().unwrap(),
+                strategy_id: saved.active_strategy_id.clone().unwrap(),
+                revision: saved.revision.clone(),
+                fields: Box::new(confirm_fields("Changed")),
+                inputs: Some(Box::new(solver)),
+            },
+        )
+    };
+    let mut zero = solver_inputs();
+    zero.race_laps = "0".into();
+    assert_eq!(
+        confirm(&mut session, zero),
+        HostToUi::Failure {
+            id: 9,
+            error: HostError::Rejected
+        }
+    );
+    assert_eq!(view_strategy(&mut session), saved);
+
+    let HostToUi::Response {
+        result: Reply::StrategyConfirm { value },
+        ..
+    } = confirm(&mut session, solver_inputs())
+    else {
+        panic!("confirm with inputs");
+    };
+    assert!(value.dirty);
+    assert!(value.events[0].has_inputs);
+    assert_eq!(value.form.as_ref().unwrap().inputs, solver_inputs());
+    assert_eq!(view_strategy(&mut session), value);
+}
+
+#[test]
+fn confirm_reads_a_missing_inputs_key_as_null_and_the_largest_request_fits_the_frame() {
+    // Rust accepts the key missing, as `create` does; the TS validator requires it
+    let missing = serde_json::json!({
+        "method": "strategy.confirm",
+        "eventId": "event-1",
+        "strategyId": "variant-1",
+        "revision": "a".repeat(64),
+        "fields": confirm_fields("A"),
+    });
+    let Request::StrategyConfirm { inputs, .. } = serde_json::from_value(missing).unwrap() else {
+        panic!("confirm");
+    };
+    assert_eq!(inputs, None);
+
+    // 28 texts of 512 quotes, which JSON writes with two bytes each
+    let long = "\"".repeat(crate::strategy::TEXT_LIMIT);
+    let fields = serde_json::to_value(confirm_fields("A"))
+        .unwrap()
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(|key| (key.clone(), serde_json::Value::from(long.clone())))
+        .collect::<serde_json::Map<_, _>>();
+    let solver = serde_json::to_value(solver_inputs())
+        .unwrap()
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(|key| (key.clone(), serde_json::Value::from(long.clone())))
+        .collect::<serde_json::Map<_, _>>();
+    let message = serde_json::json!({
+        "kind": "request",
+        "id": 9,
+        "request": {
+            "method": "strategy.confirm",
+            "eventId": "e".repeat(crate::strategy::ID_LIMIT),
+            "strategyId": "v".repeat(crate::strategy::ID_LIMIT),
+            "revision": "a".repeat(64),
+            "fields": fields,
+            "inputs": solver,
+        },
+    });
+    let bytes = serde_json::to_vec(&message).unwrap();
+    assert!(bytes.len() >= 28 * 2 * crate::strategy::TEXT_LIMIT);
+    assert!(
+        bytes.len() + 24 * 1024 <= frame::LIMIT,
+        "{} bytes of {}",
+        bytes.len(),
+        frame::LIMIT
+    );
+    // and it is still a request the host reads
+    assert!(serde_json::from_slice::<UiToHost>(&bytes).is_ok());
 }

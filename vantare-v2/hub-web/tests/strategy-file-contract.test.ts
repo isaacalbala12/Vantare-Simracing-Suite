@@ -309,6 +309,7 @@ describe("the mock host", () => {
       strategyId: view.activeStrategyId,
       revision: view.revision,
       fields: (requestOf("strategy.confirm") as Json).fields,
+      inputs: null,
     }).result.value;
     expect(draft.dirty).toBe(true);
     const done = send({ ...pick("saveAs"), revision: draft.revision });

@@ -448,22 +448,34 @@ impl State {
             .map_or_else(|| Document::empty(now).map_err(|_| HostError::Io), Ok)?;
         let event = manual.append(&mut next).map_err(|_| HostError::Rejected)?;
         if inputs.is_some() {
-            // the confirmation `compute` makes, without the calculation: the same
-            // checks, in a draft of its own, so a failure creates nothing
-            let input = manual
-                .prepare(&mut next, event, 0)
-                .map_err(|_| HostError::Rejected)?;
-            application::prepare_manual(input).map_err(|_| HostError::Rejected)?;
+            confirm_inputs(&manual, &mut next, event, 0)?;
         }
         self.set_draft(next)
     }
 
+    /// Confirms the fields of a variant and, with `inputs`, its 15 calculation
+    /// inputs, without calculating (`strategy.compute` without the solver).
+    ///
+    /// The checks run in this order, and the first to fail answers: a protected
+    /// document (`protected`), a document not open (`denied`), a malformed
+    /// revision (`rejected`), an outdated one (`strategyConflict`), no document,
+    /// event or variant (`rejected`), changes pending in another event
+    /// (`strategyDirty`), a text out of range in the 13 fields or the 15 inputs
+    /// (`strategyInvalidText`) and the checks of the crate (`rejected`: a zero
+    /// pace, laps, steps, service mode, a variant that is not `dry`...).
+    ///
+    /// `inputs: None` confirms the fields only and keeps the stored inputs. With
+    /// `inputs` they replace the stored ones as a whole (they are not merged), in a
+    /// draft cloned first: a failure leaves neither the fields nor the inputs
+    /// changed. The same data again leaves the document, and so the revision, as it
+    /// was.
     pub(crate) fn confirm(
         &mut self,
         event_id: &str,
         strategy_id: &str,
         revision: &str,
         fields: &StrategyFields,
+        inputs: Option<&StrategySolverFields>,
     ) -> Result<StrategyView, HostError> {
         self.require_edit(revision)?;
         let doc = self.doc.as_ref().ok_or(HostError::Rejected)?;
@@ -475,10 +487,16 @@ impl State {
             return Err(HostError::StrategyDirty);
         }
         let mut next = doc.clone();
-        fields
-            .manual()?
-            .confirm(&mut next, event, variant)
-            .map_err(|_| HostError::Rejected)?;
+        match inputs {
+            Some(inputs) => {
+                let manual = calculation::manual_with(fields, inputs)?;
+                confirm_inputs(&manual, &mut next, event, variant)?;
+            }
+            None => fields
+                .manual()?
+                .confirm(&mut next, event, variant)
+                .map_err(|_| HostError::Rejected)?,
+        }
         self.set_draft(next)
     }
 
@@ -755,6 +773,21 @@ impl State {
         });
         self.doc = doc;
     }
+}
+/// The confirmation `compute` makes, without the calculation: the fields and the
+/// inputs of the variant, with the checks of the crate. Written to `next`, which
+/// the caller keeps as a draft of its own so a failure changes nothing.
+fn confirm_inputs(
+    manual: &ManualEvent,
+    next: &mut Document,
+    event: usize,
+    variant: usize,
+) -> Result<(), HostError> {
+    let input = manual
+        .prepare(next, event, variant)
+        .map_err(|_| HostError::Rejected)?;
+    application::prepare_manual(input).map_err(|_| HostError::Rejected)?;
+    Ok(())
 }
 fn indices(doc: &Document, event_id: &str, strategy_id: &str) -> Result<(usize, usize), HostError> {
     if !valid_id(event_id) || !valid_id(strategy_id) {

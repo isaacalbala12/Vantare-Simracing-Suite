@@ -297,6 +297,7 @@ export function create(context: MockContext): MockHandler {
     "pick",
     "noInputs",
     "invalidInputs",
+    "confirmRejected",
     "planned",
   ].some((prefix) => scenario.startsWith(prefix))
     ? "ready"
@@ -866,19 +867,42 @@ export function create(context: MockContext): MockHandler {
         request.strategyId === current.activeStrategyId;
       if (request.method === "strategy.confirm") {
         if (!active && current.dirty) return failure({ kind: "strategyDirty" });
-        const { fields } = request;
+        const { fields, inputs } = request;
         if (!validForm(fields, false)) return failure({ kind: "rejected" });
+        // inputs given: the same checks as create (and compute), all or nothing;
+        // QA: the host refuses every confirmation with inputs
+        if (
+          inputs &&
+          (scenario === "confirmRejected" ||
+            !validInputs(inputs) ||
+            fields.variantMode.trim() !== "dry")
+        )
+          return failure({ kind: "rejected" });
         const events = structuredClone(current.events);
         const updated = events[index];
         updated.name = fields.name.trim();
         updated.class = fields.class.trim();
         updated.track = fields.track.trim();
         updated.strategies[variant].name = fields.variantName.trim();
-        forms[formKey(updated.id, updated.strategies[variant].id)] = {
+        if (inputs) updated.hasInputs = true;
+        // the inputs given replace the stored ones as a whole; null keeps them
+        const next = {
           fields: hostFields(fields),
-          inputs: formOf(event, event.strategies[variant]).inputs,
+          inputs: inputs
+            ? hostInputs(inputs)
+            : formOf(event, event.strategies[variant]).inputs,
         };
-        edit({ events });
+        const key = formKey(updated.id, updated.strategies[variant].id);
+        // the same data again is no change: neither the revision nor the plan move
+        const unchanged =
+          inputs &&
+          JSON.stringify(events) === JSON.stringify(current.events) &&
+          JSON.stringify(next) ===
+            JSON.stringify(formOf(event, event.strategies[variant]));
+        if (!unchanged) {
+          forms[key] = next;
+          edit({ events });
+        }
       } else if (!active) {
         edit({
           activeEventId: request.eventId,

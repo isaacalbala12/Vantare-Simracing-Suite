@@ -323,13 +323,13 @@ fn confirmation_keeps_unknown_bytes_and_discard_reloads_the_saved_document() {
     let mut form = fields("Edited");
     form.variant_mode = "invalid".into();
     assert_eq!(
-        state.confirm("event-1", "variant-1", &before.revision, &form),
+        state.confirm("event-1", "variant-1", &before.revision, &form, None),
         Err(HostError::Rejected)
     );
     assert_eq!(state.view(), before);
     form.variant_mode = "dry".into();
     let draft = state
-        .confirm("event-1", "variant-1", &before.revision, &form)
+        .confirm("event-1", "variant-1", &before.revision, &form, None)
         .unwrap();
     assert!(draft.dirty);
     assert_eq!(fs::read(root.primary()).unwrap(), bytes);
@@ -340,7 +340,7 @@ fn confirmation_keeps_unknown_bytes_and_discard_reloads_the_saved_document() {
     assert_eq!(state.view(), draft);
     assert_eq!(state.discard(&draft.revision).unwrap(), before);
     let draft = state
-        .confirm("event-1", "variant-1", &before.revision, &form)
+        .confirm("event-1", "variant-1", &before.revision, &form, None)
         .unwrap();
     state.save(&draft.revision).unwrap();
     let after = String::from_utf8(fs::read(root.primary()).unwrap()).unwrap();
@@ -494,11 +494,11 @@ fn a_dirty_document_rejects_confirmation_for_another_event() {
     let mut state = root.state();
     let opened = state.open().unwrap();
     let draft = state
-        .confirm("event-1", "variant-1", &opened.revision, &fields("Edited"))
+        .confirm("event-1", "variant-1", &opened.revision, &fields("Edited"), None)
         .unwrap();
     assert!(draft.dirty);
     assert_eq!(
-        state.confirm("event-2", "variant-1", &draft.revision, &fields("Other")),
+        state.confirm("event-2", "variant-1", &draft.revision, &fields("Other"), None),
         Err(HostError::StrategyDirty)
     );
     assert_eq!(state.view_opened().unwrap(), draft);
@@ -538,7 +538,7 @@ fn confirm_and_create_reject_control_characters_before_applying_changes() {
     let mut form = fields("Changed");
     form.variant_note = "one\ntwo".into();
     assert_eq!(
-        state.confirm("event-1", "variant-1", &opened.revision, &form),
+        state.confirm("event-1", "variant-1", &opened.revision, &form, None),
         Err(HostError::StrategyInvalidText)
     );
     for (pace, consumption) in [(Some("90.472\t"), None), (None, Some("1.83\r"))] {

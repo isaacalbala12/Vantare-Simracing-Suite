@@ -153,13 +153,13 @@
 .v-focus-add {
   flex: none;
   min-height: 44px;
-  border: 1px dashed var(--line-3);
+  border: 1px dashed var(--control-edge);
   background: none;
   border-radius: var(--radius-lg);
   width: 100%;
 }
 [data-scheme="light"] .v-focus-add {
-  border-color: var(--edge);
+  border-color: var(--control-edge);
   border-width: 2px;
 }
 .v-focus-add:hover {

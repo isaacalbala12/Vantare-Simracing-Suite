@@ -1,5 +1,5 @@
 # One queue acquisition, one persistent target, no duplicate workspace check.
-# -LintOnly (fmt/clippy/legacy/captura) y -ArchiveOnly (compilar tests) permiten
+# -LintOnly (fmt/clippy/legacy/captura) y -ArchiveOnly (archivar tests y validar licencia QA) permiten
 # repartir el trabajo en dos jobs de CI sin duplicar la selección por diff.
 param([string]$DiffBase, [switch]$Telemetry, [switch]$LintOnly, [switch]$ArchiveOnly)
 $ErrorActionPreference = 'Stop'
@@ -38,6 +38,10 @@ try {
     if (-not $LintOnly) {
         & (Join-Path $PSScriptRoot '../gates.ps1') -Gate archive -Packages $packages
         if ($LASTEXITCODE) { throw 'Archivo de tests nativo.' }
+        if (-not $packages.Count -or 'vantare-runtime' -cin $packages) {
+            # After archiving: QA features must never enter the ordinary suite archive.
+            & (Join-Path $PSScriptRoot '../gates.ps1') -Gate qa-license
+        }
         $revision = & git rev-parse HEAD
         if ($LASTEXITCODE) { throw 'No se pudo identificar el build archivado.' }
         $lifecycle = @(Get-Content (Join-Path $env:VANTARE_SLOT_TARGET 'debug/ci-lifecycle/manifest.json') -Raw | ConvertFrom-Json)

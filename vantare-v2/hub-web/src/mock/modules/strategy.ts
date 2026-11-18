@@ -2,6 +2,7 @@ import type { HostError } from "../../contract/generated/contract";
 import corpus from "../../contract/generated/corpus/strategy.json";
 import type {
   StrategyFields,
+  StrategyPlanView,
   StrategyView,
 } from "../../contract/generated/strategy";
 import type { MockContext, MockHandler } from "../context";
@@ -14,6 +15,24 @@ function sample(state: string): StrategyView {
   )?.result?.value;
   if (!value) throw Error("Unknown strategy fixture");
   return structuredClone(value) as StrategyView;
+}
+
+const noPlan: StrategyPlanView = {
+  state: "uncalculated",
+  computeId: null,
+  result: null,
+  error: null,
+  errorField: null,
+};
+
+function calculation(state: "calculated" | "error"): StrategyPlanView {
+  const plan = corpus.host.find(
+    (item) =>
+      item.result?.method === "strategy.view" &&
+      item.result.value.plan.state === state,
+  )?.result?.value.plan;
+  if (!plan) throw Error("Missing strategy calculation fixture");
+  return structuredClone(plan) as StrategyPlanView;
 }
 
 function validNumber(value: string, minimum: number): boolean {
@@ -57,11 +76,20 @@ export function create(context: MockContext): MockHandler {
   let current = structuredClone(saved);
   let opened = false;
   let sequence = 0;
+  let computeId = 0;
+  let pending:
+    | { id: number; fields: StrategyFields; valid: boolean }
+    | undefined;
   let generation = context.core.accountGeneration;
 
   function edit(changes: Partial<StrategyView>) {
+    pending = undefined;
     current = {
       ...current,
+      plan:
+        current.plan.state === "uncalculated"
+          ? noPlan
+          : { ...noPlan, state: "pendingChanges" },
       ...changes,
       revision: (++sequence).toString(16).padStart(64, "0"),
       state: "ready",
@@ -78,6 +106,8 @@ export function create(context: MockContext): MockHandler {
       request.method !== "strategy.select" &&
       request.method !== "strategy.create" &&
       request.method !== "strategy.confirm" &&
+      request.method !== "strategy.compute" &&
+      request.method !== "strategy.cancel" &&
       request.method !== "strategy.save" &&
       request.method !== "strategy.discard"
     )
@@ -88,6 +118,7 @@ export function create(context: MockContext): MockHandler {
       context.core.access.verified && !context.core.access.blocked;
     if (!allowed || generation !== context.core.accountGeneration) {
       generation = context.core.accountGeneration;
+      pending = undefined;
       current = structuredClone(saved);
       opened = false;
     }
@@ -98,6 +129,7 @@ export function create(context: MockContext): MockHandler {
         return failure({ kind: "strategyImportFailed" });
       if (scenario === "invalidText")
         return failure({ kind: "strategyInvalidText" });
+      pending = undefined;
       current = structuredClone(saved);
       opened = true;
     }
@@ -121,6 +153,56 @@ export function create(context: MockContext): MockHandler {
         });
     }
 
+    if (request.method === "strategy.compute") {
+      if (pending) return failure({ kind: "busy" });
+      if (
+        request.eventId !== current.activeEventId ||
+        request.strategyId !== current.activeStrategyId
+      )
+        return failure({ kind: "rejected" });
+      const { fields, inputs } = request.form;
+      pending = {
+        id: ++computeId,
+        fields,
+        valid:
+          validForm(fields, false) &&
+          validNumber(inputs.basePaceSeconds, Number.MIN_VALUE) &&
+          validNumber(inputs.fuelPerLapLiters, Number.MIN_VALUE),
+      };
+      current.plan = { ...noPlan, state: "calculating", computeId: pending.id };
+    } else if (
+      request.method === "strategy.cancel" &&
+      pending?.id === request.computeId
+    ) {
+      // a stale id (another or a finished calculation) changes nothing
+      pending = undefined;
+      current.plan = noPlan;
+    } else if (request.method === "strategy.view" && pending) {
+      const { id, valid, fields } = pending;
+      pending = undefined;
+      if (valid) {
+        const events = current.events.map((event) =>
+          event.id !== current.activeEventId
+            ? event
+            : {
+                ...event,
+                name: fields.name.trim(),
+                class: fields.class.trim(),
+                track: fields.track.trim(),
+                strategies: event.strategies.map((variant) =>
+                  variant.id !== current.activeStrategyId
+                    ? variant
+                    : { ...variant, name: fields.variantName.trim() },
+                ),
+              },
+        );
+        edit({ events });
+      }
+      current.plan = {
+        ...calculation(valid ? "calculated" : "error"),
+        computeId: id,
+      };
+    }
     if (request.method === "strategy.create") {
       const { fields } = request;
       if (current.events.length >= 32)
@@ -184,14 +266,16 @@ export function create(context: MockContext): MockHandler {
           activeEventId: request.eventId,
           activeStrategyId: request.strategyId,
         });
+        current.plan = noPlan;
         current.dirty = false;
-        saved = structuredClone(current);
+        saved = structuredClone({ ...current, plan: noPlan });
       }
     }
     if (request.method === "strategy.save") {
       current.dirty = false;
-      saved = structuredClone(current);
+      saved = structuredClone({ ...current, plan: noPlan });
     } else if (request.method === "strategy.discard") {
+      pending = undefined;
       current = structuredClone(saved);
     }
     return {

@@ -40,6 +40,20 @@ pub enum Request {
     StrategySave { revision: String },
     #[serde(rename = "strategy.discard")]
     StrategyDiscard { revision: String },
+    #[serde(rename = "strategy.compute")]
+    StrategyCompute {
+        #[serde(rename = "eventId")]
+        event_id: String,
+        #[serde(rename = "strategyId")]
+        strategy_id: String,
+        revision: String,
+        form: Box<crate::strategy::StrategyComputeForm>,
+    },
+    #[serde(rename = "strategy.cancel")]
+    StrategyCancel {
+        #[serde(rename = "computeId")]
+        compute_id: u32,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -73,6 +87,14 @@ pub enum Reply {
     StrategyDiscard {
         value: crate::strategy::StrategyView,
     },
+    #[serde(rename = "strategy.compute")]
+    StrategyCompute {
+        value: crate::strategy::StrategyView,
+    },
+    #[serde(rename = "strategy.cancel")]
+    StrategyCancel {
+        value: crate::strategy::StrategyView,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -82,7 +104,7 @@ pub enum HostError {
     StrategyImportFailed,
     StrategyInvalidText,
     StrategyConflict {
-        current: crate::strategy::StrategyView,
+        current: Box<crate::strategy::StrategyView>,
     },
 }
 

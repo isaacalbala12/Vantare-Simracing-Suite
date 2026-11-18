@@ -2,6 +2,7 @@
 mod budget;
 mod certified;
 mod drivers;
+mod greedy;
 pub use drivers::{DriverLimit, DriverProfile, ManualDriverProfile, TimeWindow};
 mod model;
 #[cfg(test)]
@@ -558,8 +559,8 @@ impl GreedyRefusal {
 /// Deterministic feasible plan for the scalar model, used by the manual bridge
 /// only after the scalar search ran out of budget without any plan. The
 /// certificate is always `not_proven`; no optimality bound is claimed.
-pub fn solve_greedy_fallback(_input: &Input) -> Result<SolverOutcome, GreedyRefusal> {
-    Err(GreedyRefusal::ResourceTooSmall)
+pub fn solve_greedy_fallback(input: &Input) -> Result<SolverOutcome, GreedyRefusal> {
+    greedy::solve(input)
 }
 
 /// True when [`solve_v2_cancellable`] already runs the extended search for

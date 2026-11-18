@@ -1,5 +1,5 @@
 //! Manual Strategy calculation boundary and exact Analysis revision checks.
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -110,10 +110,39 @@ pub fn calculate_with_route(
 fn calculate_inner(
     prepared: &PreparedCalculation,
     cancel: &AtomicBool,
-    _before_greedy: &dyn Fn(),
+    before_greedy: &dyn Fn(),
 ) -> Result<(SolverOutcome, CalculationRoute), String> {
-    solver::solve_v2_cancellable(&prepared.input, cancel)
-        .map(|outcome| (outcome, CalculationRoute::Scalar))
+    let input = &prepared.input;
+    let mut outcome = solver::solve_v2_cancellable(input, cancel)?;
+    // Only a search that ran out of budget without any plan gets the fallback:
+    // a plan or a proven "no solution" is returned exactly as the solver gave it.
+    let exhausted = outcome.certificate.status == solver::OptimalityStatus::NotProven
+        && !outcome.result.feasible
+        && !solver::runs_extended_search(input);
+    if !exhausted {
+        return Ok((outcome, CalculationRoute::Scalar));
+    }
+    before_greedy();
+    if cancel.load(Ordering::Relaxed) {
+        return Err("cancelled".into());
+    }
+    match solver::solve_greedy_fallback(input) {
+        Ok(plan) => {
+            if cancel.load(Ordering::Relaxed) {
+                return Err("cancelled".into());
+            }
+            Ok((plan, CalculationRoute::Greedy))
+        }
+        Err(refusal) => {
+            // No plan, and the cause is kept next to the scalar search's own reason.
+            let cause = format!("greedy_plan_unavailable: {}", refusal.code());
+            outcome.certificate.reason = Some(match outcome.certificate.reason.take() {
+                Some(reason) => format!("{reason}; {cause}"),
+                None => cause,
+            });
+            Ok((outcome, CalculationRoute::Scalar))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -169,7 +198,6 @@ mod tests {
 
     #[test]
     fn a_cancellation_during_the_greedy_fallback_publishes_nothing() {
-        use std::sync::atomic::Ordering;
         let mut input: Input =
             serde_json::from_str(include_str!("../testdata/fuji-1450-input.json")).expect("Fuji");
         input.extra.clear();

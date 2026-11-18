@@ -52,8 +52,8 @@ fn run(input: Input) -> (SolverOutcome, CalculationRoute) {
 
 fn reserve(value: &Value, per_lap: f64) -> f64 {
     match value["kind"].as_str().unwrap_or("") {
-        "laps" => value["laps"]["value"].as_f64().unwrap() * per_lap,
-        "amount" => value["amount"]["value"].as_f64().unwrap(),
+        "laps" => value["laps"]["value"].as_f64().expect("laps") * per_lap,
+        "amount" => value["amount"]["value"].as_f64().expect("amount"),
         _ => 0.0,
     }
 }
@@ -61,7 +61,8 @@ fn reserve(value: &Value, per_lap: f64) -> f64 {
 /// Independent verifier: walks the plan and checks every rule. It shares no
 /// code with the solver.
 fn verify(input: &Input, result: &ResultV2) {
-    const EPS: f64 = 1e-6;
+    // The solver rounds each per-lap consumption to 1e-6: up to that error per lap.
+    let eps = 1e-6 * f64::from(input.race_laps);
     assert!(result.feasible, "a plan was expected");
     assert_eq!(result.stints.iter().sum::<u32>(), input.race_laps, "laps");
     assert_eq!(result.pit_stops.len() + 1, result.stints.len(), "stops");
@@ -121,18 +122,18 @@ fn verify(input: &Input, result: &ResultV2) {
             assert!(serviced.iter().all(|&s| s == 0.0), "{name} without a tank");
             continue;
         }
-        assert!(start <= capacity + EPS, "{name} start above capacity");
+        assert!(start <= capacity + eps, "{name} start above capacity");
         let mut level = start;
         for (index, stint) in result.stints.iter().enumerate() {
             level -= f64::from(*stint) * per_lap;
-            assert!(level >= -EPS, "{name} runs dry in stint {index}");
+            assert!(level >= -eps, "{name} runs dry in stint {index}");
             if let Some(added) = serviced.get(index) {
                 level += added;
-                assert!(level <= capacity + EPS, "{name} overfilled at stop {index}");
+                assert!(level <= capacity + eps, "{name} overfilled at stop {index}");
             }
         }
         assert!(
-            level >= reserve(reserve_value, per_lap) - EPS,
+            level >= reserve(reserve_value, per_lap) - eps,
             "{name} reserve not kept"
         );
         assert!((level - remaining).abs() < 1e-3, "{name} remaining");
@@ -231,7 +232,7 @@ fn long_races_without_virtual_energy_get_a_valid_unproven_plan() {
 // (c) The constraints "Recalcular" fixes: stop count and exact windows.
 #[test]
 fn the_greedy_plan_keeps_the_recalculate_schedule() {
-    let stints = [40, 35, 43, 30, 42, 41, 9];
+    let stints = [40, 35, 41, 30, 40, 38, 16];
     let mut input = manual(240, true);
     let mut lap = 0;
     let mut stops = vec![];

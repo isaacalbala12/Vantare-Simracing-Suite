@@ -18,9 +18,33 @@ export function useAnalysis() {
     [client, allowed],
   );
   useEffect(() => {
-    controller?.load();
-    return () => controller?.dispose();
-  }, [controller]);
+    if (!controller) return;
+    let closing = false;
+    const visibility = () =>
+      controller.setRecordingStatusVisible(!document.hidden && !closing);
+    const stop = () => {
+      closing = true;
+      controller.stopRecordingStatus();
+    };
+    const unsubscribe = client?.listen?.((message) => {
+      if (message.kind === "closeRequested") stop();
+    });
+    const revoke = client?.onCloseVeto?.(() => {
+      closing = false;
+      visibility();
+    });
+    visibility();
+    controller.load();
+    document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("pagehide", stop);
+    return () => {
+      document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener("pagehide", stop);
+      unsubscribe?.();
+      revoke?.();
+      controller.dispose();
+    };
+  }, [client, controller]);
   const snapshot = useSyncExternalStore(
     controller?.subscribe ?? noop,
     controller?.snapshot ?? emptySnapshot,

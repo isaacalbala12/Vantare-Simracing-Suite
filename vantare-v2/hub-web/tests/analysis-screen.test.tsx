@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { type ReactNode, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { AnalysisRequest } from "../src/contract/generated/analysis";
-import type { Reply } from "../src/contract/generated/contract";
+import type { HostToUi, Reply } from "../src/contract/generated/contract";
 import { analysisQaNow } from "../src/mock/analysis-scenes";
 import { createMockHost } from "../src/mock/host";
 import { AnalysisController } from "../src/renderer/app/AnalysisController";
@@ -68,9 +68,10 @@ function mount(
   clock = () => analysisQaNow,
   timeZone = "UTC",
   rail?: ReactNode,
+  listen?: Client["listen"],
 ) {
   vi.spyOn(host, "useHost").mockReturnValue({
-    client: { request } as unknown as Client,
+    client: { request, listen } as unknown as Client,
   });
   vi.spyOn(settings, "useSettings").mockReturnValue({
     view: { general: { grabacion: enabled } },
@@ -387,7 +388,11 @@ it("announces unavailability only after the first status query fails", async () 
   });
   mount(request);
   await waitFor(() =>
-    expect(request).toHaveBeenCalledWith({ method: "analysis.status" }),
+    expect(request).toHaveBeenCalledWith(
+      { method: "analysis.status" },
+      undefined,
+      expect.any(AbortSignal),
+    ),
   );
   expect(screen.queryByText(statusText.unavailable)).toBeNull();
   await act(async () => finish());
@@ -517,4 +522,89 @@ it("shows the deletion notice again only when a new batch arrives", async () => 
   batch = 1;
   await reload(3);
   expect(await screen.findByText(title)).toBeTruthy();
+});
+
+it("updates the live title in place, pauses in the background and stops on exit", async () => {
+  vi.useFakeTimers();
+  const hidden = vi.spyOn(document, "hidden", "get").mockReturnValue(true);
+  const base = bridge("status-recording");
+  let reads = 0;
+  let defer = false;
+  let signal: AbortSignal | undefined;
+  let resolveLast: (() => void) | undefined;
+  const request = vi.fn(
+    async (
+      input: AnalysisRequest,
+      _onSent?: () => void,
+      abort?: AbortSignal,
+    ) => {
+      const reply = await base(input);
+      if (reply.method !== "analysis.status") return reply;
+      reads++;
+      signal = abort;
+      if (defer)
+        await new Promise<void>((resolve) => {
+          resolveLast = resolve;
+        });
+      return reads === 1 ? { ...reply, status: null } : reply;
+    },
+  );
+  const tick = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
+  const show = (visible: boolean) =>
+    act(() => {
+      hidden.mockReturnValue(!visible);
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+  let receive: ((message: HostToUi) => void) | undefined;
+  const unsubscribe = vi.fn();
+  const { unmount } = mount(
+    request,
+    true,
+    true,
+    undefined,
+    "UTC",
+    undefined,
+    (listener) => {
+      receive = listener;
+      return unsubscribe;
+    },
+  );
+  await tick(24_000);
+  expect(reads).toBe(0);
+  show(true);
+  await tick(0);
+  expect(reads).toBe(1);
+  const live = screen.getByText(statusText.idle).closest('[role="status"]');
+  if (!live) throw Error("Missing live recording title");
+  expect(live.textContent).toBe(statusText.idle);
+  await tick(12_000);
+  expect(live.textContent).toBe(statusText.recording);
+  expect(
+    request.mock.calls.filter(([input]) => input.method === "analysis.catalog"),
+  ).toHaveLength(1);
+  const changes: MutationRecord[] = [];
+  const observer = new MutationObserver((records) => changes.push(...records));
+  observer.observe(live, {
+    subtree: true,
+    childList: true,
+    characterData: true,
+  });
+  await tick(12_000);
+  expect(reads).toBe(3);
+  expect(changes).toEqual([]);
+  observer.disconnect();
+  show(false);
+  await tick(36_000);
+  expect(reads).toBe(3);
+  defer = true;
+  show(true);
+  await tick(0);
+  expect(reads).toBe(4);
+  act(() => receive?.({ kind: "closeRequested", reason: "window" }));
+  expect(signal?.aborted).toBe(true);
+  unmount();
+  expect(unsubscribe).toHaveBeenCalledOnce();
+  resolveLast?.();
+  await tick(36_000);
+  expect(reads).toBe(4);
 });

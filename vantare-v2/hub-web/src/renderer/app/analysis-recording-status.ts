@@ -42,7 +42,8 @@ export function recordingIndicator(
   catalogRecording: boolean,
 ) {
   const running = status?.state === "recording" || status?.state === "degraded";
-  if (!enabled && enabledAtStart === false && !catalogRecording)
+  const catalogLive = status === undefined && catalogRecording;
+  if (!enabled && enabledAtStart === false && !running && !catalogLive)
     return "disabled";
   // The host also writes "stopped" after a normal finish, and can report a
   // failed initialisation or a dead writer as "degraded".
@@ -56,15 +57,15 @@ export function recordingIndicator(
         status.cause === "finishTimeout"))
   )
     return "stopped";
-  if (!enabled && (enabledAtStart || running || catalogRecording))
+  if (!enabled && (enabledAtStart || running || catalogLive))
     return "pendingOff";
-  if (enabled && enabledAtStart === false && !running && !catalogRecording)
+  if (enabled && enabledAtStart === false && !running && !catalogLive)
     return "pendingOn";
   if (!enabled) return "disabled";
   if (status?.state === "degraded" && status.cause === "quotaUnmet")
     return "quotaUnmet";
   if (status?.state === "degraded") return "degraded";
   if (status?.state === "recording" && atLimit) return "limit";
-  if (status?.state === "recording" || catalogRecording) return "recording";
+  if (status?.state === "recording" || catalogLive) return "recording";
   return status === undefined ? "unavailable" : "idle";
 }

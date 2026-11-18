@@ -1,7 +1,7 @@
 use super::*;
 use vantare_runtime::flows::{SessionEvent, SessionTracker};
 
-#[path = "../../../runtime/tests/support/session_frames.rs"]
+#[path = "../support/session_frames.rs"]
 mod fixture;
 use fixture::{frames, observation};
 

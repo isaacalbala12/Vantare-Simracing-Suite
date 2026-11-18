@@ -1,7 +1,7 @@
 # Entrada única del operador. Importar funciones es inerte; nunca crea dispositivos.
 [CmdletBinding()]
 param(
- [ValidateSet('Validar','Ensayo','Servidor','Trabajador','Apagar')][string]$Modo='Validar',
+ [ValidateSet('Validar','Ensayo','VerificarCustodiaQA','Servidor','Trabajador','Apagar')][string]$Modo='Validar',
  [string]$Kit=$PSScriptRoot,
  [string]$PythonExe='',
  [string]$SamplerTaskPrefix='',
@@ -12,12 +12,16 @@ param(
  [string]$LimiteUtc='',
  [string]$Salida='',
  [string]$DestinoServidor='D:/VantareServer/evidence/overlays-rune',
+ [string]$ZipQA='',
+ [string]$KeyIdQA='',
+ [string[]]$LogsQA=@(),
  [switch]$SoloVisual,
  [switch]$SoloFunciones
 )
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'SEGURIDAD_TANDA.ps1')
+. (Join-Path $PSScriptRoot 'LICENCIA_TANDA.ps1')
 
 function Read-TandaJson([string]$Path){ Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -AsHashtable -NoEnumerate }
 function Write-TandaJson($Value,[string]$Path){ConvertTo-Json -InputObject $Value -Depth 30|Set-Content -LiteralPath $Path -Encoding utf8}
@@ -335,7 +339,8 @@ function Read-TandaPolicy([string]$Root,[string]$PhotoPipe,[string]$Log){
   $process.Dispose()
  }
 }
-function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
+function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case,[hashtable]$License){
+ if(-not $License){throw 'QA_MEASUREMENT_LICENSE_MISSING: falta la credencial firmada autorizada'}
  . (Join-Path $Root 'tools/qa-overlays/OBSERVAR.ps1')
  $round=Join-Path $Output ('perf/'+$Case.id)
  $null=New-Item -ItemType Directory -Path $round
@@ -348,10 +353,12 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case){
  $profileBefore=@(Get-TandaProfileSnapshot $profileRoots)
  Write-TandaJson $profileBefore (Join-Path $round 'perfil-antes.json')
  $hostEnvironment=New-TandaQaEnvironment (Join-Path $round 'qa-host')
- $coreEnvironment=New-TandaQaEnvironment (Join-Path $round 'qa-core')
- $coreEnvironment['VANTARE_PROFILE_PHASES']='1'
- $coreEnvironment['VANTARE_MEASUREMENT_TRACE']='1'
  try {
+  # This sibling is outside the evidence tree that is archived and copied.
+  $coreProfile=Join-Path (Split-Path $Output -Parent) ('qa-core/'+$Case.id)
+  $coreEnvironment=Install-TandaQaCredential $License.cli $License.credential $License.registry $License.key_id $coreProfile
+  $coreEnvironment['VANTARE_PROFILE_PHASES']='1'
+  $coreEnvironment['VANTARE_MEASUREMENT_TRACE']='1'
   # Preparar ETW/Add-Type ANTES del replay, sin consumir sus cinco segundos.
   $rootInfo=Join-Path $round 'root-info.json'
   if($Case.state -eq 'replay'){
@@ -467,7 +474,7 @@ function Invoke-TandaLifecycle([string]$Root,[string]$Output){
   foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$prior[$name],'Process')}
  }
 }
-function Invoke-TandaWorker([string]$Root,[string]$Output){
+function Invoke-TandaWorker([string]$Root,[string]$Output,[hashtable]$License){
  Assert-TandaWindow $NoAntesUtc $LimiteUtc
  Assert-TandaSession $Sesion $Usuario
  $manifest=Assert-TandaInputs $Root
@@ -516,7 +523,7 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
   $measurementCases=if(-not $SoloVisual){$manifest.measurements}
   foreach($case in $measurementCases){
    Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
-   try {Invoke-TandaMeasurement $Root $Output $case;$state.measurements+=@{id=$case.id;status='complete'}}
+   try {Invoke-TandaMeasurement $Root $Output $case $License;$state.measurements+=@{id=$case.id;status='complete'}}
    catch {$state.measurements+=@{id=$case.id;status='invalid';error=$_.Exception.Message};throw}
   }
   $state.status='complete'
@@ -635,6 +642,15 @@ if(-not $SoloVisual -and $Modo -in @('Servidor','Trabajador','Apagar')){
 switch($Modo){
  'Validar' {if(-not $SoloVisual){Assert-TandaMachineRegistry};$null=Assert-TandaInputs $Kit; 'PASS: entradas/rutas/hashes/TSV'}
  'Ensayo' {if(-not $Salida){throw 'Falta -Salida nueva'};Invoke-TandaDryRun $Kit $Salida}
+ 'VerificarCustodiaQA' {
+  if($SoloVisual -or -not $ZipQA -or -not $LogsQA.Count){throw 'Se requieren el árbol de medición, su ZIP y los logs del ensayo'}
+  $key=Get-TandaServerQaPrivatePath $KeyIdQA
+  Assert-TandaPython $PythonExe
+  # Use the operator's own checked-out script, never code from the package under scan.
+  $scanner=Join-Path $PSScriptRoot 'preflight_privado.py'
+  & $PythonExe -I $scanner --private-key $key $Kit $ZipQA @LogsQA
+  if($LASTEXITCODE){throw 'QA_PRIVATE_PREFLIGHT_FAILED'}
+ }
  'Trabajador' {if(-not $Salida){throw 'Falta -Salida nueva'};Invoke-TandaWorker $Kit $Salida}
  'Servidor' {Invoke-TandaServer $Kit}
  'Apagar' {if(-not $Salida){throw 'Falta salida de evidencia'};Invoke-TandaShutdown $Kit $Salida}

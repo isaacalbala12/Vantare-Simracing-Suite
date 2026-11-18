@@ -18,6 +18,12 @@ function Get-VantareObservedIdentity {param($RootProcessId)
 }
 '@ | Set-Content -LiteralPath (Join-Path $root 'tools/qa-overlays/OBSERVAR.ps1')
 $script:events=[Collections.Generic.List[string]]::new();$script:deny=$false;$script:mode='replay'
+$license=@{cli='fake-cli.exe';credential='fake.json';registry='fake-public';key_id='qa-aabbccdd'}
+function Install-TandaQaCredential {param($Image,$Credential,$Registry,$ApprovedKeyId,$Directory)
+ if($Directory.StartsWith($output,[StringComparison]::OrdinalIgnoreCase) -or $ApprovedKeyId -ne 'qa-aabbccdd'){throw 'Binding dentro de la evidencia o sin clave aprobada'}
+ $script:events.Add('install:qa')
+ New-TandaQaEnvironment $Directory
+}
 function Assert-TandaUnattended {}
 function Start-TandaOwned {param($Image,$Arguments,$Log,$Environment=@{})
  $name=Split-Path $Log -Leaf;$script:events.Add('start:'+ $name)
@@ -61,19 +67,23 @@ function Invoke-TandaProcess {param($Image,$Arguments,$Log,$Timeout=120,[switch]
  if($script:mode -eq 'waiting' -and $Arguments[-1] -ne '0'){throw 'Waiting received a replay QPC'}
  $script:events.Add('analyze');@{code=0;stdout='';stderr=''}
 }
-Invoke-TandaMeasurement $root $output @{id='success';state='replay';motor='rune';layout='inputs/layout.json'}
-$prefix=@($script:events|Select-Object -First 3) -join ','
-if($prefix -ne 'start:sampler,start:core,start:overlay'){throw "Wrong order: $prefix"}
+Invoke-TandaMeasurement $root $output @{id='success';state='replay';motor='rune';layout='inputs/layout.json'} $license
+$prefix=@($script:events|Select-Object -First 4) -join ','
+if($prefix -ne 'install:qa,start:sampler,start:core,start:overlay'){throw "Wrong order: $prefix"}
 $identity=Read-TandaJson (Join-Path $output 'perf/success/root-info.json')
 if($identity.process_id -ne 123 -or $identity.start_qpc -le 0 -or (Test-Path (Join-Path $output 'perf/success/root-info.json.tmp'))){throw 'Bad/non-atomic deferred identity'}
 if(@($script:events|Where-Object {$_ -like 'close:*'}).Count -ne 3){throw 'Missing cleanup'}
 $script:events.Clear();$script:mode='waiting'
-Invoke-TandaMeasurement $root $output @{id='waiting';state='waiting';motor='gpui';layout='inputs/layout.json'}
-if((@($script:events|Select-Object -First 3) -join ',') -ne 'start:core,start:overlay,start:sampler'){throw 'Waiting warmed before the host existed'}
+Invoke-TandaMeasurement $root $output @{id='waiting';state='waiting';motor='gpui';layout='inputs/layout.json'} $license
+if((@($script:events|Select-Object -First 4) -join ',') -ne 'install:qa,start:core,start:overlay,start:sampler'){throw 'Waiting warmed before the host existed'}
 $script:events.Clear();$script:mode='replay';$script:deny=$true;$denied=$false
-try {Invoke-TandaMeasurement $root $output @{id='denied';state='replay';motor='gpui';layout='inputs/layout.json'}} catch {$denied=$_.Exception.Message -eq 'DENIED_FAKE'}
+try {Invoke-TandaMeasurement $root $output @{id='denied';state='replay';motor='gpui';layout='inputs/layout.json'} $license} catch {$denied=$_.Exception.Message -eq 'DENIED_FAKE'}
 if(-not $denied -or $script:events.Contains('start:overlay') -or $script:events.Contains('analyze') -or -not $script:events.Contains('close:sampler') -or -not $script:events.Contains('close:core')){throw 'Denial failed to clean up before host/analysis'}
 $script:events.Clear();$script:mode='waiting';$script:deny=$false;$changed=$false
-try {Invoke-TandaMeasurement $root $output @{id='profile-change';state='waiting';motor='rune';layout='inputs/layout.json'}} catch {$changed=$_.Exception.Message -like 'PROFILE_CHANGED*'}
+try {Invoke-TandaMeasurement $root $output @{id='profile-change';state='waiting';motor='rune';layout='inputs/layout.json'} $license} catch {$changed=$_.Exception.Message -like 'PROFILE_CHANGED*'}
 if(-not $changed -or $script:events.Contains('analyze')){throw 'Real profile modification produced a measurement'}
+$script:events.Clear();$missing=$false
+try{Invoke-TandaMeasurement $root $output @{id='no-transfer';state='waiting';motor='rune';layout='inputs/layout.json'}}
+catch{$missing=$_.Exception.Message -like 'QA_MEASUREMENT_LICENSE_MISSING*'}
+if(-not $missing -or $script:events.Count){throw 'Missing signed transfer started processes'}
 "PASS: ETW ready before replay, deferred identity, cleanup and denial; no GPU; sandbox=$base"

@@ -274,6 +274,29 @@ catálogo conservan sus ajustes y sus omisiones originales documentadas.
 
 ### Revisión de seguridad de #2525
 
+#### Medición con credencial QA
+
+El controlador prepara cada binding en un perfil QA nuevo, fuera del árbol de
+evidencia, antes de crear el sampler o arrancar el núcleo. El CLI comprueba
+firma, huella y aislamiento. Después se exige el binding DPAPI en esa raíz y
+la política real del núcleo antes de arrancar el overlay. La copia antes/después
+del perfil real sigue detectando cambios fuera de logs.
+
+El CLI toma la huella en el PC y firma en el servidor. La carpeta
+`qa-license` conserva la privada. Se firma en `qa-license-cred`, fuera del
+repo y del paquete, y solo se transferirá la credencial firmada.
+
+La comprobación de custodia se ejecuta desde el checkout en el servidor con
+`TANDA.ps1 -Modo VerificarCustodiaQA -Kit <árbol> -ZipQA <zip> -LogsQA <logs>
+-KeyIdQA <id aprobado> -PythonExe <ruta absoluta>`. Busca el formato de la
+privada y sus codificaciones de bytes, hex y base64 en los artefactos y logs.
+El veredicto no imprime contenido ni rutas de los ficheros que coinciden.
+
+La ejecución de medición permanece bloqueada. Para integrarla falta un CLI QA
+verificado en el artefacto de medición, procedencia que ate la aprobación del
+key_id al núcleo concreto y el preflight final que ate el ensayo a ese paquete.
+La cita visual conserva su paquete verificado.
+
 Para una cita limitada a paridad visual y ciclo de vida, usar el workflow
 `QA kit artifacts` de nightly. La rama `qa-kit/<sha8>` debe apuntar al SHA ya
 integrado. Con el ID del run push exitoso, importar con `COMPILAR_TANDA.ps1

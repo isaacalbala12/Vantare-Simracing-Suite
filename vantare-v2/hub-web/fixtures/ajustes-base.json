@@ -1,6 +1,6 @@
 {
   "kind": "hello",
-  "version": 64,
+  "version": 65,
   "demo": true,
   "demoName": null,
   "theme": {

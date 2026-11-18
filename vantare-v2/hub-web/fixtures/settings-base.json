@@ -6,7 +6,8 @@
     "updates": true,
     "launcher": true,
     "toasts": true,
-    "grabacion": true
+    "grabacion": true,
+    "analisisBeta": false
   },
   "appearance": {
     "palette": "vantare",

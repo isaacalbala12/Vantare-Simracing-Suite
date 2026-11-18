@@ -11,16 +11,18 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import updates from "../fixtures/updates-base.json";
 import type {
   AccountView,
   CoreStatus,
   HostToUi,
   LauncherView,
   Reply,
+  SettingsView,
 } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus.json";
 import { AccountProvider, useAccount } from "../src/renderer/app/AccountState";
-import { coreKey, HostProvider } from "../src/renderer/app/Host";
+import { coreKey, HostProvider, settingsKey } from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
 import { registeredSections } from "../src/renderer/app/ScreenRegistry";
 import { SettingsProvider } from "../src/renderer/app/SettingsState";
@@ -49,6 +51,15 @@ vi.mock("../src/renderer/ui/CommandPalette", async (original) => {
   };
 });
 let cache: QueryClient;
+beforeEach(() => {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  );
+});
 const accountListeners = new Set<(message: HostToUi) => void>();
 let showAccountIdentity = false;
 let accountState: ReturnType<typeof useAccount>;
@@ -696,4 +707,148 @@ it("Ctrl L uses the first favorite supplied by the host and preserves the select
   expect(cache.getQueryData(["launcher", "selection"])).toBe(
     view.profiles[1].id,
   );
+});
+
+it("takes an open Analysis route back to Home when the beta is disabled", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  const settings = cache.getQueryData<SettingsView>(settingsKey);
+  if (!settings) throw new Error("Missing settings");
+  const preference = (analisisBeta: boolean) => ({
+    ...settings,
+    general: { ...settings.general, analisisBeta },
+  });
+  act(() => {
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    cache.setQueryData(settingsKey, preference(true));
+  });
+  const analysis = await screen.findByRole("button", { name: "Análisis" });
+  fireEvent.click(analysis);
+  await waitFor(() =>
+    expect(analysis.getAttribute("aria-current")).toBe("page"),
+  );
+  act(() => cache.setQueryData(settingsKey, preference(false)));
+  await waitFor(() => {
+    expect(screen.queryByRole("button", { name: "Análisis" })).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Inicio" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+  });
+});
+
+it("offers the Analysis beta switch in Settings only on the nightly channel", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  act(() =>
+    cache.setQueryData(["updates"], { ...updates, channel: "testers" }),
+  );
+  fireEvent.click(screen.getByRole("tab", { name: "Privacidad" }));
+  await screen.findByRole("switch", { name: "Enviar informes de fallos" });
+  expect(screen.queryByText("Funciones en pruebas")).toBeNull();
+  act(() =>
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" }),
+  );
+  await screen.findByText("Funciones en pruebas");
+  expect(screen.getByRole("switch", { name: "Análisis (beta)" })).toBeTruthy();
+});
+
+function betaSettings(settings: SettingsView) {
+  return {
+    ...settings,
+    general: { ...settings.general, analisisBeta: true },
+  };
+}
+
+it("hides Analysis on testers and master even with the beta enabled", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  const settings = cache.getQueryData<SettingsView>(settingsKey);
+  if (!settings) throw new Error("Missing settings");
+  act(() => cache.setQueryData(settingsKey, betaSettings(settings)));
+  for (const channel of ["testers", "master"]) {
+    act(() => cache.setQueryData(["updates"], { ...updates, channel }));
+    await waitFor(() =>
+      expect(screen.queryByRole("button", { name: "Análisis" })).toBeNull(),
+    );
+  }
+});
+
+it("returns from Analysis to Home when the channel leaves nightly", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  const settings = cache.getQueryData<SettingsView>(settingsKey);
+  if (!settings) throw new Error("Missing settings");
+  act(() => {
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    cache.setQueryData(settingsKey, betaSettings(settings));
+  });
+  const analysis = await screen.findByRole("button", { name: "Análisis" });
+  fireEvent.click(analysis);
+  await waitFor(() =>
+    expect(analysis.getAttribute("aria-current")).toBe("page"),
+  );
+  act(() =>
+    cache.setQueryData(["updates"], { ...updates, channel: "testers" }),
+  );
+  await waitFor(() => {
+    expect(screen.queryByRole("button", { name: "Análisis" })).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Inicio" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+  });
+});
+
+it("keeps the Shell alive and Analysis hidden when updates.get fails", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  const settings = cache.getQueryData<SettingsView>(settingsKey);
+  if (!settings) throw new Error("Missing settings");
+  act(() => {
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    cache.setQueryData(settingsKey, betaSettings(settings));
+  });
+  await screen.findByRole("button", { name: "Análisis" });
+  const query = cache.getQueryCache().find({ queryKey: ["updates"] });
+  if (!query) throw new Error("Missing updates query");
+  act(() =>
+    query.setState({
+      status: "error",
+      error: new Error("HostFailure"),
+      fetchStatus: "idle",
+    }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("button", { name: "Análisis" })).toBeNull(),
+  );
+  expect(screen.getByRole("button", { name: "Inicio" })).toBeTruthy();
+}, 15_000);
+
+it("shows the no-access screen with the beta on and no Analysis permission", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  const core = cache.getQueryData<CoreStatus>(coreKey);
+  const settings = cache.getQueryData<SettingsView>(settingsKey);
+  if (!core || !settings) throw new Error("Missing host state");
+  act(() => {
+    cache.setQueryData(coreKey, {
+      ...core,
+      access: {
+        ...core.access,
+        verified: true,
+        blocked: false,
+        analysis: false,
+      },
+    });
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    cache.setQueryData(settingsKey, betaSettings(settings));
+  });
+  const analysis = await screen.findByRole("button", { name: "Análisis" });
+  fireEvent.click(analysis);
+  expect(
+    await screen.findByText("Análisis no está incluido en tu acceso"),
+  ).toBeTruthy();
 });

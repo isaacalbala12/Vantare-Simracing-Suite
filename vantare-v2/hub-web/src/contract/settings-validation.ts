@@ -52,6 +52,7 @@ export function isSettings(value: unknown): value is SettingsView {
       "launcher",
       "toasts",
       "grabacion",
+      "analisisBeta",
     ]) &&
     oneOf(general.density, densities) &&
     [
@@ -61,6 +62,7 @@ export function isSettings(value: unknown): value is SettingsView {
       general.launcher,
       general.toasts,
       general.grabacion,
+      general.analisisBeta,
     ].every((item) => typeof item === "boolean") &&
     record(appearance) &&
     exact(appearance, [
@@ -144,6 +146,7 @@ export function isSettingsPatch(value: unknown): value is SettingsPatch {
     case "launcher":
     case "toasts":
     case "grabacion":
+    case "analisisBeta":
     case "reducedMotion":
     case "startup":
       return typeof value.value === "boolean";

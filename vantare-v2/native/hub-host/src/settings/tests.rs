@@ -514,12 +514,69 @@ fn legacy_v1_general_without_recording_migrates_to_v2_with_recording_enabled() {
     fs::write(&legacy, &bytes).unwrap();
     let view = root.settings().view();
     assert!(view.general.grabacion);
+    assert!(!view.general.analisis_beta);
     assert!(!view.protected);
     let saved: serde_json::Value =
         serde_json::from_slice(&fs::read(root.0.join(store::FILE)).unwrap()).unwrap();
     let mut expected = general;
     expected["grabacion"] = true.into();
+    expected["analisisBeta"] = false.into();
     assert_eq!(saved["version"], 2);
     assert_eq!(saved["general"], expected);
     assert_eq!(fs::read(legacy).unwrap(), bytes);
+}
+
+#[test]
+fn analysis_beta_defaults_off_and_round_trips_through_cas() {
+    let root = Root::new();
+    let mut doc = serde_json::to_value(store::Document::default()).unwrap();
+    let general = doc["general"].as_object_mut().unwrap();
+    assert_eq!(general.remove("analisisBeta"), Some(false.into()));
+    let file = root.0.join(store::FILE);
+    fs::write(&file, serde_json::to_vec(&doc).unwrap()).unwrap();
+    let mut settings = root.settings();
+    assert!(!settings.view().general.analisis_beta);
+    assert!(!settings.view().protected);
+    assert!(
+        serde_json::from_value::<SettingsPatch>(
+            serde_json::json!({"field":"analisisBeta","value":"true"})
+        )
+        .is_err()
+    );
+    for enabled in [true, false] {
+        let before = serde_json::to_value(settings.view()).unwrap();
+        let patch =
+            serde_json::from_value(serde_json::json!({"field":"analisisBeta","value":enabled}))
+                .unwrap();
+        let view = settings.update(patch, &settings.view().revision).unwrap();
+        let wire = serde_json::to_value(view).unwrap();
+        let mut expected = before;
+        expected["general"]["analisisBeta"] = enabled.into();
+        expected["revision"] = wire["revision"].clone();
+        assert_eq!(wire, expected);
+        assert_eq!(serde_json::to_value(root.settings().view()).unwrap(), wire);
+    }
+}
+
+#[test]
+fn wrong_typed_general_flags_fall_back_to_defaults_like_recording() {
+    // Both fields take the same recoverable path: the damaged bytes are copied
+    // aside, the view falls back to defaults with `warning` and the original
+    // file is not rewritten until the next save.
+    for field in ["grabacion", "analisisBeta"] {
+        for bad in [serde_json::json!("x"), serde_json::json!(null), serde_json::json!(0)] {
+            let root = Root::new();
+            let mut doc = serde_json::to_value(store::Document::default()).unwrap();
+            doc["general"][field] = bad.clone();
+            let bytes = serde_json::to_vec(&doc).unwrap();
+            let path = root.0.join(store::FILE);
+            fs::write(&path, &bytes).unwrap();
+            let view = root.settings().view();
+            assert!(!view.protected, "{field}={bad}");
+            assert!(view.warning, "{field}={bad}");
+            assert!(view.general.grabacion);
+            assert!(!view.general.analisis_beta);
+            assert_eq!(fs::read(&path).unwrap(), bytes, "{field}={bad}");
+        }
+    }
 }

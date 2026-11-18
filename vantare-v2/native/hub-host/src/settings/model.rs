@@ -137,6 +137,9 @@ pub struct Preferences {
     pub toasts: bool,
     #[serde(default = "default_grabacion")]
     pub grabacion: bool,
+    #[serde(default)]
+    #[serde(rename = "analisisBeta")]
+    pub analisis_beta: bool,
 }
 const fn default_grabacion() -> bool {
     true
@@ -154,6 +157,7 @@ impl Default for Preferences {
             launcher: true,
             toasts: DEFAULT_WINDOWS_NOTIFICATIONS,
             grabacion: default_grabacion(),
+            analisis_beta: false,
         }
     }
 }

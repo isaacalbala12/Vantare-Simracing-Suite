@@ -13,19 +13,32 @@ const entries: readonly {
   { id: "studio", icon: "v-studio", label: "shell.studio" },
   { id: "roadmap", icon: "v-roadmap", label: "shell.roadmap" },
   { id: "testing", icon: "v-testing", label: "shell.testing" },
+  { id: "analysis", icon: "i-telemetria", label: "analysis.title" },
   { id: "calendar", icon: "v-calendar", label: "shell.calendar" },
   { id: "strategy", icon: "v-strategy", label: "shell.strategy" },
   { id: "engineer", icon: "v-engineer", label: "shell.engineer" },
   { id: "settings", icon: "v-sliders", label: "settings.title" },
 ];
-export function visible(section: Section, access: AccessView) {
+export function visible(
+  section: Section,
+  access: AccessView,
+  channel?: string,
+  analisisBeta?: boolean,
+) {
+  if (section === "analysis")
+    return analisisBeta === true && channel === "nightly";
   if (section === "testing") return access.verified && !access.blocked;
   if (section === "calendar")
     return access.verified && !access.blocked && access.tester;
   return true;
 }
 export function lock(section: Section, access: AccessView): string | undefined {
-  if (section === "settings" || section === "home" || section === "account")
+  if (
+    section === "analysis" ||
+    section === "settings" ||
+    section === "home" ||
+    section === "account"
+  )
     return undefined;
   if (section === "strategy" || section === "engineer") return t("shell.soon");
   if (access.blocked) return t("shell.blocked");
@@ -33,9 +46,13 @@ export function lock(section: Section, access: AccessView): string | undefined {
   if (section === "calendar" && !access.calendar) return t("shell.soon");
   return undefined;
 }
-export function navigation(access: AccessView) {
+export function navigation(
+  access: AccessView,
+  channel?: string,
+  analisisBeta?: boolean,
+) {
   return entries
-    .filter((entry) => visible(entry.id, access))
+    .filter((entry) => visible(entry.id, access, channel, analisisBeta))
     .map((entry) => ({
       ...entry,
       label: t(

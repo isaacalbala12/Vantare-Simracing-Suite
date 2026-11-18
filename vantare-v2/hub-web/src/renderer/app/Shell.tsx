@@ -49,6 +49,7 @@ import { profileCommands } from "./profile-commands";
 import { RegisteredScreen } from "./ScreenRegistry";
 import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
+import { useUpdates } from "./UpdatesState";
 import { WindowControls } from "./WindowControls";
 
 export function Shell() {
@@ -63,6 +64,9 @@ function ShellContent() {
   const host = useHost();
   const query = useQueryClient();
   const settings = useSettings();
+  const updates = useUpdates();
+  const channel = updates.isError ? undefined : updates.data?.channel;
+  const analisisBeta = settings.view?.general.analisisBeta;
   const editBlocked =
     !settings.view ||
     settings.pending ||
@@ -136,7 +140,7 @@ function ShellContent() {
   } = useLauncherLaunch(core, launcher);
   const isUpcoming = (section: Section) =>
     section === "strategy" || section === "engineer";
-  const items = navigation(core.access).map((item) =>
+  const items = navigation(core.access, channel, analisisBeta).map((item) =>
     isUpcoming(item.id)
       ? {
           ...item,
@@ -167,7 +171,8 @@ function ShellContent() {
   function navigate(section: Section) {
     if (
       isUpcoming(section) ||
-      (visible(section, core.access) && !lock(section, core.access))
+      (visible(section, core.access, channel, analisisBeta) &&
+        !lock(section, core.access))
     )
       ui.navigate(section);
   }
@@ -195,9 +200,12 @@ function ShellContent() {
           document.documentElement.dataset.scheme === "dark" ? "light" : "dark",
       });
   }
+  const section = visible(ui.section, core.access, channel, analisisBeta)
+    ? ui.section
+    : "home";
   useEffect(() => {
-    if (!visible(ui.section, core.access)) ui.navigate("home");
-  }, [ui.section, ui.navigate, core.access]);
+    if (ui.section !== section) ui.navigate(section);
+  }, [ui.section, ui.navigate, section]);
   useEffect(() => {
     function key(event: KeyboardEvent) {
       if (event.isComposing) return;
@@ -280,7 +288,14 @@ function ShellContent() {
     {
       label: "",
       items: items.filter((item) =>
-        ["home", "launcher", "studio", "roadmap", "testing"].includes(item.id),
+        [
+          "home",
+          "launcher",
+          "studio",
+          "roadmap",
+          "testing",
+          "analysis",
+        ].includes(item.id),
       ),
     },
     {
@@ -328,6 +343,7 @@ function ShellContent() {
                     "engineer",
                     "roadmap",
                     "testing",
+                    "analysis",
                     "settings",
                   ]
                     .flatMap((id) => items.filter((item) => item.id === id))
@@ -687,7 +703,7 @@ function ShellContent() {
           <SaveWarnings onSettings={() => ui.navigate("settings")} />
         )}
         <RegisteredScreen
-          section={ui.section}
+          section={section}
           loading={t("settings.loading")}
           fallback={
             <ContentStack>

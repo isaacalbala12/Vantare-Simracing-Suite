@@ -33,6 +33,7 @@ import { checkResidentRemoval } from "./check-resident-removal.ts";
 import { checkResidentResults } from "./check-resident-results.ts";
 import { checkResidentReview } from "./check-resident-review.ts";
 import { checkMainScreens } from "./check-screens-a11y.ts";
+import { checkSidebarProfiles } from "./check-sidebar-profiles.ts";
 import { checkStudioCanvas } from "./check-studio-canvas.ts";
 import { checkStudioCatalogDrop } from "./check-studio-catalog-drop.ts";
 import { checkStudioCatalogPhotos } from "./check-studio-catalog-photos";
@@ -260,6 +261,9 @@ try {
   );
   await timed("checkLauncherDensity", () =>
     checkLauncherDensity(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  await timed("checkSidebarProfiles", () =>
+    checkSidebarProfiles(page, server.resolvedUrls?.local[0] ?? ""),
   );
   await timed("checkAppearanceDensity", () =>
     checkAppearanceDensity(page, server.resolvedUrls?.local[0] ?? ""),

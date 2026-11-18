@@ -92,6 +92,190 @@ fn real_fixtures_are_grouped_and_resolved_without_exposing_paths() {
     assert!(!serde_json::to_string(&widgets).unwrap().contains(".json"));
 }
 
+fn snapshot_value() -> serde_json::Value {
+    serde_json::from_slice(&fs::read(fixtures().join("standings.snapshot.json")).unwrap()).unwrap()
+}
+
+fn scene_value(frames: &[serde_json::Value]) -> serde_json::Value {
+    serde_json::json!({
+        "widget": "standings",
+        "label": "Escena",
+        "frameMs": 1,
+        "watchFor": null,
+        "frames": frames,
+    })
+}
+
+fn captioned_frame(caption: &str) -> serde_json::Value {
+    serde_json::json!({"snapshot": snapshot_value(), "caption": caption})
+}
+
+fn caption_scenes(cases: &[(&str, serde_json::Value)]) -> Vec<WidgetScenes> {
+    let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
+    fs::create_dir(&root).unwrap();
+    for (id, value) in cases {
+        fs::write(root.join(format!("{id}.scene.json")), serde_json::to_vec(value).unwrap())
+            .unwrap();
+    }
+    let widgets = Scenes::load(Some(root.clone())).widgets();
+    fs::remove_dir_all(root).unwrap();
+    widgets
+}
+
+#[test]
+fn real_fixtures_carry_the_exact_frame_captions() {
+    let widgets = Scenes::load(Some(fixtures())).widgets();
+    let scene = |widget: &str, id: &str| {
+        widgets
+            .iter()
+            .find(|entry| entry.kind.id() == widget)
+            .unwrap()
+            .scenes
+            .iter()
+            .find(|scene| scene.id == id)
+            .unwrap()
+    };
+    let mut scenes = 0;
+    let mut snapshots = 0;
+    for entry in fs::read_dir(fixtures()).unwrap() {
+        let path = entry.unwrap().path();
+        let name = path.file_name().unwrap().to_str().unwrap().to_owned();
+        if let Some(id) = name.strip_suffix(".scene.json") {
+            let source: serde_json::Value =
+                serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+            let expected: Vec<&str> = source["frames"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|frame| frame["caption"].as_str().unwrap())
+                .collect();
+            let listed = scene(source["widget"].as_str().unwrap(), id);
+            assert_eq!(listed.captions, expected, "{name}");
+            assert_eq!(listed.captions.len(), usize::try_from(listed.frames).unwrap());
+            scenes += 1;
+        } else if let Some(id) = name.strip_suffix(".snapshot.json") {
+            let Some(widget) = snapshot_widget(id) else {
+                continue;
+            };
+            let listed = scene(widget.id(), id);
+            assert_eq!((listed.frames, listed.captions.len()), (1, 0), "{name}");
+            snapshots += 1;
+        }
+    }
+    assert!(scenes > 0 && snapshots > 0);
+}
+
+#[test]
+fn invalid_captions_keep_the_scene_without_texts() {
+    let cases = [
+        (
+            "standings-two",
+            scene_value(&[
+                captioned_frame("Primer pie"),
+                captioned_frame("Segundo pie"),
+            ]),
+        ),
+        ("standings-long", scene_value(&[captioned_frame(&"é".repeat(161))])),
+        ("standings-empty", scene_value(&[captioned_frame("")])),
+        ("standings-blank", scene_value(&[captioned_frame("   ")])),
+        ("standings-newline", scene_value(&[captioned_frame("a\nb")])),
+        ("standings-nul", scene_value(&[captioned_frame("a\0b")])),
+        ("standings-tab", scene_value(&[captioned_frame("a\tb")])),
+        (
+            "standings-missing",
+            scene_value(&[serde_json::json!({"snapshot": snapshot_value()})]),
+        ),
+        (
+            "standings-crowded",
+            scene_value(
+                &(0..=12)
+                    .map(|frame| captioned_frame(&format!("Fotograma {frame}")))
+                    .collect::<Vec<_>>(),
+            ),
+        ),
+    ];
+    let widgets = caption_scenes(&cases);
+    let listed = &widgets[0].scenes;
+    assert_eq!(
+        listed.iter().map(|scene| scene.id.as_str()).collect::<Vec<_>>(),
+        cases.iter().map(|(id, _)| *id).collect::<Vec<_>>()
+    );
+    let find = |id: &str| listed.iter().find(|scene| scene.id == id).unwrap();
+    assert_eq!(find("standings-two").captions, ["Primer pie", "Segundo pie"]);
+    assert_eq!(find("standings-two").frames, 2);
+    for id in [
+        "standings-long",
+        "standings-empty",
+        "standings-blank",
+        "standings-newline",
+        "standings-nul",
+        "standings-tab",
+        "standings-missing",
+        "standings-crowded",
+    ] {
+        assert!(find(id).captions.is_empty(), "{id}");
+        assert!(find(id).frames > 0, "{id}");
+    }
+    assert_eq!(find("standings-crowded").frames, 13);
+    let json = serde_json::to_string(&widgets).unwrap();
+    assert!(!json.contains(".json"));
+}
+
+#[test]
+fn caption_limits_are_exact() {
+    let full = "é".repeat(160);
+    let cases = [
+        (
+            "standings-max",
+            scene_value(
+                &(0..12)
+                    .map(|_| captioned_frame(&full))
+                    .collect::<Vec<_>>(),
+            ),
+        ),
+        ("standings-over", scene_value(&[captioned_frame(&"a".repeat(161))])),
+        (
+            "standings-many",
+            scene_value(
+                &(0..13)
+                    .map(|_| captioned_frame(&"a".repeat(160)))
+                    .collect::<Vec<_>>(),
+            ),
+        ),
+    ];
+    let widgets = caption_scenes(&cases);
+    let find = |id: &str| {
+        widgets[0]
+            .scenes
+            .iter()
+            .find(|scene| scene.id == id)
+            .unwrap()
+    };
+    let max = find("standings-max");
+    assert_eq!((max.frames, max.captions.len()), (12, 12));
+    assert!(max.captions.iter().all(|caption| caption == &full));
+    assert!(find("standings-over").captions.is_empty(), "over");
+    assert!(find("standings-many").captions.is_empty(), "many");
+    assert_eq!(find("standings-many").frames, 13);
+}
+
+#[test]
+fn real_catalog_with_captions_fits_the_ui_frame_limit() {
+    let widgets = Scenes::load(Some(fixtures())).widgets();
+    let entries = widgets
+        .iter()
+        .map(|widget| widget.scenes.len())
+        .sum::<usize>();
+    let reply = crate::protocol::HostToUi::Response {
+        id: 1,
+        result: crate::protocol::Reply::WorkshopCatalog { widgets },
+    };
+    let bytes = serde_json::to_vec(&reply).unwrap();
+    assert!(bytes.len() < crate::frame::LIMIT, "{}", bytes.len());
+    // Worst case with four UTF-8 bytes per caption character.
+    assert!(entries * CAPTION_COUNT_LIMIT * CAPTION_LIMIT * 4 < crate::frame::LIMIT);
+}
+
 #[test]
 fn invalid_files_are_omitted_and_catalog_is_bounded() {
     let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());

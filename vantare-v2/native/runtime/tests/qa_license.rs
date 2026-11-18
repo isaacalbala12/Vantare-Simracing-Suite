@@ -497,9 +497,9 @@ mod windows {
         let (key, template) = transfer_template();
         let path = fixture.0.join("credential.json");
         let missing = fixture.0.join("missing");
-        let marked = fixture.0.join("marked");
-        fs::create_dir(&marked).expect("marker-only profile");
-        let marker = marked.join(".vantare-qa-license");
+        let profile = fixture.0.join("marked");
+        fs::create_dir(&profile).expect("marker-only profile");
+        let marker = profile.join(".vantare-qa-license");
         let marker_bytes = b"vantare-qa-license-v1";
         fs::write(&marker, marker_bytes).expect("write marker");
 
@@ -526,7 +526,7 @@ mod windows {
             ("extra capability", extra),
         ] {
             let registry = write_transfer(&path, &key, credential);
-            for root in [&missing, &marked] {
+            for root in [&missing, &profile] {
                 assert!(
                     install_transfer(&path, root, Some(&registry), TRANSFER_DEVICE, now()).is_err(),
                     "{name}"
@@ -534,7 +534,7 @@ mod windows {
             }
             assert!(!missing.exists(), "{name} created the profile");
             assert_eq!(
-                fs::read_dir(&marked)
+                fs::read_dir(&profile)
                     .expect("inspect marked profile")
                     .count(),
                 1,

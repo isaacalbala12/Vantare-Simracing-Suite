@@ -196,9 +196,11 @@ fn invalid_captions_keep_the_scene_without_texts() {
     ];
     let widgets = caption_scenes(&cases);
     let listed = &widgets[0].scenes;
+    let mut expected = cases.iter().map(|(id, _)| *id).collect::<Vec<_>>();
+    expected.sort_unstable();
     assert_eq!(
         listed.iter().map(|scene| scene.id.as_str()).collect::<Vec<_>>(),
-        cases.iter().map(|(id, _)| *id).collect::<Vec<_>>()
+        expected
     );
     let find = |id: &str| listed.iter().find(|scene| scene.id == id).unwrap();
     assert_eq!(find("standings-two").captions, ["Primer pie", "Segundo pie"]);

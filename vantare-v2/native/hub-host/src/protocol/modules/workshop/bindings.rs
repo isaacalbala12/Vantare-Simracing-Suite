@@ -1,7 +1,8 @@
 use crate::protocol::bindings::{declare, sample_response};
 use crate::protocol::{Reply, Request, UiToHost};
 use crate::workshop::{
-    FRAME_LIMIT, ID_PATTERN, Scenes, WidgetScenes, WorkshopScene, development_root, id_cases,
+    CAPTION_COUNT_LIMIT, CAPTION_LIMIT, FRAME_LIMIT, ID_PATTERN, Scenes, WidgetScenes,
+    WorkshopScene, development_root, id_cases,
 };
 
 pub(crate) fn typescript() -> String {
@@ -10,6 +11,12 @@ pub(crate) fn typescript() -> String {
     declare::<WidgetScenes>(&mut text);
     crate::protocol::bindings::constants!(&mut text, "workshopSceneIdPattern", ID_PATTERN);
     crate::protocol::bindings::constants!(&mut text, "workshopFrameLimit", FRAME_LIMIT);
+    crate::protocol::bindings::constants!(&mut text, "workshopCaptionLimit", CAPTION_LIMIT);
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "workshopCaptionCountLimit",
+        CAPTION_COUNT_LIMIT
+    );
     crate::protocol::bindings::constants!(&mut text, "workshopSceneIdCases", id_cases());
     text
 }

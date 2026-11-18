@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useAnalysis } from "../../app/AnalysisState";
 import { deletedRecordings } from "../../app/analysis-recording-status";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
@@ -39,17 +39,7 @@ export default function Analysis({
   const dismissed = useUi((s) => s.acknowledgedAnalysisPrune);
   const acknowledge = useUi((s) => s.acknowledgeAnalysisPrune);
   const pruneHeading = useRef<HTMLParagraphElement>(null);
-  const focusPrune = useRef(false);
-  const registerPruneHeading = useCallback(
-    (node: HTMLParagraphElement | null) => {
-      pruneHeading.current = node;
-      if (node && focusPrune.current) {
-        focusPrune.current = false;
-        node.focus();
-      }
-    },
-    [],
-  );
+  const focusPrune = useRef<string | null>(null);
   const enabled = settings.view?.general.grabacion ?? true;
   const current = state.compareView
     ? "compare"
@@ -63,6 +53,22 @@ export default function Analysis({
   const denied =
     !state.access.analysis || !state.access.verified || state.access.blocked;
   const batch = deletedRecordings(state.recordingStatus);
+  const batchKey = batch?.key;
+  useEffect(() => {
+    const requestedBatch = focusPrune.current;
+    focusPrune.current = null;
+    if (
+      requestedBatch === null ||
+      requestedBatch !== batchKey ||
+      denied ||
+      current !== "recordings" ||
+      collapsed
+    )
+      return;
+    // The rail slot mounts before its portal content is available to focus.
+    const frame = requestAnimationFrame(() => pruneHeading.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [batchKey, collapsed, current, denied]);
   const initial = settings.recordingAtStart;
   const statusProps = {
     state,
@@ -75,6 +81,7 @@ export default function Analysis({
         : undefined,
     undoDisabled:
       settings.pending || settings.view?.protected || !!settings.error,
+    clock,
     timeZone,
   };
   const statusStrip = (
@@ -140,7 +147,7 @@ export default function Analysis({
                   batch={batch}
                   clock={clock}
                   timeZone={timeZone}
-                  headingRef={registerPruneHeading}
+                  headingRef={pruneHeading}
                 />
               )}
             </>
@@ -203,11 +210,10 @@ export default function Analysis({
                   clock={clock}
                   timeZone={timeZone}
                   show={() => {
-                    if (pruneHeading.current) pruneHeading.current.focus();
-                    else if (collapsed) {
-                      focusPrune.current = true;
+                    if (collapsed) {
+                      focusPrune.current = batch.key;
                       toggleRail();
-                    }
+                    } else pruneHeading.current?.focus();
                   }}
                   acknowledge={() => acknowledge(batch.key)}
                 />

@@ -53,6 +53,8 @@ export function analysisScene(context: MockContext, clock = Date.now) {
     if (request.method === "analysis.status") {
       const active = [
         "status-recording",
+        "status-recordingPreviousDay",
+        "status-quotaUnmet",
         "status-degraded",
         "status-stopped",
         "status-limit",
@@ -63,12 +65,20 @@ export function analysisScene(context: MockContext, clock = Date.now) {
             state:
               name === "status-stopped"
                 ? ("stopped" as const)
-                : name === "status-degraded"
+                : name === "status-degraded" || name === "status-quotaUnmet"
                   ? ("degraded" as const)
                   : ("recording" as const),
-            cause: name === "status-stopped" ? ("writerDown" as const) : null,
+            cause:
+              name === "status-stopped"
+                ? ("writerDown" as const)
+                : name === "status-quotaUnmet"
+                  ? ("quotaUnmet" as const)
+                  : null,
             rowId: null,
-            startedAtMs: clock() - 20 * 60_000,
+            startedAtMs:
+              clock() -
+              20 * 60_000 -
+              (name === "status-recordingPreviousDay" ? 86_400_000 : 0),
             durableWatermark: null,
             attempted: null,
             limits: { maxRecordings: 200, maxBytes: 5_000_000_000 },

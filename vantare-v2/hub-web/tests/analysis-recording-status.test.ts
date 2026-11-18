@@ -130,7 +130,10 @@ it("keeps catalog data available when status fails", async () => {
     },
   });
   controller.load();
-  await vi.waitFor(() => expect(controller.snapshot().loading).toBe(false));
+  await vi.waitFor(() =>
+    expect(controller.snapshot().recordingStatusPending).toBe(false),
+  );
+  expect(controller.snapshot().loading).toBe(false);
   expect(controller.snapshot().error).toBeUndefined();
   expect(controller.snapshot().recordingStatus).toBeUndefined();
   controller.dispose();
@@ -159,5 +162,61 @@ it("treats a clean stop as idle and a failed writer as stopped", () => {
       false,
       true,
     ),
-  ).toBe("limit");
+  ).toBe("quotaUnmet");
+});
+
+it("distinguishes a finish timeout from a clean stop", () => {
+  for (const state of ["stopped", "degraded"] as const) {
+    expect(
+      recordingIndicator(
+        { ...status, state, cause: "finishTimeout" },
+        true,
+        true,
+        false,
+        false,
+      ),
+    ).toBe("stopped");
+  }
+});
+
+it("retains the status and the last deletion batch during a second catalog load", async () => {
+  let statusReads = 0;
+  let resolveStatus: (value: typeof status | null) => void = () => {};
+  const controller = new AnalysisController({
+    request: async ({ method }) => {
+      if (method === "analysis.catalog")
+        return { method, recordings: [], max: 256 };
+      if (method === "analysis.cancel") return { method, cancelled: false };
+      if (method === "analysis.status") {
+        statusReads++;
+        return {
+          method,
+          status:
+            statusReads === 1
+              ? status
+              : await new Promise<typeof status | null>((resolve) => {
+                  resolveStatus = resolve;
+                }),
+        };
+      }
+      throw Error(method);
+    },
+  });
+  expect(controller.snapshot().recordingStatusPending).toBe(true);
+  controller.load();
+  await vi.waitFor(() =>
+    expect(controller.snapshot().recordingStatus).toBe(status),
+  );
+  const seen: unknown[] = [];
+  controller.subscribe(() => seen.push(controller.snapshot().recordingStatus));
+  controller.load();
+  await vi.waitFor(() => expect(statusReads).toBe(2));
+  expect(controller.snapshot().recordingStatus).toBe(status);
+  resolveStatus(null);
+  await vi.waitFor(() =>
+    expect(controller.snapshot().recordingStatus).toBeNull(),
+  );
+  expect(controller.snapshot().recordingStatusPending).toBe(false);
+  expect(seen).not.toContain(undefined);
+  controller.dispose();
 });

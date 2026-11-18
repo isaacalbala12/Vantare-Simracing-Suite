@@ -31,6 +31,7 @@ export type AnalysisSnapshot = {
   zoom?: [number, number];
   rows: AnalysisRow[];
   recordingStatus?: AnalysisRecordingStatus | null;
+  recordingStatusPending?: boolean;
   inspections: Record<string, Inspection>;
   rowErrors: Record<string, HostError["kind"]>;
   loading: boolean;
@@ -50,6 +51,7 @@ export class AnalysisController {
     inspections: {},
     rowErrors: {},
     loading: true,
+    recordingStatusPending: true,
     opening: false,
   };
   private listeners = new Set<() => void>();
@@ -151,7 +153,6 @@ export class AnalysisController {
     const statusGeneration = ++this.statusGeneration;
     this.publish({
       loading: true,
-      recordingStatus: undefined,
       opening: false,
       error: undefined,
       selected: undefined,
@@ -185,16 +186,15 @@ export class AnalysisController {
     });
   };
   private async readRecordingStatus(generation: number) {
+    let status: AnalysisSnapshot["recordingStatus"];
     try {
       const reply = await this.client.request({ method: "analysis.status" });
-      if (
-        reply.method === "analysis.status" &&
-        generation === this.statusGeneration
-      )
-        this.publish({ recordingStatus: reply.status });
+      if (reply.method === "analysis.status") status = reply.status;
     } catch {
-      // The browser and reader remain usable if the status is unavailable.
+      // The catalog and reader remain usable if the status is unavailable.
     }
+    if (generation === this.statusGeneration)
+      this.publish({ recordingStatus: status, recordingStatusPending: false });
   }
   visibleRow = (id: string, visible: boolean) => {
     if (visible) this.visible.add(id);

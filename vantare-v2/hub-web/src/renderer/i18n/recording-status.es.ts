@@ -1,4 +1,11 @@
-import { analysisText as a, decimal, size } from "./analysis.es";
+import { recordingGroup } from "../app/analysis-dates";
+import {
+  analysisText as a,
+  date,
+  decimal,
+  recordingDate,
+  size,
+} from "./analysis.es";
 
 export const gigabytes = (bytes: number) => decimal(bytes / 1_000_000_000);
 export const recordingStatusText = {
@@ -7,13 +14,19 @@ export const recordingStatusText = {
   degraded: "Grabando con pérdidas",
   stopped: "Detenida por un error",
   limit: "Grabando · al límite de espacio",
+  quotaUnmet: "No se pudo cumplir el límite de espacio",
   disabled: a.disabled,
   pendingOff: "Se apagará al reiniciar",
   pendingOn: a.pendingOn,
   unavailable: "Estado de grabación no disponible",
   idleHelp: a.idle,
   recordingHelp: "Podrás abrirla cuando termines la sesión.",
-  started: (time: string) => `Empezó a las ${time}.`,
+  started: (ms: number, now: number, timeZone: string) =>
+    recordingGroup(ms, now, timeZone) === "today"
+      ? `Empezó a las ${recordingDate(ms, now, timeZone)}.`
+      : `Empezó el ${date(ms, timeZone)}.`,
+  quotaUnmetHelp:
+    "No se pudo liberar suficiente espacio. La grabación sigue activa.",
   degradedHelp: "La grabación sigue activa y puede faltar información.",
   pruneIncompleteHelp:
     "No se pudieron borrar todas las grabaciones antiguas. La grabación sigue activa.",

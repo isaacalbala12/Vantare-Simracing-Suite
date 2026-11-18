@@ -13,6 +13,8 @@ import { webQaPreview } from "./web-qa";
 const scenes = [
   "idle",
   "recording",
+  "recordingPreviousDay",
+  "quotaUnmet",
   "degraded",
   "stopped",
   "limit",
@@ -68,7 +70,14 @@ export async function checkRecordingStatus(
             ? ".v-an-status-strip .v-an-status-message"
             : ".v-context .v-an-status-message",
         );
-        await indicator.getByText(t[scene], { exact: true }).waitFor();
+        const kind = scene === "recordingPreviousDay" ? "recording" : scene;
+        await indicator.getByText(t[kind], { exact: true }).waitFor();
+        if (scene === "recordingPreviousDay")
+          await indicator.getByText(/^Empezó el 16 nov/).waitFor();
+        if (scene === "quotaUnmet")
+          await indicator
+            .getByText(t.quotaUnmetHelp, { exact: true })
+            .waitFor();
         if (scene === "pendingOff" || scene === "pendingOn") {
           await indicator
             .locator("..")

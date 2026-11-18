@@ -27,6 +27,7 @@ type StatusProps = {
   undoDisabled?: boolean;
   compact?: boolean;
   railCollapsed?: boolean;
+  clock?: () => number;
   timeZone?: string;
 };
 
@@ -39,11 +40,14 @@ export function RecordingStatus({
   undoDisabled,
   compact,
   railCollapsed,
+  clock = Date.now,
   timeZone = recordingZone(),
 }: StatusProps) {
+  const now = useRecordingClock(clock, timeZone);
+  if (state.recordingStatusPending) return null;
   const status = state.recordingStatus;
   const usage =
-    status && !state.loading && !state.error
+    status && !state.error
       ? recordingUsage(state.rows, status.limits)
       : undefined;
   const kind = recordingIndicator(
@@ -60,14 +64,16 @@ export function RecordingStatus({
       ? "ok"
       : kind === "stopped"
         ? "err"
-        : kind === "degraded" || kind.startsWith("pending")
+        : kind === "degraded" ||
+            kind === "quotaUnmet" ||
+            kind.startsWith("pending")
           ? "warn"
           : "neutral";
   const help =
     kind === "recording" &&
     status &&
     Number.isFinite(new Date(status.startedAtMs).getTime())
-      ? `${t.started(new Intl.DateTimeFormat("es-ES", { timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(status.startedAtMs))} ${t.recordingHelp}`
+      ? `${t.started(status.startedAtMs, now, timeZone)} ${t.recordingHelp}`
       : kind === "degraded" && status?.cause === "pruneIncomplete"
         ? t.pruneIncompleteHelp
         : t[`${kind}Help`];

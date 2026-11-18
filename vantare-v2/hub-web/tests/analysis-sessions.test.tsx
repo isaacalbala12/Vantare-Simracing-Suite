@@ -83,7 +83,6 @@ function renderLaps(state: AnalysisSnapshot) {
     <TooltipProvider>
       <AnalysisLaps
         state={state}
-        enabled
         updates={handler}
         clock={clock}
         timeZone={timeZone}
@@ -200,7 +199,6 @@ it("groups crossings by the reply indices and omits the approximate note for off
     <TooltipProvider>
       <AnalysisLaps
         state={state}
-        enabled
         updates={handler}
         clock={clock}
         timeZone={timeZone}
@@ -237,7 +235,6 @@ it("keeps session identities in the groups when the circuit differs", () => {
     <TooltipProvider>
       <AnalysisLaps
         state={state}
-        enabled
         updates={handler}
         clock={clock}
         timeZone={timeZone}

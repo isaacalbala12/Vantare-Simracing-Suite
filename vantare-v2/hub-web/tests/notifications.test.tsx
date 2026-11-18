@@ -11,6 +11,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { useEffect, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
+import type { AnalysisRecordingStatus } from "../src/contract/generated/analysis";
 import type { AccessView, HostToUi } from "../src/contract/generated/contract";
 import { notificationHistoryLimit } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus.json";
@@ -577,4 +578,68 @@ it("conservatively clears report notices on every account publication, including
     });
   });
   expect(hook.result.current.center.records).toEqual([]);
+});
+
+it("records each analysis deletion batch once and keeps a repeated batch read", () => {
+  const listeners = new Set<(message: HostToUi) => void>();
+  const client = {
+    listen: (fn: (message: HostToUi) => void) => {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+    observeRequests: () => () => {},
+    subscribe: () => () => {},
+    request: async () => undefined,
+  };
+  vi.spyOn(host, "useHost").mockReturnValue({
+    client: client as unknown as Client,
+  });
+  const { result } = renderHook(useNotifications, {
+    wrapper: NotificationsProvider,
+  });
+  function reply(id: number, atMs: number) {
+    const status: AnalysisRecordingStatus = {
+      state: "recording",
+      cause: null,
+      rowId: null,
+      startedAtMs: 1,
+      durableWatermark: null,
+      attempted: null,
+      limits: { maxRecordings: 200, maxBytes: 5000000000 },
+      lastPrune: {
+        atMs,
+        items: [
+          {
+            name: "series-1.duckdb",
+            modifiedAtMs: 1,
+            sizeBytes: 40,
+            reason: "count",
+            result: "deleted",
+          },
+        ],
+      },
+    };
+    act(() => {
+      for (const listener of listeners)
+        listener({
+          kind: "response",
+          id,
+          result: { method: "analysis.status", status },
+        });
+    });
+  }
+  reply(1, 100);
+  expect(result.current.records).toMatchObject([
+    { dedupeKey: "analysis.prune.100", source: "system", unread: true },
+  ]);
+  act(() => result.current.read());
+  reply(2, 100);
+  expect(result.current.records).toMatchObject([
+    { dedupeKey: "analysis.prune.100", unread: false },
+  ]);
+  reply(3, 200);
+  expect(result.current.records.map((record) => record.dedupeKey)).toEqual([
+    "analysis.prune.200",
+    "analysis.prune.100",
+  ]);
 });

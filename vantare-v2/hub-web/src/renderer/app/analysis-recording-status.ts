@@ -62,7 +62,7 @@ export function recordingIndicator(
     return "pendingOn";
   if (!enabled) return "disabled";
   if (status?.state === "degraded" && status.cause === "quotaUnmet")
-    return "limit";
+    return "quotaUnmet";
   if (status?.state === "degraded") return "degraded";
   if (status?.state === "recording" && atLimit) return "limit";
   if (status?.state === "recording" || catalogRecording) return "recording";

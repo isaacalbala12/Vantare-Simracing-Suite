@@ -66,6 +66,17 @@ fn verify(input: &Input, result: &ResultV2) {
     assert!(result.feasible, "a plan was expected");
     assert_eq!(result.stints.iter().sum::<u32>(), input.race_laps, "laps");
     assert_eq!(result.pit_stops.len() + 1, result.stints.len(), "stops");
+    assert!(
+        result.pit_stops.iter().all(|stop| stop.change_tyres),
+        "every stop changes the tyres"
+    );
+    assert!(
+        result
+            .pit_stops
+            .iter()
+            .all(|stop| stop.service_mode == input.pit_cost.service_mode),
+        "every stop uses the configured service mode"
+    );
     assert!(result.stints.iter().all(|&laps| laps > 0), "empty stint");
     let mut completed = 0;
     for (index, stint) in result.stints.iter().enumerate() {
@@ -437,14 +448,22 @@ fn an_unbounded_reach_does_not_overflow() {
     input.fuel_per_lap_liters.value = 0.0;
     input.ve_capacity_percent.value = 0.0;
     input.ve_per_lap_percent.value = 0.0;
-    input.event_rules.required_windows = vec![Window {
-        from_lap: 10,
-        to_lap: 12,
-    }];
+    // Two windows: the second stop is placed at `done + reach` with `done > 0`, which
+    // overflows `u32` unless the addition saturates.
+    input.event_rules.required_windows = vec![
+        Window {
+            from_lap: 10,
+            to_lap: 12,
+        },
+        Window {
+            from_lap: 30,
+            to_lap: 32,
+        },
+    ];
     let result = plan_of(&input);
     assert_eq!(
         result.pit_stops.iter().map(|s| s.lap).collect::<Vec<_>>(),
-        [12]
+        [12, 32]
     );
 }
 
@@ -585,4 +604,51 @@ fn every_generated_plan_passes_the_independent_verifier() {
     assert!(tried > 2_000, "{tried} valid inputs");
     assert!(plans > 1_000, "{plans} plans");
     assert!(refusals > 50, "{refusals} refusals");
+}
+
+// The boundary of the reach with reserve: 20 L serve 8 laps once two laps of
+// reserve must remain (10 laps without it).
+#[test]
+fn the_race_that_just_fits_the_reserve_needs_no_stop_and_one_lap_more_does() {
+    let tank = |laps| {
+        let mut input = plain(laps);
+        input.fuel_capacity_liters.value = 20.0;
+        input.fuel_reserve["laps"]["value"] = json!(2.0);
+        input
+    };
+    let fits = plan_of(&tank(8));
+    assert!(fits.pit_stops.is_empty(), "8 laps fit with the reserve");
+    let over = plan_of(&tank(9));
+    assert_eq!(over.pit_stops.len(), 1, "9 laps do not");
+}
+
+// The cause of a refusal is kept in the certificate reason, next to the scalar one.
+#[test]
+fn a_refusal_keeps_its_cause_in_the_certificate_reason() {
+    let mut input = manual(240, true);
+    input.budget.max_candidates = 1; // the scalar search ends at once, without a plan
+    input.event_rules.max_pit_stops = Some(3); // 240 laps need five stops
+    let (outcome, route) = run(input);
+    assert_eq!(route, CalculationRoute::Scalar);
+    assert!(!outcome.result.feasible);
+    let reason = outcome.certificate.reason.expect("a reason");
+    assert!(
+        reason.contains("candidate_budget_exhausted")
+            && reason.contains("greedy_plan_unavailable: max_pit_stops"),
+        "{reason}"
+    );
+}
+
+// A grid coarsened by the budget is the extended route's: no greedy plan there.
+#[test]
+fn a_coarsened_grid_is_not_scalar_for_the_greedy_fallback() {
+    let mut input = manual(240, true);
+    input.discretization.fuel_liters = 0.1; // 821 levels: coarsened to the 200-level limit
+    assert!(runs_extended_search(&input));
+    assert_eq!(
+        solve_greedy_fallback(&input).expect_err("coarsened grid"),
+        GreedyRefusal::NotScalar
+    );
+    let (_, route) = run(input);
+    assert_eq!(route, CalculationRoute::Scalar);
 }

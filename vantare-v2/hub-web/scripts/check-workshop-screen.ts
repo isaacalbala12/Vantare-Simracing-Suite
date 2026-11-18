@@ -32,10 +32,22 @@ const shots: readonly Shot[] = [
   ["live", both],
   ["1280x720", dark, 1280, 720],
   ["1280x720-lista-escenas", dark, 1280, 720],
+  ["sin-pie", dark, 1280, 720],
+  ["pie-largo", dark, 1280, 720],
   ["zoom125", ["light"], 1600, 900, 125],
   ["zoom125-error", dark, 1600, 900, 125],
 ];
 const battle = "standings-functional-battle";
+const battleCaptions =
+  workshopCatalog.widgets
+    .find(({ kind }) => kind === "standings")
+    ?.scenes.find(({ id }) => id === battle)?.captions ?? [];
+const longCaption = (
+  "Se acerca a 0,65 s: aparece el acento de batalla; el texto no cambia de tamaño y el acento se retira al separarse. " +
+  "Giovinazzi mantiene la distancia durante toda la escena."
+)
+  .slice(0, 160)
+  .padEnd(160, "x");
 const frame = (page: Page, n: number) =>
   page.getByRole("img", {
     name: new RegExp(`Batalla cercana · conducción, fotograma ${n} de 4`),
@@ -54,7 +66,7 @@ async function setup(
   image?: PreviewImage,
 ) {
   await page.addInitScript(
-    ({ scheme, shot, zoom, image, battle }) => {
+    ({ scheme, shot, zoom, image, battle, longCaption }) => {
       const send = MessagePort.prototype.postMessage;
       const requests = new Map<
         number,
@@ -99,6 +111,10 @@ async function setup(
               widget.scenes.sort(
                 (a, b) => Number(b.id === battle) - Number(a.id === battle),
               );
+            if (shot === "pie-largo" && widget.kind === "standings") {
+              const scene = widget.scenes.find(({ id }) => id === battle);
+              if (scene?.captions.length) scene.captions[0] = longCaption;
+            }
           }
         }
         if (message?.kind === "response" || message?.kind === "failure") {
@@ -134,7 +150,7 @@ async function setup(
         Reflect.apply(send, this, [message, options]);
       };
     },
-    { scheme, shot, zoom, image, battle },
+    { scheme, shot, zoom, image, battle, longCaption },
   );
 }
 
@@ -175,6 +191,25 @@ async function show(page: Page, shot: string) {
 
   await choose(page, /^Escena/, /Batalla cercana · conducción/);
   await frame(page, 1).waitFor();
+  const caption = page.locator(".v-workshop-caption");
+  const firstCaption =
+    shot === "pie-largo" ? longCaption : (battleCaptions[0] ?? "");
+  assert.equal(await caption.getAttribute("aria-hidden"), null);
+  assert((await caption.textContent())?.includes(firstCaption));
+  assert.equal(
+    await page.getByRole("status").textContent(),
+    `Fotograma 1 de 4 listo. ${firstCaption}`,
+  );
+  if (shot === "pie-largo") {
+    const box = await caption.boundingBox();
+    assert(box && box.y + box.height <= 720);
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+      true,
+    );
+  }
   const figure = page.getByRole("figure");
   const height = await figure.evaluate(
     (node) => node.getBoundingClientRect().height,
@@ -186,6 +221,27 @@ async function show(page: Page, shot: string) {
     await figure.evaluate((node) => node.getBoundingClientRect().height),
     height,
   );
+  assert.equal(
+    await page.getByRole("status").textContent(),
+    `Fotograma 2 de 4 listo. ${battleCaptions[1] ?? ""}`,
+  );
+  if (shot === "sin-pie") {
+    await choose(page, /^Escena/, /standings-legacy/);
+    await page
+      .getByRole("img", { name: /Standings.*fotograma 1 de 1/ })
+      .waitFor();
+    assert.equal(
+      await figure.evaluate((node) => node.getBoundingClientRect().height),
+      height,
+    );
+    assert.equal(await caption.getAttribute("data-empty"), "true");
+    assert.equal(await caption.textContent(), "");
+    assert.equal(
+      await page.getByRole("status").textContent(),
+      "Fotograma 1 de 1 listo.",
+    );
+    return;
+  }
   await message(
     workshopCatalog.widgets
       .find(({ kind }) => kind === "standings")

@@ -39,7 +39,14 @@ const png: Reply = {
   value: { width: 1, height: 1, pngBase64: previewTransparentPng },
 };
 const battle = "Batalla cercana · conducción";
+const battleScene = workshopCatalog.widgets
+  .find(({ kind }) => kind === "standings")
+  ?.scenes.find(({ id }) => id === "standings-functional-battle");
+if (!battleScene?.captions.length) throw Error("Battle captions missing");
+const battleCaptions = battleScene.captions;
 const imageName = /^Foto de Standings, escena /;
+const captionSlot = () =>
+  document.querySelector<HTMLElement>(".v-workshop-caption");
 let cache: QueryClient;
 let core: CoreStatus;
 const listeners = new Set<(message: HostToUi) => void>();
@@ -239,6 +246,112 @@ it("uses the real watchFor and sends one read-only scene request at scale 1 per 
   ).toBe(true);
 });
 
+it("shows the caption of the current frame and announces it once", async () => {
+  const { user } = await enter();
+  await openBattle(user);
+  const slot = captionSlot();
+  if (!slot) throw Error("Caption slot missing");
+  expect(slot.textContent).toContain("Fotograma 1 de 4");
+  expect(slot.textContent).toContain(battleCaptions[0]);
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  expect(screen.getByRole("status").textContent).toBe(
+    `Fotograma 1 de 4 listo. ${battleCaptions[0]}`,
+  );
+  expect(slot.closest('[role="status"],[aria-live]')).toBeNull();
+  expect(slot.querySelector('[role="status"],[aria-live]')).toBeNull();
+
+  await user.click(button("Siguiente"));
+  await screen.findByRole("img", { name: /fotograma 2 de 4/ });
+  expect(slot.textContent).toContain("Fotograma 2 de 4");
+  expect(slot.textContent).toContain(battleCaptions[1]);
+  expect(screen.getAllByRole("status")).toHaveLength(1);
+  expect(screen.getByRole("status").textContent).toBe(
+    `Fotograma 2 de 4 listo. ${battleCaptions[1]}`,
+  );
+});
+
+it("keeps the caption slot without a strip for a loose photo", async () => {
+  const { user } = await enter();
+  await openBattle(user);
+  const withCaption = captionSlot();
+  await choose(user, /^Escena/, /standings-legacy/);
+  await screen.findByRole("img", { name: /fotograma 1 de 1/ });
+  const slot = captionSlot();
+  if (!slot || !withCaption) throw Error("Caption slot missing");
+  expect(slot.className).toBe(withCaption.className);
+  expect(slot.getAttribute("data-empty")).toBe("true");
+  expect(slot.getAttribute("aria-hidden")).toBe("true");
+  expect(slot.textContent).toBe("");
+  expect(screen.getByRole("status").textContent).toBe(
+    "Fotograma 1 de 1 listo.",
+  );
+});
+
+it("treats a caption index outside the range as no caption", async () => {
+  respond = ({ method }) =>
+    method === "workshop.catalog"
+      ? Promise.resolve({
+          ...workshopCatalog,
+          widgets: workshopCatalog.widgets.map((widget) =>
+            widget.kind === "standings"
+              ? {
+                  ...widget,
+                  scenes: widget.scenes.map((scene) =>
+                    scene.id === battleScene.id
+                      ? { ...scene, captions: [battleCaptions[0]] }
+                      : scene,
+                  ),
+                }
+              : widget,
+          ),
+        })
+      : undefined;
+  const { user } = await enter();
+  await openBattle(user);
+  await user.click(button("Siguiente"));
+  await screen.findByRole("img", { name: /fotograma 2 de 4/ });
+  expect(captionSlot()?.getAttribute("data-empty")).toBe("true");
+  expect(captionSlot()?.textContent).toBe("");
+  expect(screen.getByRole("status").textContent).toBe(
+    "Fotograma 2 de 4 listo.",
+  );
+});
+
+it("renders the whole 160 character caption and its announcement", async () => {
+  const long = "Se acerca a 0,65 s: aparece el acento de batalla. ".repeat(4);
+  const caption = long.slice(0, 160).padEnd(160, "x");
+  respond = ({ method }) =>
+    method === "workshop.catalog"
+      ? Promise.resolve({
+          ...workshopCatalog,
+          widgets: workshopCatalog.widgets.map((widget) =>
+            widget.kind === "standings"
+              ? {
+                  ...widget,
+                  scenes: widget.scenes.map((scene) =>
+                    scene.id === battleScene.id
+                      ? {
+                          ...scene,
+                          captions: scene.captions.map((value, index) =>
+                            index === 0 ? caption : value,
+                          ),
+                        }
+                      : scene,
+                  ),
+                }
+              : widget,
+          ),
+        })
+      : undefined;
+  const { user } = await enter();
+  await openBattle(user);
+  expect(caption.length).toBe(160);
+  expect(captionSlot()?.textContent).toContain(caption);
+  expect(screen.getByRole("status").textContent).toBe(
+    `Fotograma 1 de 4 listo. ${caption}`,
+  );
+});
+
 it("keeps the previous photo while pending and drops all clicks and shortcuts without queueing", async () => {
   const { user } = await enter();
   await openBattle(user);
@@ -264,9 +377,13 @@ it("keeps the previous photo while pending and drops all clicks and shortcuts wi
   await act(async () => pending.resolve(png));
   expect(photoRequests()).toHaveLength(before + 1);
   expect(screen.getByRole("status").textContent).toBe(
-    "Fotograma 2 de 4 listo.",
+    `Fotograma 2 de 4 listo. ${battleCaptions[1]}`,
   );
-  expect(screen.queryByText("Fotograma 2 de 4", { exact: true })).toBeNull();
+  expect(
+    within(screen.getByRole("figure")).queryByText("Fotograma 2 de 4", {
+      exact: true,
+    }),
+  ).toBeNull();
 });
 
 const failures: { error: HostError; text: string | RegExp; retry: boolean }[] =
@@ -484,7 +601,7 @@ it.each(["rights", "connection", "account"] as const)(
     await act(async () => fresh.resolve(png));
     await screen.findByRole("img", { name: imageName });
     expect(screen.getByRole("status")).toBe(status);
-    expect(status.textContent).toMatch(/^Fotograma 1 de \d+ listo\.$/);
+    expect(status.textContent).toBe("Fotograma 1 de 1 listo. Diseño estático");
     expect(photoRequests()).toHaveLength(2);
   },
 );
@@ -529,7 +646,7 @@ it("waits for Hacer la foto after Live and discards the previous reply", async (
   await waitFor(() => expect(photoRequests()).toHaveLength(2));
   await act(async () => fresh.resolve(png));
   await screen.findByRole("img", { name: imageName });
-  expect(status.textContent).toMatch(/^Fotograma 1 de \d+ listo\.$/);
+  expect(status.textContent).toBe("Fotograma 1 de 1 listo. Diseño estático");
 });
 
 it("names the loading catalogue and reports a read failure without requesting a photo", async () => {

@@ -87,6 +87,14 @@ fn dead_worker_answers_pending_and_invalidates_tokens() {
     assert!(state.paths.is_empty());
     assert!(state.session.is_none());
 }
+/// El writer del Core: retiene el archivo en exclusiva mientras graba.
+fn writer(path: std::path::PathBuf) -> std::fs::File {
+    let mut options = std::fs::OpenOptions::new();
+    options.read(true);
+    #[cfg(windows)]
+    std::os::windows::fs::OpenOptionsExt::share_mode(&mut options, 0);
+    options.open(path).unwrap()
+}
 #[test]
 fn recording_status_is_host_only_and_blocks_open_and_inspect() {
     let root = std::env::temp_dir().join(vantare_services::random_id().unwrap());
@@ -97,6 +105,7 @@ fn recording_status_is_host_only_and_blocks_open_and_inspect() {
         br#"{"state":"recording","file":"private.duckdb"}"#,
     )
     .unwrap();
+    let live = writer(root.join("private.duckdb"));
     let mut state = State::new(root.clone());
     let rows = state.catalog().unwrap();
     assert!(rows[0].recording);
@@ -113,6 +122,11 @@ fn recording_status_is_host_only_and_blocks_open_and_inspect() {
             Err(HostError::AnalysisLocked)
         );
     }
+    // Tras un corte del Core el JSON sigue en «recording» pero nadie retiene
+    // el archivo: deja de tratarse como viva.
+    drop(live);
+    #[cfg(windows)]
+    assert!(!state.catalog().unwrap()[0].recording);
     std::fs::write(root.join("recording-status.json"), b"broken").unwrap();
     assert!(!state.catalog().unwrap()[0].recording);
     drop(state);
@@ -316,6 +330,7 @@ fn recording_stopped_and_different_file_do_not_mark_the_row() {
     std::fs::create_dir(&root).unwrap();
     std::fs::write(root.join("a.duckdb"), []).unwrap();
     std::fs::write(root.join("b.duckdb"), []).unwrap();
+    let writers = [writer(root.join("a.duckdb")), writer(root.join("b.duckdb"))];
     let mut state = State::new(root.clone());
     for (status, file, count) in [
         ("stopped", "a.duckdb", 0),
@@ -333,6 +348,7 @@ fn recording_stopped_and_different_file_do_not_mark_the_row() {
             assert_eq!(state.paths[&row.id].file_name().unwrap(), "b.duckdb");
         }
     }
+    drop(writers);
     drop(state);
     std::fs::remove_dir_all(root).unwrap();
 }

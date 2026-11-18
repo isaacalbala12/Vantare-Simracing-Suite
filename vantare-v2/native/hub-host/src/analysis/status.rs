@@ -153,10 +153,11 @@ pub fn writer_alive(path: &Path) -> bool {
     #[cfg(windows)]
     {
         use std::os::windows::fs::OpenOptionsExt;
-        match fs::OpenOptions::new().read(true).share_mode(0).open(path) {
-            Ok(_) => false,
-            Err(_) => true,
-        }
+        fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(path)
+            .is_err()
     }
     #[cfg(not(windows))]
     {

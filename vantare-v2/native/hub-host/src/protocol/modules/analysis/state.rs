@@ -149,9 +149,7 @@ impl State {
         // Un corte del Core deja el JSON en «recording»: solo vale una grabación
         // que un writer tenga realmente abierta.
         let file = value["file"].as_str()?;
-        (crate::analysis::status::recording_name(file)
-            && crate::analysis::status::writer_alive(&self.root.join(file)))
-        .then(|| file.to_owned())
+        crate::analysis::status::writer_alive(&self.root.join(file)).then(|| file.to_owned())
     }
     pub fn start(
         &mut self,

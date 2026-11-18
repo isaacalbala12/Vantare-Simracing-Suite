@@ -69,6 +69,13 @@ export async function checkRecordingStatus(
             : ".v-context .v-an-status-message",
         );
         await indicator.getByText(t[scene], { exact: true }).waitFor();
+        if (scene === "pendingOff" || scene === "pendingOn") {
+          await indicator
+            .locator("..")
+            .getByRole("button", { name: a.undo })
+            .waitFor();
+          assert.equal(await page.getByText(a.off, { exact: true }).count(), 0);
+        }
         if (scene === "limit") {
           await page.getByText(t.pruneTitle(3), { exact: true }).waitFor();
           await indicator.getByText(t.limitHelp, { exact: true }).waitFor();

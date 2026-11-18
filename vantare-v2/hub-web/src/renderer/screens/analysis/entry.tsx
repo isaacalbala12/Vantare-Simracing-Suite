@@ -193,7 +193,7 @@ export default function Analysis({
             timeZone={timeZone}
             state={state}
             controller={state.controller}
-            enabled={enabled}
+            enabled={enabled || initial === true}
             statusStrip={statusStrip}
             pruneNotice={
               batch &&

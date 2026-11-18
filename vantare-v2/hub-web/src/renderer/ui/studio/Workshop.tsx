@@ -77,6 +77,7 @@ function Picker({
   children: ReactNode;
   onChange: (value: string) => void;
 }) {
+  const heading = count && count !== t.loose ? `${label} · ${count}` : label;
   return (
     <div className="v-workshop-picker">
       <Button
@@ -103,17 +104,14 @@ function Picker({
         <Select.Trigger
           className="v-workshop-select"
           aria-disabled={blocked || undefined}
-          aria-label={`${label}: ${selected}`}
+          aria-label={`${heading} ${selected}${count === t.loose ? ` ${count}` : ""}`}
           aria-describedby={reason}
         >
           <span className="v-workshop-select-icon">
             <Icon name={label === t.scene ? "v-studio" : "v-studio"} />
           </span>
           <span>
-            <small>
-              {label}
-              {count && count !== t.loose ? ` · ${count}` : ""}
-            </small>
+            <small>{heading}</small>
             <strong>{selected}</strong>
           </span>
           {count === t.loose && <small>{count}</small>}

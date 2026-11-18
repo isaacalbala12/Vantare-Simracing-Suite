@@ -17,6 +17,292 @@ fn lap() -> Lap {
     let signal = serde_json::json!({"reliable":2,"estimated":0,"stale":0,"unavailable":0,"mean":null,"min":null,"max":null});
     serde_json::from_value(serde_json::json!({"epoch":1,"session":3,"car":7,"lap":5,"first_chunk":1,"next_chunk":null,"sealed":true,"gap":false,"samples":2,"observed_span_s":10.0,"speed":signal,"throttle":signal,"brake":signal})).unwrap()
 }
+/// Copia literal del cursor heredado del modelo GPUI congelado
+/// (`native/hub/src/analysis/model.rs`): sobre B solo avanza hacia delante.
+/// Es el oráculo de caracterización de las entradas monótonas.
+fn legacy_delta(a: &[Option<Sample>], b: &[Option<Sample>]) -> Vec<Point> {
+    let mut result = Vec::new();
+    let elapsed_b = channel(b, |s| s.elapsed);
+    let mut cursor = 0;
+    for point in channel(a, |s| s.elapsed) {
+        while cursor + 2 < elapsed_b.len() && elapsed_b[cursor + 1].distance <= point.distance {
+            cursor += 1;
+        }
+        let Some(left) = elapsed_b.get(cursor) else {
+            break;
+        };
+        let Some(right) = elapsed_b.get(cursor + 1) else {
+            break;
+        };
+        if left.segment == right.segment
+            && right.distance > left.distance
+            && (left.distance..=right.distance).contains(&point.distance)
+        {
+            let fraction = (point.distance - left.distance) / (right.distance - left.distance);
+            let reference = left.value + fraction * (right.value - left.value);
+            result.push(Point {
+                value: point.value - reference,
+                segment: point.segment * (b.len() as u64 + 1) + left.segment,
+                ..point
+            });
+        }
+    }
+    result
+}
+fn summary(points: &[Point]) -> Vec<(u64, f64, f64)> {
+    points
+        .iter()
+        .map(|p| (p.segment, p.distance, p.value))
+        .collect()
+}
+fn values(points: &[Point]) -> Vec<(f64, f64)> {
+    points.iter().map(|p| (p.distance, p.value)).collect()
+}
+/// A y B monótonas (la distancia nunca baja) con densidades y rangos distintos.
+fn monotone_lap(steps: i32, step: f64, rate: f64) -> Vec<Option<Sample>> {
+    (0..steps)
+        .map(|i| sample(f64::from(i) * step, f64::from(i) * rate))
+        .collect()
+}
+/// Oráculo ingenuo O(n·m): recorre todos los tramos y toda la serie de B para
+/// cada punto de A. Implementa la semántica documentada desde cero —primer
+/// tramo por distancia inicial que contiene la distancia, sin reserva— para
+/// contrastarla con la búsqueda binaria.
+fn naive_delta(a: &[Option<Sample>], b: &[Option<Sample>]) -> Vec<Point> {
+    let elapsed_a = channel(a, |s| s.elapsed);
+    let elapsed_b = channel(b, |s| s.elapsed);
+    let mut runs: Vec<(usize, usize)> = Vec::new();
+    for (index, point) in elapsed_b.iter().enumerate() {
+        match runs.last_mut() {
+            Some((_, end)) if point.distance >= elapsed_b[*end].distance => *end = index,
+            _ => runs.push((index, index)),
+        }
+    }
+    runs.sort_by(|&(first, _), &(second, _)| {
+        elapsed_b[first]
+            .distance
+            .total_cmp(&elapsed_b[second].distance)
+            .then(first.cmp(&second))
+    });
+    let mut result = Vec::new();
+    for point in elapsed_a {
+        let Some(&(start, end)) = runs.iter().find(|&&(start, end)| {
+            elapsed_b[start].distance <= point.distance
+                && point.distance <= elapsed_b[end].distance
+        }) else {
+            continue;
+        };
+        let found = elapsed_b[start..end]
+            .iter()
+            .rposition(|candidate| candidate.distance <= point.distance)
+            .map(|offset| start + offset);
+        let Some(left) = found else { continue };
+        let (left, right) = (&elapsed_b[left], &elapsed_b[left + 1]);
+        if left.segment != right.segment
+            || right.distance <= left.distance
+            || !(left.distance..=right.distance).contains(&point.distance)
+        {
+            continue;
+        }
+        let fraction = (point.distance - left.distance) / (right.distance - left.distance);
+        result.push(Point {
+            value: point.value - (left.value + fraction * (right.value - left.value)),
+            segment: point.segment * (b.len() as u64 + 1) + left.segment,
+            ..point
+        });
+    }
+    result
+}
+/// Generador determinista sin dependencias: pasos de 0 (duplicado), avances
+/// cortos y saltos negativos (reinicio de la distancia).
+fn unit(state: &mut u64) -> f64 {
+    *state = state
+        .wrapping_mul(6_364_136_223_846_793_005)
+        .wrapping_add(1_442_695_040_888_963_407);
+    let bits = u32::try_from((*state >> 32) & 0xFFFF).unwrap();
+    f64::from(bits) / 65_535.0
+}
+fn generated(state: &mut u64, steps: i32, start: f64, step: f64, jump: f64) -> Vec<Option<Sample>> {
+    let mut distance = start;
+    let mut elapsed = 0.0;
+    (0..steps)
+        .map(|_| {
+            let point = sample(distance, elapsed);
+            let roll = unit(state);
+            distance += if roll < 0.25 {
+                0.0
+            } else if roll < 0.8 {
+                step * (1.0 + unit(state))
+            } else {
+                -jump * unit(state)
+            };
+            elapsed += 0.2 + unit(state);
+            point
+        })
+        .collect()
+}
+#[test]
+fn delta_matches_the_legacy_cursor_on_monotone_series() {
+    // Sin retrocesos de distancia la salida debe ser IDÉNTICA a la del cursor
+    // heredado: el cambio no toca ningún caso válido.
+    for steps_b in [2, 5, 17, 60] {
+        for (steps_a, start, span) in [(3, 0.0, 1.0), (11, 0.2, 0.6), (40, 0.0, 1.3)] {
+            let b = monotone_lap(steps_b, 7.5, 0.9);
+            let max = 7.5 * f64::from(steps_b - 1);
+            let a: Vec<_> = (0..steps_a)
+                .map(|i| {
+                    let fraction = f64::from(i) / f64::from(steps_a - 1);
+                    let distance = max * (start + span * fraction);
+                    sample(distance, distance * 1.4)
+                })
+                .collect();
+            assert_eq!(
+                summary(&delta(&a, &b)),
+                summary(&legacy_delta(&a, &b)),
+                "B de {steps_b} puntos, A de {steps_a} entre {start} y {}",
+                start + span
+            );
+        }
+    }
+    // Distancias repetidas en A y en B: mismas omisiones que el cursor heredado.
+    let b = [
+        sample(0.0, 0.0),
+        sample(0.0, 0.0),
+        sample(4.0, 0.4),
+        sample(9.0, 0.9),
+        sample(9.0, 1.1),
+        sample(14.0, 1.4),
+    ];
+    let a = [
+        sample(0.0, 0.0),
+        sample(2.0, 0.2),
+        sample(9.0, 0.9),
+        sample(9.0, 1.0),
+        sample(14.0, 1.4),
+    ];
+    assert_eq!(summary(&delta(&a, &b)), summary(&legacy_delta(&a, &b)));
+}
+#[test]
+fn retreating_distance_in_a_keeps_every_later_delta() {
+    // La distancia de A baja de 40 a 15 sin hueco y luego sigue subiendo. El
+    // cursor heredado dejaba sin delta los puntos que quedaban por detrás.
+    let b = [
+        sample(0.0, 0.0),
+        sample(10.0, 1.0),
+        sample(20.0, 2.0),
+        sample(30.0, 3.0),
+        sample(40.0, 4.0),
+    ];
+    let a = [
+        sample(0.0, 0.0),
+        sample(10.0, 20.0),
+        sample(20.0, 40.0),
+        sample(30.0, 60.0),
+        sample(40.0, 80.0),
+        sample(15.0, 30.0),
+        sample(25.0, 50.0),
+        sample(35.0, 70.0),
+    ];
+    assert_eq!(
+        values(&delta(&a, &b)),
+        [
+            (0.0, 0.0),
+            (10.0, 19.0),
+            (20.0, 38.0),
+            (30.0, 57.0),
+            (40.0, 76.0),
+            (15.0, 28.5),
+            (25.0, 47.5),
+            (35.0, 66.5),
+        ]
+    );
+    // El cursor heredado descartaba los puntos de 15 m y 25 m.
+    assert_eq!(legacy_delta(&a, &b).len(), 6);
+}
+#[test]
+fn restarting_distance_in_b_uses_the_first_pass_that_covers_it() {
+    // B reinicia la distancia a mitad de serie: la primera pasada cubre 0..40 y
+    // la segunda solo 0..10 con otro reloj. Semántica elegida: cada distancia se
+    // interpola en el primer tramo que la cubre, así que un reinicio no descarta
+    // los puntos posteriores ni mezcla dos pasadas en el mismo intervalo.
+    let b = [
+        sample(0.0, 0.0),
+        sample(10.0, 1.0),
+        sample(20.0, 2.0),
+        sample(30.0, 3.0),
+        sample(40.0, 4.0),
+        sample(0.0, 10.0),
+        sample(10.0, 11.0),
+    ];
+    let a = [
+        sample(0.0, 0.0),
+        sample(10.0, 20.0),
+        sample(20.0, 40.0),
+        sample(30.0, 60.0),
+        sample(40.0, 80.0),
+    ];
+    assert_eq!(
+        values(&delta(&a, &b)),
+        [
+            (0.0, 0.0),
+            (10.0, 19.0),
+            (20.0, 38.0),
+            (30.0, 57.0),
+            (40.0, 76.0),
+        ]
+    );
+    // El cursor heredado se quedaba en la segunda pasada y perdía el último punto.
+    assert_eq!(legacy_delta(&a, &b).len(), 4);
+    // Fuera del alcance de la primera pasada no se inventa nada.
+    assert!(delta(&[sample(45.0, 90.0)], &b).is_empty());
+}
+#[test]
+fn delta_edge_cases_keep_the_contract() {
+    // Series de cero o un punto: sin intervalo en B no hay delta; con él, sí.
+    assert!(delta(&[], &[]).is_empty());
+    assert!(delta(&[sample(0.0, 0.0)], &[sample(0.0, 0.0)]).is_empty());
+    assert!(delta(&[sample(0.0, 0.0), sample(10.0, 1.0)], &[sample(0.0, 0.0)]).is_empty());
+    assert_eq!(
+        values(&delta(&[sample(0.0, 0.0)], &[sample(0.0, 0.0), sample(10.0, 1.0)])),
+        [(0.0, 0.0)]
+    );
+    // Sin extrapolación: fuera del rango de B no hay delta; el extremo exacto sí.
+    let b = [sample(0.0, 0.0), sample(100.0, 10.0)];
+    let a = [
+        sample(-5.0, -0.5),
+        sample(50.0, 6.0),
+        sample(100.0, 11.0),
+        sample(105.0, 12.0),
+    ];
+    assert_eq!(values(&delta(&a, &b)), [(50.0, 1.0), (100.0, 1.0)]);
+}
+#[test]
+fn duplicated_first_distance_uses_the_second_sample_and_has_no_fallback() {
+    // B empieza con un segmento de un solo punto: el 50 m está repetido. El
+    // intervalo sale del segundo 50, que es el que abre el tramo con el 60; el
+    // primero no puede interpolarse hacia delante. El resultado es determinista
+    // y no se prueba ningún otro tramo.
+    let b = [sample(50.0, 10.0), sample(50.0, 10.5), sample(60.0, 11.5)];
+    assert_eq!(values(&delta(&[sample(50.0, 20.0)], &b)), [(50.0, 9.5)]);
+    // Sin un punto posterior no hay intervalo: no se busca una reserva.
+    let b = [sample(50.0, 10.0), sample(50.0, 10.5)];
+    assert!(delta(&[sample(50.0, 20.0)], &b).is_empty());
+}
+#[test]
+fn delta_matches_the_naive_reference_on_generated_series() {
+    // Semilla fija, sin dependencias: 240 series con duplicados y reinicios de
+    // distancia. La búsqueda binaria debe coincidir con el oráculo ingenuo.
+    let mut state = 0x5EED_2543_u64;
+    for case in 0..240 {
+        let b = generated(&mut state, 1 + (case % 18), 0.0, 2.5, 40.0);
+        let a = generated(&mut state, 1 + (case % 23), -5.0, 3.5, 30.0);
+        assert_eq!(
+            summary(&delta(&a, &b)),
+            summary(&naive_delta(&a, &b)),
+            "caso {case}"
+        );
+    }
+}
 #[test]
 fn frozen_distance_alignment_vector_and_units() {
     let a = [

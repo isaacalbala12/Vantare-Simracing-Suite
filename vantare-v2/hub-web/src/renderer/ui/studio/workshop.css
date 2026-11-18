@@ -71,6 +71,10 @@
   background: var(--surface-3);
   color: var(--text-1);
 }
+.v-workshop-select-icon svg {
+  width: 16px;
+  height: 16px;
+}
 .v-workshop-popup {
   width: max(var(--anchor-width), 330px);
   max-height: min(560px, var(--available-height));
@@ -264,8 +268,18 @@
 }
 .v-workshop-frame-actions .v-button {
   padding-inline: 7px;
+  gap: 4px;
   justify-content: center;
   border-radius: var(--radius-md);
+}
+.v-workshop-frame-actions .v-button svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.v-workshop-frame-actions .v-button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 .v-workshop-watch,
 .v-workshop-id {

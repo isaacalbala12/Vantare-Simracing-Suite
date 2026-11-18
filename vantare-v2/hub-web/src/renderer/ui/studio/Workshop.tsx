@@ -5,6 +5,7 @@ import {
   type ReactNode,
   useEffect,
   useId,
+  useRef,
   useState,
 } from "react";
 import type {
@@ -19,6 +20,7 @@ import { Icon } from "../../assets/icons/Icon";
 import { homeText } from "../../i18n/home";
 import { workshopText as t } from "../../i18n/workshop";
 import { Button } from "../Button";
+import { Keycap } from "../Data";
 import { previewAuthority } from "./previewPhoto";
 import { usePreviewPhoto } from "./usePreviewPhoto";
 
@@ -108,7 +110,23 @@ function Picker({
           aria-describedby={reason}
         >
           <span className="v-workshop-select-icon">
-            <Icon name={label === t.scene ? "v-studio" : "v-studio"} />
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            >
+              {label === t.scene ? (
+                <>
+                  <rect x="4" y="3" width="16" height="18" rx="2" />
+                  <path d="M8 3v18M16 3v18M4 8h4M4 12h4M4 16h4M16 8h4M16 12h4M16 16h4" />
+                </>
+              ) : (
+                <path d="M4 6h2m3 0h11M4 12h2m3 0h11M4 18h2m3 0h11" />
+              )}
+            </svg>
           </span>
           <span>
             <small>{heading}</small>
@@ -188,8 +206,11 @@ export function Workshop({
   const [frame, setFrame] = useState(0);
   const [manual, setManual] = useState(core.live);
   const note = useId();
-  const [accountGeneration] = useState(core.accountGeneration);
-  const permitted = !issue && previewAuthority(core, accountGeneration);
+  const figure = useRef<HTMLElement>(null);
+  const disconnected = !client || !!issue || core.rights !== "connected";
+  const permitted =
+    !disconnected && previewAuthority(core, core.accountGeneration);
+  const opening = !catalog && !catalogError;
 
   useEffect(() => {
     if (core.live) setManual(true);
@@ -200,7 +221,10 @@ export function Workshop({
     void client
       .request({ method: "workshop.catalog" })
       .then((reply) => {
-        if (active && reply.method === "workshop.catalog") setCatalog(reply);
+        if (active && reply.method === "workshop.catalog") {
+          setCatalog(reply);
+          setCatalogError(false);
+        }
       })
       .catch(() => {
         if (active) setCatalogError(true);
@@ -216,7 +240,11 @@ export function Workshop({
     ),
   );
   const widget = widgets.find((value) => value.kind === kind) ?? widgets[0];
-  const widgetName = widget ? homeText.widgets[widget.kind] : t.empty;
+  const widgetName = widget
+    ? homeText.widgets[widget.kind]
+    : opening
+      ? t.opening
+      : t.empty;
   const scenes = widget
     ? [
         ...widget.scenes.filter((scene) => scene.frameMs !== null),
@@ -295,6 +323,15 @@ export function Workshop({
     event.preventDefault();
     go(destination);
   }
+  const regenerate = () => {
+    figure.current?.focus();
+    photo.regenerate();
+  };
+  const retry = (
+    <Button variant="primary" onClick={regenerate}>
+      {t.retry}
+    </Button>
+  );
   const account = () => navigate("account");
   const testing = () => navigate("testing");
   const result = !!scene && permitted && !manual;
@@ -325,8 +362,10 @@ export function Workshop({
       </>
     );
   } else if (!permitted) {
-    message = t.noPhotoRights;
-    detail = t.noPhotoRightsDetails;
+    if (!disconnected) {
+      message = t.noPhotoRights;
+      detail = t.noPhotoRightsDetails;
+    }
   } else if (catalogError) {
     message = t.unavailable;
     alert = true;
@@ -340,22 +379,14 @@ export function Workshop({
       case "busy":
         message = t.busy;
         detail = t.busyDetails;
-        action = (
-          <Button variant="primary" onClick={photo.regenerate}>
-            {t.retry}
-          </Button>
-        );
+        action = retry;
         break;
       case "timeout":
       case "captureFailed":
       case "gpuUnavailable":
         message = t.failedFrame(n);
         detail = photo.status === "timeout" ? t.timeout : t.failedDetails;
-        action = (
-          <Button variant="primary" onClick={photo.regenerate}>
-            {t.retry}
-          </Button>
-        );
+        action = retry;
         break;
       case "denied":
         message = t.denied(widgetName);
@@ -408,6 +439,17 @@ export function Workshop({
             aria-describedby={why ? note : undefined}
             onClick={() => go(0)}
           >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+            >
+              <path d="M6 5v14" />
+              <path d="M18 6v12l-9-6z" fill="currentColor" stroke="none" />
+            </svg>
             {t.first}
           </Button>
           <Button
@@ -419,6 +461,7 @@ export function Workshop({
             aria-describedby={why ? note : undefined}
             onClick={() => go(frame - 1)}
           >
+            <Icon name="chevron-left" />
             {t.previous}
           </Button>
           <Button
@@ -431,11 +474,13 @@ export function Workshop({
             onClick={() => go(frame + 1)}
           >
             {t.next}
+            <Icon name="right" />
           </Button>
         </fieldset>
         {why && <p id={note}>{why}</p>}
         <p>
-          <kbd>{t.leftKey}</kbd> <kbd>{t.rightKey}</kbd> {t.keyHelp}
+          <Keycap>{t.leftKey}</Keycap> <Keycap>{t.rightKey}</Keycap> {t.keyHelp}{" "}
+          <Keycap>{t.first}</Keycap> {t.firstKeyHelp}
         </p>
         <p>{t.frameHelp}</p>
       </section>
@@ -456,7 +501,7 @@ export function Workshop({
             </div>
           </>
         ) : (
-          <p>{t.noScene}</p>
+          <p>{opening ? t.opening : t.noScene}</p>
         )}
       </section>
     </aside>
@@ -514,7 +559,7 @@ export function Workshop({
             </Picker>
             <Picker
               label={t.scene}
-              selected={scene?.label ?? t.empty}
+              selected={scene?.label ?? (opening ? t.opening : t.empty)}
               current={scene?.id}
               count={
                 scene &&
@@ -562,15 +607,17 @@ export function Workshop({
           {!permitted && !core.live && (
             <div className="v-workshop-rights" role="alert">
               <div>
-                <strong>{t.rights}</strong>
-                <p>{t.rightsDetails}</p>
+                <strong>{disconnected ? t.disconnected : t.rights}</strong>
+                <p>{disconnected ? t.disconnectedDetails : t.rightsDetails}</p>
               </div>
-              <Button onClick={account}>{t.account}</Button>
+              {!disconnected && <Button onClick={account}>{t.account}</Button>}
             </div>
           )}
           <figure
+            ref={figure}
             className="v-workshop-photo"
-            aria-busy={pending || (!catalog && !catalogError) || undefined}
+            tabIndex={-1}
+            aria-busy={pending || opening || undefined}
           >
             <figcaption>
               <strong>
@@ -623,12 +670,9 @@ export function Workshop({
               {loose && <p>{t.noDescription}</p>}
             </div>
           )}
-          {ready && (
-            <span
-              role="status"
-              className="v-sr-only"
-            >{`${t.frame(n, frames)} listo.`}</span>
-          )}
+          <span role="status" className="v-sr-only">
+            {ready ? `${t.frame(n, frames)} listo.` : ""}
+          </span>
         </section>
       </SectionPanel>
     </>

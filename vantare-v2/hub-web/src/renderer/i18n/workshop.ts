@@ -16,6 +16,7 @@ export const workshopText = {
   account: "Ver mi cuenta",
   loose: "Foto suelta",
   empty: "Sin escenas",
+  opening: "Abriendo Taller…",
   noFrame: "sin fotogramas",
   firstPhoto: "Haciendo la primera foto…",
   firstHelp: "El pintor dibuja el fotograma 1. Puede tardar hasta 15 segundos.",
@@ -56,6 +57,9 @@ export const workshopText = {
   rights: "Tu cuenta no puede hacer fotos en el Taller",
   rightsDetails:
     "Necesitas iniciar sesión con una cuenta verificada que tenga acceso a Overlays Studio. Mientras tanto puedes ver los widgets, sus escenas y qué mirar en cada una.",
+  disconnected: "No se pueden hacer fotos ahora",
+  disconnectedDetails:
+    "Las fotos volverán a estar disponibles cuando se recupere la conexión.",
   noPhotoRights: "Sin acceso a las fotos",
   noPhotoRightsDetails:
     "Cuando entres con una cuenta que tenga acceso, la foto se hará al elegir widget, escena o fotograma.",
@@ -76,6 +80,7 @@ export const workshopText = {
   graphicsDisabled: "Las fotos están desactivadas en este equipo",
   invalidInput: "Esta escena no se pudo leer",
   unavailable: "El pintor no está disponible en este equipo",
-  keyHelp: "cambian de fotograma · Inicio vuelve al 1",
+  keyHelp: "cambian de fotograma ·",
+  firstKeyHelp: "vuelve al 1",
   frameHelp: "Cada fotograma es una foto nueva del pintor. No es un vídeo.",
 } as const;

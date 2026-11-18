@@ -133,6 +133,7 @@ export function usePreviewPhoto(
       last.client !== client ||
       last.regeneration !== regeneration;
     if (
+      !isScene &&
       last &&
       (last.account !== core.accountGeneration || last.client !== client)
     )
@@ -250,8 +251,7 @@ export function usePreviewPhoto(
         if (alive.current && next) void next();
       }
     };
-    if (active.current && !isScene) desired.current = run;
-    else if (active.current) return;
+    if (active.current) desired.current = run;
     else void run();
   }, [
     allowed,

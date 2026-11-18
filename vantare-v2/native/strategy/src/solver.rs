@@ -525,6 +525,60 @@ pub fn solve_v2_cancellable(input: &Input, cancel: &AtomicBool) -> Result<Solver
     solve_internal(input, cancel, true, Some(input.budget.p95_millis))
 }
 
+/// Why the greedy fallback plan cannot be built without breaking a constraint.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GreedyRefusal {
+    /// The input needs the extended search (extra dimensions or a coarsened grid).
+    NotScalar,
+    /// A full tank or battery does not cover one lap.
+    ResourceTooSmall,
+    /// The plan needs more stops than `maxPitStops` allows.
+    MaxStops,
+    /// `minPitStops` cannot be reached: the race has too few laps to split.
+    MinStops,
+    /// A required window cannot be met before its last lap.
+    WindowUnreachable,
+    /// A service amount does not fit the Fuel/VE step grid.
+    ServiceGrid,
+}
+
+impl GreedyRefusal {
+    pub fn code(self) -> &'static str {
+        match self {
+            Self::NotScalar => "not_scalar",
+            Self::ResourceTooSmall => "resource_too_small",
+            Self::MaxStops => "max_pit_stops",
+            Self::MinStops => "min_pit_stops",
+            Self::WindowUnreachable => "window_unreachable",
+            Self::ServiceGrid => "service_grid",
+        }
+    }
+}
+
+/// Deterministic feasible plan for the scalar model, used by the manual bridge
+/// only after the scalar search ran out of budget without any plan. The
+/// certificate is always `not_proven`; no optimality bound is claimed.
+pub fn solve_greedy_fallback(_input: &Input) -> Result<SolverOutcome, GreedyRefusal> {
+    Err(GreedyRefusal::ResourceTooSmall)
+}
+
+/// True when [`solve_v2_cancellable`] already runs the extended search for
+/// this input, so forcing it again would repeat the same work.
+pub fn runs_extended_search(input: &Input) -> bool {
+    let (effective, requested) = budget::effective(input);
+    search::needs_extended(input)
+        || effective
+            .discretization
+            .fuel_liters
+            .total_cmp(&requested.fuel_liters)
+            .is_ne()
+        || effective
+            .discretization
+            .ve_percent
+            .total_cmp(&requested.ve_percent)
+            .is_ne()
+}
+
 #[cfg(test)]
 fn solve_v2_without_deadline(input: &Input) -> Result<SolverOutcome, String> {
     solve_internal(input, &AtomicBool::new(false), true, None)

@@ -79,15 +79,41 @@ pub fn prepare_manual(input: Input) -> Result<PreparedCalculation, String> {
     Ok(PreparedCalculation { input })
 }
 
+/// Search route that produced a manual calculation. Diagnostic only; it is
+/// not part of any wire contract.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CalculationRoute {
+    Scalar,
+    Greedy,
+}
+
 pub fn calculate(
     prepared: &PreparedCalculation,
     source_status: SourceStatus,
     cancel: &AtomicBool,
 ) -> Result<SolverOutcome, String> {
+    calculate_with_route(prepared, source_status, cancel).map(|(outcome, _)| outcome)
+}
+
+pub fn calculate_with_route(
+    prepared: &PreparedCalculation,
+    source_status: SourceStatus,
+    cancel: &AtomicBool,
+) -> Result<(SolverOutcome, CalculationRoute), String> {
     if source_status != SourceStatus::Open {
         return Err("source_not_open".into());
     }
+    calculate_inner(prepared, cancel, &|| {})
+}
+
+/// `before_greedy` runs once, right before the greedy fallback starts.
+fn calculate_inner(
+    prepared: &PreparedCalculation,
+    cancel: &AtomicBool,
+    _before_greedy: &dyn Fn(),
+) -> Result<(SolverOutcome, CalculationRoute), String> {
     solver::solve_v2_cancellable(&prepared.input, cancel)
+        .map(|outcome| (outcome, CalculationRoute::Scalar))
 }
 
 #[cfg(test)]
@@ -139,5 +165,30 @@ mod tests {
         let error = calculate(&prepared, SourceStatus::Closed, &AtomicBool::new(false))
             .expect_err("closed source is blocked");
         assert_eq!(error, "source_not_open");
+    }
+
+    #[test]
+    fn a_cancellation_during_the_greedy_fallback_publishes_nothing() {
+        use std::sync::atomic::Ordering;
+        let mut input: Input =
+            serde_json::from_str(include_str!("../testdata/fuji-1450-input.json")).expect("Fuji");
+        input.extra.clear();
+        input.budget.p95_millis = 2_000;
+        input.budget.max_candidates = 250_000;
+        input.budget.max_iterations = 1_000_000;
+        let prepared = prepare_manual(input).expect("valid manual input");
+        let cancel = AtomicBool::new(false);
+        let reached = AtomicBool::new(false);
+        // The hook runs on the calling thread right before the fallback: the
+        // cancellation lands there deterministically, without sleeping.
+        let result = calculate_inner(&prepared, &cancel, &|| {
+            reached.store(true, Ordering::Relaxed);
+            cancel.store(true, Ordering::Relaxed);
+        });
+        assert!(
+            reached.load(Ordering::Relaxed),
+            "the scalar search must hand over to the greedy fallback"
+        );
+        assert_eq!(result.expect_err("cancelled"), "cancelled");
     }
 }

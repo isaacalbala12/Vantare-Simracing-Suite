@@ -35,6 +35,7 @@ import { checkStudioCatalogPhotos } from "./check-studio-catalog-photos";
 import { checkStudioPreview } from "./check-studio-preview";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { checkTestingDensity } from "./check-testing-density.ts";
+import { checkWorkshopScreen } from "./check-workshop-screen";
 import { collectPageFailures, pageFailuresReport } from "./page-failures";
 import { until } from "./wait-for";
 
@@ -177,6 +178,7 @@ try {
   await until(async () => (await toast.count()) === 0, 5000, "element removed");
   await checkHomeDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkHomePhotos(page, server.resolvedUrls?.local[0] ?? "");
+  await checkWorkshopScreen(page, server.resolvedUrls?.local[0] ?? "");
   await checkTestingDensity(page, server.resolvedUrls?.local[0] ?? "");
   const { checkSettingsDensity } = await import("./check-settings-density.ts");
   await checkSettingsDensity(page, server.resolvedUrls?.local[0] ?? "");

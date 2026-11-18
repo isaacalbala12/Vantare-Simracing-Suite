@@ -160,6 +160,138 @@
       }
     },
     {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.create",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.confirm",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.save",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": false,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.discard",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": false,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "state": "ready"
+        }
+      }
+    },
+    {
       "error": {
         "current": {
           "activeEventId": "event-1",
@@ -191,6 +323,27 @@
       },
       "id": 1,
       "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "strategyDirty"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "strategyImportFailed"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "strategyInvalidText"
+      },
+      "id": 1,
+      "kind": "failure"
     }
   ],
   "ui": [
@@ -216,6 +369,72 @@
         "method": "strategy.select",
         "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "strategyId": "variant-2"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "basePaceSeconds": "90.472",
+        "fields": {
+          "class": "GT3",
+          "driverInitials": "PI",
+          "driverName": "Pilot",
+          "durationMinutes": "90",
+          "fuelCapacityLiters": "82",
+          "name": "Practice",
+          "pitTransitSeconds": "25",
+          "startAt": "",
+          "team": "",
+          "track": "Fuji",
+          "variantMode": "dry",
+          "variantName": "Base",
+          "variantNote": ""
+        },
+        "fuelPerLapLiters": "1.83",
+        "method": "strategy.create",
+        "revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "eventId": "event-1",
+        "fields": {
+          "class": "GT3",
+          "driverInitials": "PI",
+          "driverName": "Pilot",
+          "durationMinutes": "90",
+          "fuelCapacityLiters": "82",
+          "name": "Practice",
+          "pitTransitSeconds": "25",
+          "startAt": "",
+          "team": "",
+          "track": "Fuji",
+          "variantMode": "dry",
+          "variantName": "Base",
+          "variantNote": ""
+        },
+        "method": "strategy.confirm",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "strategyId": "variant-1"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "strategy.save",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "strategy.discard",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     }
   ]

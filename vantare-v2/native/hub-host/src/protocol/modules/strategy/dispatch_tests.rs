@@ -72,8 +72,13 @@ fn a_late_selection_for_a_previous_account_cannot_write_or_reply_with_cached_dat
         }
     );
     assert_eq!(std::fs::read(&path).unwrap(), doc.bytes());
-    assert!(matches!(request(&mut session, &Request::StrategyView {}),
-        HostToUi::Response { result: Reply::StrategyView { value }, .. } if value.events.is_empty()));
+    assert_eq!(
+        request(&mut session, &Request::StrategyView {}),
+        HostToUi::Failure {
+            id: 9,
+            error: HostError::Denied
+        }
+    );
     assert_eq!(session.core.requests, 0);
 }
 

@@ -485,9 +485,12 @@ fn fuji_with_ve_recalculates_an_edited_witness_schedule() {
         stints: vec![43, 42, 42, 43, 42, 24],
         pit_stop_laps: vec![43, 85, 127, 170, 212],
     };
-    // Edits the 1 % battery grid can serve: a second 43-lap stint (e.g. moving
-    // stop 2 by +1) is impossible after a first one of 43 (see the crate test).
-    for (index, delta) in [(None, 0_i32), (Some(0), -1), (Some(3), -1)] {
+    // Edits the 1 % battery grid can serve (all four checked by the run): moving the
+    // last stop by -1 (43-42-42-43-41-25) is one of them, and exercises the final
+    // stint's reserve. Moving stop 2 by +1 (43-43-41-...) has no plan: a second 43-lap
+    // stint after a first one of 43 needs more battery than the grid can top up (see
+    // the crate test).
+    for (index, delta) in [(None, 0_i32), (Some(0), -1), (Some(3), -1), (Some(4), -1)] {
         let mut edited = edited.clone();
         if let Some(index) = index {
             edited.pit_stop_laps[index] = edited.pit_stop_laps[index]
@@ -642,4 +645,36 @@ fn a_panicking_recalculation_leaves_the_edit_pending_with_a_failed_error() {
         Some(StrategyEditError::Failed)
     );
     assert!(!calculation.running());
+}
+
+/// A grid coarsened by the budget is the extended search's: there is no greedy plan to
+/// fall back to, and "Recalcular" reports it like the calculation does.
+#[test]
+fn a_fine_grid_recalculation_reports_fine_grid_no_fallback() {
+    use crate::strategy::calculation::StrategyReason;
+    let mut input = manual(100, false);
+    input.fuel_capacity_liters.value = 90.0;
+    input.discretization.fuel_liters = 0.25; // more than 200 levels
+    input.budget.max_candidates = 1;
+    let edited = EditedPlan {
+        stints: vec![49, 51],
+        pit_stop_laps: vec![49],
+    };
+    let (_, fallback) = vantare_strategy::application::recalculate_edited_plan_detailed(
+        &input,
+        &edited,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    assert_eq!(
+        fallback,
+        application::Fallback::Refused(vantare_strategy::solver::GreedyRefusal::NotScalar),
+        "the precondition: the extended search ends without a plan"
+    );
+    let done = recalculate(&input, &edited, "Pilot", &AtomicBool::new(false)).unwrap();
+    assert!(!done.feasible);
+    assert_eq!(
+        done.view.result.unwrap().reason,
+        Some(StrategyReason::FineGridNoFallback)
+    );
 }

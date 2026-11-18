@@ -330,3 +330,21 @@
   > svg {
   color: var(--accent-bright);
 }
+
+/* Issue 2645: at low windows the navigation and footer rows use the standard
+   control height so that «PERFILES» shows at least one whole profile.
+   Above 767 px the bar keeps its 40 px rows. */
+@media (max-height: 767px) {
+  .v-sidebar:not(.v-sidebar--collapsed) .v-nav-group .v-button,
+  .v-sidebar-expanded-footer .v-sidebar-footer-row,
+  .v-sidebar-palette .v-select-trigger {
+    height: var(--control-h); /* 40 → 36 */
+    min-height: var(--control-h); /* 40 → 36 */
+  }
+  .v-sidebar-palette {
+    height: var(--control-h); /* 40 → 36 */
+  }
+  .v-sidebar-palette > svg {
+    top: var(--space-3); /* 10 → 8: centres the 21 px icon in 36 */
+  }
+}

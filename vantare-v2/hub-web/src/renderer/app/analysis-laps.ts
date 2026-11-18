@@ -1,12 +1,72 @@
-import type { AnalysisLap } from "../../contract/generated/analysis";
-export const validLapTime = (lap: AnalysisLap) =>
-  lap.sealed && !lap.gap ? lap.lapTimeApproxMs : null;
+import type {
+  AnalysisLap,
+  AnalysisSessionSummary,
+} from "../../contract/generated/analysis";
+
+export function lapTime(lap: AnalysisLap | undefined): {
+  ms: number | null;
+  official: boolean;
+} {
+  if (!lap?.sealed || lap.gap) return { ms: null, official: false };
+  if (lap.lapTimeMs !== null) return { ms: lap.lapTimeMs, official: true };
+  return { ms: lap.lapTimeApproxMs, official: false };
+}
+
+export function recordingBestTime(
+  sessions: readonly AnalysisSessionSummary[],
+  approximate: number | null = null,
+) {
+  let best: number | null = null;
+  for (const { bestLapMs } of sessions) {
+    if (bestLapMs !== null && (best === null || bestLapMs < best))
+      best = bestLapMs;
+  }
+  return { ms: best ?? approximate, official: best !== null };
+}
+
+export function bestApproximateLapTime(laps: readonly AnalysisLap[]) {
+  let best: number | null = null;
+  for (const { sealed, gap, lapTimeApproxMs } of laps) {
+    if (
+      sealed &&
+      !gap &&
+      lapTimeApproxMs !== null &&
+      (best === null || lapTimeApproxMs < best)
+    )
+      best = lapTimeApproxMs;
+  }
+  return best;
+}
+
+export const validLapTime = (lap: AnalysisLap) => lapTime(lap).ms;
+
+export function groupSessionLaps(
+  laps: readonly AnalysisLap[],
+  sessions: readonly AnalysisSessionSummary[],
+) {
+  const groups = sessions.map((session, position) => ({
+    session,
+    position,
+    laps: [] as AnalysisLap[],
+  }));
+  const unassigned: AnalysisLap[] = [];
+  for (const lap of laps) {
+    const group = lap.session === null ? undefined : groups[lap.session];
+    (group?.laps ?? unassigned).push(lap);
+  }
+  return [
+    ...groups.filter((group) => group.laps.length > 0),
+    ...(unassigned.length || !sessions.length
+      ? [{ session: undefined, position: undefined, laps: unassigned }]
+      : []),
+  ];
+}
 export const lapDataKind = (lap: AnalysisLap) =>
   !lap.sealed
     ? "unsealed"
     : lap.gap
       ? "gap"
-      : lap.lapTimeApproxMs === null
+      : lapTime(lap).ms === null
         ? "incomplete"
         : "complete";
 export const estimatedLap = (lap: AnalysisLap) =>
@@ -14,13 +74,12 @@ export const estimatedLap = (lap: AnalysisLap) =>
     (signal) => signal.estimated > 0 || signal.stale > 0,
   );
 export function summarizeLaps(laps: readonly AnalysisLap[]) {
-  const complete = laps.filter((lap) => validLapTime(lap) !== null);
-  const best = complete.reduce<AnalysisLap | undefined>(
-    (best, lap) =>
-      !best ||
-      (validLapTime(lap) ?? Infinity) < (validLapTime(best) ?? Infinity)
-        ? lap
-        : best,
+  const complete = laps.flatMap((lap) => {
+    const { ms, official } = lapTime(lap);
+    return ms === null ? [] : [{ lap, ms, official }];
+  });
+  const best = complete.reduce<(typeof complete)[number] | undefined>(
+    (best, timed) => (!best || timed.ms < best.ms ? timed : best),
     undefined,
   );
   const fastest = laps
@@ -33,17 +92,20 @@ export function summarizeLaps(laps: readonly AnalysisLap[]) {
       undefined,
     );
   const gaps = laps.filter((lap) => lap.gap).length;
+  const approximate = complete.some(({ official }) => !official);
   return {
-    best,
+    best: best?.lap,
     fastest,
     complete: complete.length,
     gaps,
     withoutTime: laps.length - complete.length - gaps,
-    bestTime: best ? validLapTime(best) : null,
+    bestTime: best?.ms ?? null,
+    bestOfficial: best?.official ?? false,
     mean: complete.length
-      ? complete.reduce((sum, lap) => sum + (validLapTime(lap) ?? 0), 0) /
-        complete.length
+      ? complete.reduce((sum, timed) => sum + timed.ms, 0) / complete.length
       : null,
+    meanOfficial: complete.length > 0 && !approximate,
+    approximate,
     maxSpeed: fastest?.speed.max == null ? null : fastest.speed.max * 3.6,
   };
 }

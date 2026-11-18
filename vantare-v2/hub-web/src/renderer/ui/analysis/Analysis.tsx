@@ -10,6 +10,7 @@ import {
   recordingGroups,
   recordingZone,
 } from "../../app/analysis-dates";
+import { recordingBestTime } from "../../app/analysis-laps";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import {
   date,
@@ -23,6 +24,7 @@ import { Button } from "../Button";
 import { Badge, Callout, Skeleton, Spinner } from "../Data";
 import { SearchInput } from "../Forms";
 import { RailBlock, SectionPageHeader } from "../Frame";
+import { SessionTrack, SessionVehicle } from "./SessionIdentity";
 import "./analysis.css";
 import { useRecordingClock } from "./useRecordingClock";
 export function AnalysisRail({
@@ -55,8 +57,14 @@ export function AnalysisRail({
           <dl className="v-an-recording-meta">
             {[
               [t.date, recordingDateLabel(row.startedAtMs, now, timeZone)],
-              [t.circuit, <em key="track">{t.track}</em>],
-              [t.carLabel, <em key="car">{t.car}</em>],
+              [
+                t.circuit,
+                <SessionTrack key="track" session={opened.sessions[0]} />,
+              ],
+              [
+                t.carLabel,
+                <SessionVehicle key="car" session={opened.sessions[0]} />,
+              ],
               [t.laps, opened.laps.length],
               [t.size, size(row.sizeBytes)],
               [
@@ -143,6 +151,13 @@ function RecordingRow({
   const inspection = state.inspections[row.id];
   const readable =
     inspection && ["complete", "unconfirmed"].includes(inspection.state);
+  const latest = readable ? inspection.sessions[0] : undefined;
+  const best = recordingBestTime(
+    readable ? inspection.sessions : [],
+    readable ? inspection.bestLapApproxMs : null,
+  );
+  const more = readable ? Math.max(0, inspection.sessions.length - 1) : 0;
+  const description = date(row.startedAtMs, timeZone);
   const error = state.rowErrors[row.id];
   const status = row.recording
     ? t.recording
@@ -169,19 +184,39 @@ function RecordingRow({
         <button
           type="button"
           className="v-an-open"
-          aria-description={date(row.startedAtMs, timeZone)}
+          aria-description={
+            more ? `${description}. ${t.moreSessionsHelp(more)}.` : description
+          }
           onClick={(event) => {
             event.stopPropagation();
             controller?.open(row);
           }}
         >
-          <em>{t.track}</em>
-          <em>{t.car}</em>
+          {latest?.trackName ? (
+            <strong>{latest.trackName}</strong>
+          ) : (
+            <em>{t.track}</em>
+          )}
+          {latest?.vehicle || latest?.className ? (
+            <span>
+              <SessionVehicle session={latest} />
+            </span>
+          ) : (
+            <em>{t.car}</em>
+          )}
+          {more > 0 && (
+            <small title={t.moreSessionsHelp(more)}>
+              {t.moreSessions(more)}
+            </small>
+          )}
         </button>
       </td>
       <td className="v-an-secondary">{readable ? inspection.laps : t.dash}</td>
-      <td className="v-an-secondary v-an-number">
-        {lapTime(readable ? inspection.bestLapApproxMs : null)}
+      <td
+        className="v-an-secondary v-an-number"
+        aria-description={best.ms !== null ? t.recordingBest : undefined}
+      >
+        {lapTime(best.ms, best.official)}
       </td>
       <td className="v-an-number">{size(row.sizeBytes)}</td>
       <td>
@@ -240,11 +275,12 @@ export function AnalysisCatalog({
     return () => clearTimeout(timer);
   }, [state.loading]);
   const needle = search.trim().toLocaleLowerCase("es");
-  const rows = state.rows.filter((row) =>
-    `${t.track} ${t.car} ${date(row.startedAtMs, timeZone)}`
+  const rows = state.rows.filter((row) => {
+    const latest = state.inspections[row.id]?.sessions[0];
+    return `${latest?.trackName || t.track} ${latest?.vehicle || t.car} ${latest?.className ?? ""} ${date(row.startedAtMs, timeZone)}`
       .toLocaleLowerCase("es")
-      .includes(needle),
-  );
+      .includes(needle);
+  });
   const groups = recordingGroups.filter((group) =>
     rows.some(
       (row) => recordingGroup(row.startedAtMs, now, timeZone) === group,

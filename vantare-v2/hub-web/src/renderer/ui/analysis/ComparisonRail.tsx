@@ -4,7 +4,8 @@ import type {
   AnalysisSnapshot,
 } from "../../app/AnalysisController";
 import { biggestChanges } from "../../app/analysis-comparison";
-import { analysisText, lapTime } from "../../i18n/analysis.es";
+import { lapTime } from "../../app/analysis-laps";
+import { analysisText, lapTime as formatLapTime } from "../../i18n/analysis.es";
 import {
   changeSeconds,
   distanceInterval,
@@ -25,6 +26,11 @@ export function ComparisonRail({
   const laps = state.opened?.laps ?? [];
   const a = laps.find((lap) => lap.index === pair?.a),
     b = laps.find((lap) => lap.index === pair?.b);
+  const timeA = lapTime(a);
+  const timeB = lapTime(b);
+  const approximate = [timeA, timeB].some(
+    ({ ms, official }) => ms !== null && !official,
+  );
   const end = data?.delta?.at(-1)?.value;
   const changes = useMemo(() => (data ? biggestChanges(data) : []), [data]);
   return (
@@ -32,8 +38,8 @@ export function ComparisonRail({
       <RailBlock icon="pulse" title={t.summary}>
         <dl className="v-an-recording-meta">
           {[
-            [t.line(t.a, a?.lap), lapTime(a?.lapTimeApproxMs)],
-            [t.line(t.b, b?.lap), lapTime(b?.lapTimeApproxMs)],
+            [t.line(t.a, a?.lap), formatLapTime(timeA.ms, timeA.official)],
+            [t.line(t.b, b?.lap), formatLapTime(timeB.ms, timeB.official)],
             [t.difference, seconds(end)],
           ].map(([label, value]) => (
             <div key={label}>
@@ -100,7 +106,7 @@ export function ComparisonRail({
       <RailBlock icon="pulse" title={t.how}>
         <p>{t.legend}</p>
         <p>{t.timeHelp}</p>
-        <p>{analysisText.approximate}</p>
+        {approximate && <p>{analysisText.approximate}</p>}
       </RailBlock>
     </>
   );

@@ -1,8 +1,12 @@
 import type { CSSProperties } from "react";
 import type { AnalysisLap } from "../../../contract/generated/analysis";
 import type { Pair } from "../../app/analysis-comparison";
-import { validLapTime } from "../../app/analysis-laps";
-import { deltaTime, lapTime, analysisText as t } from "../../i18n/analysis.es";
+import { lapTime } from "../../app/analysis-laps";
+import {
+  deltaTime,
+  lapTime as formatLapTime,
+  analysisText as t,
+} from "../../i18n/analysis.es";
 import { comparisonText } from "../../i18n/comparison.es";
 import { TrackedCaps } from "../TrackedCaps";
 export function RecordingChart({
@@ -17,7 +21,7 @@ export function RecordingChart({
   pair?: Pair;
 }) {
   const deltas = laps.map((lap) => {
-    const time = validLapTime(lap);
+    const { ms: time } = lapTime(lap);
     return time === null || bestTime === null ? null : time - bestTime;
   });
   const scale = deltas.reduce<number>(
@@ -47,7 +51,8 @@ export function RecordingChart({
                   : undefined;
             const height =
               delta === null ? 100 : Math.max(2, (delta / scale) * 100);
-            const label = `${t.lap} ${lap.lap} · ${lapTime(validLapTime(lap))} · ${best ? t.fastest : delta === null ? t.dash : deltaTime(delta)}`;
+            const { ms, official } = lapTime(lap);
+            const label = `${t.lap} ${lap.lap} · ${formatLapTime(ms, official)} · ${best ? t.fastest : delta === null ? t.dash : deltaTime(delta)}`;
             return (
               <li
                 key={lap.index}

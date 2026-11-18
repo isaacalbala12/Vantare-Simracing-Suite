@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type {
   AnalysisLap,
+  AnalysisSessionSummary,
   AnalysisSignal,
 } from "../../../contract/generated/analysis";
 import type {
@@ -10,18 +11,22 @@ import type {
 } from "../../app/AnalysisController";
 import { recordingZone } from "../../app/analysis-dates";
 import {
+  bestApproximateLapTime,
   estimatedLap,
+  groupSessionLaps,
   lapDataKind,
+  lapTime,
+  recordingBestTime,
   summarizeLaps,
-  validLapTime,
 } from "../../app/analysis-laps";
 import { Icon } from "../../assets/icons/Icon";
 import {
   decimal,
   deltaTime,
-  lapTime,
+  lapTime as formatLapTime,
   percentage,
   recordingDateLabel,
+  sessionType,
   size,
   analysisText as t,
 } from "../../i18n/analysis.es";
@@ -32,6 +37,7 @@ import { TrackedCaps } from "../TrackedCaps";
 import { AnalysisError, AnalysisNotice, RecordingStrip } from "./Analysis";
 import { CompareAction, LapChoices } from "./LapChoices";
 import { RecordingChart } from "./RecordingChart";
+import { SessionTrack, SessionVehicle } from "./SessionIdentity";
 import { useRecordingClock } from "./useRecordingClock";
 
 function Pedal({
@@ -63,13 +69,13 @@ function LapRow({
   state: AnalysisSnapshot;
   controller?: AnalysisController;
 }) {
-  const time = validLapTime(lap);
+  const { ms: time, official } = lapTime(lap);
   const kind = lapDataKind(lap);
   const delta = time === null || best === null ? null : time - best;
   return (
     <tr data-best={delta === 0 || undefined}>
       <th scope="row" className="v-an-lap-label">{`${t.lap} ${lap.lap}`}</th>
-      <td className="v-an-number">{lapTime(time)}</td>
+      <td className="v-an-number">{formatLapTime(time, official)}</td>
       <td
         className={`v-an-number ${delta === null ? "" : delta === 0 ? "v-an-gain" : "v-an-loss"}`}
       >
@@ -105,6 +111,22 @@ function LapRow({
       </td>
     </tr>
   );
+}
+function SessionMeta({
+  session,
+  title,
+}: {
+  session: AnalysisSessionSummary;
+  title?: string;
+}) {
+  const labels = [
+    title ?? sessionType(session),
+    !session.sealed ? t.interrupted : undefined,
+    session.positionAtClose !== null
+      ? t.closingPosition(session.positionAtClose)
+      : undefined,
+  ].filter(Boolean);
+  return labels.length > 0 && <span>{labels.join(" · ")}</span>;
 }
 function Technical({ opened }: { opened: Opened }) {
   return (
@@ -163,14 +185,41 @@ export function AnalysisLaps({
   const now = useRecordingClock(clock, timeZone);
   const opened = state.opened;
   const summary = summarizeLaps(opened?.laps ?? []);
+  const inspection = state.selected && state.inspections[state.selected.id];
+  const best = recordingBestTime(
+    opened?.sessions ?? [],
+    inspection?.bestLapApproxMs ?? bestApproximateLapTime(opened?.laps ?? []),
+  );
+  const bestLap =
+    best.ms === null
+      ? undefined
+      : opened?.laps.find((lap) => {
+          if (best.official) {
+            const time = lapTime(lap);
+            return time.ms === best.ms && time.official;
+          }
+          return lap.sealed && !lap.gap && lap.lapTimeApproxMs === best.ms;
+        });
+  const latest = opened?.sessions[0];
+  const grouped = (opened?.sessions.length ?? 0) > 1;
+  const sharedIdentity = opened?.sessions.every(
+    (session) =>
+      session.trackName === latest?.trackName &&
+      session.vehicle === latest?.vehicle &&
+      session.className === latest?.className,
+  );
   const back = () => controller?.load();
   const metrics: [string, ReactNode, string][] = [
     [
       t.best,
-      lapTime(summary.bestTime),
-      summary.best ? t.lapNumber(summary.best.lap) : t.dash,
+      formatLapTime(best.ms, best.official),
+      bestLap ? t.lapNumber(bestLap.lap) : t.dash,
     ],
-    [t.mean, lapTime(summary.mean), t.meanHelp(summary.complete)],
+    [
+      t.mean,
+      formatLapTime(summary.mean, summary.meanOfficial),
+      t.meanHelp(summary.complete),
+    ],
     [
       t.laps,
       String(opened?.laps.length ?? 0),
@@ -203,10 +252,15 @@ export function AnalysisLaps({
               : t.dash}
           </p>
           <h1>
-            <em>{t.track}</em>
+            <SessionTrack session={latest} />
             {" · "}
-            <em>{t.car}</em>
+            <SessionVehicle session={latest} />
           </h1>
+          {latest && (
+            <div className="v-an-session-meta">
+              <SessionMeta session={latest} />
+            </div>
+          )}
         </div>
       </header>
       <RecordingStrip
@@ -246,6 +300,9 @@ export function AnalysisLaps({
             bestTime={summary.bestTime}
             bestLap={summary.best?.lap}
           />
+          {summary.approximate && (
+            <p className="v-an-lap-note">{t.approximate}</p>
+          )}
           <div className="v-an-laps-card">
             <Card
               title={<TrackedCaps>{t.laps}</TrackedCaps>}
@@ -253,7 +310,15 @@ export function AnalysisLaps({
             >
               <div className="v-an-tablewrap">
                 <table className="v-table v-an-table v-an-laps">
-                  <caption className="v-sr-only">{`${t.laps} · ${t.approximate} · ${t.speed}`}</caption>
+                  <caption className="v-sr-only">
+                    {[
+                      t.laps,
+                      summary.approximate ? t.approximate : undefined,
+                      t.speed,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </caption>
                   <thead>
                     <tr>
                       {[
@@ -277,17 +342,56 @@ export function AnalysisLaps({
                       ))}
                     </tr>
                   </thead>
-                  <tbody>
-                    {opened.laps.map((lap) => (
-                      <LapRow
-                        state={state}
-                        controller={controller}
-                        key={lap.index}
-                        lap={lap}
-                        best={summary.bestTime}
-                      />
-                    ))}
-                  </tbody>
+                  {groupSessionLaps(opened.laps, opened.sessions).map(
+                    ({ session, position, laps }) => (
+                      <tbody key={position ?? "unassigned"}>
+                        {grouped && session && position !== undefined && (
+                          <tr className="v-an-session-row">
+                            {[9, 6].map((columns) => (
+                              <th
+                                key={columns}
+                                scope="rowgroup"
+                                colSpan={columns}
+                                className={
+                                  columns === 9
+                                    ? "v-an-lap-secondary"
+                                    : "v-an-session-narrow"
+                                }
+                              >
+                                <SessionMeta
+                                  session={session}
+                                  title={[
+                                    sessionType(session) ??
+                                      t.sessionNumber(
+                                        opened.sessions.length - position,
+                                      ),
+                                    ...(sharedIdentity
+                                      ? []
+                                      : [
+                                          session.trackName,
+                                          session.vehicle,
+                                          session.className,
+                                        ]),
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" · ")}
+                                />
+                              </th>
+                            ))}
+                          </tr>
+                        )}
+                        {laps.map((lap) => (
+                          <LapRow
+                            state={state}
+                            controller={controller}
+                            key={lap.index}
+                            lap={lap}
+                            best={summary.bestTime}
+                          />
+                        ))}
+                      </tbody>
+                    ),
+                  )}
                 </table>
               </div>
               <Technical opened={opened} />

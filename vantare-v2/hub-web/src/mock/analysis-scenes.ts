@@ -16,7 +16,9 @@ export function analysisScene(context: MockContext, clock = Date.now) {
   context.core.rights = "connected";
   if (context.settingsData)
     context.settingsData.general.grabacion = !name.startsWith("disabled");
-  const mock = create(context);
+  const mock = create({ ...context, sceneName: "analysis-v1" });
+  const sessionsMock = name === "sessions" ? create(context) : undefined;
+  let useSessionsMock = false;
   const compare = comparisonScene(context, mock);
   let pendingOpen: Extract<UiToHost, { kind: "request" }>["id"] | undefined;
   return (value: UiToHost): HostToUi | null | undefined => {
@@ -45,7 +47,7 @@ export function analysisScene(context: MockContext, clock = Date.now) {
     )
       return undefined;
     const { id, request } = value;
-    const comparison = compare(value);
+    const comparison = useSessionsMock ? undefined : compare(value);
     if (comparison !== undefined) return comparison;
     if (request.method === "analysis.cancel" && pendingOpen !== undefined) {
       context.emit?.({
@@ -62,6 +64,7 @@ export function analysisScene(context: MockContext, clock = Date.now) {
     }
     if (request.method === "analysis.catalog") {
       mock(value);
+      sessionsMock?.(value);
       if (name === "loading") return null;
       if (name === "catalog-error")
         return { kind: "failure", id, error: { kind: "analysisTooMany" } };
@@ -104,6 +107,19 @@ export function analysisScene(context: MockContext, clock = Date.now) {
     }
     if (request.method === "analysis.inspect") {
       const index = Number(request.id);
+      if (index === 1 && sessionsMock) {
+        const answer = sessionsMock({
+          ...value,
+          request: { ...request, id: "a".repeat(64) },
+        });
+        if (
+          answer?.kind === "response" &&
+          answer.result.method === "analysis.inspect"
+        ) {
+          answer.result.sessions[0].bestLapMs = 112225;
+          return answer;
+        }
+      }
       return {
         kind: "response",
         id,
@@ -130,6 +146,26 @@ export function analysisScene(context: MockContext, clock = Date.now) {
       };
     }
     if (request.method === "analysis.open") {
+      useSessionsMock = Number(request.id) === 1 && !!sessionsMock;
+      if (useSessionsMock && sessionsMock) {
+        const answer = sessionsMock({
+          ...value,
+          request: { ...request, id: "a".repeat(64) },
+        });
+        if (
+          answer?.kind === "response" &&
+          answer.result.method === "analysis.open"
+        ) {
+          const { sessions, laps } = answer.result;
+          Object.assign(sessions[0], {
+            kind: "other",
+            kindText: "Warm-up",
+            bestLapMs: 112225,
+          });
+          Object.assign(laps[0], { lapTimeMs: null, sectorsMs: null });
+        }
+        return answer;
+      }
       if (name === "opening") {
         pendingOpen = id;
         return null;
@@ -197,6 +233,6 @@ export function analysisScene(context: MockContext, clock = Date.now) {
       }
       return original;
     }
-    return mock(value);
+    return useSessionsMock ? sessionsMock?.(value) : mock(value);
   };
 }

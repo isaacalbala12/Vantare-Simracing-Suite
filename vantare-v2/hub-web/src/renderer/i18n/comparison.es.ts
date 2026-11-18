@@ -74,8 +74,9 @@ export const comparisonText = {
     ms: number | null,
     gap: boolean,
     delta: number | null,
+    official = false,
   ) =>
-    `Vuelta ${lap}${gap ? "\nsin tiempo · con huecos" : ` · ${lapTime(ms)}${delta === 0 ? "\ntu mejor vuelta" : delta === null ? "" : `\n${deltaTime(delta)}`}`}`,
+    `Vuelta ${lap}${gap ? "\nsin tiempo · con huecos" : ` · ${lapTime(ms, official)}${delta === 0 ? "\ntu mejor vuelta" : delta === null ? "" : `\n${deltaTime(delta)}`}`}`,
 };
 export const metres = (n: number) =>
   `${n.toLocaleString("es-ES", { maximumFractionDigits: 0, useGrouping: "always" }).replaceAll(".", " ")} m`;

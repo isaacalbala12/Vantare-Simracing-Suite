@@ -16,7 +16,7 @@ import {
   comparisonAxis,
 } from "../../app/analysis-comparison";
 import { recordingZone } from "../../app/analysis-dates";
-import { validLapTime } from "../../app/analysis-laps";
+import { lapTime, validLapTime } from "../../app/analysis-laps";
 import { Icon } from "../../assets/icons/Icon";
 import { analysisText as at, recordingDateLabel } from "../../i18n/analysis.es";
 import { metres, comparisonText as t } from "../../i18n/comparison.es";
@@ -31,6 +31,7 @@ import {
   ComparisonValues,
   cursorDescription,
 } from "./ComparisonValues";
+import { SessionTrack, SessionVehicle } from "./SessionIdentity";
 import { useRecordingClock } from "./useRecordingClock";
 import "./comparison.css";
 export function Comparison({
@@ -55,6 +56,11 @@ export function Comparison({
   const data = state.comparison;
   const common = useMemo(() => (data ? commonRanges(data) : []), [data]);
   const laps = state.opened?.laps ?? [];
+  const sessionIndex = laps.find(
+    (lap) => lap.index === (data ?? state.pair)?.a,
+  )?.session;
+  const session =
+    sessionIndex == null ? undefined : state.opened?.sessions[sessionIndex];
   const best = Math.min(...laps.map((lap) => validLapTime(lap) ?? Infinity));
   const help = useId();
   const [fraction, setFraction] = useState(0);
@@ -104,9 +110,9 @@ export function Comparison({
         </IconButton>
         <div>
           <p className="v-an-heading-meta">
-            <em>{at.track}</em>
+            <SessionTrack session={session} />
             {" · "}
-            <em>{at.car}</em>
+            <SessionVehicle session={session} />
             {" · "}
             {state.selected
               ? recordingDateLabel(state.selected.startedAtMs, now, timeZone)
@@ -130,11 +136,15 @@ export function Comparison({
               hideLabel
               value={String(state.pair?.[side] ?? "")}
               onChange={(value) => controller?.select(side, Number(value))}
-              options={laps.map((lap) => ({
-                value: String(lap.index),
-                disabled: !comparable(lap),
-                label: `${t.lapOption(lap.lap, validLapTime(lap), lap.gap, validLapTime(lap) !== null && Number.isFinite(best) ? (validLapTime(lap) ?? 0) - best : null)}${comparable(lap) ? "" : ` · ${t.unavailable}`}`,
-              }))}
+              options={laps.map((lap) => {
+                const { ms, official } = lapTime(lap);
+                const allowed = comparable(lap);
+                return {
+                  value: String(lap.index),
+                  disabled: !allowed,
+                  label: `${t.lapOption(lap.lap, ms, lap.gap, ms !== null && Number.isFinite(best) ? ms - best : null, official)}${allowed ? "" : ` · ${t.unavailable}`}`,
+                };
+              })}
             />
             {i === 0 && (
               <Button

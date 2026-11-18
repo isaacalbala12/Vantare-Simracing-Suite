@@ -17,7 +17,7 @@ contextBridge.exposeInMainWorld("vantare", {
       );
     } catch {
       // The invoke may have been interrupted after Main sent the decision.
-      return "unconfirmed";
+      return "interrupted";
     }
   },
   viewport() {

@@ -39,6 +39,12 @@ type ReviewAttempt = {
   ignored?: ResidentReviewState;
 };
 
+type PendingReview = {
+  scope: AnswerScope;
+  awaitingMain?: true;
+  interrupted?: true;
+};
+
 function profileForReview(
   view: ResidentView | undefined,
   launcher: LauncherView | undefined,
@@ -108,7 +114,7 @@ export function useResidentReview(
   );
   const [retained, setRetained] = useState<ReviewQuestion>();
   const [attempt, setAttempt] = useState<ReviewAttempt>();
-  const inflight = useRef<ReviewAttempt | undefined>(undefined);
+  const inflight = useRef<PendingReview | undefined>(undefined);
   const healthy =
     !issue &&
     !!client &&
@@ -176,29 +182,49 @@ export function useResidentReview(
       return;
     setRetained({ question, scope, profile });
   }, [question, scope, profile, retained]);
-  // Discard callbacks from the old transport. Keep uncertainty for the same account.
+  // Only Main can confirm that it sent the decision. Its reply can arrive after
+  // the renderer disconnects. Keep listening until the user starts another review.
   // biome-ignore lint/correctness/useExhaustiveDependencies: changing the transport or account discards the outstanding intent.
   useLayoutEffect(() => {
-    inflight.current = undefined;
+    const pending = inflight.current;
+    if (
+      pending?.awaitingMain &&
+      pending.scope.accountGeneration === core.accountGeneration
+    ) {
+      pending.interrupted = true;
+    } else {
+      inflight.current = undefined;
+    }
     setAttempt((previous) =>
-      previous &&
-      previous.scope.accountGeneration === core.accountGeneration &&
-      (previous.state === "reviewing" || previous.state === "unconfirmed")
-        ? { ...previous, state: "unconfirmed" }
+      previous?.state === "unconfirmed" &&
+      previous.scope.accountGeneration === core.accountGeneration
+        ? previous
         : undefined,
     );
-    return () => {
-      inflight.current = undefined;
-    };
   }, [client, core.accountGeneration, healthy]);
-  useLayoutEffect(() => {
-    if (attempt && !current) {
+  useLayoutEffect(
+    () => () => {
       inflight.current = undefined;
+    },
+    [],
+  );
+  useLayoutEffect(() => {
+    const pending = inflight.current;
+    if (
+      pending &&
+      healthy &&
+      !(scope
+        ? sameAnswerScope(pending.scope, scope)
+        : sameRun && !view?.decision)
+    ) {
+      inflight.current = undefined;
+    }
+    if (attempt && !current && healthy) {
       setAttempt(undefined);
     } else if (current?.ignored && !relevant) {
       setAttempt({ ...current, ignored: undefined });
     }
-  }, [attempt, current, relevant]);
+  }, [attempt, current, healthy, relevant, sameRun, scope, view?.decision]);
 
   if (
     !panel ||
@@ -231,34 +257,40 @@ export function useResidentReview(
     ...panel,
     state,
     async open() {
-      if (inflight.current) return;
+      if (inflight.current && !inflight.current.interrupted) return;
       const next = {
         scope,
         state: "reviewing",
         ignored: relevant ? outcome?.state : undefined,
       } as const;
-      inflight.current = next;
+      const pending: PendingReview = { scope };
+      inflight.current = pending;
       setAttempt(next);
       try {
         const reply = await client.request({
           method: "launcher.resident.reviewOpen",
           target: scope,
         });
-        if (inflight.current !== next) return;
+        if (inflight.current !== pending) return;
+        pending.awaitingMain =
+          reply.method === "launcher.resident.reviewOpen" ? true : undefined;
         const result =
           reply.method === "launcher.resident.reviewOpen"
             ? await client.reviewTrust(reply.value.ticket)
             : "unavailable";
-        if (inflight.current === next)
-          setAttempt({
-            ...next,
-            state: result === "submitted" ? "unconfirmed" : result,
-          });
+        if (inflight.current !== pending) return;
+        if (result === "submitted" || result === "unconfirmed") {
+          setAttempt({ ...next, state: "unconfirmed" });
+        } else if (!pending.interrupted) {
+          setAttempt(
+            result === "interrupted" ? undefined : { ...next, state: result },
+          );
+        }
       } catch (error) {
-        if (inflight.current === next)
+        if (inflight.current === pending && !pending.interrupted)
           setAttempt({ ...next, state: openFailure(error) });
       } finally {
-        if (inflight.current === next) inflight.current = undefined;
+        if (inflight.current === pending) inflight.current = undefined;
       }
     },
   };

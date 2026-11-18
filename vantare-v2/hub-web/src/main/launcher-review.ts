@@ -35,6 +35,7 @@ type ActiveReview = {
   deadline: number;
   resolve: (result: LauncherReviewResult) => void;
   failure?: ReviewFailure;
+  sent?: true;
 };
 
 function matches(view: ResidentView, target: ResidentReviewTarget): boolean {
@@ -98,7 +99,7 @@ export function launcherReview(
     review.resolve(result);
   }
 
-  function invalidate(reason: ReviewFailure = "changed") {
+  function invalidate(reason: ReviewFailure | "interrupted" = "interrupted") {
     if (expected) expected.invalidated = true;
     issued = undefined;
     const review = active;
@@ -106,7 +107,7 @@ export function launcherReview(
     clearTimeout(review.timer);
     review.signal.abort();
     // The resident may have received the decision before the transport failed.
-    review.resolve(review.phase === "receipt" ? "unconfirmed" : reason);
+    review.resolve(review.sent ? "unconfirmed" : reason);
     // Keep the slot until its outstanding response or native dialog returns.
     // R1 private frames have no correlation ID and must never reach a new review.
   }
@@ -150,6 +151,7 @@ export function launcherReview(
           decision: choice,
           ...(choice === "trust" ? { issuedMs: now() } : {}),
         });
+        review.sent = true;
         // The host sends only private failures. An ordered read fences those
         // frames; actual acceptance still comes from the resident's order receipt.
         sendHost({
@@ -162,7 +164,7 @@ export function launcherReview(
     } catch {
       // Native errors may mention the contents. Return a closed result only.
       if (review.phase === "receipt") {
-        invalidate("unavailable");
+        invalidate();
         return;
       }
     }
@@ -196,7 +198,7 @@ export function launcherReview(
         try {
           sendHost({ kind: "reviewContentRequest", ticket });
         } catch {
-          finish(review, "unavailable");
+          finish(review, "interrupted");
         }
       });
     },
@@ -215,15 +217,15 @@ export function launcherReview(
       const scope = active?.target ?? issued?.target ?? expected?.target;
       if (scope && message.kind === "event") {
         const event = message.event;
-        if (
-          event.topic === "core" &&
-          (event.value.accountGeneration !== scope.accountGeneration ||
-            event.value.services !== "connected")
-        )
-          invalidate();
+        if (event.topic === "core") {
+          if (event.value.accountGeneration !== scope.accountGeneration)
+            invalidate("changed");
+          else if (event.value.services !== "connected") invalidate();
+        }
         if (event.topic === "launcherResident" && active?.phase !== "receipt") {
           const outcome = event.value.reviewOutcome;
-          if (
+          if (!event.value.online) invalidate();
+          else if (
             active &&
             outcome?.question === scope.decision &&
             outcome.state === "expired"
@@ -235,7 +237,7 @@ export function launcherReview(
               outcome?.question === scope.decision &&
               outcome.state === "changed")
           )
-            invalidate();
+            invalidate("changed");
         }
       }
       if (message.kind === "closeRequested") invalidate();

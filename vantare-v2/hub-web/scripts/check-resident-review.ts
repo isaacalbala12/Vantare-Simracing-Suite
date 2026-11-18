@@ -15,6 +15,7 @@ export const reviewScenes = [
   ["expired", "caducado"],
   ["unavailable", "no-disponible"],
   ["too-long", "demasiado-largo"],
+  ["unconfirmed", "confirmacion-pendiente"],
 ] as const;
 
 export async function openReviewScene(
@@ -82,6 +83,20 @@ export async function checkResidentReview(
             .count(),
           0,
         );
+        if (state === "unconfirmed") {
+          assert.equal(
+            await drawer
+              .getByRole("button", { name: text.review, exact: true })
+              .count(),
+            0,
+          );
+          assert.equal(
+            await drawer
+              .getByRole("button", { name: text.cancel, exact: true })
+              .isEnabled(),
+            true,
+          );
+        }
         if (["changed", "expired", "trusted", "declined"].includes(state)) {
           const focus =
             state === "changed" || state === "expired"

@@ -21,8 +21,8 @@ export function ResidentReview({
   const busyNote = useId();
   const cancelNote = useId();
   const { state, profile, scope } = review;
-  const ended =
-    state === "trusted" || state === "declined" || state === "unconfirmed";
+  const ended = state === "trusted" || state === "declined";
+  const unconfirmed = state === "unconfirmed";
   const busy = state === "reviewing";
   const unavailable = state === "unavailable";
   const disabled = unavailable || (!busy && !review.open);
@@ -41,7 +41,9 @@ export function ResidentReview({
           </>
         )}
       </section>
-      {!ended && <p className="v-resident-review-note">{t.names}</p>}
+      {!ended && !unconfirmed && (
+        <p className="v-resident-review-note">{t.names}</p>
+      )}
       {notice && (
         <div
           className={`v-resident-review-notice v-callout v-callout--${notice.tone}`}
@@ -52,7 +54,7 @@ export function ResidentReview({
       )}
       {!ended && (
         <>
-          {state !== "too-long" && (
+          {!unconfirmed && state !== "too-long" && (
             <Button
               ref={button}
               variant="primary"
@@ -67,7 +69,7 @@ export function ResidentReview({
               {retry ? t.reviewAgain : t.review}
             </Button>
           )}
-          {disabled && state !== "too-long" && (
+          {!unconfirmed && disabled && state !== "too-long" && (
             <p
               id={reason}
               className="v-resident-review-note v-resident-review-reason"
@@ -98,7 +100,7 @@ export function ResidentReview({
             </p>
           )}
           {status && <p className="v-resident-review-note">{status}</p>}
-          <p className="v-resident-review-note">{t.help}</p>
+          {!unconfirmed && <p className="v-resident-review-note">{t.help}</p>}
         </>
       )}
     </>

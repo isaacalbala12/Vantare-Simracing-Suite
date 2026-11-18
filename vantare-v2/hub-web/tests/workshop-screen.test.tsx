@@ -275,6 +275,11 @@ it("keeps the previous photo while pending and drops all clicks and shortcuts wi
 const failures: { error: HostError; text: string | RegExp; retry: boolean }[] =
   [
     {
+      error: { kind: "protected" },
+      text: "El pintor no está disponible en este equipo",
+      retry: false,
+    },
+    {
       error: { kind: "busy" },
       text: "El pintor está ocupado con otra foto",
       retry: true,

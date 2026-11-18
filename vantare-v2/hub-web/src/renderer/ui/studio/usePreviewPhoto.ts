@@ -219,7 +219,8 @@ export function usePreviewPhoto(
               ? "busy"
               : detail?.kind === "studioConflict"
                 ? "studioConflict"
-                : detail?.kind === "denied" || detail?.kind === "protected"
+                : detail?.kind === "denied" ||
+                    (!isScene && detail?.kind === "protected")
                   ? "denied"
                   : "unavailable";
         setPhoto({ status, key });

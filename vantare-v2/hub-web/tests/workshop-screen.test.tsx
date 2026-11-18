@@ -390,42 +390,141 @@ it("shows an empty widget catalog entry without attempting a photo", async () =>
   expect(photoRequests()).toHaveLength(before);
 });
 
-it.each(["exit", "account", "live", "rights"] as const)(
-  "drops a late PNG after %s",
+it.each(["rights", "connection", "account"] as const)(
+  "discards stale photos and resumes once after %s recovers",
   async (reason) => {
-    const pending = held();
+    const old = held();
+    const fresh = held();
     respond = ({ method }) =>
-      method === "preview.render" ? pending.promise : undefined;
-    const { user } = await enter();
+      method === "preview.render"
+        ? photoRequests().length === 1
+          ? old.promise
+          : fresh.promise
+        : undefined;
+    await enter();
     await waitFor(() => expect(photoRequests()).toHaveLength(1));
-    if (reason === "exit") {
-      await user.click(screen.getByRole("tab", { name: "Studio" }));
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("");
+    if (reason === "rights") {
+      await emit({ ...core, rights: "unavailable" });
+      await screen.findByText("No se pueden hacer fotos ahora");
+      expect(
+        screen.queryByText("Tu cuenta no puede hacer fotos en el Taller"),
+      ).toBeNull();
+      await emit(core);
+    } else if (reason === "connection") {
+      await act(async () =>
+        notify({ kind: "failure", id: 0, error: { kind: "coreUnavailable" } }),
+      );
+      await screen.findByText("No se pueden hacer fotos ahora");
+      expect(
+        screen.queryByText("Tu cuenta no puede hacer fotos en el Taller"),
+      ).toBeNull();
+      await act(async () => notify(hello));
     } else {
-      await emit({
-        ...core,
-        accountGeneration:
-          reason === "account" ? "b".repeat(64) : core.accountGeneration,
-        rights: reason === "rights" ? "unavailable" : core.rights,
-        live: reason === "live",
-      });
+      await emit({ ...core, accountGeneration: "b".repeat(64) });
     }
-    if (reason === "account" || reason === "rights")
-      await screen.findByText("Sin acceso a las fotos");
-    if (reason === "live") await screen.findByText("Live está en marcha");
-    await act(async () => pending.resolve(png));
-    expect(screen.queryByRole("img", { name: imageName })).toBeNull();
-    expect(
-      screen
-        .queryAllByRole("status")
-        .some((node) => /Fotograma .* listo/.test(node.textContent ?? "")),
-    ).toBe(false);
+    await screen.findByText("Haciendo la primera foto…");
     expect(photoRequests()).toHaveLength(1);
-    if (reason === "live")
-      expect(screen.getByText("Live está en marcha")).toBeTruthy();
-    if (reason === "rights")
-      expect(screen.getByText("Sin acceso a las fotos")).toBeTruthy();
+    const before = decode.mock.calls.length;
+    await act(async () => old.resolve(png));
+    expect(decode).toHaveBeenCalledTimes(before);
+    expect(screen.queryByRole("img", { name: imageName })).toBeNull();
+    expect(status.textContent).toBe("");
+    await waitFor(() => expect(photoRequests()).toHaveLength(2));
+    await act(async () => fresh.resolve(png));
+    await screen.findByRole("img", { name: imageName });
+    expect(screen.getByRole("status")).toBe(status);
+    expect(status.textContent).toMatch(/^Fotograma 1 de \d+ listo\.$/);
+    expect(photoRequests()).toHaveLength(2);
   },
 );
+
+it("does not decode a late photo after leaving Taller", async () => {
+  const old = held();
+  respond = ({ method }) =>
+    method === "preview.render" ? old.promise : undefined;
+  const { user } = await enter();
+  await waitFor(() => expect(photoRequests()).toHaveLength(1));
+  await user.click(screen.getByRole("tab", { name: "Studio" }));
+  await screen.findByRole("tab", { name: "Studio", selected: true });
+  const before = decode.mock.calls.length;
+  await act(async () => old.resolve(png));
+  expect(decode).toHaveBeenCalledTimes(before);
+  expect(screen.queryByRole("img", { name: imageName })).toBeNull();
+  expect(photoRequests()).toHaveLength(1);
+});
+
+it("waits for Hacer la foto after Live and discards the previous reply", async () => {
+  const old = held();
+  const fresh = held();
+  respond = ({ method }) =>
+    method === "preview.render"
+      ? photoRequests().length === 1
+        ? old.promise
+        : fresh.promise
+      : undefined;
+  const { user } = await enter();
+  await waitFor(() => expect(photoRequests()).toHaveLength(1));
+  await emit({ ...core, live: true });
+  await screen.findByText("Live está en marcha");
+  await user.click(button("Hacer la foto"));
+  expect(photoRequests()).toHaveLength(1);
+  await act(async () => old.resolve(png));
+  expect(screen.queryByRole("img", { name: imageName })).toBeNull();
+  const status = screen.getByRole("status");
+  expect(status.textContent).toBe("");
+  await emit(core);
+  expect(photoRequests()).toHaveLength(1);
+  await user.click(button("Hacer la foto"));
+  await waitFor(() => expect(photoRequests()).toHaveLength(2));
+  await act(async () => fresh.resolve(png));
+  await screen.findByRole("img", { name: imageName });
+  expect(status.textContent).toMatch(/^Fotograma 1 de \d+ listo\.$/);
+});
+
+it("names the loading catalogue and reports a read failure without requesting a photo", async () => {
+  let fail!: (error: Error) => void;
+  const catalog = new Promise<Reply>((_resolve, reject) => {
+    fail = reject;
+  });
+  respond = ({ method }) =>
+    method === "workshop.catalog" ? catalog : undefined;
+  await enter();
+  expect(
+    screen.getByRole("combobox", { name: "Widget Abriendo Taller…" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("combobox", { name: "Escena Abriendo Taller…" }),
+  ).toBeTruthy();
+  expect(screen.getByRole("figure").getAttribute("aria-busy")).toBe("true");
+  await act(async () => fail(new HostFailure({ kind: "coreUnavailable" })));
+  expect(await screen.findByRole("alert")).toBeTruthy();
+  expect(screen.getByRole("figure").hasAttribute("aria-busy")).toBe(false);
+  expect(photoRequests()).toHaveLength(0);
+});
+
+it("keeps keyboard focus in the preview when regeneration removes the retry button", async () => {
+  const retry = held();
+  respond = ({ method }) =>
+    method !== "preview.render"
+      ? undefined
+      : photoRequests().length === 1
+        ? Promise.reject(new HostFailure({ kind: "busy" }))
+        : retry.promise;
+  const { user } = await enter();
+  const control = await screen.findByRole("button", {
+    name: "Volver a generar",
+  });
+  control.focus();
+  await user.keyboard("{Enter}");
+  await screen.findByText("Haciendo la primera foto…");
+  expect(document.activeElement).toBe(screen.getByRole("figure"));
+  await act(async () => retry.resolve(png));
+  await screen.findByRole("img", { name: imageName });
+  expect(document.activeElement).toBe(screen.getByRole("figure"));
+  expect(photoRequests()).toHaveLength(2);
+});
 
 it("rejects a corrupt image without showing it or starting another request", async () => {
   decode.mockRejectedValue(new Error("Invalid PNG"));

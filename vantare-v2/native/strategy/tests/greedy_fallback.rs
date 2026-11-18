@@ -414,10 +414,7 @@ fn the_battery_reserve_forces_a_stop_too() {
     input.ve_per_lap_percent.value = 2.4; // 41 laps of battery, 1.5 laps of reserve below
     input.virtual_energy_reserve["laps"]["value"] = json!(1.5);
     let result = plan_of(&input);
-    assert!(
-        result.pit_stops.first().is_some(),
-        "the reserve needs a stop"
-    );
+    assert_eq!(result.pit_stops.len().min(1), 1, "the reserve needs a stop");
 }
 
 #[test]

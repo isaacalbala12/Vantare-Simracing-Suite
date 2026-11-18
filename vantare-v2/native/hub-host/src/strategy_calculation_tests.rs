@@ -114,6 +114,8 @@ fn a_partial_search_without_a_complete_plan_has_no_certificate_or_plan() {
     let mut input = scalar();
     input.race_laps = 100;
     input.budget.max_candidates = 1;
+    // The greedy fallback refuses too: 100 laps need two stops, one is allowed.
+    input.event_rules.max_pit_stops = Some(1);
     let (outcome, view) = view_of(input);
     assert_eq!(outcome.certificate.status, OptimalityStatus::NotProven);
     assert!(!outcome.result.feasible);
@@ -228,4 +230,62 @@ fn dropping_a_calculation_requests_cancellation_and_joins_its_worker() {
     started.recv().unwrap();
     drop(calculation);
     assert!(stopped.load(Ordering::Acquire));
+}
+
+#[test]
+fn a_long_race_with_virtual_energy_gets_an_unproven_plan_the_host_reports_truthfully() {
+    // The scalar search used to end here as "partial, no plan"; the greedy
+    // fallback now gives a plan, and the host must never present it as proven.
+    let mut input = scalar();
+    input.race_laps = 240;
+    let (outcome, view) = view_of(input);
+    assert_eq!(outcome.certificate.status, OptimalityStatus::NotProven);
+    assert!(outcome.certificate.proof.is_none(), "no bound is claimed");
+    assert_eq!(view.state, StrategyPlanState::Partial);
+    let result = view.result.unwrap();
+    assert_eq!(result.certificate, Some(StrategyCertificate::NotProven));
+    // Effective steps are the grid the plan was built on, and nothing was coarsened.
+    assert_eq!(result.steps.fuel_liters, Number::from_f64(1.0));
+    assert_eq!(result.steps.ve_percent, Number::from_f64(1.0));
+    assert!(!result.degraded);
+    let metrics = result.metrics.unwrap();
+    assert_eq!(metrics.laps, 240);
+    assert_eq!(metrics.pit_count, 5);
+    assert_eq!(
+        metrics.total_seconds,
+        Number::from_f64(outcome.result.expected.total_seconds).unwrap()
+    );
+    let real = metrics.fuel_reserve_real_laps.unwrap().as_f64().unwrap();
+    let required = metrics.fuel_reserve_required_laps.as_f64().unwrap();
+    assert!(real >= required - 1e-3, "reserve {real} < {required}");
+    let timeline = result.timeline.unwrap();
+    assert_eq!(timeline.stints.len(), 6);
+    assert_eq!(timeline.stints[0].from_lap, 1);
+    assert_eq!(timeline.stints.last().unwrap().to_lap, 240);
+    for pair in timeline.stints.windows(2) {
+        assert_eq!(pair[0].to_lap + 1, pair[1].from_lap, "contiguous stints");
+    }
+    // Every service amount sits on the reported 1 L / 1 % grid.
+    for pit in &timeline.pits {
+        for amount in [&pit.fuel_liters, &pit.ve_percent] {
+            let amount = amount.as_f64().unwrap();
+            assert!((amount - amount.round()).abs() < 1e-6, "{amount} off grid");
+        }
+    }
+}
+
+#[test]
+fn a_plan_beyond_the_timeline_limit_keeps_its_summary_when_it_comes_from_the_fallback() {
+    // A 24 h race with VE: the fallback must not change what the host says
+    // about the grid the solver used.
+    let mut input = scalar();
+    input.race_laps = 960;
+    let (outcome, view) = view_of(input);
+    assert!(outcome.result.feasible);
+    let result = view.result.unwrap();
+    assert_eq!(result.certificate, Some(StrategyCertificate::NotProven));
+    assert!(!result.degraded);
+    assert_eq!(result.steps.fuel_liters, Number::from_f64(1.0));
+    assert!(result.timeline.is_none(), "22 stops exceed the timeline limit");
+    assert_eq!(result.metrics.unwrap().pit_count, 22);
 }

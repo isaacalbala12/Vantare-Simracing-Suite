@@ -470,11 +470,12 @@ fn a_plan_that_does_not_cover_the_input_laps_cannot_be_edited() {
 
 /// The Fuji witness (236 laps, 82 L; stints 43-42-42-43-42-24) as the manual form
 /// builds it, edited by one lap. The solver must keep the schedule exactly.
-/// Measured on 2026-11-18: today the scalar search reaches its 250.000-candidate
-/// limit without a plan (`partial`, as in the base calculation of such races), so
-/// this stays ignored until the greedy seed (#2628, PR #2635) is merged.
+/// Measured on 2026-11-18, also with the seed merged (#2628, #2646): `recalculate`
+/// calls `recalculate_edited_plan`, which uses the scalar solver and never the
+/// greedy fallback that only `application::calculate` applies, so the scalar
+/// search still ends without a plan. This stays ignored until that is decided.
 #[test]
-#[ignore = "the manual bridge finds no plan for a race this size before #2628"]
+#[ignore = "recalculate_edited_plan uses the scalar solver, not the greedy fallback of #2628: no plan for a race this size"]
 fn fuji_with_ve_recalculates_an_edited_witness_schedule() {
     let mut input = manual(236, false);
     input.fuel_capacity_liters.value = 82.0;

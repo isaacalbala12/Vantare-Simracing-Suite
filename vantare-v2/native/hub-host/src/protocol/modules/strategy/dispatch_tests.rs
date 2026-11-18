@@ -231,6 +231,7 @@ fn strategy_form_at_its_limits_still_fits_the_frame_with_the_largest_collection(
 }
 
 #[test]
+#[allow(clippy::too_many_lines)] // One view built field by field.
 fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
     use crate::strategy::{
         StrategyCalculationView, StrategyCertificate, StrategyComputeForm, StrategyEditStop,

@@ -1041,9 +1041,9 @@ fn stored_with(root: &Root, change: impl FnOnce(&mut serde_json::Value)) {
 
 #[test]
 fn a_stored_text_out_of_range_in_any_entry_makes_the_form_null() {
+    type Change = fn(&mut serde_json::Value, &str);
     let long = "x".repeat(TEXT_LIMIT + 1);
     let exact = "x".repeat(TEXT_LIMIT);
-    type Change = fn(&mut serde_json::Value, &str);
     // `startAt` and `variantMode` cannot exceed the limit: the crate refuses a
     // document whose start is not RFC 3339 or whose mode is not one of four
     let places: [(&str, Change); 3] = [

@@ -126,6 +126,7 @@ it("marks field and summary errors, retains edits on back, and sends only v63 fi
     revision: expect.any(String),
     basePaceSeconds: "90.472",
     fuelPerLapLiters: "1.830",
+    inputs: null,
     fields: {
       name: "Fuji 6 Horas",
       track: "Fuji Speedway",

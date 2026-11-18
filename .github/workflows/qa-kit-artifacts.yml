@@ -1,0 +1,121 @@
+# PROPUESTA (NO aplicada) · .github/workflows/qa-kit-artifacts.yml
+# Objetivo: construir en GitHub (gratis, windows-latest) los binarios del kit de la tanda del PC con el MISMO SHA
+# congelado y publicarlos como artefacto con hashes, sin compilar en el servidor.
+# Disparo: push a una rama `qa-kit/<sha8>` que apunta a un commit de nightly que YA contiene este workflow
+# (workflow_dispatch exige el fichero en la rama por defecto, master; el push lee el workflow del commit empujado).
+# Seguridad: permissions contents:read, sin secretos, sin despliegue, sin escribir en el repo; solo si el commit
+# es ancestro de origin/nightly; las acciones fijadas por SHA como en el resto de workflows del repo.
+name: QA kit artifacts
+
+on:
+  push:
+    branches: ['qa-kit/**']
+  pull_request:
+    paths: ['.github/workflows/qa-kit-artifacts.yml']   # el PR del propio workflow demuestra que compila
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qa-kit-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Binarios del kit de la tanda (Release, sin ejecutar)
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      RUSTUP_TOOLCHAIN: '1.99.1'
+      VANTARE_SIN_GRAFICOS: '1'          # nada de gráficos en el runner; solo se compila
+      VANTARE_BUILD_CHANNEL: nightly
+      CARGO_PROFILE_RELEASE_OPT_LEVEL: '3'
+      CARGO_PROFILE_RELEASE_DEBUG: '0'
+      CARGO_PROFILE_RELEASE_LTO: 'false'
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: '16'
+      CARGO_BUILD_JOBS: '4'
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: El commit debe ser de nightly (solo en push; el PR del workflow se salta esta comprobación)
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin nightly
+          git merge-base --is-ancestor HEAD origin/nightly
+          if ($LASTEXITCODE) { throw 'qa-kit solo acepta commits que ya estén en nightly' }
+      - name: Rust fijado
+        run: |
+          rustup toolchain install 1.99.1 --profile minimal
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Targets separados (workspace principal y overlays-rune)
+        run: |
+          "TARGET_MAIN=$env:RUNNER_TEMP/qa-kit-target-main" >> $env:GITHUB_ENV
+          "TARGET_RUNE=$env:RUNNER_TEMP/qa-kit-target-rune" >> $env:GITHUB_ENV
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: qa-kit-1.99.1-${{ hashFiles('vantare-v2/native/Cargo.lock', 'vantare-v2/native/overlays-rune/Cargo.lock') }}
+          restore-keys: qa-kit-1.99.1-
+      - name: Compilar Rune (Release) y verificar subsistema Windows GUI
+        working-directory: vantare-v2/native/overlays-rune
+        env:
+          CARGO_TARGET_DIR: ${{ env.TARGET_RUNE }}
+        run: |
+          cargo build --locked --release --bin vantare-overlays-rune
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $binary = Join-Path $env:CARGO_TARGET_DIR 'release/vantare-overlays-rune.exe'
+          $bytes = [IO.File]::ReadAllBytes($binary)
+          $pe = [BitConverter]::ToInt32($bytes, 0x3c)
+          $subsystem = [BitConverter]::ToUInt16($bytes, $pe + 0x5c)
+          if ($subsystem -ne 2) { throw "Release debe ser Windows GUI (2), recibido $subsystem" }
+      - name: Compilar GPUI parity-capture, núcleo paint-stats, services y launcher (Release)
+        env:
+          CARGO_TARGET_DIR: ${{ env.TARGET_MAIN }}
+        run: |
+          $steps = @(
+            @{ package='vantare-ui'; bin='vantare-overlays'; features='parity-capture' },
+            @{ package='vantare-runtime'; bin='vantare-core'; features='paint-stats' },
+            @{ package='vantare-services'; bin='vantare-services'; features='' },
+            @{ package='vantare-runtime'; bin='vantare'; features='' }
+          )
+          foreach ($s in $steps) {
+            $cargoArgs = @('build','--manifest-path','vantare-v2/native/Cargo.toml','--locked','--release','-p',$s.package,'--bin',$s.bin)
+            if ($s.features) { $cargoArgs += @('--features',$s.features) }
+            cargo @cargoArgs
+            if ($LASTEXITCODE) { throw "Build $($s.bin) falló" }
+          }
+      - name: Arnés de lifecycle (compilado, sin ejecutar)
+        env:
+          CARGO_TARGET_DIR: ${{ env.TARGET_MAIN }}
+        run: |
+          cargo test --manifest-path vantare-v2/native/Cargo.toml --locked --release -p vantare-runtime --test lifecycle --no-run
+          if ($LASTEXITCODE) { throw 'Arnés de lifecycle falló' }
+      - name: Reunir con hashes
+        run: |
+          $out = Join-Path $env:RUNNER_TEMP 'qa-kit'
+          New-Item -ItemType Directory -Force "$out/bin" | Out-Null
+          Copy-Item (Join-Path $env:TARGET_RUNE 'release/vantare-overlays-rune.exe') "$out/bin/vantare-overlays-rune.exe"
+          foreach ($n in 'vantare-overlays','vantare-core','vantare-services','vantare') {
+            Copy-Item (Join-Path $env:TARGET_MAIN "release/$n.exe") "$out/bin/$n.exe"
+          }
+          $lifecycle = Get-ChildItem (Join-Path $env:TARGET_MAIN 'release/deps') -Filter 'lifecycle-*.exe' |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          Copy-Item $lifecycle.FullName "$out/bin/lifecycle.exe"
+          $rows = Get-ChildItem "$out/bin" -File | Sort-Object Name | ForEach-Object {
+            [ordered]@{ file=$_.Name; size=$_.Length; sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
+          }
+          [ordered]@{ source_sha=$env:GITHUB_SHA; run_id=$env:GITHUB_RUN_ID; profile='release opt=3 debug=0 lto=false codegen-units=16'; files=$rows } |
+            ConvertTo-Json -Depth 5 | Set-Content "$out/binarios.json" -Encoding utf8
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: qa-kit-${{ github.sha }}
+          path: ${{ runner.temp }}/qa-kit
+          if-no-files-found: error
+          retention-days: 5

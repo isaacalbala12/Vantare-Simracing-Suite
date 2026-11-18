@@ -135,6 +135,13 @@ fn reference(points: &[Point], passes: &[Pass]) -> Reference {
     Reference { order, reach }
 }
 /// Intervalo de B que contiene `distance`, con la fracción ya calculada.
+///
+/// El tramo se elige por **distancia inicial**, no por tiempo: gana el de menor
+/// distancia inicial que cubre `distance`. Por eso una salida de boxes que
+/// empieza a 300 m pierde contra una vuelta completa que empieza en 0 m, aunque
+/// la de boxes sea posterior. Si ese tramo no ofrece un intervalo válido (tramo
+/// de un punto, o un duplicado/hueco dentro) el punto se queda sin delta: no se
+/// prueba el siguiente tramo.
 fn interpolate<'a>(
     points: &'a [Point],
     passes: &[Pass],
@@ -171,9 +178,12 @@ fn interpolate<'a>(
 /// distancia, no por orden de llegada, con coste O(m log n).
 ///
 /// B se parte en tramos donde la distancia no baja. Si se reinicia, cada
-/// distancia se interpola en el primer tramo que la cubre (por distancia
-/// inicial), así que nunca se mezclan dos pasadas en un mismo intervalo y no se
-/// extrapola fuera del tramo elegido.
+/// distancia se interpola en el primer tramo que la cubre, ordenado por su
+/// distancia inicial y no por tiempo (una salida de boxes que empieza a 300 m
+/// pierde contra la vuelta completa que empieza en 0 m). Así nunca se mezclan
+/// dos pasadas en un mismo intervalo y no se extrapola fuera del tramo elegido.
+/// No hay reserva: si el tramo elegido no da un intervalo válido, ese punto no
+/// tiene delta.
 fn delta(a: &[Option<Sample>], b: &[Option<Sample>]) -> Vec<Point> {
     let mut result = Vec::new();
     let elapsed_b = channel(b, |s| s.elapsed);

@@ -404,6 +404,35 @@ it("never bridges segments or missing elapsed; subtracts overlapping gaps withou
   expect(plot.container.querySelector(".v-an-delta-area")).toBeNull();
   c.dispose();
 });
+it("cuts the delta line where the distance goes back, without shading it as a gap", () => {
+  // La proyección marca el retroceso de distancia con un segmento nuevo, así
+  // que la gráfica parte la línea en ese punto (no hay zigzag) y no la sombrea
+  // como un hueco de grabación.
+  const axis = {
+    time: false,
+    range: [0, 40] as [number, number],
+    distance: [0, 40] as [number, number],
+  };
+  const point = (distance: number, value: number, segment: number) => ({
+    distance,
+    elapsed: distance / 10,
+    value,
+    segment,
+  });
+  const retreat = [
+    point(0, 0, 0),
+    point(10, 1, 0),
+    point(20, 2, 0),
+    point(15, 3, 1),
+    point(25, 4, 1),
+  ];
+  const path = tracePath(retreat, axis, (n) => n);
+  expect(path.match(/M/g)).toHaveLength(2);
+  expect(path).toContain("M352.00,3.00");
+  expect(path).not.toContain("L352.00,3.00");
+  const monotone = retreat.map((p) => ({ ...p, segment: 0 }));
+  expect(tracePath(monotone, axis, (n) => n).match(/M/g)).toHaveLength(1);
+});
 it("explains the unavailable quick comparison without removing it from keyboard order", async () => {
   const c = new AnalysisController({ request: bridge() });
   render(<CompareAction state={c.snapshot()} controller={c} quick />);

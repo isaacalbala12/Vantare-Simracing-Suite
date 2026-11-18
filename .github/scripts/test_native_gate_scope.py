@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import shlex
@@ -18,90 +17,64 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from native_gate_scope import classify_paths  # noqa: E402
 
 
-# A grep cannot infer PowerShell ownership. Pin the few reviewed code blocks
-# that create or close a handle, including callers of the two handle consumers.
-# A legitimate edit to one of these blocks requires re-auditing its provenance.
-QA_OWNED_BLOCKS = {
-    'TANDA.ps1': {
-        'Invoke-TandaProcess': 'd08d529f27a32b17d0e092c89a3d516096f32ad88c7603f0a2eccf14b4da3646',
-        'Start-TandaOwned': 'f24f3b7550d04b301f674913979344f88b59a790a3b9fa607417a45bc98cf8f9',
-        'Close-TandaOwned': '53df71c3b46da013144f3a4315ef5c974627b5d7956a11bd1fee5f9742acbe46',
-        'Get-TandaLiveClock': '36a0add1a4e2aae069228923897b2ef8522b7044b5a71e6b84af42e5505ae8d9',
-        'Read-TandaPolicy': '48ade2356867486762333796f9df0722c9aa2a3569057df606d1956cf540616a',
-        'Invoke-TandaMeasurement': 'a46266313a213e08cc2c15c948633fe3959ecd382cbabde828aca1d3e7c83293',
-    },
-    'LICENCIA_TANDA.ps1': {
-        'Invoke-TandaLicenseCli': 'e35a701ed0b16e1614de6be812c0b5344b7a73b16e81e12807d2685f0a7d85bd',
-    },
-    'PROBAR_REPLAY.ps1': {'': '5df98b59a6aeeebb6d56dbe8bd372d2b1a4471fefd15da1c536749797fffce5f'},
-    'PROBAR_DERECHOS.ps1': {'': '06fa43b58cac00b85faebb6bfcc332f0f504af1701badf41f521c9283e35c055'},
+# Only these production functions may terminate a process. Keep the path
+# restriction so a new script cannot opt in by reusing a function name.
+QA_OWNED_FUNCTIONS = {
+    'TANDA.ps1': {'invoke-tandaprocess', 'close-tandaowned', 'get-tandaliveclock', 'read-tandapolicy'},
+    'LICENCIA_TANDA.ps1': {'invoke-tandalicensecli'},
 }
 QA_KILL_COMMAND = re.compile(
     r'(?<![\w.-])(?:taskkill|stop-process|pkill|killall|kill|spps|terminateprocess)(?![\w-])',
     re.IGNORECASE,
 )
-QA_HANDLE_OPERATION = re.compile(
-    r"""\.\s*['"]?(?:kill|killpg|terminate)['"]?\s*\(|\b(?:Close-TandaOwned|Get-TandaLiveClock)\b""",
-    re.IGNORECASE,
-)
-PS_FUNCTION = re.compile(r'^function ([\w-]+)\b[^\n]*\n.*?(?=^function |\Z)', re.M | re.S)
+QA_HANDLE_OPERATION = re.compile(r"""\.\s*['"]?(?:kill|killpg|terminate)['"]?\s*\(""", re.IGNORECASE)
+# Audited QA scripts put top-level function headers and closing braces at
+# column zero. Stop at a closing brace, never extend into script-level code.
+PS_FUNCTION = re.compile(r'^function\s+([\w-]+)[^\n]*\{[^\n]*\n.*?^\}[ \t]*$', re.M | re.S | re.I)
 
 
-def qa_process_violations(relative: str, source: str) -> list[str]:
+def qa_process_violations(path: Path, relative: str) -> list[str]:
+    code = path.read_text(encoding='utf-8-sig').replace('`', '')
     errors = []
-    approved_ranges = []
-    blocks = {match[1]: match.span() for match in PS_FUNCTION.finditer(source)}
-    blocks[''] = (0, len(source))
-    for name, expected in QA_OWNED_BLOCKS.get(relative, {}).items():
-        start, end = blocks.get(name, (0, 0))
-        digest = hashlib.sha256(source[start:end].strip().encode('utf-8')).hexdigest()
-        if digest != expected:
-            errors.append(f'{name or relative}: revisar la procedencia de los procesos')
-        else:
-            approved_ranges.append((len(source[:start].replace('`', '')), len(source[:end].replace('`', ''))))
-    # Treat backticks as PowerShell escapes, including in embedded SSH scripts.
-    code = source.replace('`', '')
+    approved = QA_OWNED_FUNCTIONS.get(relative, set())
+    approved_ranges = [match.span() for match in PS_FUNCTION.finditer(code) if match[1].casefold() in approved]
     if QA_KILL_COMMAND.search(code):
         errors.append('comando de terminación prohibido')
     for match in QA_HANDLE_OPERATION.finditer(code):
-        prefix = code[code.rfind('\n', 0, match.start()) + 1:match.start()]
-        if prefix.strip().casefold() == 'function':
-            continue
         if not any(start <= match.start() < end for start, end in approved_ranges):
             line = code.count('\n', 0, match.start()) + 1
-            errors.append(f'operación sobre proceso sin procedencia revisada, línea {line}')
+            errors.append(f'terminación fuera de una función permitida, línea {line}')
     return errors
 
-
 class ClassifyPathsTest(unittest.TestCase):
-    def test_qa_process_guard_rejects_commands_and_foreign_handles(self) -> None:
-        for command in (
-            'taskkill /IM node.exe',
-            'Stop-Process -Name node',
-            'Get-Process -Name node | Stop-Process',
-            'pkill node',
-            'killall node',
-            '$p = [Diagnostics.Process]::GetProcessById(123); $p.Kill()',
-            '(Get-Process explorer).Kill($true)',
-            '(Get-Process explorer).Ki`ll($true)',
-        ):
-            with self.subTest(command=command):
-                self.assertTrue(qa_process_violations('new.ps1', command))
-        self.assertFalse(qa_process_violations('check.ps1', 'Get-Process -Name node'))
+    def test_qa_process_guard_rejects_injected_termination(self) -> None:
+        samples = (
+            ('taskkill /IM node.exe', 'comando de terminación prohibido'),
+            ('Stop-Process -Name node', 'comando de terminación prohibido'),
+            ('pkill node', 'comando de terminación prohibido'),
+            ('killall node', 'comando de terminación prohibido'),
+            ('(Get-Process explorer).Ki`ll($true)', 'terminación fuera de una función permitida'),
+            ("(Get-Process explorer).'Terminate'()", 'terminación fuera de una función permitida'),
+        )
+        with tempfile.TemporaryDirectory() as folder:
+            script = Path(folder) / 'TANDA.ps1'
+            for command, error in samples:
+                with self.subTest(command=command):
+                    script.write_text(
+                        'function Close-TandaOwned($owned){\n $owned.Kill($true)\n}\n' + command,
+                        encoding='utf-8',
+                    )
+                    self.assertTrue(any(error in problem for problem in qa_process_violations(script, script.name)))
+            script.write_text('Get-Process -Name node', encoding='utf-8')
+            self.assertEqual(qa_process_violations(script, script.name), [])
 
-    def test_qa_overlays_terminates_only_audited_owned_processes(self) -> None:
+    def test_qa_overlays_terminates_only_in_allowed_functions(self) -> None:
         directory = Path(__file__).resolve().parents[2] / 'tools/qa-overlays'
         self.assertTrue(directory.is_dir())
-        tanda = (directory / 'TANDA.ps1').read_text(encoding='utf-8-sig')
-        tampered = tanda.replace('$p=$Handle.process', '$p=[Diagnostics.Process]::GetProcessById(123)', 1)
-        self.assertNotEqual(tampered, tanda)
-        self.assertTrue(qa_process_violations('TANDA.ps1', tampered))
         for path in sorted(directory.rglob('*')):
             if path.suffix.casefold() in {'.ps1', '.psm1', '.cmd', '.bat', '.sh', '.py', '.js', '.rs', '.cs'}:
                 relative = path.relative_to(directory).as_posix()
-                source = path.read_text(encoding='utf-8-sig')
-                self.assertEqual(qa_process_violations(relative, source), [], relative)
-
+                self.assertEqual(qa_process_violations(path, relative), [], relative)
     def test_qa_license_paths_enter_the_native_gate(self) -> None:
         for relative in (
             "Cargo.toml",

@@ -279,8 +279,8 @@ objeto `Process` o PID. Está prohibido terminar por nombre, incluidos
 `taskkill /IM`, `Stop-Process -Name`, `pkill`, `killall` y tuberías de
 `Get-Process` hacia terminación. Si hay un juego o una instancia ajena de
 Vantare, abortar y avisar sin tocar sus procesos. Se permite consultar por
-nombre para detectar esa situación. El gate estático revisa comandos y
-fija los pocos bloques auditados que crean y cierran procesos propios.
+nombre para detectar esa situación. El gate estático rechaza comandos de
+terminación y solo admite llamadas de cierre en las funciones permitidas.
 
 #### Medición con credencial QA
 

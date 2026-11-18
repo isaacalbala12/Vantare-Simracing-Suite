@@ -1,18 +1,27 @@
 import updatesBase from "../../../fixtures/updates-base.json";
 import updatesReady from "../../../fixtures/updates-ready.json";
-import type { HostToUi, UiToHost } from "../../contract/generated/contract";
+import type {
+  HostToUi,
+  UiToHost,
+  UpdatesView,
+} from "../../contract/generated/contract";
 import type { MockContext, MockHandler } from "../context";
 export function create(context: MockContext): MockHandler {
   const { sceneName } = context;
+  const fixture = (
+    sceneName === "actualizacion-lista" ? updatesReady : updatesBase
+  ) as UpdatesView;
+  const channel = sceneName.startsWith("analysis-qa-")
+    ? "nightly"
+    : /^privacidad-beta-(nightly|testers|master)$/.exec(sceneName)?.[1];
+  const view = channel ? { ...fixture, channel } : fixture;
   return (value: UiToHost): HostToUi | null | undefined => {
     if (value.kind === "subscribe" && value.topic === "updates")
       return {
         kind: "event",
         event: {
           topic: "updates",
-          value: (sceneName === "actualizacion-lista"
-            ? updatesReady
-            : updatesBase) as import("../../contract/generated/contract").UpdatesView,
+          value: view,
         },
       };
     if (value.kind !== "request") return undefined;
@@ -26,9 +35,7 @@ export function create(context: MockContext): MockHandler {
           id,
           result: {
             method: "updates.get",
-            value: (sceneName === "actualizacion-lista"
-              ? updatesReady
-              : updatesBase) as import("../../contract/generated/contract").UpdatesView,
+            value: view,
           },
         };
       case "updates.restart":

@@ -24,6 +24,7 @@ function apply(view: SettingsView, patch: SettingsPatch): SettingsView {
     case "launcher":
     case "toasts":
     case "grabacion":
+    case "analisisBeta":
       return {
         ...view,
         general: { ...view.general, [patch.field]: patch.value },

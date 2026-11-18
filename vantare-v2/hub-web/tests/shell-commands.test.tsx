@@ -11,16 +11,18 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import updates from "../fixtures/updates-base.json";
 import type {
   AccountView,
   CoreStatus,
   HostToUi,
   LauncherView,
   Reply,
+  SettingsView,
 } from "../src/contract/generated/contract";
 import corpus from "../src/contract/generated/corpus.json";
 import { AccountProvider, useAccount } from "../src/renderer/app/AccountState";
-import { coreKey, HostProvider } from "../src/renderer/app/Host";
+import { coreKey, HostProvider, settingsKey } from "../src/renderer/app/Host";
 import { PilotProvider } from "../src/renderer/app/PilotState";
 import { registeredSections } from "../src/renderer/app/ScreenRegistry";
 import { SettingsProvider } from "../src/renderer/app/SettingsState";
@@ -696,4 +698,38 @@ it("Ctrl L uses the first favorite supplied by the host and preserves the select
   expect(cache.getQueryData(["launcher", "selection"])).toBe(
     view.profiles[1].id,
   );
+});
+
+it("takes an open Analysis route back to Home when the beta is disabled", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  const settings = cache.getQueryData<SettingsView>(settingsKey);
+  if (!settings) throw new Error("Missing settings");
+  const preference = (analisisBeta: boolean) => ({
+    ...settings,
+    general: { ...settings.general, analisisBeta },
+  });
+  act(() => {
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    cache.setQueryData(settingsKey, preference(true));
+  });
+  const analysis = await screen.findByRole("button", {
+    name: "Análisis",
+    exact: true,
+  });
+  fireEvent.click(analysis);
+  await waitFor(() =>
+    expect(analysis.getAttribute("aria-current")).toBe("page"),
+  );
+  act(() => cache.setQueryData(settingsKey, preference(false)));
+  await waitFor(() => {
+    expect(
+      screen.queryByRole("button", { name: "Análisis", exact: true }),
+    ).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Inicio", exact: true })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+  });
 });

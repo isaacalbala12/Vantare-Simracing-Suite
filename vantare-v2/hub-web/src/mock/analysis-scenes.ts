@@ -14,11 +14,13 @@ export function analysisScene(context: MockContext, clock = Date.now) {
     analysis: name !== "denied",
   };
   context.core.rights = "connected";
-  if (context.settingsData)
+  if (context.settingsData) {
+    context.settingsData.general.analisisBeta = true;
     context.settingsData.general.grabacion =
       !name.startsWith("disabled") &&
       name !== "status-disabled" &&
       name !== "status-pendingOn";
+  }
   const mock = create({ ...context, sceneName: "analysis-v1" });
   const crossSessions = name === "sessions-cross";
   const sessionsMock =

@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useHost } from "../../app/Host";
+import { useUpdates } from "../../app/UpdatesState";
 import { t } from "../../i18n/es";
 import { Button } from "../../ui/Button";
 import { Callout, Card, Pill, SettingRow, Skeleton } from "../../ui/Data";
@@ -14,7 +15,6 @@ import {
 
 export function Updates() {
   const { client, hello } = useHost();
-  const cache = useQueryClient();
   const [restartVeto, setRestartVeto] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const vetoed = useRef(false);
@@ -28,28 +28,7 @@ export function Updates() {
       }),
     [client],
   );
-  useEffect(() => {
-    if (!client) return;
-    const unlisten = client.listen((message) => {
-      if (message.kind === "event" && message.event.topic === "updates")
-        cache.setQueryData(["updates"], message.event.value);
-    });
-    const unsubscribe = client.subscribe("updates");
-    return () => {
-      unsubscribe();
-      unlisten();
-    };
-  }, [client, cache]);
-  const query = useQuery({
-    queryKey: ["updates"],
-    enabled: !!client,
-    queryFn: async () => {
-      const reply = await client?.request({ method: "updates.get" });
-      if (reply?.method !== "updates.get")
-        throw new Error("Updates unavailable");
-      return reply.value;
-    },
-  });
+  const query = useUpdates();
   const restart = useMutation({
     onMutate: () => {
       vetoed.current = false;

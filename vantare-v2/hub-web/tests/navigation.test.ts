@@ -52,7 +52,11 @@ it.each(["nightly", "testers", "master", undefined])(
       for (const enabled of [true, false, undefined]) {
         const expected = channel === "nightly" && enabled === true;
         expect(visible("analysis", access, channel, enabled)).toBe(expected);
-        expect(navigation(access, channel, enabled).some(({ id }) => id === "analysis")).toBe(expected);
+        expect(
+          navigation(access, channel, enabled).some(
+            ({ id }) => id === "analysis",
+          ),
+        ).toBe(expected);
       }
       expect(lock("analysis", access)).toBeUndefined();
     }

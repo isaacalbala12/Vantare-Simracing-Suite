@@ -315,3 +315,88 @@ fn switching_account_generation_clears_a_dirty_strategy_at_dispatch() {
     assert_eq!(open_strategy(&mut session), empty);
     assert!(!fixture.0.join("hub/strategy-v2.json").exists());
 }
+
+#[test]
+fn calculation_is_nonblocking_and_close_retires_its_result() {
+    use std::sync::{atomic::Ordering, mpsc};
+    use vantare_strategy::document::Document;
+    use crate::strategy::StrategyPlanState;
+
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let empty = open_strategy(&mut session);
+    let draft = create_strategy(&mut session, &empty.revision, "Original");
+    let (ready, started) = mpsc::sync_channel(1);
+    let (release, wait) = mpsc::sync_channel(1);
+    session.strategy.test_start_calculation(move |cancel| {
+        ready.send(()).unwrap();
+        wait.recv().unwrap();
+        assert!(cancel.load(Ordering::Relaxed));
+        Document::empty("2026-11-18T00:00:00Z").unwrap()
+    });
+    started.recv().unwrap();
+    assert!(matches!(
+        request(&mut session, &Request::StrategyView {}),
+        HostToUi::Response { result: Reply::StrategyView { value }, .. }
+            if value.plan.state == StrategyPlanState::Calculating && value.events == draft.events
+    ));
+
+    let mut pipe = Pipe::new(Vec::new());
+    session.request_close_at(&mut pipe, CloseReason::ControlEof, Instant::now()).unwrap();
+    release.send(()).unwrap();
+    session.strategy.test_join_calculation();
+    assert!(matches!(
+        request(&mut session, &Request::StrategyView {}),
+        HostToUi::Failure { error: HostError::Denied, .. }
+    ));
+    assert!(!fixture.0.join("hub/strategy-v2.json").exists());
+}
+
+#[test]
+fn invalid_compute_input_does_not_modify_the_draft_or_disk() {
+    use crate::strategy::StrategyPlanError;
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let empty = open_strategy(&mut session);
+    let draft = create_strategy(&mut session, &empty.revision, "Original");
+    let request_json = serde_json::json!({
+        "kind": "request",
+        "id": 9,
+        "request": {
+            "method": "strategy.compute",
+            "revision": draft.revision,
+            "eventId": draft.active_event_id,
+            "strategyId": draft.active_strategy_id,
+            "form": {
+                "fields": {
+                    "name": "Changed", "durationMinutes": "90", "fuelCapacityLiters": "82",
+                    "pitTransitSeconds": "25", "track": "", "class": "", "variantName": "Base",
+                    "variantNote": "", "variantMode": "dry", "startAt": "", "team": "",
+                    "driverName": "Pilot", "driverInitials": "PI"
+                },
+                "inputs": {
+                    "basePaceSeconds": "0", "fuelPerLapLiters": "1.83", "raceLaps": "3",
+                    "veCapacityPercent": "", "vePerLapPercent": "", "tyreLifeLaps": "",
+                    "degradationSeconds": "", "refuelRate": "", "veRate": "",
+                    "tyreServiceSeconds": "", "formationSeconds": "", "fuelStep": "",
+                    "veStep": "", "reserveLaps": "", "serviceMode": "parallel"
+                }
+            }
+        }
+    });
+    let UiToHost::Request { request: compute, .. } = serde_json::from_value(request_json).unwrap() else {
+        panic!("compute request decoded");
+    };
+    assert!(matches!(
+        request(&mut session, &compute),
+        HostToUi::Response { result: Reply::StrategyCompute { .. }, .. }
+    ));
+    session.strategy.test_join_calculation();
+    assert!(matches!(
+        request(&mut session, &Request::StrategyView {}),
+        HostToUi::Response { result: Reply::StrategyView { value }, .. }
+            if value.plan.error == Some(StrategyPlanError::InvalidInput)
+                && value.revision == draft.revision && value.events == draft.events
+    ));
+    assert!(!fixture.0.join("hub/strategy-v2.json").exists());
+}

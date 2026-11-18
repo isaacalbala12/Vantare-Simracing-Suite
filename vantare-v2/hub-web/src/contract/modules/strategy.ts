@@ -79,7 +79,15 @@ function variant(value: unknown): boolean {
 function event(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["id", "name", "class", "track", "drivers", "strategies"]) &&
+    exact(value, [
+      "id",
+      "name",
+      "class",
+      "track",
+      "drivers",
+      "strategies",
+      "hasInputs",
+    ]) &&
     id(value.id) &&
     text(value.name) &&
     text(value.class) &&
@@ -88,7 +96,10 @@ function event(value: unknown): boolean {
     value.drivers >= 0 &&
     value.drivers <= 0xffffffff &&
     Array.isArray(value.strategies) &&
-    value.strategies.every(variant)
+    value.strategies.every(variant) &&
+    // some variant keeps plain stored inputs that are valid for the solver; it
+    // is not a plan (the document keeps none) nor a promise that compute takes them
+    typeof value.hasInputs === "boolean"
   );
 }
 function count(value: unknown): value is number {
@@ -311,6 +322,7 @@ function view(value: unknown): boolean {
       "dirty",
       "plan",
       "file",
+      "form",
     ]) &&
     revision(value.revision) &&
     file(value.file) &&
@@ -320,7 +332,13 @@ function view(value: unknown): boolean {
     (value.activeEventId === null || id(value.activeEventId)) &&
     (value.activeStrategyId === null || id(value.activeStrategyId)) &&
     typeof value.dirty === "boolean" &&
-    plan(value.plan)
+    plan(value.plan) &&
+    // the entries of the active variant: only with an active event and variant
+    // (and null when a stored text is over the limit)
+    (value.form === null ||
+      (value.activeEventId !== null &&
+        value.activeStrategyId !== null &&
+        form(value.form)))
   );
 }
 const fieldKeys = [
@@ -365,18 +383,20 @@ const solverKeys = [
   "serviceMode",
 ] satisfies (keyof StrategySolverFields)[];
 
-function form(value: unknown): boolean {
-  if (
-    !record(value) ||
-    !exact(value, ["fields", "inputs"]) ||
-    !fields(value.fields)
-  )
-    return false;
-  const { inputs } = value;
+function solverInputs(value: unknown): boolean {
   return (
-    record(inputs) &&
-    exact(inputs, solverKeys) &&
-    solverKeys.every((key) => text(inputs[key]))
+    record(value) &&
+    exact(value, solverKeys) &&
+    solverKeys.every((key) => text(value[key]))
+  );
+}
+
+function form(value: unknown): boolean {
+  return (
+    record(value) &&
+    exact(value, ["fields", "inputs"]) &&
+    fields(value.fields) &&
+    solverInputs(value.inputs)
   );
 }
 
@@ -411,11 +431,17 @@ export function isRequest(value: Record<string, unknown>): boolean {
           "fields",
           "basePaceSeconds",
           "fuelPerLapLiters",
+          "inputs",
         ]) &&
         revision(value.revision) &&
         fields(value.fields) &&
         (value.basePaceSeconds === null || text(value.basePaceSeconds)) &&
-        (value.fuelPerLapLiters === null || text(value.fuelPerLapLiters))
+        (value.fuelPerLapLiters === null || text(value.fuelPerLapLiters)) &&
+        // the 15 inputs replace the loose pair: never both
+        (value.inputs === null ||
+          (solverInputs(value.inputs) &&
+            value.basePaceSeconds === null &&
+            value.fuelPerLapLiters === null))
       );
     case "strategy.compute":
       return (

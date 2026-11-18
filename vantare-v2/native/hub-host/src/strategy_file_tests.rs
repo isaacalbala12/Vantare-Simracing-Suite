@@ -121,7 +121,7 @@ fn opened(root: &Root) -> (State, StrategyView) {
 fn dirty(state: &mut State) -> StrategyView {
     let revision = state.view().revision;
     state
-        .create(&revision, &fields("Unsaved"), None, None, NOW)
+        .create(&revision, &fields("Unsaved"), None, None, None, NOW)
         .unwrap()
 }
 fn fuji_edit() -> (application::PreparedCalculation, Document) {

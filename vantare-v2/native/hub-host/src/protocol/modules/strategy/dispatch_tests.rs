@@ -173,6 +173,199 @@ fn strategy_bounds_event_and_variant_projections_before_opening() {
     }
 }
 
+#[test]
+fn strategy_form_at_its_limits_still_fits_the_frame_with_the_largest_collection() {
+    use crate::strategy::TEXT_LIMIT;
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let data = fixture.0.join("hub");
+    std::fs::create_dir_all(&data).unwrap();
+    let path = data.join("strategy-v2.json");
+    session.current.access.verified = true;
+    // every text of the form at the limit, made of the characters JSON escapes
+    let name = "\"".repeat(TEXT_LIMIT);
+    let mut value: serde_json::Value =
+        serde_json::from_slice(&large_strategy_document(32, 16)).unwrap();
+    let event = &mut value["events"][0];
+    event["team"] = vantare_strategy::document::manual(name.clone().into());
+    event["strategies"][0]["note"] = vantare_strategy::document::manual(name.clone().into());
+    event["drivers"][0]["name"] = vantare_strategy::document::manual(name.clone().into());
+    event["drivers"][0]["ini"] = vantare_strategy::document::manual(name.clone().into());
+    std::fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
+    let response = request(&mut session, &Request::StrategyOpen {});
+    assert!(serde_json::to_vec(&response).unwrap().len() < frame::LIMIT - 64 * 1024);
+    let HostToUi::Response {
+        result: Reply::StrategyOpen { value },
+        ..
+    } = response
+    else {
+        panic!("open the largest collection");
+    };
+    let form = value.form.expect("a form at the limit of each text");
+    for text in [
+        &form.fields.name,
+        &form.fields.class,
+        &form.fields.track,
+        &form.fields.team,
+        &form.fields.variant_note,
+        &form.fields.driver_name,
+        &form.fields.driver_initials,
+    ] {
+        assert_eq!(text.len(), TEXT_LIMIT);
+    }
+    // a conflict carries the view once more and still fits
+    let stale = Request::StrategySelect {
+        event_id: "x".into(),
+        strategy_id: "y".into(),
+        revision: "0".repeat(64),
+    };
+    let conflict = request(&mut session, &stale);
+    assert!(matches!(
+        conflict,
+        HostToUi::Failure {
+            error: HostError::StrategyConflict { .. },
+            ..
+        }
+    ));
+    assert!(serde_json::to_vec(&conflict).unwrap().len() < frame::LIMIT);
+}
+
+#[test]
+#[allow(clippy::too_many_lines)] // One view built field by field.
+fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
+    use crate::strategy::{
+        StrategyCalculationView, StrategyCertificate, StrategyComputeForm, StrategyEditStop,
+        StrategyEditView, StrategyFields, StrategyMetrics, StrategyPit, StrategyPitService,
+        StrategyPlanState, StrategyPlanView, StrategyServiceSteps, StrategySolverFields,
+        StrategyStint, StrategyTimeline, TEXT_LIMIT,
+    };
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let data = fixture.0.join("hub");
+    std::fs::create_dir_all(&data).unwrap();
+    session.current.access.verified = true;
+    std::fs::write(
+        data.join("strategy-v2.json"),
+        large_strategy_document(32, 16),
+    )
+    .unwrap();
+    let HostToUi::Response {
+        result: Reply::StrategyOpen { value },
+        ..
+    } = request(&mut session, &Request::StrategyOpen {})
+    else {
+        panic!("open the largest collection");
+    };
+    // all 28 texts of the form at the limit, made of what JSON escapes
+    let quotes = "\"".repeat(TEXT_LIMIT);
+    let all = |keys: serde_json::Value| -> serde_json::Value {
+        keys.as_object()
+            .unwrap()
+            .keys()
+            .map(|key| (key.clone(), quotes.clone().into()))
+            .collect::<serde_json::Map<_, _>>()
+            .into()
+    };
+    let form = StrategyComputeForm {
+        fields: serde_json::from_value::<StrategyFields>(all(serde_json::to_value(
+            StrategyFields::default(),
+        )
+        .unwrap()))
+        .unwrap(),
+        inputs: serde_json::from_value::<StrategySolverFields>(all(serde_json::to_value(
+            solver_fields(),
+        )
+        .unwrap()))
+        .unwrap(),
+    };
+    // a plan with 17 stints and 16 stops, being edited, with the pilot at the limit
+    let number = |value: f64| serde_json::Number::from_f64(value).unwrap();
+    let stints: Vec<_> = (0..17_u32)
+        .map(|index| StrategyStint {
+            from_lap: index * 10 + 1,
+            to_lap: index * 10 + 10,
+        })
+        .collect();
+    let stops: Vec<_> = (0..16_u32)
+        .map(|index| StrategyEditStop {
+            lap: index * 10 + 10,
+            min_lap: index * 10 + 1,
+            max_lap: index * 10 + 19,
+            fuel_liters: number(123_456.789),
+            ve_percent: number(99.5),
+        })
+        .collect();
+    let plan = StrategyPlanView {
+        state: StrategyPlanState::Edited,
+        compute_id: Some(u32::MAX),
+        result: Some(Box::new(StrategyCalculationView {
+            certificate: Some(StrategyCertificate::Proven),
+            steps: StrategyServiceSteps {
+                fuel_liters: Some(number(1.0)),
+                ve_percent: Some(number(1.0)),
+            },
+            degraded: false,
+            reason: None,
+            metrics: Some(StrategyMetrics {
+                total_seconds: number(123_456.789),
+                laps: 170,
+                pit_count: 16,
+                fuel_reserve_real_laps: Some(number(1.5)),
+                fuel_reserve_required_laps: number(1.5),
+            }),
+            timeline: Some(StrategyTimeline {
+                pilot: quotes.clone(),
+                base_pace_seconds: number(123.456),
+                fuel_start_liters: number(123_456.789),
+                fuel_finish_liters: number(123_456.789),
+                ve_start_percent: number(100.0),
+                ve_finish_percent: number(100.0),
+                stints: stints.clone(),
+                pits: (0..16_u32)
+                    .map(|index| StrategyPit {
+                        lap: index * 10 + 10,
+                        fuel_liters: number(123_456.789),
+                        ve_percent: number(99.5),
+                        change_tyres: true,
+                        service: StrategyPitService::Sequential,
+                    })
+                    .collect(),
+            }),
+        })),
+        edit: Some(StrategyEditView {
+            stints,
+            stops,
+            can_reset: true,
+            error: None,
+        }),
+        ..StrategyPlanView::default()
+    };
+    let mut view = value;
+    view.form = Some(Box::new(form));
+    view.plan = plan;
+    let response = HostToUi::Response {
+        id: u32::MAX,
+        result: Reply::StrategyOpen {
+            value: view.clone(),
+        },
+    };
+    let conflict = HostToUi::Failure {
+        id: u32::MAX,
+        error: HostError::StrategyConflict {
+            current: Box::new(view),
+        },
+    };
+    // the margin stays for the envelope and for growth: 24 KiB at least
+    for (case, message) in [("response", response), ("conflict", conflict)] {
+        let size = serde_json::to_vec(&message).unwrap().len() + 1;
+        assert!(
+            size + 24 * 1024 <= frame::LIMIT,
+            "{case}: {size} B of {} B",
+            frame::LIMIT
+        );
+    }
+}
+
 fn open_strategy(session: &mut Session) -> crate::strategy::StrategyView {
     session.current.access.verified = true;
     let HostToUi::Response {
@@ -206,6 +399,7 @@ fn create_strategy(
             }),
             base_pace_seconds: None,
             fuel_per_lap_liters: None,
+            inputs: None,
         },
     )
     else {

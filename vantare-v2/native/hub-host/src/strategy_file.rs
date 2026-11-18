@@ -415,7 +415,7 @@ impl State {
         };
         self.revision = revision;
         self.status = status;
-        self.doc = doc;
+        self.set_doc(doc);
         self.observed = observed;
         rejected.map_or(Ok(()), Err)
     }

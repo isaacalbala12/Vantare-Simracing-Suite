@@ -26,6 +26,11 @@ pub enum Request {
         base_pace_seconds: Option<String>,
         #[serde(rename = "fuelPerLapLiters")]
         fuel_per_lap_liters: Option<String>,
+        /// The 15 calculation inputs, with the same shape and checks as
+        /// `strategy.compute`; `null` creates the event without them. They replace
+        /// `basePaceSeconds` and `fuelPerLapLiters`: sending either with `inputs`
+        /// is `rejected`.
+        inputs: Option<Box<crate::strategy::StrategySolverFields>>,
     },
     #[serde(rename = "strategy.confirm")]
     StrategyConfirm {

@@ -9,6 +9,7 @@ import type {
   StrategyFields,
   StrategyPlanView,
   StrategyReason,
+  StrategySolverFields,
   StrategyView,
 } from "../../contract/generated/strategy";
 import { strategyReasons } from "../../contract/generated/strategy";
@@ -24,6 +25,90 @@ function sample(state: string): StrategyView {
   )?.result?.value;
   if (!value) throw Error("Unknown strategy fixture");
   return structuredClone(value) as StrategyView;
+}
+
+type Form = NonNullable<StrategyView["form"]>;
+type Summary = StrategyView["events"][number];
+
+// The scene of an event that holds no confirmed inputs: the sample of the corpus.
+function withoutInputs(): StrategyView {
+  const value = corpus.host.find(
+    (item) =>
+      item.result?.method === "strategy.view" &&
+      item.result.value.events[0]?.hasInputs === false,
+  )?.result?.value;
+  if (!value) throw Error("Missing strategy fixture without inputs");
+  return structuredClone(value) as StrategyView;
+}
+
+// QA: stored inputs that read as an input but do not validate. The form shows
+// them, so the user can correct them, and the event does not count as having inputs.
+function withInvalidInputs(): StrategyView {
+  const view = sample("ready");
+  view.events = view.events.map((event) => ({ ...event, hasInputs: false }));
+  if (view.form) view.form.inputs.raceLaps = "0";
+  return view;
+}
+
+const noInputs: StrategySolverFields = {
+  basePaceSeconds: "",
+  fuelPerLapLiters: "",
+  raceLaps: "",
+  veCapacityPercent: "",
+  vePerLapPercent: "",
+  tyreLifeLaps: "",
+  degradationSeconds: "",
+  refuelRate: "",
+  veRate: "",
+  tyreServiceSeconds: "",
+  formationSeconds: "",
+  fuelStep: "",
+  veStep: "",
+  reserveLaps: "",
+  serviceMode: "",
+};
+
+const formKey = (event: string, variant: string) => `${event}/${variant}`;
+
+// The host trims every text it writes.
+function trimmed<T extends object>(value: T): T {
+  return Object.fromEntries(
+    Object.entries(value).map(([key, text]) => [key, String(text).trim()]),
+  ) as unknown as T;
+}
+
+// A number as the document writes it (a whole number keeps «.0») and as the
+// solver input prints it (plain): the host reads each entry from its own source.
+function spell(value: string): string {
+  const number = Number(value.trim());
+  return Number.isInteger(number) ? `${number}.0` : String(number);
+}
+const plain = (value: string) => String(Number(value.trim()));
+
+// The fields as the host reads them back after writing: trimmed, the numbers
+// spelled by the document, and the defaults `new_event` gives an empty name or mode.
+function hostFields(fields: StrategyFields): StrategyFields {
+  const text = trimmed(fields);
+  return {
+    ...text,
+    durationMinutes: plain(text.durationMinutes),
+    fuelCapacityLiters: spell(text.fuelCapacityLiters),
+    pitTransitSeconds: spell(text.pitTransitSeconds),
+    variantName: text.variantName || "Base",
+    variantMode: text.variantMode || "dry",
+  };
+}
+
+// The inputs as the host reads them back from the stored solver input: plain
+// numbers, except the reserve laps, which the event keeps as the document writes them.
+function hostInputs(inputs: StrategySolverFields): StrategySolverFields {
+  const text = trimmed(inputs);
+  const numbers = Object.fromEntries(
+    Object.entries(text)
+      .filter(([key]) => key !== "serviceMode")
+      .map(([key, value]) => [key, plain(value)]),
+  );
+  return { ...text, ...numbers, reserveLaps: spell(text.reserveLaps) };
 }
 
 const noPlan: StrategyPlanView = {
@@ -167,6 +252,34 @@ function validForm(fields: StrategyFields, creating: boolean): boolean {
   );
 }
 
+// What the host checks in the 15 inputs, as compute does: whole laps, positive
+// pace and rates, the other numbers not negative, a known service mode.
+function validInputs(inputs: StrategySolverFields): boolean {
+  const number = (value: string, minimum: number, positive = false) =>
+    validNumber(value, positive ? Number.MIN_VALUE : minimum);
+  return (
+    /^[+]?[0-9]+$/.test(inputs.raceLaps.trim()) &&
+    Number(inputs.raceLaps) >= 1 &&
+    Number(inputs.raceLaps) <= 100000 &&
+    number(inputs.basePaceSeconds, 0, true) &&
+    number(inputs.refuelRate, 0, true) &&
+    number(inputs.veRate, 0, true) &&
+    number(inputs.fuelPerLapLiters, 0) &&
+    number(inputs.veCapacityPercent, 0) &&
+    Number(inputs.veCapacityPercent) <= 100 &&
+    number(inputs.vePerLapPercent, 0) &&
+    number(inputs.tyreLifeLaps, 0) &&
+    Number.isInteger(Number(inputs.tyreLifeLaps)) &&
+    number(inputs.degradationSeconds, 0) &&
+    number(inputs.tyreServiceSeconds, 0) &&
+    number(inputs.formationSeconds, 0) &&
+    number(inputs.fuelStep, 0) &&
+    number(inputs.veStep, 0) &&
+    number(inputs.reserveLaps, 0) &&
+    ["parallel", "sequential"].includes(inputs.serviceMode.trim())
+  );
+}
+
 export function create(context: MockContext): MockHandler {
   const scenario = context.sceneName.startsWith("strategy-")
     ? context.sceneName.slice(9)
@@ -175,23 +288,96 @@ export function create(context: MockContext): MockHandler {
     context.core.access.verified = true;
     context.core.accountGeneration = "a".repeat(64);
   }
-  // the recalculation, reason, file and error scenes (QA) start from a ready document
-  const opening = ["recalc", "reason", "file", "target", "pick"].some(
-    (prefix) => scenario.startsWith(prefix),
-  )
+  // the recalculation, reason, file, data and error scenes (QA) start from a ready document
+  const opening = [
+    "recalc",
+    "reason",
+    "file",
+    "target",
+    "pick",
+    "noInputs",
+    "invalidInputs",
+    "planned",
+  ].some((prefix) => scenario.startsWith(prefix))
     ? "ready"
     : scenario;
-  let saved = sample(
-    ["ready", "recovered", "protected", "importedLegacy"].includes(opening)
-      ? opening
-      : "empty",
-  );
+  let saved =
+    scenario === "noInputs"
+      ? withoutInputs()
+      : scenario === "invalidInputs"
+        ? withInvalidInputs()
+        : sample(
+            ["ready", "recovered", "protected", "importedLegacy"].includes(
+              opening,
+            )
+              ? opening
+              : "empty",
+          );
   let current = structuredClone(saved);
+  // The entries of each variant written in this session (create, confirm and a
+  // calculation), as the host keeps them in the document; the others are the
+  // sample's. `saved` and `savedForms` move together.
+  let forms: Record<string, Form> = {};
+  let savedForms: Record<string, Form> = {};
+  const initial = current.form;
+  if (initial && current.activeEventId && current.activeStrategyId)
+    forms[formKey(current.activeEventId, current.activeStrategyId)] =
+      structuredClone(initial);
+  savedForms = structuredClone(forms);
+
+  // The form of a variant: what was written, or the sample's form named after it.
+  function formOf(
+    event: Summary,
+    variant: Summary["strategies"][number],
+  ): Form {
+    const written = forms[formKey(event.id, variant.id)];
+    if (written) return structuredClone(written);
+    const base = structuredClone(
+      (initial ?? sample("ready").form) as Form,
+    ) as Form;
+    base.fields = {
+      ...base.fields,
+      name: event.name,
+      class: event.class,
+      track: event.track,
+      variantName: variant.name,
+    };
+    // Only the first variant of an event that has inputs stores them; the others
+    // show empty inputs but for the pace and consumption, which belong to the event.
+    const stored = event.hasInputs && event.strategies[0]?.id === variant.id;
+    if (!stored)
+      base.inputs = {
+        ...noInputs,
+        basePaceSeconds: base.inputs.basePaceSeconds,
+        fuelPerLapLiters: base.inputs.fuelPerLapLiters,
+      };
+    return base;
+  }
+  function activeForm(view: StrategyView): Form | null {
+    const event = view.events.find(({ id }) => id === view.activeEventId);
+    const variant = event?.strategies.find(
+      ({ id }) => id === view.activeStrategyId,
+    );
+    return event && variant ? formOf(event, variant) : null;
+  }
+  function commit() {
+    saved = structuredClone({ ...current, plan: noPlan });
+    savedForms = structuredClone(forms);
+  }
+  function restore() {
+    current = structuredClone(saved);
+    forms = structuredClone(savedForms);
+  }
   let opened = false;
   let sequence = 0;
   let computeSequence = 0;
   let pending:
-    | { id: number; fields: StrategyFields; valid: boolean }
+    | {
+        id: number;
+        fields: StrategyFields;
+        inputs: StrategySolverFields;
+        valid: boolean;
+      }
     | undefined;
   let editing: Editing | undefined;
   let recalculating: number | undefined;
@@ -227,10 +413,12 @@ export function create(context: MockContext): MockHandler {
         track: "Spa",
         drivers: 1,
         strategies: [{ id: "variant-1", name: "Base" }],
+        hasInputs: true,
       },
     ];
     view.activeEventId = "event-9";
     view.activeStrategyId = "variant-1";
+    view.form = null; // set below, once the other document is the current one
     view.revision = (0x1000 + ++sequence).toString(16).padStart(64, "0");
     view.file = { name };
     return view;
@@ -285,7 +473,11 @@ export function create(context: MockContext): MockHandler {
       editing = undefined;
       recalculating = undefined;
       saved = otherDocument(name);
+      forms = {};
       current = structuredClone(saved);
+      current.form = activeForm(current);
+      saved = structuredClone(current);
+      savedForms = {};
       return respond();
     }
     if (name !== current.file?.name) {
@@ -296,7 +488,7 @@ export function create(context: MockContext): MockHandler {
       current.file = { name };
     }
     current.dirty = false;
-    saved = structuredClone({ ...current, plan: noPlan });
+    commit();
     return respond();
   }
 
@@ -342,6 +534,7 @@ export function create(context: MockContext): MockHandler {
       state: "ready",
       dirty: true,
     };
+    current.form = activeForm(current);
   }
 
   return (message) => {
@@ -374,7 +567,7 @@ export function create(context: MockContext): MockHandler {
       pending = undefined;
       editing = undefined;
       recalculating = undefined;
-      current = structuredClone(saved);
+      restore();
       opened = false;
     }
     if (!allowed) return failure({ kind: "denied" });
@@ -387,8 +580,16 @@ export function create(context: MockContext): MockHandler {
       pending = undefined;
       editing = undefined;
       recalculating = undefined;
-      current = structuredClone(saved);
+      restore();
       opened = true;
+      if (scenario === "planned") {
+        // QA: a document with its plan already calculated and editable
+        current.plan = {
+          ...calculation("calculated"),
+          computeId: ++computeSequence,
+        };
+        editing = startEditing(current.plan);
+      }
     }
     if (!opened) return failure({ kind: "denied" });
     if (request.method === "strategy.pickFile") {
@@ -510,6 +711,7 @@ export function create(context: MockContext): MockHandler {
       pending = {
         id: ++computeSequence,
         fields,
+        inputs,
         valid:
           validForm(fields, false) &&
           validNumber(inputs.basePaceSeconds, Number.MIN_VALUE) &&
@@ -556,14 +758,21 @@ export function create(context: MockContext): MockHandler {
       }
       current.plan = editedPlan(editing, finished);
     } else if (request.method === "strategy.view" && pending) {
-      const { id, valid, fields } = pending;
+      const { id, valid, fields, inputs } = pending;
       pending = undefined;
       if (valid) {
+        // a calculation confirms its inputs, whatever it finds (the host keeps no plan)
+        if (current.activeEventId && current.activeStrategyId)
+          forms[formKey(current.activeEventId, current.activeStrategyId)] = {
+            fields: hostFields(fields),
+            inputs: hostInputs(inputs),
+          };
         const events = current.events.map((event) =>
           event.id !== current.activeEventId
             ? event
             : {
                 ...event,
+                hasInputs: true,
                 name: fields.name.trim(),
                 class: fields.class.trim(),
                 track: fields.track.trim(),
@@ -585,16 +794,25 @@ export function create(context: MockContext): MockHandler {
       editing = valid ? startEditing(current.plan) : undefined;
     }
     if (request.method === "strategy.create") {
-      const { fields } = request;
-      if (current.events.length >= 32)
-        return failure({ kind: "strategyInvalidText" });
+      const { fields, inputs } = request;
       if (
         !validForm(fields, true) ||
         [request.basePaceSeconds, request.fuelPerLapLiters].some(
           (value) => value?.trim() && !validNumber(value, Number.MIN_VALUE),
-        )
+        ) ||
+        // QA: the host refuses every creation with inputs
+        (inputs && scenario === "createRejected") ||
+        // the inputs replace the loose pair; they are checked as compute does
+        (inputs &&
+          (request.basePaceSeconds !== null ||
+            request.fuelPerLapLiters !== null ||
+            !validInputs(inputs) ||
+            fields.variantMode.trim() !== "dry"))
       )
         return failure({ kind: "rejected" });
+      // the limit of events is the last check, as in the host
+      if (current.events.length >= 32)
+        return failure({ kind: "strategyInvalidText" });
       let number = 1;
       while (
         current.events.some((event) => event.id === `native-event-${number}`)
@@ -609,6 +827,21 @@ export function create(context: MockContext): MockHandler {
         strategies: [
           { id: "variant-1", name: fields.variantName.trim() || "Base" },
         ],
+        hasInputs: inputs !== null,
+      };
+      forms[formKey(event.id, "variant-1")] = {
+        fields: hostFields(fields),
+        inputs: inputs
+          ? hostInputs(inputs)
+          : {
+              ...noInputs,
+              basePaceSeconds: request.basePaceSeconds?.trim()
+                ? spell(request.basePaceSeconds)
+                : "",
+              fuelPerLapLiters: request.fuelPerLapLiters?.trim()
+                ? spell(request.fuelPerLapLiters)
+                : "",
+            },
       };
       edit({
         events: [...current.events, event],
@@ -641,6 +874,10 @@ export function create(context: MockContext): MockHandler {
         updated.class = fields.class.trim();
         updated.track = fields.track.trim();
         updated.strategies[variant].name = fields.variantName.trim();
+        forms[formKey(updated.id, updated.strategies[variant].id)] = {
+          fields: hostFields(fields),
+          inputs: formOf(event, event.strategies[variant]).inputs,
+        };
         edit({ events });
       } else if (!active) {
         edit({
@@ -649,17 +886,17 @@ export function create(context: MockContext): MockHandler {
         });
         current.plan = noPlan;
         current.dirty = false;
-        saved = structuredClone({ ...current, plan: noPlan });
+        commit();
       }
     }
     if (request.method === "strategy.save") {
       current.dirty = false;
-      saved = structuredClone({ ...current, plan: noPlan });
+      commit();
     } else if (request.method === "strategy.discard") {
       pending = undefined;
       editing = undefined;
       recalculating = undefined;
-      current = structuredClone(saved);
+      restore();
     }
     return {
       kind: "response",

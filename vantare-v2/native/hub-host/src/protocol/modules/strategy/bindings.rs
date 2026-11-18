@@ -103,6 +103,7 @@ fn ready_sample() -> StrategyView {
                     name: "Alternative".into(),
                 },
             ],
+            has_inputs: true,
         }],
         active_event_id: Some("event-1".into()),
         active_strategy_id: Some("variant-1".into()),
@@ -111,6 +112,10 @@ fn ready_sample() -> StrategyView {
         file: Some(StrategyFile {
             name: "strategy-v2.json".into(),
         }),
+        form: Some(Box::new(StrategyComputeForm {
+            fields: sample_fields(),
+            inputs: solver_sample(),
+        })),
     }
 }
 
@@ -128,6 +133,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         file: Some(StrategyFile {
             name: "strategy-v2.json".into(),
         }),
+        form: None,
     };
     let mut host = vec![sample_response(Reply::StrategyOpen {
         value: ready.clone(),
@@ -188,6 +194,9 @@ pub(crate) fn corpus() -> serde_json::Value {
     host.extend(calculation_samples(&dirty));
     host.extend(edit_samples(&dirty));
     host.extend(reason_samples(&dirty));
+    host.push(sample_response(Reply::StrategyView {
+        value: no_inputs_sample(),
+    }));
     // the acknowledgement and the final answer are both the view
     host.push(sample_response(Reply::StrategyPickFile {
         value: StrategyView {
@@ -211,6 +220,14 @@ pub(crate) fn corpus() -> serde_json::Value {
                 fields: Box::new(fields.clone()),
                 base_pace_seconds: Some("90.472".into()),
                 fuel_per_lap_liters: Some("1.83".into()),
+                inputs: None,
+            },
+            Request::StrategyCreate {
+                revision: "a".repeat(64),
+                fields: Box::new(fields.clone()),
+                base_pace_seconds: None,
+                fuel_per_lap_liters: None,
+                inputs: Some(Box::new(solver_sample())),
             },
             Request::StrategyConfirm {
                 event_id: "event-1".into(),
@@ -271,6 +288,36 @@ pub(crate) fn corpus() -> serde_json::Value {
         path: None,
     }));
     json!({"host":host,"ui":ui})
+}
+
+/// An event that holds no confirmed calculation inputs (created without them, or
+/// imported): its form keeps the fields and the pace and consumption of the
+/// event; every other input is the empty string.
+fn no_inputs_sample() -> StrategyView {
+    let mut view = ready_sample();
+    view.events[0].has_inputs = false;
+    let inputs = solver_sample();
+    view.form = Some(Box::new(StrategyComputeForm {
+        fields: sample_fields(),
+        inputs: StrategySolverFields {
+            base_pace_seconds: inputs.base_pace_seconds,
+            fuel_per_lap_liters: inputs.fuel_per_lap_liters,
+            race_laps: String::new(),
+            ve_capacity_percent: String::new(),
+            ve_per_lap_percent: String::new(),
+            tyre_life_laps: String::new(),
+            degradation_seconds: String::new(),
+            refuel_rate: String::new(),
+            ve_rate: String::new(),
+            tyre_service_seconds: String::new(),
+            formation_seconds: String::new(),
+            fuel_step: String::new(),
+            ve_step: String::new(),
+            reserve_laps: String::new(),
+            service_mode: String::new(),
+        },
+    }));
+    view
 }
 
 fn sample_fields() -> StrategyFields {

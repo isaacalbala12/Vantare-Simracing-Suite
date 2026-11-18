@@ -48,7 +48,7 @@ describe("renderer boundary", () => {
     expect(CSP).toContain("object-src 'none'");
   });
   it("only answers the supported mock handshake", () => {
-    expect(HOST_PROTOCOL_VERSION).toBe(63);
+    expect(HOST_PROTOCOL_VERSION).toBe(64);
     expect(
       mockReply({ kind: "hello", version: HOST_PROTOCOL_VERSION }),
     ).toMatchObject({

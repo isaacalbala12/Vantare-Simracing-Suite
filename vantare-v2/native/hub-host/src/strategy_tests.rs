@@ -273,7 +273,7 @@ fn creation_is_atomic_and_first_save_creates_a_restartable_primary() {
     assert_eq!(state.view_opened(), Err(HostError::Denied));
     let empty = state.open().unwrap();
     assert_eq!(
-        state.create(&empty.revision, &fields(""), None, None, NOW),
+        state.create(&empty.revision, &fields(""), None, None, None, NOW),
         Err(HostError::Rejected)
     );
     assert_eq!(state.view(), empty);
@@ -282,7 +282,7 @@ fn creation_is_atomic_and_first_save_creates_a_restartable_primary() {
     form.variant_note = "Reviewed".into();
     form.variant_mode = "wet".into();
     let draft = state
-        .create(&empty.revision, &form, Some("90.472"), Some("1.83"), NOW)
+        .create(&empty.revision, &form, Some("90.472"), Some("1.83"), None, NOW)
         .unwrap();
     assert!(draft.dirty);
     assert_ne!(draft.revision, empty.revision);
@@ -290,7 +290,7 @@ fn creation_is_atomic_and_first_save_creates_a_restartable_primary() {
     assert!(!root.primary().exists());
     assert_eq!(state.open(), Err(HostError::StrategyDirty));
     assert_eq!(
-        state.create(&draft.revision, &form, None, None, NOW),
+        state.create(&draft.revision, &form, None, None, None, NOW),
         Err(HostError::StrategyDirty)
     );
     assert_eq!(
@@ -354,8 +354,8 @@ fn first_save_conflict_keeps_both_the_winner_and_the_losing_draft() {
     let mut b = root.state();
     let r0 = a.open().unwrap().revision;
     assert_eq!(b.open().unwrap().revision, r0);
-    let a_draft = a.create(&r0, &fields("Winner"), None, None, NOW).unwrap();
-    let b_draft = b.create(&r0, &fields("Other"), None, None, NOW).unwrap();
+    let a_draft = a.create(&r0, &fields("Winner"), None, None, None, NOW).unwrap();
+    let b_draft = b.create(&r0, &fields("Other"), None, None, None, NOW).unwrap();
     let winner = a.save(&a_draft.revision).unwrap();
     let durable = fs::read(root.primary()).unwrap();
     assert_eq!(
@@ -378,7 +378,7 @@ fn a_recovered_document_can_be_saved_and_a_future_document_cannot() {
     let recovered = state.open().unwrap();
     assert_eq!(recovered.state, StrategyState::Recovered);
     let draft = state
-        .create(&recovered.revision, &fields("Recovered"), None, None, NOW)
+        .create(&recovered.revision, &fields("Recovered"), None, None, None, NOW)
         .unwrap();
     state.save(&draft.revision).unwrap();
     assert_eq!(
@@ -390,7 +390,7 @@ fn a_recovered_document_can_be_saved_and_a_future_document_cannot() {
     let protected = state.open().unwrap();
     assert_eq!(protected.state, StrategyState::Protected);
     assert_eq!(
-        state.create(&protected.revision, &fields("Wrong"), None, None, NOW),
+        state.create(&protected.revision, &fields("Wrong"), None, None, None, NOW),
         Err(HostError::Protected)
     );
     assert_eq!(state.save(&protected.revision), Err(HostError::Protected));
@@ -421,7 +421,7 @@ fn out_of_range_text_does_not_disappear_or_trigger_quarantine() {
     fs::remove_file(root.primary()).unwrap();
     let empty = state.open().unwrap();
     assert_eq!(
-        state.create(&empty.revision, &fields(&long_name), None, None, NOW),
+        state.create(&empty.revision, &fields(&long_name), None, None, None, NOW),
         Err(HostError::StrategyInvalidText)
     );
     assert_eq!(state.view(), empty);
@@ -473,7 +473,7 @@ fn a_generation_change_discards_the_draft_and_requires_reopening() {
     state.observe(Some("account-a"), true);
     let saved = state.open().unwrap();
     let draft = state
-        .create(&saved.revision, &fields("Unsaved"), None, None, NOW)
+        .create(&saved.revision, &fields("Unsaved"), None, None, None, NOW)
         .unwrap();
     assert!(draft.dirty);
     state.observe(Some("account-a"), true);
@@ -513,7 +513,7 @@ fn a_contended_save_preserves_the_dirty_draft_for_a_retry() {
     let mut state = root.state();
     let opened = state.open().unwrap();
     let draft = state
-        .create(&opened.revision, &fields("Unsaved"), None, None, NOW)
+        .create(&opened.revision, &fields("Unsaved"), None, None, None, NOW)
         .unwrap();
     let lock = fs::File::options()
         .write(true)
@@ -543,7 +543,7 @@ fn confirm_and_create_reject_control_characters_before_applying_changes() {
     );
     for (pace, consumption) in [(Some("90.472\t"), None), (None, Some("1.83\r"))] {
         assert_eq!(
-            state.create(&opened.revision, &fields("New"), pace, consumption, NOW),
+            state.create(&opened.revision, &fields("New"), pace, consumption, None, NOW),
             Err(HostError::StrategyInvalidText)
         );
     }
@@ -606,7 +606,7 @@ fn invalid_creation_leaves_the_existing_collection_byte_identical() {
     ];
     for (form, pace, consumption) in cases {
         assert_eq!(
-            state.create(&opened.revision, &form, pace, consumption, NOW),
+            state.create(&opened.revision, &form, pace, consumption, None, NOW),
             Err(HostError::Rejected)
         );
         assert_eq!(state.view_opened().unwrap(), opened);
@@ -637,7 +637,7 @@ fn an_additional_event_at_the_limit_rejects_the_proposal_without_protecting_the_
     let mut state = root.state();
     let opened = state.open().unwrap();
     assert_eq!(
-        state.create(&opened.revision, &fields("One too many"), None, None, NOW),
+        state.create(&opened.revision, &fields("One too many"), None, None, None, NOW),
         Err(HostError::StrategyInvalidText)
     );
     assert_eq!(state.view_opened().unwrap(), opened);
@@ -706,7 +706,7 @@ fn a_licence_refresh_on_the_same_account_keeps_the_draft_and_the_running_calcula
     assert!(state.observe(Some("account-a"), true));
     let saved = state.open().unwrap();
     let draft = state
-        .create(&saved.revision, &fields("Unsaved"), None, None, NOW)
+        .create(&saved.revision, &fields("Unsaved"), None, None, None, NOW)
         .unwrap();
     let (ready, started) = mpsc::sync_channel(1);
     let (release, wait) = mpsc::sync_channel(1);

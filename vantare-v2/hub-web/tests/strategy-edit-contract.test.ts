@@ -63,6 +63,7 @@ it("keeps new strategy edits in memory until a checked save or discard", () => {
     strategyId: draft.result.value.activeStrategyId,
     revision: draft.result.value.revision,
     fields: { ...create.fields, name: "Changed" },
+    inputs: null,
   });
   if (
     edited?.kind !== "response" ||

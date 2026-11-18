@@ -464,6 +464,7 @@ impl State {
         strategy_id: &str,
         revision: &str,
         fields: &StrategyFields,
+        _inputs: Option<&StrategySolverFields>,
     ) -> Result<StrategyView, HostError> {
         self.require_edit(revision)?;
         let doc = self.doc.as_ref().ok_or(HostError::Rejected)?;

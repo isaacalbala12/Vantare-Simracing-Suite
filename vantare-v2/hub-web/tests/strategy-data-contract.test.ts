@@ -373,6 +373,7 @@ it("the form follows create, confirm and compute and returns to the saved one on
     strategyId: saved.activeStrategyId,
     revision: saved.revision,
     fields: { ...fields, name: "Changed", team: "Local team" },
+    inputs: null,
   });
   expect(edited.form?.fields).toMatchObject({
     name: "Changed",
@@ -390,6 +391,7 @@ it("the form follows create, confirm and compute and returns to the saved one on
     strategyId: saved.activeStrategyId,
     revision: saved.revision,
     fields: { ...fields, name: "Changed" },
+    inputs: null,
   });
   const next = { ...inputs, raceLaps: "12", basePaceSeconds: "91.25" };
   host.view({
@@ -555,4 +557,220 @@ it("a full collection answers the checks of the inputs first and its limit last"
   expect(host.failure(host.create(view.revision))).toEqual({
     kind: "strategyInvalidText",
   });
+});
+
+// ---- confirm with inputs (#2662) ----
+
+const confirms = requests.filter(
+  (request) => request.method === "strategy.confirm",
+);
+const confirmPlain = confirms.find((request) => request.inputs === null);
+const confirmFull = confirms.find((request) => request.inputs !== null);
+const changed: StrategySolverFields = {
+  ...inputs,
+  basePaceSeconds: "91.25",
+  fuelPerLapLiters: "2.5",
+  raceLaps: "12",
+  veCapacityPercent: "80",
+  vePerLapPercent: "4",
+  tyreLifeLaps: "25",
+  degradationSeconds: "0.05",
+  refuelRate: "3.5",
+  veRate: "2.25",
+  tyreServiceSeconds: "28",
+  formationSeconds: "7",
+  fuelStep: "2",
+  veStep: "5",
+  reserveLaps: "1.5",
+  serviceMode: "sequential",
+};
+
+function confirmation(
+  view: StrategyView,
+  changes: Loose = {},
+  base: Loose = { fields, inputs: changed },
+) {
+  return {
+    method: "strategy.confirm",
+    eventId: view.activeEventId,
+    strategyId: view.activeStrategyId,
+    revision: view.revision,
+    ...base,
+    ...changes,
+  };
+}
+
+it("the corpus holds a confirm with the inputs and a confirm without them", () => {
+  expect(confirmPlain).toBeTruthy();
+  expect(confirmFull?.inputs).toBeTruthy();
+  for (const request of confirms) expect(isRequest(request)).toBe(true);
+});
+
+it("a confirm has the key inputs, with the exact 15 texts of compute or null", () => {
+  if (!confirmFull?.inputs) throw Error("Missing confirm with inputs");
+  const { inputs: _omitted, ...without } = confirmFull;
+  expect(isRequest(without), "the key is required").toBe(false);
+  expect(isRequest({ ...confirmFull, inputs: null })).toBe(true);
+  const keys = Object.keys(
+    confirmFull.inputs,
+  ) as (keyof StrategySolverFields)[];
+  expect(keys).toHaveLength(15);
+  for (const key of keys) {
+    const { [key]: _removed, ...missing } = confirmFull.inputs;
+    expect(
+      isRequest({ ...confirmFull, inputs: missing }),
+      `missing ${key}`,
+    ).toBe(false);
+    for (const [label, value, accepted] of [
+      ["number", 7, false],
+      ["long", "x".repeat(strategyLimits.text + 1), false],
+      ["limit", "x".repeat(strategyLimits.text), true],
+      ["control", "a\u0007", false],
+    ] as const)
+      expect(
+        isRequest({
+          ...confirmFull,
+          inputs: { ...confirmFull.inputs, [key]: value },
+        }),
+        `${label} ${key}`,
+      ).toBe(accepted);
+  }
+  expect(
+    isRequest({
+      ...confirmFull,
+      inputs: { ...confirmFull.inputs, extra: "x" },
+    }),
+  ).toBe(false);
+  for (const bad of [[], "90", 0, {}])
+    expect(isRequest({ ...confirmFull, inputs: bad })).toBe(false);
+  // the loose pair is a thing of create: confirm admits no other key
+  for (const extra of [{ basePaceSeconds: "1" }, { path: "C:\\x" }])
+    expect(isRequest({ ...confirmFull, ...extra })).toBe(false);
+});
+
+it("confirm with inputs keeps them in the draft, field by field", () => {
+  const host = session("strategy-ready");
+  const opened = host.open();
+  const draft = host.view(
+    confirmation(opened, { fields: { ...fields, name: "Confirmed" } }),
+  );
+  expect(draft.dirty).toBe(true);
+  expect(draft.revision).not.toBe(opened.revision);
+  expect(draft.events[0]?.hasInputs).toBe(true);
+  expect(draft.events[0]?.name).toBe("Confirmed");
+  expect(draft.plan.state).toBe("uncalculated");
+  expect(draft.form?.fields.name).toBe("Confirmed");
+  expect(draft.form?.inputs).toEqual(hostInputs(changed));
+  expect(isReply({ method: "strategy.confirm", value: draft })).toBe(true);
+  // not written until Save; discard returns to the saved form
+  expect(
+    host.view({ method: "strategy.discard", revision: draft.revision }).form,
+  ).toEqual(opened.form);
+});
+
+it("confirm with inputs replaces the stored ones and null keeps them", () => {
+  const host = session("strategy-ready");
+  const opened = host.open();
+  const kept = host.view(confirmation(opened, { inputs: null }));
+  expect(kept.form?.inputs).toEqual(opened.form?.inputs);
+  const replaced = host.view(confirmation(kept));
+  expect(replaced.form?.inputs).toEqual(hostInputs(changed));
+  expect(replaced.form?.inputs).not.toEqual(opened.form?.inputs);
+});
+
+it("confirm with inputs marks an event that had none", () => {
+  const host = session("strategy-noInputs");
+  const opened = host.open();
+  expect(opened.events[0]?.hasInputs).toBe(false);
+  const draft = host.view(confirmation(opened));
+  expect(draft.events[0]?.hasInputs).toBe(true);
+  expect(draft.form?.inputs).toEqual(hostInputs(changed));
+});
+
+it("confirm with the same data again changes nothing", () => {
+  const host = session("strategy-noInputs");
+  const first = host.view(confirmation(host.open()));
+  const again = host.view(confirmation(first));
+  expect(again).toEqual(first);
+});
+
+it("confirm with inputs that do not validate changes nothing, not even the fields", () => {
+  const host = session("strategy-ready");
+  const opened = host.open();
+  const bad = (change: Partial<StrategySolverFields>) =>
+    confirmation(opened, { inputs: { ...changed, ...change } });
+  for (const [case_, request] of Object.entries({
+    "zero pace": bad({ basePaceSeconds: "0" }),
+    "pace text": bad({ basePaceSeconds: "NaN" }),
+    "laps text": bad({ raceLaps: "diez" }),
+    "zero laps": bad({ raceLaps: "0" }),
+    "fraction laps": bad({ raceLaps: "2.5" }),
+    "negative fuel": bad({ fuelPerLapLiters: "-1" }),
+    "empty step": bad({ fuelStep: "" }),
+    "negative step": bad({ veStep: "-1" }),
+    "unknown mode": bad({ serviceMode: "other" }),
+    "not dry": confirmation(opened, {
+      fields: { ...fields, name: "Other", variantMode: "wet" },
+    }),
+    "no name": confirmation(opened, { fields: { ...fields, name: "" } }),
+  })) {
+    expect(host.failure(request), case_).toEqual({ kind: "rejected" });
+    expect(host.view({ method: "strategy.view" }), case_).toEqual(opened);
+  }
+  // over a draft, the draft is what stays
+  const draft = host.view(confirmation(opened, { inputs: null }));
+  expect(
+    host.failure(
+      confirmation(draft, { inputs: { ...changed, raceLaps: "0" } }),
+    ),
+  ).toEqual({ kind: "rejected" });
+  expect(host.view({ method: "strategy.view" })).toEqual(draft);
+});
+
+it("confirm with inputs keeps the usual guards, in the order of the host", () => {
+  const host = session("strategy-ready");
+  const opened = host.open();
+  // a missing event or variant is `rejected`
+  for (const [eventId, strategyId] of [
+    ["event-9", "variant-1"],
+    ["event-1", "variant-9"],
+  ])
+    expect(
+      host.failure(confirmation(opened, { eventId, strategyId })),
+      `${eventId}/${strategyId}`,
+    ).toEqual({ kind: "rejected" });
+  // a stale revision is a conflict that beats a missing event
+  expect(
+    host.failure(
+      confirmation(opened, { revision: "0".repeat(64), eventId: "event-9" }),
+    ),
+  ).toMatchObject({ kind: "strategyConflict" });
+  // pending changes in the active event: another event is `strategyDirty`, before
+  // the checks of the inputs
+  const draft = host.view(confirmation(opened, { inputs: null }));
+  expect(
+    host.failure(
+      confirmation(draft, {
+        strategyId: "variant-2",
+        inputs: { ...changed, raceLaps: "0" },
+      }),
+    ),
+  ).toEqual({ kind: "strategyDirty" });
+  // a protected document takes no confirmation
+  const locked = session("strategy-protected");
+  const view = locked.open();
+  expect(
+    locked.failure(
+      confirmation(view, { eventId: "event-1", strategyId: "variant-1" }),
+    ),
+  ).toEqual({ kind: "protected" });
+});
+
+it("the QA scene refuses every confirm with inputs and still takes the one without", () => {
+  const host = session("strategy-confirmRejected");
+  const opened = host.open();
+  expect(host.failure(confirmation(opened))).toEqual({ kind: "rejected" });
+  expect(host.view({ method: "strategy.view" })).toEqual(opened);
+  const kept = host.view(confirmation(opened, { inputs: null }));
+  expect(kept.dirty).toBe(true);
 });

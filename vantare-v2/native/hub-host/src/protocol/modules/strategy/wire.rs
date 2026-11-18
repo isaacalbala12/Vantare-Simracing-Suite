@@ -40,6 +40,12 @@ pub enum Request {
         strategy_id: String,
         revision: String,
         fields: Box<crate::strategy::StrategyFields>,
+        /// The 15 calculation inputs, with the same shape and checks as in
+        /// `strategy.create` and `strategy.compute`. `null` (or a missing key, which
+        /// Rust accepts as `create` does; the TS validator requires the key) confirms
+        /// the fields only and keeps the stored inputs. With inputs they replace
+        /// the stored ones as a whole, and nothing is calculated.
+        inputs: Option<Box<crate::strategy::StrategySolverFields>>,
     },
     #[serde(rename = "strategy.save")]
     StrategySave { revision: String },

@@ -234,6 +234,14 @@ pub(crate) fn corpus() -> serde_json::Value {
                 strategy_id: "variant-1".into(),
                 revision: "b".repeat(64),
                 fields: Box::new(fields.clone()),
+                inputs: None,
+            },
+            Request::StrategyConfirm {
+                event_id: "event-1".into(),
+                strategy_id: "variant-1".into(),
+                revision: "b".repeat(64),
+                fields: Box::new(fields.clone()),
+                inputs: Some(Box::new(solver_sample())),
             },
             Request::StrategyCompute {
                 event_id: "event-1".into(),

@@ -79,8 +79,9 @@ pub(super) fn dispatch(
                 strategy_id,
                 revision,
                 fields,
+                inputs,
             } => strategy
-                .confirm(event_id, strategy_id, revision, fields)
+                .confirm(event_id, strategy_id, revision, fields, inputs.as_deref())
                 .map(|value| Reply::StrategyConfirm { value }),
             Request::StrategySave { revision } => strategy
                 .save(revision)

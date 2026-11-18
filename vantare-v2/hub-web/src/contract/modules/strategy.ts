@@ -417,11 +417,15 @@ export function isRequest(value: Record<string, unknown>): boolean {
           "strategyId",
           "revision",
           "fields",
+          "inputs",
         ]) &&
         id(value.eventId) &&
         id(value.strategyId) &&
         revision(value.revision) &&
-        fields(value.fields)
+        fields(value.fields) &&
+        // the key is required; `null` confirms the fields only (Rust also accepts
+        // it missing, as in create)
+        (value.inputs === null || solverInputs(value.inputs))
       );
     case "strategy.create":
       return (

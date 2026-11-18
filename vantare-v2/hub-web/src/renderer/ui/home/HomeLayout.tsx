@@ -15,9 +15,11 @@ import { WidgetThumb } from "../widgets/WidgetThumb";
 import { Circuit } from "./Circuit";
 import { LayoutPreview } from "./LayoutPreview";
 import { activityDate, greeting } from "./model";
+import type { HomePhotos } from "./useHomePhotos";
 import "./home.css";
 export interface HomeProps {
   view?: HomeView;
+  photos?: HomePhotos;
   favoriteApps?: FavoriteApp[];
   appsError?: boolean;
   retryApps?: () => void;
@@ -250,7 +252,19 @@ export function HomeLayout(p: HomeProps) {
       )}
       <div className="v-home-lower">
         <section className="v-home-card">
-          {!empty && v && <Heading icon="v-studio" title={t.overlay} />}
+          {!empty && v && (
+            <Heading
+              icon="v-studio"
+              title={t.overlay}
+              action={
+                <span className="v-home-photo-seal">
+                  <Icon name={p.photos ? "v-camera" : "pencil"} />
+                  <strong>{p.photos ? t.photos : t.drawing}</strong>
+                  {p.photos && <span>{t.photoExample}</span>}
+                </span>
+              }
+            />
+          )}
           {!v ? (
             <div className="v-home-loading-overlay">
               <Skeleton label={t.loading} />
@@ -267,7 +281,10 @@ export function HomeLayout(p: HomeProps) {
             </div>
           ) : (
             <>
-              <LayoutPreview layout={v.layout} />
+              <LayoutPreview layout={v.layout} photos={p.photos} />
+              <p className="v-sr-only" role="status">
+                {p.photos ? t.photosReady : null}
+              </p>
               <div className="v-home-layout-title">
                 <h2>{t.layout}</h2>
                 <span className="v-home-badge">{t.preview}</span>

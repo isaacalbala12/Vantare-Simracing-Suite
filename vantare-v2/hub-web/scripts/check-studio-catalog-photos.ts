@@ -254,8 +254,10 @@ export async function checkStudioCatalogPhotos(
               `${card.kind} name repeats its owned badge`,
             );
         }
-        assert(
-          await dialog.locator(".v-studio-catalog-photo-legend").isVisible(),
+        assert.equal(
+          await dialog.locator(".v-studio-catalog-photo-legend").count(),
+          mode === "noDemo" ? 0 : 1,
+          "legend exists only with a photo",
         );
         if (mode === "scrolled") {
           assert(

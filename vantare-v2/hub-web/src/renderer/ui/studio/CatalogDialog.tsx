@@ -113,19 +113,21 @@ export function CatalogDialog({
               ))}
             </fieldset>
           </div>
-          <p className="v-studio-catalog-photo-legend">
-            <span
-              className="v-studio-catalog-photo-mark"
-              aria-hidden="true"
-              data-label={text.photo}
-            >
-              <Icon name="v-camera" />
-            </span>
-            <span>
-              <span className="v-a11y-separator">{text.photoLegendLead}</span>
-              {text.photoHelp}
-            </span>
-          </p>
+          {photos.photos.size > 0 && (
+            <p className="v-studio-catalog-photo-legend">
+              <span
+                className="v-studio-catalog-photo-mark"
+                aria-hidden="true"
+                data-label={text.photo}
+              >
+                <Icon name="v-camera" />
+              </span>
+              <span>
+                <span className="v-a11y-separator">{text.photoLegendLead}</span>
+                {text.photoHelp}
+              </span>
+            </p>
+          )}
           <div
             ref={photos.bodyRef}
             className="v-studio-catalog-body"

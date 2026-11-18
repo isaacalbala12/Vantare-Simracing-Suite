@@ -1,5 +1,9 @@
 import type { HomeWidgetKind } from "../../contract/generated/home";
 export const homeText = {
+  photos: "Fotos",
+  drawing: "Dibujo orientativo",
+  photoExample: "· datos de ejemplo",
+  photosReady: "Vista previa del layout lista.",
   decorative: "",
   errorTag: "Error",
   warningTag: "Aviso",

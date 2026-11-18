@@ -266,6 +266,74 @@
 .v-home-preview .v-home-widget {
   overflow: hidden;
 }
+.v-home-photo-seal {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-left: auto;
+  min-width: 0;
+  height: 24px;
+  padding: 0 11px 0 9px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--edge);
+  background: var(--surface-panel);
+  color: var(--text-2);
+  font: 400 11.5px var(--font-sans);
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+}
+.v-home-photo-seal > svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: currentColor;
+}
+.v-home-photo-seal > span {
+  color: var(--text-caption);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.v-home-drawing-layer,
+.v-home-photo-layer {
+  position: absolute;
+  inset: 0;
+}
+.v-home-drawing-layer[aria-hidden="true"] {
+  visibility: hidden;
+}
+.v-home-photo-layer img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+@keyframes v-home-photo-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes v-home-drawing-out {
+  from {
+    opacity: 1;
+    visibility: visible;
+  }
+  to {
+    opacity: 0;
+    visibility: visible;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-motion="full"] .v-home-photo-layer {
+    animation: v-home-photo-in 180ms ease-out;
+  }
+  [data-motion="full"] .v-home-drawing-layer[aria-hidden="true"] {
+    animation: v-home-drawing-out 180ms ease-out;
+  }
+}
 .v-home-layout-title {
   display: flex;
   align-items: center;

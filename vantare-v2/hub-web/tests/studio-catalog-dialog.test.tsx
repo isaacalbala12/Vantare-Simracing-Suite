@@ -2,6 +2,7 @@
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -390,4 +391,103 @@ it("keeps unavailable More actions in the arrow-key order without activating or 
   expect(
     requests.mock.calls.every(([request]) => request.method === "studio.get"),
   ).toBe(true);
+});
+
+it("shows the photo legend only after at least one catalogue photo arrives", async () => {
+  const decode = Object.getOwnPropertyDescriptor(
+    HTMLImageElement.prototype,
+    "decode",
+  );
+  Object.defineProperty(HTMLImageElement.prototype, "decode", {
+    configurable: true,
+    value: async () => {},
+  });
+  vi.stubGlobal(
+    "IntersectionObserver",
+    class {
+      targets: Element[] = [];
+      constructor(callback: IntersectionObserverCallback) {
+        queueMicrotask(() =>
+          callback(
+            this.targets.map(
+              (target) =>
+                ({
+                  target,
+                  isIntersecting: true,
+                  intersectionRatio: 1,
+                }) as IntersectionObserverEntry,
+            ),
+            this as unknown as IntersectionObserver,
+          ),
+        );
+      }
+      observe(target: Element) {
+        this.targets.push(target);
+      }
+      disconnect() {
+        this.targets = [];
+      }
+    },
+  );
+  const mock = createMockHost("preview-image");
+  // The canonical painter needs Studio initialized before catalog requests.
+  const studio = mock({
+    kind: "request",
+    id: 43,
+    request: { method: "studio.get" },
+  });
+  if (studio?.kind !== "response") throw Error("missing mock Studio");
+  const photo = mock({
+    kind: "request",
+    id: 44,
+    request: {
+      method: "preview.render",
+      target: { kind: "catalog", widget: "standings" },
+      scene: "demo",
+      scale: "1",
+    },
+  });
+  if (photo?.kind !== "response") throw Error("missing mock PNG");
+  const result = photo.result;
+  let release!: (reply: typeof result) => void;
+  const pending = new Promise<typeof result>((done) => {
+    release = done;
+  });
+  const original = Client.prototype.request;
+  const request = vi
+    .spyOn(Client.prototype, "request")
+    .mockImplementation(function (this: Client, value, onSent) {
+      return value.method === "preview.render" &&
+        value.target.kind === "catalog"
+        ? pending
+        : original.call(this, value, onSent);
+    });
+  try {
+    mount("preview-image");
+    const dialog = await openCatalog();
+    await waitFor(() =>
+      expect(
+        request.mock.calls.some(
+          ([r]) => r.method === "preview.render" && r.target.kind === "catalog",
+        ),
+      ).toBe(true),
+    );
+    expect(dialog.querySelector(".v-studio-catalog-photo-legend")).toBeNull();
+    await act(async () => release(result));
+    await waitFor(() =>
+      expect(
+        dialog.querySelector(".v-studio-catalog-photo-legend")?.textContent,
+      ).toContain(text.photoHelp),
+    );
+    expect(
+      dialog.querySelectorAll(".v-studio-catalog-photo-legend"),
+    ).toHaveLength(1);
+    expect(
+      dialog.querySelectorAll(".v-studio-catalog-photo").length,
+    ).toBeGreaterThan(0);
+  } finally {
+    if (decode)
+      Object.defineProperty(HTMLImageElement.prototype, "decode", decode);
+    else Reflect.deleteProperty(HTMLImageElement.prototype, "decode");
+  }
 });

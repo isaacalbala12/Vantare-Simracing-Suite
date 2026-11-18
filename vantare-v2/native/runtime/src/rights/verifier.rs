@@ -76,6 +76,14 @@ impl Verifier {
             if id.is_empty() || id.len() > 64 || keys.contains_key(id) {
                 return Err(Error::Unconfigured);
             }
+            if !cfg!(any(test, feature = "qa-license"))
+                && id
+                    .as_bytes()
+                    .get(..3)
+                    .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"qa-"))
+            {
+                return Err(Error::Unconfigured);
+            }
             let bytes: [u8; 32] = URL_SAFE_NO_PAD
                 .decode(encoded)
                 .map_err(|_| Error::Unconfigured)?

@@ -75,7 +75,7 @@ function Assert-NativeDistributionStream([IO.Stream]$Stream, [string]$ExpectedRe
         if(-not $ExpectedRegistry){throw 'Missing configured license registry.'}
         Assert-NativeDistributionLicenseRegistry $ExpectedRegistry
     }
-    $markers=@('HUB_QA_','qa-e2e','VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','qa-rfc8032','VANTARE_QA_','qa-fixture-public')
+    $markers=@('HUB_QA_','qa-e2e','VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','qa-rfc8032','VANTARE_QA_','qa-fixture-public','vantare-qa-license')
     $markers+=@(Get-NativeKnownTestLicenseMarkers)
     # Hex has case-insensitive spelling; base64 remains case-sensitive.
     $hexMarkers=@($markers|Where-Object {$_ -cmatch '^[0-9A-F]{64}$'})
@@ -111,6 +111,11 @@ function Assert-NativeDistributionBinary([string]$Path, [string]$ExpectedRegistr
         } else {Assert-NativeDistributionStream $stream}
     } finally {$stream.Dispose()}
 }
+function Assert-NativeDistributionName([string]$Name) {
+    if($Name.IndexOf('vantare-qa-license',[StringComparison]::OrdinalIgnoreCase) -ge 0){
+        throw 'QA executable in distribution payload.'
+    }
+}
 # Scan ZIP members directly: no extraction paths or temporary executable launch.
 function Assert-NativeDistributionArchive([string]$Path, [string]$Registry) {
     Assert-NativeDistributionLicenseRegistry $Registry
@@ -119,6 +124,7 @@ function Assert-NativeDistributionArchive([string]$Path, [string]$Registry) {
     $zip=[IO.Compression.ZipFile]::OpenRead($Path)
     try {
         foreach($entry in $zip.Entries) {
+            Assert-NativeDistributionName $entry.FullName
             if(-not ($entry.FullName.EndsWith('.exe',[StringComparison]::OrdinalIgnoreCase) -or $entry.FullName -match '(^|/)hub-ui/')){continue}
             $name=[IO.Path]::GetFileName($entry.FullName)
             $stream=$entry.Open()
@@ -134,8 +140,11 @@ function Assert-NativeDistributionArchive([string]$Path, [string]$Registry) {
 }
 
 function Assert-NativeDistributionTree([string]$Directory) {
-    foreach($exe in Get-ChildItem -LiteralPath $Directory -File -Recurse | Where-Object {$_.Extension -ieq '.exe' -or $_.FullName -match '[\\/]hub-ui[\\/]' -or $_.Name -ceq 'app.asar'}) {
-        Assert-NativeDistributionBinary $exe.FullName
+    foreach($entry in Get-ChildItem -LiteralPath $Directory -Force -Recurse) {
+        Assert-NativeDistributionName $entry.Name
+        if(-not $entry.PSIsContainer -and ($entry.Extension -ieq '.exe' -or $entry.FullName -match '[\\/]hub-ui[\\/]' -or $entry.Name -ceq 'app.asar')){
+            Assert-NativeDistributionBinary $entry.FullName
+        }
     }
 }
 

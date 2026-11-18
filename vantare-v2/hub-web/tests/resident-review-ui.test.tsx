@@ -13,7 +13,7 @@ import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { ResidentView } from "../src/contract/generated/contract";
 import * as host from "../src/renderer/app/Host";
-import type { Client } from "../src/renderer/bridge/client";
+import { type Client, HostFailure } from "../src/renderer/bridge/client";
 import { residentReviewText as t } from "../src/renderer/i18n/launcher-review";
 import {
   type ResidentReviewPanel,
@@ -64,6 +64,7 @@ const make = (state: ResidentReviewPanel["state"]): ResidentReviewPanel => ({
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 it.each([
@@ -153,35 +154,105 @@ it("restores focus to the retry button or drawer following native review", () =>
 });
 
 it("drops a native completion arriving after another question replaces it", async () => {
-  const account = scope.accountGeneration;
+  const { hook, value, reviewTrust } = reviewHook();
   let expire = () => {};
   const native = new Promise<"expired">((resolve) => {
     expire = () => resolve("expired");
   });
-  const client = {
-    request: vi.fn(async () => ({
-      method: "launcher.resident.reviewOpen",
-      value: { ticket: "e".repeat(32) },
-    })),
-    reviewTrust: vi.fn(() => native),
-  };
-  const observe = vi
-    .spyOn(host, "useHost")
-    .mockReturnValue({ client: client as unknown as Client });
-  const cache = new QueryClient();
-  cache.setQueryData(host.coreKey, {
-    ...host.offline,
-    services: "connected",
-    accountGeneration: account,
-    access: { ...host.offline.access, verified: true, blocked: false },
+  reviewTrust.mockReturnValueOnce(native);
+  let finished: Promise<void> | undefined;
+  await act(async () => {
+    finished = hook.result.current?.open?.();
   });
-  const makeView = (id: string): ResidentView => ({
-    decision: { ...question, id },
+  expect(hook.result.current?.state).toBe("reviewing");
+  expect(reviewTrust).toHaveBeenCalledOnce();
+  const current = structuredClone(value);
+  current.decision = { ...question, id: "3" };
+  if (current.execution)
+    current.execution.question = { ...scope, decision: "3" };
+  hook.rerender({ current });
+  expect(hook.result.current?.state).toBe("question");
+  await act(async () => {
+    expire();
+    await finished;
+  });
+  expect(hook.result.current).toMatchObject({
+    state: "question",
+    scope: { decision: "3" },
+  });
+});
+
+it("returns to Ver decisión when the drawer is dismissed during the review", async () => {
+  const mounted = render(view(make("reviewing")));
+  fireEvent.click(screen.getByRole("button", { name: /^Cerrar$/ }));
+  const reveal = await screen.findByRole("button", {
+    name: "Ver decisión",
+  });
+  mounted.rerender(view(make("declined")));
+  expect(document.activeElement).toBe(reveal);
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(cancel).not.toHaveBeenCalled();
+});
+
+it.each(["unavailable", "changed", "expired"] as const)(
+  "leaves initial focus to the drawer when the first question is %s",
+  (state) => {
+    const focused = vi.spyOn(HTMLElement.prototype, "focus");
+    render(view(make(state)));
+    const reviewButton = screen.getByRole("button", {
+      name: state === "unavailable" ? t.review : t.reviewAgain,
+    });
+    expect(focused.mock.contexts).not.toContain(reviewButton);
+  },
+);
+
+it("does not force retry focus when another question replaces the open drawer", () => {
+  const tested = render(view(make("question")));
+  const focused = vi.spyOn(HTMLElement.prototype, "focus");
+  tested.rerender(
+    view({
+      ...make("changed"),
+      question: { ...question, id: "3" },
+      scope: { ...scope, decision: "3" },
+    }),
+  );
+  expect(focused.mock.contexts).not.toContain(
+    screen.getByRole("button", { name: t.reviewAgain }),
+  );
+});
+
+function reviewHook(
+  initialQuestion: NonNullable<ResidentView["decision"]> = question,
+) {
+  const request = vi.fn(async () => ({
+    method: "launcher.resident.reviewOpen",
+    value: { ticket: "e".repeat(32) },
+  }));
+  const reviewTrust = vi
+    .fn<() => Promise<string>>()
+    .mockResolvedValue("submitted");
+  vi.spyOn(host, "useHost").mockReturnValue({
+    client: { request, reviewTrust } as unknown as Client,
+  });
+  const cache = new QueryClient();
+  const core = {
+    ...host.offline,
+    services: "connected" as const,
+    accountGeneration: scope.accountGeneration,
+    access: { ...host.offline.access, verified: true, blocked: false },
+  };
+  cache.setQueryData(host.coreKey, core);
+  const value: ResidentView = {
+    decision: initialQuestion,
     execution: {
       instance: scope.instance,
-      question: { ...scope, decision: id },
+      question: { ...scope, decision: initialQuestion.id },
       results: { kind: "unknown" },
-      active: null,
+      active: {
+        run: scope.run,
+        revision: scope.revision,
+        accountGeneration: scope.accountGeneration,
+      },
       checkedAnswer: true,
       checkedControl: false,
       revisionCheckedLaunch: true,
@@ -195,43 +266,87 @@ it("drops a native completion arriving after another question replaces it", asyn
     error: false,
     reviewOutcome: null,
     registrations: [],
+  };
+  const hook = renderHook(({ current }) => useResidentReview(current, answer), {
+    initialProps: { current: value },
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={cache}>{children}</QueryClientProvider>
+    ),
   });
-  try {
-    const screen = renderHook(({ value }) => useResidentReview(value, answer), {
-      initialProps: { value: makeView("1") },
-      wrapper: ({ children }: { children: ReactNode }) => (
-        <QueryClientProvider client={cache}>{children}</QueryClientProvider>
-      ),
-    });
-    let finished: Promise<void> | undefined;
+  return { hook, value, request, reviewTrust };
+}
+
+it.each(["changed", "expired", "unavailable"] as const)(
+  "honors %s from the host after submitting and losing the question",
+  async (state) => {
+    const { hook, value, reviewTrust } = reviewHook();
     await act(async () => {
-      finished = screen.result.current?.open();
+      await hook.result.current?.open?.();
     });
-    expect(screen.result.current?.state).toBe("reviewing");
-    expect(client.reviewTrust).toHaveBeenCalledOnce();
-    screen.rerender({ value: makeView("3") });
-    expect(screen.result.current?.state).toBe("question");
-    await act(async () => {
-      expire();
-      await finished;
-    });
-    expect(screen.result.current).toMatchObject({
-      state: "question",
-      scope: { decision: "3" },
-    });
-  } finally {
-    observe.mockRestore();
-  }
+    expect(reviewTrust).toHaveBeenCalledOnce();
+    const current = structuredClone(value);
+    current.decision = null;
+    if (current.execution) current.execution.question = null;
+    current.reviewOutcome = { question: scope.decision, state };
+    hook.rerender({ current });
+    expect(hook.result.current?.state).toBe(state);
+    expect(hook.result.current?.open).toBeUndefined();
+  },
+);
+
+it.each([
+  [
+    new HostFailure({
+      kind: "residentAnswerRejected",
+      reason: "stale-question",
+    }),
+    "changed",
+  ],
+  [new HostFailure({ kind: "denied" }), "unavailable"],
+] as const)("classifies reviewOpen failure %s as %s", async (error, state) => {
+  const { hook, request, reviewTrust } = reviewHook();
+  request.mockRejectedValueOnce(error);
+  await act(async () => {
+    await hook.result.current?.open?.();
+  });
+  expect(hook.result.current?.state).toBe(state);
+  expect(reviewTrust).not.toHaveBeenCalled();
 });
 
-it("returns to Ver decisión when the drawer is dismissed during the review", async () => {
-  const mounted = render(view(make("reviewing")));
-  fireEvent.click(screen.getByRole("button", { name: /^Cerrar$/ }));
-  const reveal = await screen.findByRole("button", {
-    name: "Ver decisión",
+it("never requests reviewOpen when the resident says review is unavailable", async () => {
+  const { hook, request, reviewTrust } = reviewHook({
+    ...question,
+    review: "unavailable",
   });
-  mounted.rerender(view(make("declined")));
-  expect(document.activeElement).toBe(reveal);
-  expect(screen.queryByRole("dialog")).toBeNull();
-  expect(cancel).not.toHaveBeenCalled();
+  expect(hook.result.current?.state).toBe("unavailable");
+  await act(async () => {
+    await hook.result.current?.open?.();
+  });
+  expect(request).not.toHaveBeenCalled();
+  expect(reviewTrust).not.toHaveBeenCalled();
+});
+
+it("keeps the result unconfirmed when the connection drops after submission", async () => {
+  const { hook, value } = reviewHook();
+  await act(async () => {
+    await hook.result.current?.open?.();
+  });
+  hook.rerender({ current: { ...value, online: false } });
+  expect(hook.result.current?.state).toBe("unconfirmed");
+});
+
+it("shows uncertainty after an interrupted submission without implying nothing opened", async () => {
+  const { hook, reviewTrust } = reviewHook();
+  reviewTrust.mockResolvedValueOnce("unconfirmed");
+  await act(async () => {
+    await hook.result.current?.open?.();
+  });
+  expect(hook.result.current?.state).toBe("unconfirmed");
+  if (!hook.result.current) throw new Error("Missing review panel");
+  render(view(hook.result.current));
+  const drawer = within(screen.getByRole("dialog"));
+  expect(drawer.getByText("Confirmación pendiente")).toBeTruthy();
+  expect(drawer.queryByText(t.help)).toBeNull();
+  expect(drawer.queryByRole("button", { name: t.review })).toBeNull();
+  expect(drawer.queryByRole("button", { name: t.cancel })).toBeNull();
 });

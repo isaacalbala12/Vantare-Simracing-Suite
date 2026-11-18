@@ -167,21 +167,102 @@ describe("trusted native review", () => {
     },
   );
 
-  it.each(["Cancelar", "Escape", "✕", "Intro"])(
-    "maps %s to Cancelar without a timestamp",
-    async () => {
+  it("maps the native cancel response to Cancelar without a timestamp", async () => {
+    const { review, show, pages, fenced, flushed, outcome } = fixture();
+    show.mockImplementationOnce(async (options) => options.cancelId);
+    const result = review.open(ticket);
+    pages(`${title}\n${detail}`);
+    await fenced;
+    expect(outcome()).toEqual([
+      { kind: "reviewDecision", ticket, decision: "cancel" },
+    ]);
+    flushed();
+    expect(await result).toBe("submitted");
+  });
+
+  it("sends one decision when trust is double-clicked", async () => {
+    const { review, show, pages, fenced, flushed, outcome } = fixture();
+    let clickTrust = () => {};
+    show.mockImplementationOnce(({ buttons }) => {
+      return new Promise((resolve) => {
+        clickTrust = () => resolve(buttons?.indexOf("Confiar y lanzar") ?? -1);
+      });
+    });
+    const result = review.open(ticket);
+    pages(`${title}\n${detail}`);
+    expect(show.mock.calls[0][0].buttons?.[0]).toBe("Confiar y lanzar");
+    expect(await review.open(ticket)).toBe("unavailable");
+    clickTrust();
+    clickTrust();
+    await fenced;
+    expect(await review.open(ticket)).toBe("unavailable");
+    flushed();
+    expect(await result).toBe("submitted");
+    expect(show).toHaveBeenCalledOnce();
+    expect(outcome()).toEqual([
+      { kind: "reviewDecision", ticket, decision: "trust", issuedMs: 100 },
+    ]);
+  });
+
+  it.each(["account", "disconnect", "close"] as const)(
+    "does not infer rejection when %s interrupts the receipt",
+    async (interrupt) => {
       const { review, show, pages, fenced, flushed, outcome } = fixture();
-      show.mockImplementationOnce(async (options) => options.cancelId);
+      show.mockResolvedValueOnce(0);
       const result = review.open(ticket);
       pages(`${title}\n${detail}`);
       await fenced;
-      expect(outcome()).toEqual([
-        { kind: "reviewDecision", ticket, decision: "cancel" },
-      ]);
+      if (interrupt === "account")
+        review.receive({
+          kind: "event",
+          event: {
+            topic: "core",
+            value: {
+              ...(coreFixture as CoreStatus),
+              services: "connected",
+              accountGeneration: "f".repeat(64),
+            },
+          },
+        });
+      else if (interrupt === "close")
+        review.receive({ kind: "closeRequested", reason: "window" });
+      else review.invalidate();
+      expect(await result).toBe("unconfirmed");
+      expect(outcome()).toHaveLength(1);
       flushed();
-      expect(await result).toBe("submitted");
     },
   );
+
+  it.each(["decision", "fence"] as const)(
+    "keeps the decision unconfirmed if sendHost fails during %s",
+    async (failure) => {
+      const { review, show, pages, send, outcome } = fixture();
+      send.mockImplementation((message) => {
+        if (
+          (failure === "decision" && message.kind === "reviewDecision") ||
+          (failure === "fence" && message.kind === "request")
+        )
+          throw new Error("Host disconnected");
+      });
+      show.mockResolvedValueOnce(0);
+      const result = review.open(ticket);
+      pages(`${title}\n${detail}`);
+      expect(await result).toBe("unconfirmed");
+      expect(outcome()).toHaveLength(1);
+    },
+  );
+
+  it("keeps the decision unconfirmed when the fence has no review result", async () => {
+    const { review, show, pages, fenced, send } = fixture();
+    show.mockResolvedValueOnce(0);
+    const result = review.open(ticket);
+    pages(`${title}\n${detail}`);
+    await fenced;
+    const fence = send.mock.lastCall?.[0];
+    if (fence?.kind !== "request") throw new Error("Missing receipt fence");
+    review.receive({ kind: "failure", id: fence.id, error: { kind: "io" } });
+    expect(await result).toBe("unconfirmed");
+  });
 
   it("never offers trust on a profile with no steps", async () => {
     const { review, show, pages, fenced, flushed, outcome } = fixture();

@@ -14,9 +14,10 @@ const output = resolve(
 const viewport = { width: 1280, height: 900 };
 const server = await webQaPreview();
 const browser = await chromium.launch();
+const context = await browser.newContext({ viewport, reducedMotion: "reduce" });
 try {
   await mkdir(output, { recursive: true });
-  const page = await browser.newPage({ viewport, reducedMotion: "reduce" });
+  const page = await context.newPage();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const toggle = page.getByRole("switch", {
@@ -126,6 +127,7 @@ try {
     `<!doctype html><html lang="es"><meta charset="utf-8"><title>Análisis beta</title><style>body{font:16px system-ui;margin:2rem}section div{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}figure{margin:0}img{width:100%;display:block}figcaption{padding:.5rem 0}</style><h1>Análisis beta</h1>${groups}</html>\n`,
   );
 } finally {
+  await context.close();
   await browser.close();
   await new Promise<void>((done, reject) =>
     server.httpServer.close((error) => (error ? reject(error) : done())),

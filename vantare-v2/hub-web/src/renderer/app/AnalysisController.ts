@@ -1,4 +1,5 @@
 import type {
+  AnalysisRecordingStatus,
   AnalysisReply,
   AnalysisRequest,
   AnalysisRow,
@@ -29,6 +30,8 @@ export type AnalysisSnapshot = {
   compareError?: HostError["kind"];
   zoom?: [number, number];
   rows: AnalysisRow[];
+  recordingStatus?: AnalysisRecordingStatus | null;
+  recordingStatusPending?: boolean;
   inspections: Record<string, Inspection>;
   rowErrors: Record<string, HostError["kind"]>;
   loading: boolean;
@@ -48,11 +51,13 @@ export class AnalysisController {
     inspections: {},
     rowErrors: {},
     loading: true,
+    recordingStatusPending: true,
     opening: false,
   };
   private listeners = new Set<() => void>();
   private active = true;
   private generation = 0;
+  private statusGeneration = 0;
   private visible = new Set<string>();
   private lane: Promise<void> = Promise.resolve();
   private timer?: ReturnType<typeof setTimeout>;
@@ -145,6 +150,7 @@ export class AnalysisController {
   }
   load = () => {
     const generation = ++this.generation;
+    const statusGeneration = ++this.statusGeneration;
     this.publish({
       loading: true,
       opening: false,
@@ -164,7 +170,13 @@ export class AnalysisController {
     this.enqueue(async () => {
       await cancelled;
       await this.close();
-      const r = await this.request({ method: "analysis.catalog" }, generation);
+      let r: Reply | undefined;
+      try {
+        r = await this.request({ method: "analysis.catalog" }, generation);
+      } finally {
+        if (this.active && generation === this.generation)
+          void this.readRecordingStatus(statusGeneration);
+      }
       if (r?.method !== "analysis.catalog" || generation !== this.generation)
         return;
       this.publish({
@@ -173,6 +185,17 @@ export class AnalysisController {
       });
     });
   };
+  private async readRecordingStatus(generation: number) {
+    let status: AnalysisSnapshot["recordingStatus"];
+    try {
+      const reply = await this.client.request({ method: "analysis.status" });
+      if (reply.method === "analysis.status") status = reply.status;
+    } catch {
+      // The catalog and reader remain usable if the status is unavailable.
+    }
+    if (generation === this.statusGeneration)
+      this.publish({ recordingStatus: status, recordingStatusPending: false });
+  }
   visibleRow = (id: string, visible: boolean) => {
     if (visible) this.visible.add(id);
     else this.visible.delete(id);

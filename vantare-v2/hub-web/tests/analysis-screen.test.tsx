@@ -2,6 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { type ReactNode, useState } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { AnalysisRequest } from "../src/contract/generated/analysis";
 import type { Reply } from "../src/contract/generated/contract";
@@ -11,12 +12,14 @@ import { AnalysisController } from "../src/renderer/app/AnalysisController";
 import * as host from "../src/renderer/app/Host";
 import {
   SectionChromeProvider,
+  SectionRailSlot,
   SectionTabsSlot,
 } from "../src/renderer/app/SectionChrome";
 import * as settings from "../src/renderer/app/SettingsState";
-import { UiProvider } from "../src/renderer/app/UiState";
+import { UiProvider, useUi } from "../src/renderer/app/UiState";
 import { type Client, HostFailure } from "../src/renderer/bridge/client";
 import { lapTime } from "../src/renderer/i18n/analysis.es";
+import { recordingStatusText as statusText } from "../src/renderer/i18n/recording-status.es";
 import Analysis from "../src/renderer/screens/analysis/entry";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 
@@ -64,6 +67,7 @@ function mount(
   enabled = true,
   clock = () => analysisQaNow,
   timeZone = "UTC",
+  rail?: ReactNode,
 ) {
   vi.spyOn(host, "useHost").mockReturnValue({
     client: { request } as unknown as Client,
@@ -84,6 +88,7 @@ function mount(
         <TooltipProvider>
           <SectionChromeProvider>
             <SectionTabsSlot />
+            {rail}
             <Analysis clock={clock} timeZone={timeZone} />
           </SectionChromeProvider>
         </TooltipProvider>
@@ -368,4 +373,148 @@ it("limits repeated Busy retries to 500ms and cancels without marking the file u
   await vi.advanceTimersByTimeAsync(10_000);
   expect(attempts).toBe(3);
   expect(request).toHaveBeenLastCalledWith({ method: "analysis.cancel" });
+});
+
+it("announces unavailability only after the first status query fails", async () => {
+  const base = bridge("status-unavailable");
+  let finish: () => void = () => {};
+  const request = vi.fn(async (input: AnalysisRequest) => {
+    if (input.method === "analysis.status")
+      await new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+    return base(input);
+  });
+  mount(request);
+  await waitFor(() =>
+    expect(request).toHaveBeenCalledWith({ method: "analysis.status" }),
+  );
+  expect(screen.queryByText(statusText.unavailable)).toBeNull();
+  await act(async () => finish());
+  expect(await screen.findByText(statusText.unavailable)).toBeTruthy();
+});
+
+it.each([
+  ["quotaUnmet", "No se pudo cumplir el límite de espacio"],
+  ["pruneIncomplete", statusText.pruneIncompleteHelp],
+] as const)("explains the actual %s recording problem", async (cause, copy) => {
+  const base = bridge("status-degraded");
+  mount(
+    vi.fn(async (input: AnalysisRequest) => {
+      const reply = await base(input);
+      return reply.method === "analysis.status" && reply.status
+        ? { ...reply, status: { ...reply.status, cause } }
+        : reply;
+    }),
+  );
+  expect(await screen.findByText(copy)).toBeTruthy();
+  expect(screen.queryByText(statusText.limitHelp)).toBeNull();
+});
+
+it.each([
+  [0, /^Empezó a las 11:40\./],
+  [1, /^Empezó el 16 nov 2026, 11:40\./],
+] as const)(
+  "labels the recording start relative to the current day (%s)",
+  async (days, copy) => {
+    const base = bridge("status-recording");
+    mount(
+      vi.fn(async (input: AnalysisRequest) => {
+        const reply = await base(input);
+        return reply.method === "analysis.status" && reply.status
+          ? {
+              ...reply,
+              status: {
+                ...reply.status,
+                startedAtMs: reply.status.startedAtMs - days * 86400000,
+              },
+            }
+          : reply;
+      }),
+    );
+    expect(await screen.findByText(copy)).toBeTruthy();
+  },
+);
+
+function DelayedRail() {
+  const [mounted, setMounted] = useState(false);
+  const collapsed = useUi((s) => s.railCollapsed);
+  const toggle = useUi((s) => s.toggleRail);
+  return (
+    <>
+      <button type="button" onClick={toggle}>
+        Plegar rail
+      </button>
+      <button type="button" onClick={() => setMounted(true)}>
+        Montar rail
+      </button>
+      {mounted && !collapsed && <SectionRailSlot fallback={null} />}
+    </>
+  );
+}
+
+it("does not focus the deletion list if its target mounts after the open request", async () => {
+  mount(bridge("status-limit"), true, true, undefined, "UTC", <DelayedRail />);
+  const see = await screen.findByRole("button", { name: statusText.seePrune });
+  await userEvent.click(screen.getByRole("button", { name: "Plegar rail" }));
+  await userEvent.click(see);
+  await act(
+    () =>
+      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+  );
+  const mountButton = screen.getByRole("button", { name: "Montar rail" });
+  await userEvent.click(mountButton);
+  expect(
+    await screen.findByText(/3 grabaciones para dejar sitio/),
+  ).toBeTruthy();
+  expect(document.activeElement).toBe(mountButton);
+});
+
+it("shows the deletion notice again only when a new batch arrives", async () => {
+  const catalog = bridge();
+  const pruning = bridge("status-limit");
+  let batch = 0;
+  const request = vi.fn(async (input: AnalysisRequest) => {
+    const reply = await (input.method === "analysis.status"
+      ? pruning
+      : catalog)(input);
+    return reply.method === "analysis.status" && reply.status
+      ? {
+          ...reply,
+          status: {
+            ...reply.status,
+            lastPrune: {
+              ...reply.status.lastPrune,
+              atMs: reply.status.lastPrune.atMs + batch,
+            },
+          },
+        }
+      : reply;
+  });
+  const title = statusText.pruneTitle(3);
+  mount(request);
+  await userEvent.click(
+    await screen.findByRole("button", { name: statusText.acknowledge }),
+  );
+  expect(screen.queryByText(title)).toBeNull();
+  const reload = async (count: number) => {
+    const row = (
+      await screen.findAllByRole("button", { name: /Circuito sin identificar/ })
+    )[1];
+    await userEvent.click(row);
+    await screen.findByText("Detalle técnico de la grabación");
+    await userEvent.click(screen.getByRole("tab", { name: "Grabaciones" }));
+    await waitFor(() =>
+      expect(
+        request.mock.calls.filter(
+          ([input]) => input.method === "analysis.status",
+        ),
+      ).toHaveLength(count),
+    );
+  };
+  await reload(2);
+  expect(screen.queryByText(title)).toBeNull();
+  batch = 1;
+  await reload(3);
+  expect(await screen.findByText(title)).toBeTruthy();
 });

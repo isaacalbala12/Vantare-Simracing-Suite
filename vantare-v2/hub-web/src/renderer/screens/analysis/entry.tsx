@@ -1,5 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import { useAnalysis } from "../../app/AnalysisState";
+import { deletedRecordings } from "../../app/analysis-recording-status";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { useSettings } from "../../app/SettingsState";
 import { useUi } from "../../app/UiState";
@@ -14,6 +16,11 @@ import { Comparison } from "../../ui/analysis/Comparison";
 import { ComparisonRail } from "../../ui/analysis/ComparisonRail";
 import { CompareAction } from "../../ui/analysis/LapChoices";
 import { AnalysisLaps } from "../../ui/analysis/RecordingDetail";
+import {
+  RecordingPruneNotice,
+  RecordingPruneRail,
+  RecordingStatus,
+} from "../../ui/analysis/RecordingStatus";
 import { Button } from "../../ui/Button";
 import { SectionPageHeader } from "../../ui/Frame";
 export default function Analysis({
@@ -26,7 +33,13 @@ export default function Analysis({
   const state = useAnalysis();
   const settings = useSettings();
   const navigate = useUi((s) => s.navigate);
+  const collapsed = useUi((s) => s.railCollapsed);
+  const toggleRail = useUi((s) => s.toggleRail);
   const cache = useQueryClient();
+  const dismissed = useUi((s) => s.acknowledgedAnalysisPrune);
+  const acknowledge = useUi((s) => s.acknowledgeAnalysisPrune);
+  const pruneHeading = useRef<HTMLParagraphElement>(null);
+  const focusPrune = useRef<string | null>(null);
   const enabled = settings.view?.general.grabacion ?? true;
   const current = state.compareView
     ? "compare"
@@ -39,6 +52,41 @@ export default function Analysis({
   };
   const denied =
     !state.access.analysis || !state.access.verified || state.access.blocked;
+  const batch = deletedRecordings(state.recordingStatus);
+  const batchKey = batch?.key;
+  useEffect(() => {
+    const requestedBatch = focusPrune.current;
+    focusPrune.current = null;
+    if (
+      requestedBatch === null ||
+      requestedBatch !== batchKey ||
+      denied ||
+      current !== "recordings" ||
+      collapsed
+    )
+      return;
+    // The rail slot mounts before its portal content is available to focus.
+    const frame = requestAnimationFrame(() => pruneHeading.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [batchKey, collapsed, current, denied]);
+  const initial = settings.recordingAtStart;
+  const statusProps = {
+    state,
+    enabled,
+    enabledAtStart: initial,
+    settings: () => goSettings("privacy"),
+    undo:
+      initial !== undefined && enabled !== initial
+        ? () => settings.update({ field: "grabacion", value: initial })
+        : undefined,
+    undoDisabled:
+      settings.pending || settings.view?.protected || !!settings.error,
+    clock,
+    timeZone,
+  };
+  const statusStrip = (
+    <RecordingStatus {...statusProps} compact railCollapsed={collapsed} />
+  );
   return (
     <>
       <SectionChrome
@@ -73,22 +121,33 @@ export default function Analysis({
             state.controller?.compare();
         }}
         rail={
-          state.compareView ? (
-            <ComparisonRail state={state} controller={state.controller} />
-          ) : (
+          denied ? undefined : (
             <>
-              <AnalysisRail
-                clock={clock}
-                timeZone={timeZone}
-                enabled={enabled}
-                state={state}
-                recording={state.rows.some((r) => r.recording)}
-              />
-              {state.opened && (
-                <CompareAction
-                  state={state}
-                  controller={state.controller}
-                  quick
+              <RecordingStatus {...statusProps} />
+              {state.compareView ? (
+                <ComparisonRail state={state} controller={state.controller} />
+              ) : (
+                <>
+                  <AnalysisRail
+                    clock={clock}
+                    timeZone={timeZone}
+                    state={state}
+                  />
+                  {state.opened && (
+                    <CompareAction
+                      state={state}
+                      controller={state.controller}
+                      quick
+                    />
+                  )}
+                </>
+              )}
+              {batch && (
+                <RecordingPruneRail
+                  batch={batch}
+                  clock={clock}
+                  timeZone={timeZone}
+                  headingRef={pruneHeading}
                 />
               )}
             </>
@@ -123,7 +182,7 @@ export default function Analysis({
             controller={state.controller}
             clock={clock}
             timeZone={timeZone}
-            enabled={enabled}
+            statusStrip={statusStrip}
             updates={() => goSettings("updates")}
           />
         ) : state.selected ? (
@@ -132,7 +191,7 @@ export default function Analysis({
             timeZone={timeZone}
             state={state}
             controller={state.controller}
-            enabled={enabled}
+            statusStrip={statusStrip}
             updates={() => goSettings("updates")}
           />
         ) : (
@@ -141,7 +200,25 @@ export default function Analysis({
             timeZone={timeZone}
             state={state}
             controller={state.controller}
-            enabled={enabled}
+            enabled={enabled || initial === true}
+            statusStrip={statusStrip}
+            pruneNotice={
+              batch &&
+              batch.key !== dismissed && (
+                <RecordingPruneNotice
+                  batch={batch}
+                  clock={clock}
+                  timeZone={timeZone}
+                  show={() => {
+                    if (collapsed) {
+                      focusPrune.current = batch.key;
+                      toggleRail();
+                    } else pruneHeading.current?.focus();
+                  }}
+                  acknowledge={() => acknowledge(batch.key)}
+                />
+              )
+            }
             settings={() => goSettings("privacy")}
           />
         )}

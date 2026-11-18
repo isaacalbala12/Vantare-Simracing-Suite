@@ -22,6 +22,8 @@ interface UiState {
   studioListCollapsed: boolean;
   toggleStudioList: () => void;
   railCollapsed: boolean;
+  acknowledgedAnalysisPrune?: string;
+  acknowledgeAnalysisPrune: (key: string) => void;
   commandsOpen: boolean;
   noticesOpen: boolean;
   testingReportsRequested: boolean;
@@ -66,6 +68,8 @@ function createUi() {
             : s,
       ),
     railCollapsed: false,
+    acknowledgeAnalysisPrune: (acknowledgedAnalysisPrune) =>
+      set({ acknowledgedAnalysisPrune }),
     commandsOpen: false,
     noticesOpen: false,
     testingReportsRequested: false,

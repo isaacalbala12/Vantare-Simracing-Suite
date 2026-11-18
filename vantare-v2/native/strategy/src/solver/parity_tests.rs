@@ -534,3 +534,46 @@ fn prepared_curves_are_sorted_once_without_changing_input_or_replay() {
         }
     }
 }
+
+/// The manual bridge reads its grid from `manual_service_grid`; the solver builds
+/// the real one in `Model::new` from the budget-coarsened input. They must agree.
+fn assert_manual_grid_is_the_solver_grid(input: &Input) -> Discretization {
+    let grid = manual_service_grid(input).expect("manual grid");
+    let model = model::Model::new(&budget::effective(input).0).expect("solver model");
+    assert_eq!(grid.fuel_liters, amount(model.fuel.step), "fuel step");
+    assert_eq!(grid.ve_percent, amount(model.ve.step), "VE step");
+    grid
+}
+
+#[test]
+fn manual_service_grid_matches_the_solver_grid_for_fuji() {
+    let input: Input = serde_json::from_str(include_str!("../../testdata/fuji-1450-input.json"))
+        .expect("frozen Fuji input");
+    let grid = assert_manual_grid_is_the_solver_grid(&input);
+    assert!(grid.fuel_liters > 0.0 && grid.ve_percent > 0.0);
+    let (effective, requested) = budget::effective(&input);
+    // Not degraded: the solver keeps the requested grid.
+    assert_eq!(effective.discretization.fuel_liters, requested.fuel_liters);
+    assert_eq!(grid.fuel_liters, requested.fuel_liters);
+    assert_eq!(grid.ve_percent, requested.ve_percent);
+}
+
+#[test]
+fn manual_service_grid_matches_the_solver_grid_when_the_budget_coarsens_it() {
+    let mut input: Input =
+        serde_json::from_str(include_str!("../../testdata/fuji-1450-input.json"))
+            .expect("frozen Fuji input");
+    input.discretization.fuel_liters = 0.1; // 821 levels over 82 L
+    input.discretization.ve_percent = 0.1; // 1001 levels over 100 %
+    input.budget.p95_millis = 10; // clamps to 10 levels
+    let (effective, requested) = budget::effective(&input);
+    assert!(effective.discretization.fuel_liters > requested.fuel_liters);
+    assert!(effective.discretization.ve_percent > requested.ve_percent);
+    let grid = assert_manual_grid_is_the_solver_grid(&input);
+    assert!(
+        grid.fuel_liters >= 8.2 && grid.ve_percent >= 10.0,
+        "{grid:?}"
+    );
+    // Both grids stay within the solver's 200-level limit.
+    assert!(82.0 / grid.fuel_liters <= 200.0 && 100.0 / grid.ve_percent <= 200.0);
+}

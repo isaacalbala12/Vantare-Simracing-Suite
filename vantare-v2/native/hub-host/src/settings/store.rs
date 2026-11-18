@@ -1,5 +1,6 @@
 //! Copied from frozen Hub settings/store.rs at 62dde8da4; CAS/migration preserved.
 //! Documento agregado del Hub; migración pura y publicación con CAS.
+use super::unknown::{self, Unknown};
 use super::model::{
     AppearanceSettings, CONTRAST_MAX, CONTRAST_MIN, DEFAULT_ZOOM, GLASS_OPACITY_MAX,
     GLASS_OPACITY_MIN, Preferences, ZOOM_LEVELS,
@@ -25,6 +26,9 @@ pub(crate) struct Document {
         skip_serializing_if = "Vec::is_empty"
     )]
     pub migration_pending: Vec<Legacy>,
+    /// Campos de un build más nuevo: se conservan al guardar, no cuentan para la lógica.
+    #[serde(skip)]
+    pub(super) unknown: Unknown,
 }
 impl Default for Document {
     fn default() -> Self {
@@ -34,6 +38,7 @@ impl Default for Document {
             appearance: AppearanceSettings::default(),
             zoom: DEFAULT_ZOOM,
             migration_pending: Vec::new(),
+            unknown: Unknown::default(),
         }
     }
 }
@@ -225,8 +230,11 @@ impl Store {
                     files::future_version(&value, "version", 3)?;
                 }
                 let bad_zoom = !value.get("zoom").is_some_and(valid_zoom_value);
-                let mut doc: Document = serde_json::from_slice(bytes)
+                let mut value = value;
+                let unknown = Unknown::take(&mut value);
+                let mut doc: Document = serde_json::from_value(value)
                     .map_err(|e| Error::InvalidInput(e.to_string()))?;
+                doc.unknown = unknown;
                 if doc.version == 2 && !doc.migration_pending.is_empty() {
                     return Err(Error::InvalidInput("Documento de ajustes no válido".into()));
                 }
@@ -273,8 +281,7 @@ impl Store {
                 self.warning.as_deref().unwrap_or("origen no recuperable")
             )));
         }
-        let bytes =
-            serde_json::to_vec_pretty(&value).map_err(|e| Error::InvalidInput(e.to_string()))?;
+        let bytes = unknown::encode(&value).map_err(|e| Error::InvalidInput(e.to_string()))?;
         let result = files::save(
             &self.path,
             &bytes,
@@ -423,6 +430,7 @@ fn rebase(base: &Document, desired: &Document, current: &Document) -> Document {
     let base = serde_json::to_value(base).expect("settings serialize");
     let desired = serde_json::to_value(desired).expect("settings serialize");
     let startup = current.general.startup;
+    let unknown = current.unknown.clone();
     let mut current = serde_json::to_value(current).expect("settings serialize");
     for section in ["general", "appearance"] {
         for (key, value) in desired[section].as_object().expect("settings section") {
@@ -436,6 +444,7 @@ fn rebase(base: &Document, desired: &Document, current: &Document) -> Document {
     }
     let mut next: Document = serde_json::from_value(current).expect("validated settings rebase");
     next.general.startup = startup;
+    next.unknown = unknown;
     next
 }
 

@@ -33,7 +33,7 @@ nueva ni se alteran comandos o argumentos.
 | Studio: `Open::bytes`, `put`, `setting_edit::apply`, `known_object`, `normalized_columns` | Los campos propietarios se escriben desde `BTreeMap<String, Box<RawValue>>`. Los Values intermedios se proyectan de nuevo a Settings y/o Fields antes de escribir. Los structs nativos usan `to_raw_value`, incluido gap. Los miembros desconocidos permanecen como RawValue, con sus bytes y orden de entrada |
 | Studio: `ordered::remove_rates` | Mapa propio de pares en Vec; conserva explícitamente el orden de origen al quitar frecuencias. No usa el Map de serde_json |
 | Rendimiento: `layout::Document::save` | BTreeMap de RawValue para raíz y performance; overrides se leen como BTreeMap. Los objetos opacos conservan los bytes de entrada |
-| Ajustes: `store::Store::commit`, `save_appearance` | Document, Preferences y StoredAppearance son structs tipados. La ruta `rebase` usa Value, pero lo convierte a Document antes de guardar; el orden del Value no llega al fichero |
+| Ajustes: `store::Store::commit`, `save_appearance` | Document, Preferences y StoredAppearance son structs tipados. La ruta `rebase` usa Value, pero lo convierte a Document antes de guardar; el orden del Value no llega al fichero. Los campos desconocidos (ISA-2624) van tras los conocidos y se ordenan recursivamente al leerlos (`sort_all_objects`), con un test de bytes |
 | Privacidad: `State::save`, adopción | Privacy tipado; la adopción copia bytes existentes y el marcador es texto fijo |
 | Calendario: `feed::publish` | Feed/Event tipados, con un Vec de eventos; no hay mapas dinámicos |
 | Peticiones de lanzamiento y favorito | Request enum tipado, con ID del perfil; no hay Value ni Map persistido |

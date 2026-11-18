@@ -282,15 +282,25 @@ firma, huella y aislamiento. Después se exige el binding DPAPI en esa raíz y
 la política real del núcleo antes de arrancar el overlay. La copia antes/después
 del perfil real sigue detectando cambios fuera de logs.
 
-El CLI toma la huella en el PC y firma en el servidor. La carpeta
-`qa-license` conserva la privada. Se firma en `qa-license-cred`, fuera del
-repo y del paquete, y solo se transferirá la credencial firmada.
+El CLI toma la huella en el PC y firma en el servidor. La privada queda en
+`D:/VantareServer/custodia/qa-license` y el JSON firmado en
+`D:/VantareServer/custodia/qa-license-cred`. Ambas rutas quedan fuera de
+evidence, repos y worktrees. Solo se transferirá el JSON firmado. Para firmar
+explícitamente, `TANDA.ps1 -Modo FirmarCredencialQA -Kit <árbol>
+-KeyIdQA <id aprobado> -FingerprintQA <huella> -CliSha256QA <hash aprobado>`
+valida el CLI antes de darle acceso a la privada. El ensayo no firma.
 
 La comprobación de custodia se ejecuta desde el checkout en el servidor con
-`TANDA.ps1 -Modo VerificarCustodiaQA -Kit <árbol> -ZipQA <zip> -LogsQA <logs>
--KeyIdQA <id aprobado> -PythonExe <ruta absoluta>`. Busca el formato de la
-privada y sus codificaciones de bytes, hex y base64 en los artefactos y logs.
-El veredicto no imprime contenido ni rutas de los ficheros que coinciden.
+`TANDA.ps1 -Modo VerificarCustodiaQA -Kit <árbol> -ZipQA <zip>
+-ZipSha256QA <hash verificado> -LogsQA <logs> -KeyIdQA <id aprobado>
+-PythonExe <ruta absoluta>`. Busca bytes crudos, hex con separadores y
+base64 con los tres desplazamientos en el árbol y los logs. Rechaza archivos
+comprimidos o contenedores identificados por firma. La única excepción es el
+ZIP del kit cuyo hash se verifica; el preflight no lo descomprime. El
+veredicto no imprime contenido ni rutas de los ficheros que coinciden.
+
+El ensayo sin GPU ejecuta `PROBAR_CREDENCIAL_TANDA.ps1` y el descubrimiento
+de tests Python incluye `test_preflight_privado.py`.
 
 La ejecución de medición permanece bloqueada. Para integrarla falta un CLI QA
 verificado en el artefacto de medición, procedencia que ate la aprobación del

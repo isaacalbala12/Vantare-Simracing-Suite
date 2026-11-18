@@ -1,3 +1,4 @@
+#requires -Version 7
 # Credential commands capture output in memory. Paths/credentials are excluded from evidence.
 function Invoke-TandaLicenseCli([string]$Image,[string[]]$Arguments,[hashtable]$Environment=@{}){
  $info=[Diagnostics.ProcessStartInfo]::new($Image)
@@ -52,16 +53,31 @@ function Get-TandaServerQaPrivatePath([string]$ApprovedKeyId){
  if($env:COMPUTERNAME -ine 'SAPPHIREOS' -or $ApprovedKeyId -cnotmatch '\Aqa-[0-9a-f]{8}\z'){
   throw 'QA_KEY_NOT_APPROVED: la clave QA solo se usa en el servidor con el key_id aprobado'
  }
- Join-Path 'D:/VantareServer/evidence/overlays-rune/qa-license' "$ApprovedKeyId/qa-license.key"
+ $key=Join-Path 'D:/VantareServer/custodia/qa-license' "$ApprovedKeyId/qa-license.key"
+ Assert-TandaCustodyPath $key 'qa-license'
+ [IO.Path]::GetFullPath($key)
 }
-function New-TandaSignedCredential([string]$Image,[string]$Fingerprint,[string]$ApprovedKeyId){
+function Assert-TandaCustodyPath([string]$Path,[ValidateSet('qa-license','qa-license-cred')][string]$Folder){
+ $root=[IO.Path]::GetFullPath("D:/VantareServer/custodia/$Folder")+[IO.Path]::DirectorySeparatorChar
+ if(-not [IO.Path]::GetFullPath($Path).StartsWith($root,[StringComparison]::OrdinalIgnoreCase)){
+  throw 'QA_CUSTODY_PATH: se exige custodia fuera de evidence, Git y worktrees'
+ }
+ Assert-TandaLicensePath $Path
+}
+function New-TandaCredentialTransferPath {
+ $transfer=Join-Path 'D:/VantareServer/custodia/qa-license-cred' ([guid]::NewGuid().ToString('N')+'.json')
+ Assert-TandaCustodyPath $transfer 'qa-license-cred'
+ $null=New-Item -ItemType Directory -Path (Split-Path $transfer -Parent) -Force
+ $transfer
+}
+function New-TandaSignedCredential([string]$Image,[string]$Fingerprint,[string]$ApprovedKeyId,[string]$CliSha256){
  if($Fingerprint -cnotmatch '\A[0-9a-f]{64}\z'){throw 'QA_FINGERPRINT_INVALID'}
  $key=Get-TandaServerQaPrivatePath $ApprovedKeyId
- $base='D:/VantareServer/evidence/overlays-rune'
- $transfer=Join-Path $base ('qa-license-cred/'+[guid]::NewGuid().ToString('N')+'.json')
- Assert-TandaLicensePath $key
- Assert-TandaLicensePath $transfer
- $null=New-Item -ItemType Directory -Path (Split-Path $transfer -Parent) -Force
+ Assert-TandaLicensePath $Image
+ if($CliSha256 -cnotmatch '\A[0-9a-f]{64}\z' -or (Get-FileHash -LiteralPath $Image -Algorithm SHA256).Hash -ine $CliSha256){
+  throw 'QA_SIGN_CLI_UNVERIFIED: el CLI no coincide con el hash aprobado'
+ }
+ $transfer=New-TandaCredentialTransferPath
  # The CLI also rejects Git directories, real roots and existing output files.
  $null=Invoke-TandaLicenseCli $Image @('sign','--key',$key,'--fingerprint',$Fingerprint,'--out',$transfer)
  Assert-TandaTransferKey $transfer $ApprovedKeyId
@@ -88,4 +104,18 @@ function Install-TandaQaCredential([string]$Image,[string]$Credential,[string]$R
  $roaming=Join-Path $Directory 'roaming'
  $null=New-Item -ItemType Directory -Path $local,$roaming
  @{VANTARE_NATIVE_DATA_ROOT=$native;LOCALAPPDATA=$local;APPDATA=$roaming}
+}
+function Remove-TandaQaRoundProfile([string]$Directory,[string]$Base){
+ $basePath=[IO.Path]::GetFullPath($Base)
+ $path=[IO.Path]::GetFullPath($Directory)
+ if([IO.Path]::GetDirectoryName($path) -ine $basePath -or
+    [IO.Path]::GetFileName($path) -cnotmatch '\Around-[0-9a-f]{32}\z'){
+  throw 'QA_PROFILE_CLEANUP: fuera de la raíz QA de la ronda'
+ }
+ Assert-TandaLicensePath $path
+ if(-not(Test-Path -LiteralPath $path)){return}
+ if(Get-ChildItem -LiteralPath $path -Force -Recurse -Attributes ReparsePoint){
+  throw 'QA_PROFILE_CLEANUP: enlace dentro del perfil QA'
+ }
+ Remove-Item -LiteralPath $path -Recurse -Force
 }

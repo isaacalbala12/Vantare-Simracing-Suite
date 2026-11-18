@@ -19,10 +19,15 @@ function Get-VantareObservedIdentity {param($RootProcessId)
 '@ | Set-Content -LiteralPath (Join-Path $root 'tools/qa-overlays/OBSERVAR.ps1')
 $script:events=[Collections.Generic.List[string]]::new();$script:deny=$false;$script:mode='replay'
 $license=@{cli='fake-cli.exe';credential='fake.json';registry='fake-public';key_id='qa-aabbccdd'}
+$script:qaProfiles=[Collections.Generic.List[string]]::new()
+$script:failInstall=$false
 function Install-TandaQaCredential {param($Image,$Credential,$Registry,$ApprovedKeyId,$Directory)
  if($Directory.StartsWith($output,[StringComparison]::OrdinalIgnoreCase) -or $ApprovedKeyId -ne 'qa-aabbccdd'){throw 'Binding dentro de la evidencia o sin clave aprobada'}
  $script:events.Add('install:qa')
- New-TandaQaEnvironment $Directory
+ $script:qaProfiles.Add($Directory)
+ $environment=New-TandaQaEnvironment $Directory
+ if($script:failInstall){throw 'INSTALL_PARTIAL_FAKE'}
+ $environment
 }
 function Assert-TandaUnattended {}
 function Start-TandaOwned {param($Image,$Arguments,$Log,$Environment=@{})
@@ -86,4 +91,11 @@ $script:events.Clear();$missing=$false
 try{Invoke-TandaMeasurement $root $output @{id='no-transfer';state='waiting';motor='rune';layout='inputs/layout.json'}}
 catch{$missing=$_.Exception.Message -like 'QA_MEASUREMENT_LICENSE_MISSING*'}
 if(-not $missing -or $script:events.Count){throw 'Missing signed transfer started processes'}
+$script:failInstall=$true
+$partial=$false
+try{Invoke-TandaMeasurement $root $output @{id='partial';state='waiting';motor='rune';layout='inputs/layout.json'} $license}
+catch{$partial=$_.Exception.Message -ceq 'INSTALL_PARTIAL_FAKE'}
+if(-not $partial -or $script:events.Contains('start:core')){throw 'Fallo parcial activó el núcleo'}
+if(@($script:qaProfiles|Where-Object {Test-Path -LiteralPath $_}).Count){throw 'Quedó un perfil QA propio tras la ronda o el fallo'}
+if(@($script:qaProfiles|Where-Object {$_ -notmatch '[/\\]qa-core[/\\]round-[0-9a-f]{32}$'}).Count){throw 'Perfil QA sin ruta única'}
 "PASS: ETW ready before replay, deferred identity, cleanup and denial; no GPU; sandbox=$base"

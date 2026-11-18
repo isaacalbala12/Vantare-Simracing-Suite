@@ -598,7 +598,7 @@ mod real {
             (watermark.as_str(), attempted.as_str(), total.as_str()),
             ("2", "2", "1")
         );
-        assert!(sessions.is_empty());
+        assert_eq!(sessions.as_slice(), &[]);
         assert_eq!(
             (laps[0].session, laps[0].lap_time_ms, &laps[0].sectors_ms),
             (None, None, &None)

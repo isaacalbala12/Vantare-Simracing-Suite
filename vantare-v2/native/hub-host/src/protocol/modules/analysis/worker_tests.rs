@@ -103,18 +103,7 @@ fn fixture_with_metadata(
             );
         }
     }
-    for command in commands {
-        writeln!(writer.stdin.as_mut().unwrap(), "{command}").unwrap();
-        line.clear();
-        output.read_line(&mut line).unwrap();
-        assert!(
-            serde_json::from_str::<serde_json::Value>(&line).unwrap()[0]
-                .as_str()
-                .unwrap()
-                .starts_with("ack-"),
-            "{line}"
-        );
-    }
+    write_metadata(writer.stdin.as_mut().unwrap(), &mut output, commands);
     writeln!(
         writer.stdin.as_mut().unwrap(),
         "{}",
@@ -134,6 +123,26 @@ fn fixture_with_metadata(
     reader.summaries().unwrap();
     (root, Some((reader, cancel)))
 }
+fn write_metadata(
+    input: &mut impl Write,
+    output: &mut impl BufRead,
+    commands: &[serde_json::Value],
+) {
+    let mut line = String::new();
+    for command in commands {
+        writeln!(input, "{command}").unwrap();
+        line.clear();
+        output.read_line(&mut line).unwrap();
+        assert!(
+            serde_json::from_str::<serde_json::Value>(&line).unwrap()[0]
+                .as_str()
+                .unwrap()
+                .starts_with("ack-"),
+            "{line}"
+        );
+    }
+}
+
 fn job(a: u32, b: u32) -> Job {
     Job {
         id: 1,
@@ -216,8 +225,7 @@ fn compare_absolute_deadline_uses_injected_clock_between_pages_and_drops_session
     std::fs::remove_dir_all(root).unwrap();
 }
 
-#[test]
-fn inspect_and_open_join_real_metadata_by_full_key() {
+fn metadata_commands() -> Vec<serde_json::Value> {
     use serde_json::json;
     let mut commands = Vec::new();
     for (epoch, session) in [(1, 3), (2, 3)] {
@@ -242,12 +250,17 @@ fn inspect_and_open_join_real_metadata_by_full_key() {
         "simElapsedS":90.125,"finalPosition":3,"finalClassPosition":2,
         "lapsCompleted":1,"bestLapMs":90_125,"endReason":"sessionChanged"}]),
     );
+    commands
+}
+
+#[test]
+fn inspect_and_open_join_real_metadata_by_full_key() {
     let (root, reader) = fixture_with_metadata(
         &[(1, 3, 7), (2, 3, 7), (2, 3, 8)],
         1,
         2,
         false,
-        &commands,
+        &metadata_commands(),
         false,
     );
     drop(reader);
@@ -406,7 +419,7 @@ fn real_v1_bridge_has_empty_sessions_in_inspect_and_open() {
     else {
         panic!("open")
     };
-    assert!(sessions.is_empty());
+    assert_eq!(sessions.as_slice(), &[]);
     assert_eq!(laps.len(), 1);
     let lap = &laps[0];
     assert!(lap.lap_time_approx_ms.is_some());

@@ -211,6 +211,30 @@ pub(crate) fn corpus() -> serde_json::Value {
         laps: vec![],
         sessions: vec![],
     }));
+    inspect_corpus(&mut host);
+    for error in [
+        HostError::AnalysisIncomparable,
+        HostError::AnalysisNotFound,
+        HostError::AnalysisLocked,
+        HostError::AnalysisIncompatible,
+        HostError::AnalysisUnreadable,
+        HostError::AnalysisChanged,
+        HostError::AnalysisTooMany,
+        HostError::AnalysisTooLarge,
+        HostError::AnalysisCancelled,
+        HostError::AnalysisTimeout,
+    ] {
+        host.push(HostToUi::Failure { id: 1, error });
+    }
+    compare_corpus(&mut host);
+    host.push(sample_response(Reply::AnalysisStatus { status: None }));
+    host.push(sample_response(Reply::AnalysisStatus {
+        status: Some(status_sample()),
+    }));
+    serde_json::json!({"host": host, "ui": requests()})
+}
+
+fn inspect_corpus(host: &mut Vec<HostToUi>) {
     for state in [
         AnalysisState::Complete,
         AnalysisState::Unconfirmed,
@@ -235,26 +259,6 @@ pub(crate) fn corpus() -> serde_json::Value {
         best_lap_approx_ms: None,
         sessions: vec![],
     }));
-    for error in [
-        HostError::AnalysisIncomparable,
-        HostError::AnalysisNotFound,
-        HostError::AnalysisLocked,
-        HostError::AnalysisIncompatible,
-        HostError::AnalysisUnreadable,
-        HostError::AnalysisChanged,
-        HostError::AnalysisTooMany,
-        HostError::AnalysisTooLarge,
-        HostError::AnalysisCancelled,
-        HostError::AnalysisTimeout,
-    ] {
-        host.push(HostToUi::Failure { id: 1, error });
-    }
-    compare_corpus(&mut host);
-    host.push(sample_response(Reply::AnalysisStatus { status: None }));
-    host.push(sample_response(Reply::AnalysisStatus {
-        status: Some(status_sample()),
-    }));
-    serde_json::json!({"host": host, "ui": requests()})
 }
 
 fn requests() -> Vec<UiToHost> {

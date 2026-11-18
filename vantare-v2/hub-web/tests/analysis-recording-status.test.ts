@@ -1,11 +1,16 @@
 import { expect, it, vi } from "vitest";
-import type { AnalysisRecordingStatus } from "../src/contract/generated/analysis";
+import type {
+  AnalysisRecordingStatus,
+  AnalysisRequest,
+} from "../src/contract/generated/analysis";
+import type { Reply } from "../src/contract/generated/contract";
 import { AnalysisController } from "../src/renderer/app/AnalysisController";
 import {
   deletedRecordings,
   recordingIndicator,
   recordingUsage,
 } from "../src/renderer/app/analysis-recording-status";
+import { HostFailure } from "../src/renderer/bridge/client";
 
 const status: AnalysisRecordingStatus = {
   state: "recording",
@@ -219,4 +224,105 @@ it("retains the status and the last deletion batch during a second catalog load"
   expect(controller.snapshot().recordingStatusPending).toBe(false);
   expect(seen).not.toContain(undefined);
   controller.dispose();
+});
+
+it("keeps recording with a degraded indicator when pruning is incomplete", () => {
+  expect(
+    recordingIndicator(
+      { ...status, state: "degraded", cause: "pruneIncomplete" },
+      true,
+      true,
+      true,
+      true,
+    ),
+  ).toBe("degraded");
+});
+
+it("refreshes after 12 seconds, preserves a good result on errors, and does not overlap", async () => {
+  vi.useFakeTimers();
+  let read = 0;
+  let resolveRefresh: (reply: Reply) => void = () => {};
+  let signal: AbortSignal | undefined;
+  const request = vi.fn(
+    async (
+      { method }: AnalysisRequest,
+      _onSent?: () => void,
+      abort?: AbortSignal,
+    ): Promise<Reply> => {
+      if (method === "analysis.catalog")
+        return { method, recordings: [], max: 256 };
+      if (method === "analysis.cancel") return { method, cancelled: false };
+      if (method !== "analysis.status") throw Error(method);
+      read++;
+      signal = abort;
+      if (read === 1) return { method, status: null };
+      if (read === 2) throw new HostFailure({ kind: "busy" });
+      if (read === 3) return { method, status };
+      if (read === 4) throw new HostFailure({ kind: "io" });
+      return new Promise<Reply>((resolve) => {
+        resolveRefresh = resolve;
+      });
+    },
+  );
+  const controller = new AnalysisController(
+    { request },
+    {
+      setTimeout: globalThis.setTimeout,
+      clearTimeout: globalThis.clearTimeout,
+    },
+  );
+  try {
+    controller.load();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(controller.snapshot().recordingStatus).toBeNull();
+    await vi.advanceTimersByTimeAsync(11_999);
+    expect(read).toBe(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(read).toBe(2);
+    expect(controller.snapshot().recordingStatus).toBeNull();
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(controller.snapshot().recordingStatus).toBe(status);
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(read).toBe(4);
+    expect(controller.snapshot().recordingStatus).toBe(status);
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(read).toBe(5);
+    controller.load();
+    await vi.advanceTimersByTimeAsync(36_000);
+    expect(read).toBe(5);
+    controller.setRecordingStatusVisible(false);
+    controller.setRecordingStatusVisible(true);
+    expect(read).toBe(5);
+    resolveRefresh({ method: "analysis.status", status: null });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(controller.snapshot().recordingStatus).toBe(status);
+    await vi.advanceTimersByTimeAsync(12_000);
+    expect(read).toBe(6);
+    controller.dispose();
+    expect(signal?.aborted).toBe(true);
+    resolveRefresh({ method: "analysis.status", status: null });
+    await vi.advanceTimersByTimeAsync(36_000);
+    expect(read).toBe(6);
+    expect(controller.snapshot().recordingStatus).toBe(status);
+    expect(vi.getTimerCount()).toBe(0);
+  } finally {
+    controller.dispose();
+    vi.useRealTimers();
+  }
+});
+
+it("uses a successful idle or clean stop even when the catalog still has an older live row", () => {
+  expect(recordingIndicator(null, true, true, false, true)).toBe("idle");
+  expect(
+    recordingIndicator(
+      { ...status, state: "stopped" },
+      true,
+      true,
+      false,
+      true,
+    ),
+  ).toBe("idle");
+  expect(recordingIndicator(undefined, true, true, false, true)).toBe(
+    "recording",
+  );
 });

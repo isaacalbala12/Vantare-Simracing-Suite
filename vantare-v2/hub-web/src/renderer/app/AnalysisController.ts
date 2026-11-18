@@ -40,7 +40,15 @@ export type AnalysisSnapshot = {
   opened?: Opened;
   error?: HostError["kind"];
 };
-type Bridge = { request: (request: AnalysisRequest) => Promise<Reply> };
+type Bridge = {
+  request: (
+    request: AnalysisRequest,
+    onSent?: () => void,
+    signal?: AbortSignal,
+  ) => Promise<Reply>;
+};
+type StatusClock = Pick<typeof globalThis, "setTimeout" | "clearTimeout">;
+const recordingStatusIntervalMs = 12_000;
 const failure = (e: unknown) =>
   e instanceof HostFailure ? e.detail.kind : "io";
 /** One reader lane. Cancellation bypasses the lane, but its acknowledgement and
@@ -58,13 +66,19 @@ export class AnalysisController {
   private active = true;
   private generation = 0;
   private statusGeneration = 0;
+  private statusVisible = true;
+  private statusTimer?: ReturnType<typeof setTimeout>;
+  private statusFlight?: AbortController;
   private visible = new Set<string>();
   private lane: Promise<void> = Promise.resolve();
   private timer?: ReturnType<typeof setTimeout>;
   private wake?: () => void;
   private session?: string;
   private comparingSession?: string;
-  constructor(private client: Bridge) {}
+  constructor(
+    private client: Bridge,
+    private statusClock: StatusClock = globalThis,
+  ) {}
   snapshot = () => this.value;
   subscribe = (fn: () => void) => {
     this.listeners.add(fn);
@@ -150,7 +164,6 @@ export class AnalysisController {
   }
   load = () => {
     const generation = ++this.generation;
-    const statusGeneration = ++this.statusGeneration;
     this.publish({
       loading: true,
       opening: false,
@@ -175,7 +188,7 @@ export class AnalysisController {
         r = await this.request({ method: "analysis.catalog" }, generation);
       } finally {
         if (this.active && generation === this.generation)
-          void this.readRecordingStatus(statusGeneration);
+          void this.readRecordingStatus();
       }
       if (r?.method !== "analysis.catalog" || generation !== this.generation)
         return;
@@ -185,16 +198,57 @@ export class AnalysisController {
       });
     });
   };
-  private async readRecordingStatus(generation: number) {
-    let status: AnalysisSnapshot["recordingStatus"];
-    try {
-      const reply = await this.client.request({ method: "analysis.status" });
-      if (reply.method === "analysis.status") status = reply.status;
-    } catch {
-      // The catalog and reader remain usable if the status is unavailable.
+  setRecordingStatusVisible = (visible: boolean) => {
+    if (visible === this.statusVisible) return;
+    this.statusVisible = visible;
+    if (visible) {
+      void this.readRecordingStatus();
+    } else {
+      ++this.statusGeneration;
+      this.statusClock.clearTimeout(this.statusTimer);
     }
-    if (generation === this.statusGeneration)
-      this.publish({ recordingStatus: status, recordingStatusPending: false });
+  };
+
+  stopRecordingStatus = () => {
+    this.setRecordingStatusVisible(false);
+    this.statusFlight?.abort();
+  };
+
+  private async readRecordingStatus() {
+    if (!this.active || !this.statusVisible || this.statusFlight) return;
+    this.statusClock.clearTimeout(this.statusTimer);
+    const flight = new AbortController();
+    const generation = this.statusGeneration;
+    this.statusFlight = flight;
+    try {
+      const reply = await this.client.request(
+        { method: "analysis.status" },
+        undefined,
+        flight.signal,
+      );
+      if (
+        reply.method === "analysis.status" &&
+        generation === this.statusGeneration
+      )
+        this.publish({
+          recordingStatus: reply.status,
+          recordingStatusPending: false,
+        });
+    } catch {
+      // The first failure can be shown. Later failures keep the last good result.
+      if (
+        generation === this.statusGeneration &&
+        this.value.recordingStatus === undefined
+      )
+        this.publish({ recordingStatusPending: false });
+    } finally {
+      this.statusFlight = undefined;
+      if (this.active && this.statusVisible) {
+        this.statusTimer = this.statusClock.setTimeout(() => {
+          void this.readRecordingStatus();
+        }, recordingStatusIntervalMs);
+      }
+    }
   }
   visibleRow = (id: string, visible: boolean) => {
     if (visible) this.visible.add(id);
@@ -392,7 +446,9 @@ export class AnalysisController {
         .catch(() => undefined);
   }
   dispose = () => {
+    if (!this.active) return;
     this.active = false;
+    this.stopRecordingStatus();
     ++this.generation;
     const cancelled = this.interrupt();
     this.enqueue(async () => {

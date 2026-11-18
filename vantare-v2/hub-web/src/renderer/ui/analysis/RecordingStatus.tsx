@@ -79,9 +79,9 @@ export function RecordingStatus({
         : t[`${kind}Help`];
   const content = (
     <>
-      <div className="v-an-status-message" data-kind={kind} role="status">
+      <div className="v-an-status-message" data-kind={kind}>
         <Badge tone={tone} dot>
-          {t[kind]}
+          <span role="status">{t[kind]}</span>
         </Badge>
         <p>{help}</p>
         {compact && status && usage && (

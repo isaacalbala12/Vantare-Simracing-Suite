@@ -331,9 +331,10 @@ export class Client {
   request(
     request: Exclude<Request, { method: "window.close" }>,
     onSent?: () => void,
+    signal?: AbortSignal,
   ): Promise<Reply> {
     if (this.closing) return Promise.reject(new HostFailure({ kind: "busy" }));
-    return this.issue(request, onSent);
+    return this.issue(request, onSent, signal);
   }
   private issue(
     request: Exclude<Request, { method: "window.close" }>,

@@ -594,7 +594,7 @@ it("records each analysis deletion batch once and keeps a repeated batch read", 
   vi.spyOn(host, "useHost").mockReturnValue({
     client: client as unknown as Client,
   });
-  const { result } = renderHook(useNotifications, {
+  const { result, rerender } = renderHook(useNotifications, {
     wrapper: NotificationsProvider,
   });
   function reply(id: number, atMs: number) {
@@ -637,9 +637,12 @@ it("records each analysis deletion batch once and keeps a repeated batch read", 
   expect(result.current.records).toMatchObject([
     { dedupeKey: "analysis.prune.100", unread: false },
   ]);
-  reply(3, 200);
+  act(() => result.current.clear());
+  rerender();
+  reply(3, 100);
+  expect(result.current.records).toEqual([]);
+  reply(4, 200);
   expect(result.current.records.map((record) => record.dedupeKey)).toEqual([
     "analysis.prune.200",
-    "analysis.prune.100",
   ]);
 });

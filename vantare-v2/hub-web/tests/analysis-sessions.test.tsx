@@ -334,7 +334,6 @@ it.each([
       <TooltipProvider>
         <Comparison
           state={state}
-          enabled
           updates={handler}
           clock={clock}
           timeZone={timeZone}

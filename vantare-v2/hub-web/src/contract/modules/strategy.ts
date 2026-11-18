@@ -1,6 +1,7 @@
 import {
   type StrategyFields,
   type StrategySolverFields,
+  strategyFields,
   strategyLimits,
   strategyMethods,
   strategyStates,
@@ -122,10 +123,15 @@ function timeline(value: unknown): boolean {
     )
   );
 }
+// Opaque and session-local; 0 is reserved as "none", which is spelled null.
+function computeId(value: unknown): boolean {
+  return integer(value) && value >= 1 && value <= 0xffffffff;
+}
 function result(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["certificate", "steps", "metrics", "timeline"]) &&
+    exact(value, ["certificate", "steps", "degraded", "metrics", "timeline"]) &&
+    typeof value.degraded === "boolean" &&
     (value.certificate === null ||
       oneOf(value.certificate, ["proven", "not_proven", "no_solution"])) &&
     record(value.steps) &&
@@ -137,19 +143,29 @@ function result(value: unknown): boolean {
   );
 }
 function plan(value: unknown): boolean {
-  if (!record(value) || !exact(value, ["state", "result", "error"]))
+  if (
+    !record(value) ||
+    !exact(value, ["state", "computeId", "result", "error", "errorField"])
+  )
     return false;
+  const noError = value.error === null && value.errorField === null;
   switch (value.state) {
     case "uncalculated":
-    case "calculating":
     case "pendingChanges":
-      return value.result === null && value.error === null;
+      return value.computeId === null && value.result === null && noError;
+    case "calculating":
+      return computeId(value.computeId) && value.result === null && noError;
     case "partial":
     case "calculated":
-      return result(value.result) && value.error === null;
+      return computeId(value.computeId) && result(value.result) && noError;
     case "error":
       return (
-        value.result === null && oneOf(value.error, ["invalidInput", "failed"])
+        computeId(value.computeId) &&
+        value.result === null &&
+        oneOf(value.error, ["invalidInput", "failed"]) &&
+        (value.errorField === null ||
+          (value.error === "invalidInput" &&
+            oneOf(value.errorField, strategyFields)))
       );
     default:
       return false;
@@ -278,6 +294,10 @@ export function isRequest(value: Record<string, unknown>): boolean {
         id(value.strategyId) &&
         revision(value.revision) &&
         form(value.form)
+      );
+    case "strategy.cancel":
+      return (
+        exact(value, ["method", "computeId"]) && computeId(value.computeId)
       );
     case "strategy.save":
     case "strategy.discard":

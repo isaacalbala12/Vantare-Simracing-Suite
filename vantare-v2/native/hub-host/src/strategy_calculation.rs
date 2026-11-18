@@ -13,7 +13,7 @@ use std::{
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 use vantare_strategy::{
-    application::{self, ManualEvent, SourceStatus},
+    application::{self, ManualEvent, ManualField, SourceStatus},
     document::Document,
     solver::{self, Input, OptimalityStatus, SolverOutcome},
 };
@@ -97,6 +97,58 @@ impl StrategyComputeForm {
     }
 }
 
+macro_rules! strategy_fields {
+    ($($variant:ident),+ $(,)?) => {
+        /// The closed set of form fields a calculation error can point at: the 13
+        /// `fields` and the 15 `inputs`, spelled exactly as on the wire.
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+        #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+        #[serde(rename_all = "camelCase")]
+        pub enum StrategyField { $($variant,)+ }
+
+        impl StrategyField {
+            pub const ALL: &'static [Self] = &[$(Self::$variant,)+];
+        }
+
+        impl From<ManualField> for StrategyField {
+            fn from(field: ManualField) -> Self {
+                match field { $(ManualField::$variant => Self::$variant,)+ }
+            }
+        }
+    };
+}
+
+strategy_fields!(
+    Name,
+    DurationMinutes,
+    FuelCapacityLiters,
+    PitTransitSeconds,
+    Track,
+    Class,
+    VariantName,
+    VariantNote,
+    VariantMode,
+    StartAt,
+    Team,
+    DriverName,
+    DriverInitials,
+    BasePaceSeconds,
+    FuelPerLapLiters,
+    RaceLaps,
+    VeCapacityPercent,
+    VePerLapPercent,
+    TyreLifeLaps,
+    DegradationSeconds,
+    RefuelRate,
+    VeRate,
+    TyreServiceSeconds,
+    FormationSeconds,
+    FuelStep,
+    VeStep,
+    ReserveLaps,
+    ServiceMode,
+);
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase")]
@@ -140,8 +192,13 @@ pub enum StrategyPitService {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct StrategyPlanView {
     pub state: StrategyPlanState,
+    /// Opaque, session-local id of the calculation this plan belongs to; `null`
+    /// while there is none. `strategy.cancel` must quote it.
+    pub compute_id: Option<u32>,
     pub result: Option<Box<StrategyCalculationView>>,
     pub error: Option<StrategyPlanError>,
+    /// The form field behind an `invalidInput` error; `null` when it is not one field.
+    pub error_field: Option<StrategyField>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -150,6 +207,8 @@ pub struct StrategyPlanView {
 pub struct StrategyCalculationView {
     pub certificate: Option<StrategyCertificate>,
     pub steps: StrategyServiceSteps,
+    /// `true` when a service step is coarser than the one requested in the form.
+    pub degraded: bool,
     pub metrics: Option<StrategyMetrics>,
     pub timeline: Option<StrategyTimeline>,
 }
@@ -219,16 +278,34 @@ pub struct StrategyPit {
 }
 
 pub const STRATEGY_PIT_LIMIT: usize = 16;
-type Work = Result<(Document, StrategyPlanView), StrategyPlanError>;
+/// The solver rounds service steps to 1e-6; anything above that is coarsening.
+const STEP_TOLERANCE: f64 = 1e-6;
+
+/// Why a calculation produced no plan, with the form field when one is to blame.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) struct Failure {
+    pub error: StrategyPlanError,
+    pub field: Option<StrategyField>,
+}
+
+impl From<StrategyPlanError> for Failure {
+    fn from(error: StrategyPlanError) -> Self {
+        Self { error, field: None }
+    }
+}
+
+type Work = Result<(Document, StrategyPlanView), Failure>;
 
 #[derive(Default)]
 pub(super) struct Calculation {
+    next_id: u32,
     generation: u64,
     worker: Option<Worker>,
     view: StrategyPlanView,
 }
 
 struct Worker {
+    id: u32,
     generation: u64,
     cancel: Arc<AtomicBool>,
     thread: JoinHandle<Work>,
@@ -241,6 +318,15 @@ impl Calculation {
 
     pub(super) fn view(&self) -> &StrategyPlanView {
         &self.view
+    }
+
+    /// Cancels only the calculation the caller names; any other id is stale and ignored.
+    pub(super) fn cancel(&mut self, compute_id: u32) {
+        if self.view.state == StrategyPlanState::Calculating
+            && self.view.compute_id == Some(compute_id)
+        {
+            self.invalidate(false);
+        }
     }
 
     pub(super) fn invalidate(&mut self, edited: bool) {
@@ -265,6 +351,8 @@ impl Calculation {
         if self.running() {
             return Err(HostError::Busy);
         }
+        self.next_id = self.next_id.checked_add(1).unwrap_or(1);
+        let id = self.next_id;
         let cancel = Arc::new(AtomicBool::new(false));
         let signal = cancel.clone();
         let thread = thread::Builder::new()
@@ -272,12 +360,14 @@ impl Calculation {
             .spawn(move || run(&signal))
             .map_err(|_| HostError::Io)?;
         self.worker = Some(Worker {
+            id,
             generation: self.generation,
             cancel,
             thread,
         });
         self.view = StrategyPlanView {
             state: StrategyPlanState::Calculating,
+            compute_id: Some(id),
             ..StrategyPlanView::default()
         };
         Ok(())
@@ -301,16 +391,21 @@ impl Calculation {
         if self.generation != worker.generation {
             return None;
         }
-        match result.unwrap_or(Err(StrategyPlanError::Failed)) {
+        match result.unwrap_or(Err(StrategyPlanError::Failed.into())) {
             Ok((document, view)) => {
-                self.view = view;
+                self.view = StrategyPlanView {
+                    compute_id: Some(worker.id),
+                    ..view
+                };
                 Some(document)
             }
-            Err(error) => {
+            Err(failure) => {
                 self.view = StrategyPlanView {
                     state: StrategyPlanState::Error,
+                    compute_id: Some(worker.id),
                     result: None,
-                    error: Some(error),
+                    error: Some(failure.error),
+                    error_field: failure.field,
                 };
                 None
             }
@@ -334,17 +429,49 @@ pub(super) fn run(
     manual: &ManualEvent,
     cancel: &AtomicBool,
 ) -> Work {
-    let invalid = |_| StrategyPlanError::InvalidInput;
+    let invalid = |_| Failure {
+        error: StrategyPlanError::InvalidInput,
+        field: invalid_field(manual),
+    };
     let input = manual
         .prepare(&mut document, event, variant)
         .map_err(invalid)?;
     let input = application::prepare_manual(input).map_err(invalid)?;
     super::validate_projection(&document, HostError::StrategyInvalidText)
-        .map_err(|_| StrategyPlanError::InvalidInput)?;
+        .map_err(|_| Failure::from(StrategyPlanError::InvalidInput))?;
     let outcome = application::calculate(&input, SourceStatus::Open, cancel)
         .map_err(|_| StrategyPlanError::Failed)?;
     let view = project(input.input(), &outcome, manual.driver_name.trim())?;
     Ok((document, view))
+}
+
+/// The first form field whose text is not a number or a whole number as required.
+/// Semantic limits (a zero pace, a tank smaller than a lap) involve no single
+/// field and report none.
+fn invalid_field(manual: &ManualEvent) -> Option<StrategyField> {
+    ManualField::ALL.iter().copied().find_map(|field| {
+        let text = manual[field].trim();
+        let bad = match field {
+            ManualField::RaceLaps | ManualField::DurationMinutes => text.parse::<u32>().is_err(),
+            ManualField::FuelCapacityLiters
+            | ManualField::PitTransitSeconds
+            | ManualField::BasePaceSeconds
+            | ManualField::FuelPerLapLiters
+            | ManualField::VeCapacityPercent
+            | ManualField::VePerLapPercent
+            | ManualField::TyreLifeLaps
+            | ManualField::DegradationSeconds
+            | ManualField::RefuelRate
+            | ManualField::VeRate
+            | ManualField::TyreServiceSeconds
+            | ManualField::FormationSeconds
+            | ManualField::FuelStep
+            | ManualField::VeStep
+            | ManualField::ReserveLaps => !text.parse::<f64>().is_ok_and(f64::is_finite),
+            _ => false,
+        };
+        bad.then(|| field.into())
+    })
 }
 
 fn number(value: f64) -> Result<Number, StrategyPlanError> {
@@ -373,6 +500,12 @@ fn project(
             .then(|| number(grid.ve_percent))
             .transpose()?,
     };
+    let coarser = |step: f64, requested: f64| {
+        let requested = if requested == 0.0 { 1.0 } else { requested };
+        step > 0.0 && step - requested > STEP_TOLERANCE
+    };
+    let degraded = coarser(grid.fuel_liters, input.discretization.fuel_liters)
+        || coarser(grid.ve_percent, input.discretization.ve_percent);
     let (metrics, timeline) = if result.feasible {
         (
             Some(metrics(input, result)?),
@@ -393,10 +526,13 @@ fn project(
         result: Some(Box::new(StrategyCalculationView {
             certificate,
             steps,
+            degraded,
             metrics,
             timeline,
         })),
+        compute_id: None, // the worker slot stamps its own id
         error: None,
+        error_field: None,
     })
 }
 

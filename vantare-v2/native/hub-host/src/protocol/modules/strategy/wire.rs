@@ -50,7 +50,10 @@ pub enum Request {
         form: Box<crate::strategy::StrategyComputeForm>,
     },
     #[serde(rename = "strategy.cancel")]
-    StrategyCancel {},
+    StrategyCancel {
+        #[serde(rename = "computeId")]
+        compute_id: u32,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -101,7 +104,7 @@ pub enum HostError {
     StrategyImportFailed,
     StrategyInvalidText,
     StrategyConflict {
-        current: crate::strategy::StrategyView,
+        current: Box<crate::strategy::StrategyView>,
     },
 }
 

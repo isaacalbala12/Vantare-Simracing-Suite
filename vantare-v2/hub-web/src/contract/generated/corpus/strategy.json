@@ -29,7 +29,9 @@
             }
           ],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -49,7 +51,9 @@
           "dirty": false,
           "events": [],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -69,7 +73,9 @@
           "dirty": false,
           "events": [],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -89,7 +95,9 @@
           "dirty": false,
           "events": [],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -109,7 +117,9 @@
           "dirty": false,
           "events": [],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -147,7 +157,9 @@
             }
           ],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -185,7 +197,9 @@
             }
           ],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -223,7 +237,9 @@
             }
           ],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -261,7 +277,9 @@
             }
           ],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -299,7 +317,9 @@
             }
           ],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -337,7 +357,9 @@
             }
           ],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -372,7 +394,9 @@
             }
           ],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -434,7 +458,9 @@
             }
           ],
           "plan": {
+            "computeId": 7,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "calculating"
           },
@@ -472,9 +498,12 @@
             }
           ],
           "plan": {
+            "computeId": 7,
             "error": null,
+            "errorField": null,
             "result": {
               "certificate": "proven",
+              "degraded": false,
               "metrics": {
                 "fuelReserveRealLaps": 10,
                 "fuelReserveRequiredLaps": 1,
@@ -550,9 +579,12 @@
             }
           ],
           "plan": {
+            "computeId": 7,
             "error": null,
+            "errorField": null,
             "result": {
               "certificate": null,
+              "degraded": true,
               "metrics": null,
               "steps": {
                 "fuelLiters": 1,
@@ -596,7 +628,49 @@
             }
           ],
           "plan": {
+            "computeId": 7,
             "error": "invalidInput",
+            "errorField": "raceLaps",
+            "result": null,
+            "state": "error"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "class": "GT3",
+              "drivers": 1,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "plan": {
+            "computeId": 8,
+            "error": "invalidInput",
+            "errorField": null,
             "result": null,
             "state": "error"
           },
@@ -634,7 +708,9 @@
             }
           ],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "pendingChanges"
           },
@@ -672,7 +748,9 @@
             }
           ],
           "plan": {
+            "computeId": null,
             "error": null,
+            "errorField": null,
             "result": null,
             "state": "uncalculated"
           },
@@ -805,6 +883,7 @@
       "id": 1,
       "kind": "request",
       "request": {
+        "computeId": 7,
         "method": "strategy.cancel"
       }
     },

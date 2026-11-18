@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import corpus from "../src/contract/generated/corpus/strategy.json";
-import { isRequest } from "../src/contract/modules/strategy";
+import { isReply, isRequest } from "../src/contract/modules/strategy";
 import { createMockHost } from "../src/mock/host";
 
 const compute = corpus.ui.find(
@@ -22,15 +22,22 @@ it("calculates through view and accepts cancellation without a late result", () 
   ).toBe(false);
   expect(send(compute)).toMatchObject({
     kind: "response",
-    result: { value: { plan: { state: "calculating" } } },
+    result: { value: { plan: { state: "calculating", computeId: 1 } } },
   });
   expect(send(compute)).toMatchObject({
     kind: "failure",
     error: { kind: "busy" },
   });
-  expect(send({ method: "strategy.cancel" })).toMatchObject({
+  // a stale id never cancels the running calculation
+  expect(send({ method: "strategy.cancel", computeId: 99 })).toMatchObject({
     kind: "response",
-    result: { value: { plan: { state: "uncalculated", result: null } } },
+    result: { value: { plan: { state: "calculating", computeId: 1 } } },
+  });
+  expect(send({ method: "strategy.cancel", computeId: 1 })).toMatchObject({
+    kind: "response",
+    result: {
+      value: { plan: { state: "uncalculated", computeId: null, result: null } },
+    },
   });
   expect(send({ method: "strategy.view" })).toMatchObject({
     kind: "response",
@@ -44,9 +51,73 @@ it("calculates through view and accepts cancellation without a late result", () 
         dirty: true,
         plan: {
           state: "calculated",
-          result: { steps: { fuelLiters: 1, vePercent: 1 } },
+          computeId: 2,
+          result: { degraded: false, steps: { fuelLiters: 1, vePercent: 1 } },
         },
       },
     },
   });
+});
+
+it("accepts only an opaque positive compute id in a cancel request", () => {
+  for (const computeId of [1, 7, 0xffffffff])
+    expect(isRequest({ method: "strategy.cancel", computeId })).toBe(true);
+  for (const computeId of [0, -1, 1.5, 0x100000000, "7", null, undefined])
+    expect(isRequest({ method: "strategy.cancel", computeId })).toBe(false);
+  expect(isRequest({ method: "strategy.cancel" })).toBe(false);
+  expect(isRequest({ method: "strategy.cancel", computeId: 1, x: 1 })).toBe(
+    false,
+  );
+});
+
+const views = corpus.host.filter(
+  (message) => message.result?.method === "strategy.view",
+);
+type Loose = {
+  value: {
+    plan: {
+      computeId: unknown;
+      error: unknown;
+      errorField: unknown;
+      result: { degraded?: unknown };
+    };
+  };
+};
+const planWith = (state: string, errorField?: unknown): Loose => {
+  const found = views.find((m) => m.result?.value.plan.state === state);
+  if (!found?.result) throw Error(`Missing ${state} sample`);
+  const reply = structuredClone(found.result) as unknown as Loose;
+  if (errorField !== undefined) reply.value.plan.errorField = errorField;
+  return reply;
+};
+
+it("keeps compute ids, the degraded flag and the error field closed", () => {
+  expect(isReply(planWith("calculated"))).toBe(true);
+  expect(isReply(planWith("partial"))).toBe(true);
+  // the error sample names raceLaps; null means no single field is to blame
+  expect(isReply(planWith("error"))).toBe(true);
+  expect(isReply(planWith("error", null))).toBe(true);
+  expect(isReply(planWith("error", "raceLaps"))).toBe(true);
+  for (const bad of ["path", "RaceLaps", "", 3, ["raceLaps"]])
+    expect(isReply(planWith("error", bad))).toBe(false);
+
+  const withoutId = planWith("calculated");
+  withoutId.value.plan.computeId = null;
+  expect(isReply(withoutId)).toBe(false);
+  const zero = planWith("calculated");
+  zero.value.plan.computeId = 0;
+  expect(isReply(zero)).toBe(false);
+  const flag = planWith("calculated");
+  flag.value.plan.result.degraded = "no";
+  expect(isReply(flag)).toBe(false);
+  const missing = planWith("calculated");
+  delete missing.value.plan.result.degraded;
+  expect(isReply(missing)).toBe(false);
+  // a field is only attributed to an invalid-input error
+  const stray = planWith("calculated");
+  stray.value.plan.errorField = "raceLaps";
+  expect(isReply(stray)).toBe(false);
+  const failed = planWith("error");
+  failed.value.plan.error = "failed";
+  expect(isReply(failed)).toBe(false);
 });

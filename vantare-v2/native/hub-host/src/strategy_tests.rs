@@ -194,7 +194,7 @@ fn two_hubs_compare_observed_bytes_and_only_explicit_retry_changes_the_winner() 
     assert_eq!(
         conflict,
         HostError::StrategyConflict {
-            current: winner.clone()
+            current: Box::new(winner.clone())
         }
     );
     assert_eq!(fs::read(root.primary()).unwrap(), bytes);
@@ -354,7 +354,7 @@ fn first_save_conflict_keeps_both_the_winner_and_the_losing_draft() {
     assert_eq!(
         b.save(&b_draft.revision),
         Err(HostError::StrategyConflict {
-            current: winner.clone()
+            current: Box::new(winner.clone())
         })
     );
     assert_eq!(b.view(), b_draft);
@@ -683,4 +683,44 @@ fn a_switching_account_cancels_compute_and_keeps_its_prepared_document_private()
     assert!(state.calculation.finish().is_none());
     assert_eq!(state.open().unwrap(), opened);
     assert_eq!(fs::read(root.primary()).unwrap(), original);
+}
+
+#[test]
+fn a_licence_refresh_on_the_same_account_keeps_the_draft_and_the_running_calculation() {
+    use std::sync::{atomic::Ordering, mpsc};
+
+    let root = Root::new();
+    let mut state = root.state();
+    fs::write(root.primary(), document("2.1.0")).unwrap();
+    assert!(state.observe(Some("account-a"), true));
+    let saved = state.open().unwrap();
+    let draft = state
+        .create(&saved.revision, &fields("Unsaved"), None, None, NOW)
+        .unwrap();
+    let (ready, started) = mpsc::sync_channel(1);
+    let (release, wait) = mpsc::sync_channel(1);
+    state
+        .calculation
+        .start(move |cancel| {
+            ready.send(()).unwrap();
+            wait.recv().unwrap();
+            assert!(!cancel.load(Ordering::Relaxed), "the refresh cancelled it");
+            Ok((Document::empty(NOW).unwrap(), StrategyPlanView::default()))
+        })
+        .unwrap();
+    started.recv().unwrap();
+    let running = state.view_opened().unwrap();
+
+    // access and identity are re-read around a refresh; each intermediate value
+    // withholds service without discarding anything
+    assert!(!state.observe(Some("account-a"), false));
+    assert!(!state.observe(None, true));
+    assert!(!state.observe(None, false));
+    assert!(state.observe(Some("account-a"), true));
+    assert_eq!(state.view_opened().unwrap(), running);
+    assert!(state.view_opened().unwrap().dirty);
+    assert_eq!(state.view_opened().unwrap().revision, draft.revision);
+
+    release.send(()).unwrap();
+    assert!(state.calculation.finish().is_some());
 }

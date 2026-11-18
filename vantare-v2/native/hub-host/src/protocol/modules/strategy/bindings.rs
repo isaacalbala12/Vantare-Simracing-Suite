@@ -2,8 +2,8 @@ use crate::protocol::bindings::{declare, sample_response};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 use crate::strategy::{
     ID_LIMIT, STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate,
-    StrategyComputeForm, StrategyEventSummary, StrategyFields, StrategyMetrics, StrategyPit,
-    StrategyPitService, StrategyPlanError, StrategyPlanState, StrategyPlanView,
+    StrategyComputeForm, StrategyEventSummary, StrategyField, StrategyFields, StrategyMetrics,
+    StrategyPit, StrategyPitService, StrategyPlanError, StrategyPlanState, StrategyPlanView,
     StrategyServiceSteps, StrategySolverFields, StrategyState, StrategyStint, StrategyTimeline,
     StrategyVariant, StrategyView, TEXT_LIMIT,
 };
@@ -21,6 +21,7 @@ pub(crate) fn typescript() -> String {
     declare::<StrategyPlanView>(&mut text);
     declare::<StrategyPlanState>(&mut text);
     declare::<StrategyPlanError>(&mut text);
+    declare::<StrategyField>(&mut text);
     declare::<StrategyCalculationView>(&mut text);
     declare::<StrategyCertificate>(&mut text);
     declare::<StrategyServiceSteps>(&mut text);
@@ -34,6 +35,7 @@ pub(crate) fn typescript() -> String {
         "strategyLimits",
         json!({"id":ID_LIMIT,"text":TEXT_LIMIT,"pits":STRATEGY_PIT_LIMIT})
     );
+    crate::protocol::bindings::constants!(&mut text, "strategyFields", StrategyField::ALL);
     crate::protocol::bindings::constants!(
         &mut text,
         "strategyStates",
@@ -75,6 +77,7 @@ fn ready_sample() -> StrategyView {
     }
 }
 
+#[allow(clippy::too_many_lines)] // One flat list of wire samples.
 pub(crate) fn corpus() -> serde_json::Value {
     let ready = ready_sample();
     let mut empty = StrategyView {
@@ -127,7 +130,9 @@ pub(crate) fn corpus() -> serde_json::Value {
     ]);
     host.extend(
         [
-            HostError::StrategyConflict { current: ready },
+            HostError::StrategyConflict {
+                current: Box::new(ready),
+            },
             HostError::StrategyDirty,
             HostError::StrategyImportFailed,
             HostError::StrategyInvalidText,
@@ -165,7 +170,7 @@ pub(crate) fn corpus() -> serde_json::Value {
                 inputs: solver_sample(),
             }),
         },
-        Request::StrategyCancel {},
+        Request::StrategyCancel { compute_id: 7 },
         Request::StrategySave {
             revision: "b".repeat(64),
         },
@@ -213,13 +218,15 @@ fn solver_sample() -> StrategySolverFields {
     }
 }
 
-fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 6] {
+#[allow(clippy::too_many_lines)] // One flat list of wire samples.
+fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
     let completed = StrategyCalculationView {
         certificate: Some(StrategyCertificate::Proven),
         steps: StrategyServiceSteps {
             fuel_liters: Some(1.into()),
             ve_percent: Some(1.into()),
         },
+        degraded: false,
         metrics: Some(StrategyMetrics {
             total_seconds: 301.into(),
             laps: 3,
@@ -261,33 +268,50 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 6] {
         sample_response(Reply::StrategyCompute {
             value: with_plan(StrategyPlanView {
                 state: StrategyPlanState::Calculating,
+                compute_id: Some(7),
                 ..StrategyPlanView::default()
             }),
         }),
         sample_response(Reply::StrategyView {
             value: with_plan(StrategyPlanView {
                 state: StrategyPlanState::Calculated,
+                compute_id: Some(7),
                 result: Some(Box::new(completed.clone())),
                 error: None,
+                error_field: None,
             }),
         }),
         sample_response(Reply::StrategyView {
             value: with_plan(StrategyPlanView {
                 state: StrategyPlanState::Partial,
+                compute_id: Some(7),
                 result: Some(Box::new(StrategyCalculationView {
                     certificate: None,
+                    degraded: true,
                     metrics: None,
                     timeline: None,
                     ..completed
                 })),
                 error: None,
+                error_field: None,
             }),
         }),
         sample_response(Reply::StrategyView {
             value: with_plan(StrategyPlanView {
                 state: StrategyPlanState::Error,
+                compute_id: Some(7),
                 result: None,
                 error: Some(StrategyPlanError::InvalidInput),
+                error_field: Some(StrategyField::RaceLaps),
+            }),
+        }),
+        sample_response(Reply::StrategyView {
+            value: with_plan(StrategyPlanView {
+                state: StrategyPlanState::Error,
+                compute_id: Some(8),
+                result: None,
+                error: Some(StrategyPlanError::InvalidInput),
+                error_field: None,
             }),
         }),
         sample_response(Reply::StrategyConfirm {

@@ -19,8 +19,10 @@ function sample(state: string): StrategyView {
 
 const noPlan: StrategyPlanView = {
   state: "uncalculated",
+  computeId: null,
   result: null,
   error: null,
+  errorField: null,
 };
 
 function calculation(state: "calculated" | "error"): StrategyPlanView {
@@ -74,7 +76,10 @@ export function create(context: MockContext): MockHandler {
   let current = structuredClone(saved);
   let opened = false;
   let sequence = 0;
-  let pending: { fields: StrategyFields; valid: boolean } | undefined;
+  let computeId = 0;
+  let pending:
+    | { id: number; fields: StrategyFields; valid: boolean }
+    | undefined;
   let generation = context.core.accountGeneration;
 
   function edit(changes: Partial<StrategyView>) {
@@ -157,18 +162,23 @@ export function create(context: MockContext): MockHandler {
         return failure({ kind: "rejected" });
       const { fields, inputs } = request.form;
       pending = {
+        id: ++computeId,
         fields,
         valid:
           validForm(fields, false) &&
           validNumber(inputs.basePaceSeconds, Number.MIN_VALUE) &&
           validNumber(inputs.fuelPerLapLiters, Number.MIN_VALUE),
       };
-      current.plan = { ...noPlan, state: "calculating" };
-    } else if (request.method === "strategy.cancel" && pending) {
+      current.plan = { ...noPlan, state: "calculating", computeId: pending.id };
+    } else if (
+      request.method === "strategy.cancel" &&
+      pending?.id === request.computeId
+    ) {
+      // a stale id (another or a finished calculation) changes nothing
       pending = undefined;
       current.plan = noPlan;
     } else if (request.method === "strategy.view" && pending) {
-      const { valid, fields } = pending;
+      const { id, valid, fields } = pending;
       pending = undefined;
       if (valid) {
         const events = current.events.map((event) =>
@@ -188,7 +198,10 @@ export function create(context: MockContext): MockHandler {
         );
         edit({ events });
       }
-      current.plan = calculation(valid ? "calculated" : "error");
+      current.plan = {
+        ...calculation(valid ? "calculated" : "error"),
+        computeId: id,
+      };
     }
     if (request.method === "strategy.create") {
       const { fields } = request;

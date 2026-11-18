@@ -16,8 +16,9 @@ mod calculation;
 use calculation::Calculation;
 pub use calculation::{
     STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyComputeForm,
-    StrategyMetrics, StrategyPit, StrategyPitService, StrategyPlanError, StrategyPlanState,
-    StrategyPlanView, StrategyServiceSteps, StrategySolverFields, StrategyStint, StrategyTimeline,
+    StrategyField, StrategyMetrics, StrategyPit, StrategyPitService, StrategyPlanError,
+    StrategyPlanState, StrategyPlanView, StrategyServiceSteps, StrategySolverFields, StrategyStint,
+    StrategyTimeline,
 };
 
 const PRIMARY: &str = "strategy-v2.json";
@@ -160,16 +161,30 @@ impl State {
             calculation: Calculation::default(),
         }
     }
-    pub(crate) fn observe(&mut self, generation: Option<&str>, allowed: bool) {
-        if !allowed || self.generation.as_deref() != generation {
-            self.calculation.invalidate(false);
-            self.doc = None;
-            self.observed = None;
-            self.opened = false;
-            self.status = StrategyState::Empty;
-            self.revision = hash(b"");
+    /// Follows the account and access of the session; returns whether requests may
+    /// be served. Losing access, or the observation of a known account, only
+    /// suspends: a refresh that settles on the same account and access finds the
+    /// dirty draft and the running calculation intact. Only a different account
+    /// discards them.
+    pub(crate) fn observe(&mut self, generation: Option<&str>, allowed: bool) -> bool {
+        if !allowed || (generation.is_none() && self.generation.is_some()) {
+            return false;
+        }
+        if self.generation.as_deref() != generation {
+            self.retire();
             self.generation = generation.map(str::to_owned);
         }
+        true
+    }
+    /// Drops the draft and cancels the calculation: the session is closing or the
+    /// account really changed.
+    pub(crate) fn retire(&mut self) {
+        self.calculation.invalidate(false);
+        self.doc = None;
+        self.observed = None;
+        self.opened = false;
+        self.status = StrategyState::Empty;
+        self.revision = hash(b"");
     }
     pub(crate) fn open(&mut self) -> Result<StrategyView, HostError> {
         let path = self.root.join(PRIMARY);
@@ -422,11 +437,18 @@ impl State {
         Ok(self.view())
     }
 
-    pub(crate) fn cancel_calculation(&mut self) -> Result<StrategyView, HostError> {
+    /// Cancels the calculation `compute_id` names. A stale id (the calculation
+    /// already ended or a newer one runs) changes nothing and answers with the
+    /// current view, so a late cancel can never stop a newer calculation.
+    pub(crate) fn cancel_calculation(
+        &mut self,
+        compute_id: u32,
+    ) -> Result<StrategyView, HostError> {
         self.require_open()?;
-        if self.calculation.view().state == StrategyPlanState::Calculating {
-            self.calculation.invalidate(false);
+        if compute_id == 0 {
+            return Err(HostError::Rejected);
         }
+        self.calculation.cancel(compute_id);
         Ok(self.view())
     }
 
@@ -495,7 +517,7 @@ impl State {
 
     fn conflict(&self) -> HostError {
         HostError::StrategyConflict {
-            current: self.view(),
+            current: Box::new(self.view()),
         }
     }
 

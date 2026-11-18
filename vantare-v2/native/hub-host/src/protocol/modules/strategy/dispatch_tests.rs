@@ -435,12 +435,14 @@ fn bounded_strategy_timeline_fits_even_with_a_full_document_view() {
     let amount = Number::from_f64(f64::MAX).unwrap();
     value.plan = StrategyPlanView {
         state: StrategyPlanState::Calculated,
+        compute_id: Some(u32::MAX),
         result: Some(Box::new(StrategyCalculationView {
             certificate: Some(StrategyCertificate::Proven),
             steps: StrategyServiceSteps {
                 fuel_liters: Some(amount.clone()),
                 ve_percent: Some(amount.clone()),
             },
+            degraded: true,
             metrics: Some(StrategyMetrics {
                 total_seconds: amount.clone(),
                 laps: u32::MAX,
@@ -475,6 +477,7 @@ fn bounded_strategy_timeline_fits_even_with_a_full_document_view() {
             }),
         })),
         error: None,
+        error_field: None,
     };
     let mut pipe = Pipe::new(Vec::new());
     let message = HostToUi::Response {
@@ -483,4 +486,380 @@ fn bounded_strategy_timeline_fits_even_with_a_full_document_view() {
     };
     frame::write(&mut pipe, &message).unwrap();
     assert!(pipe.into_inner().len() <= frame::LIMIT);
+}
+
+fn confirm_fields(name: &str) -> crate::strategy::StrategyFields {
+    crate::strategy::StrategyFields {
+        name: name.into(),
+        duration_minutes: "90".into(),
+        fuel_capacity_liters: "82".into(),
+        pit_transit_seconds: "25".into(),
+        track: "Fuji".into(),
+        class: "GT3".into(),
+        variant_name: "Base".into(),
+        variant_mode: "dry".into(),
+        ..Default::default()
+    }
+}
+
+/// A short, fuel-only race: the solver proves it within milliseconds.
+fn solver_fields() -> crate::strategy::StrategySolverFields {
+    crate::strategy::StrategySolverFields {
+        base_pace_seconds: "90.5".into(),
+        fuel_per_lap_liters: "1.83".into(),
+        race_laps: "10".into(),
+        ve_capacity_percent: "0".into(),
+        ve_per_lap_percent: "0".into(),
+        tyre_life_laps: "30".into(),
+        degradation_seconds: "0".into(),
+        refuel_rate: "4".into(),
+        ve_rate: "2.5".into(),
+        tyre_service_seconds: "30".into(),
+        formation_seconds: "0".into(),
+        fuel_step: "1".into(),
+        ve_step: "1".into(),
+        reserve_laps: "0".into(),
+        service_mode: "parallel".into(),
+    }
+}
+
+fn compute_with(
+    draft: &crate::strategy::StrategyView,
+    inputs: crate::strategy::StrategySolverFields,
+) -> Request {
+    Request::StrategyCompute {
+        event_id: draft.active_event_id.clone().unwrap(),
+        strategy_id: draft.active_strategy_id.clone().unwrap(),
+        revision: draft.revision.clone(),
+        form: Box::new(crate::strategy::StrategyComputeForm {
+            fields: confirm_fields("Original"),
+            inputs,
+        }),
+    }
+}
+
+fn saved_strategy(session: &mut Session) -> crate::strategy::StrategyView {
+    let empty = open_strategy(session);
+    let draft = create_strategy(session, &empty.revision, "Original");
+    let HostToUi::Response {
+        result: Reply::StrategySave { value },
+        ..
+    } = request(
+        session,
+        &Request::StrategySave {
+            revision: draft.revision,
+        },
+    )
+    else {
+        panic!("save Strategy draft");
+    };
+    assert!(!value.dirty);
+    value
+}
+
+fn view_strategy(session: &mut Session) -> crate::strategy::StrategyView {
+    let HostToUi::Response {
+        result: Reply::StrategyView { value },
+        ..
+    } = request(session, &Request::StrategyView {})
+    else {
+        panic!("view Strategy");
+    };
+    value
+}
+
+fn compute_strategy(
+    session: &mut Session,
+    saved: &crate::strategy::StrategyView,
+) -> crate::strategy::StrategyView {
+    let HostToUi::Response {
+        result: Reply::StrategyCompute { value },
+        ..
+    } = request(session, &compute_with(saved, solver_fields()))
+    else {
+        panic!("compute Strategy");
+    };
+    value
+}
+
+fn cancel(session: &mut Session, compute_id: u32) -> crate::strategy::StrategyView {
+    let HostToUi::Response {
+        result: Reply::StrategyCancel { value },
+        ..
+    } = request(session, &Request::StrategyCancel { compute_id })
+    else {
+        panic!("cancel Strategy calculation");
+    };
+    value
+}
+
+/// A worker that blocks until released; the receiver reports its cancel flag.
+struct Held {
+    release: std::sync::mpsc::SyncSender<()>,
+    observed: std::sync::mpsc::Receiver<bool>,
+}
+
+fn hold(session: &mut Session) -> Held {
+    use std::sync::{atomic::Ordering, mpsc};
+    use vantare_strategy::document::Document;
+    let (ready, started) = mpsc::sync_channel(1);
+    let (release, wait) = mpsc::sync_channel(1);
+    let (cancelled, observed) = mpsc::sync_channel(1);
+    session.strategy.test_start_calculation(move |cancel| {
+        ready.send(()).unwrap();
+        wait.recv().unwrap();
+        cancelled.send(cancel.load(Ordering::Relaxed)).unwrap();
+        Document::empty("2026-11-18T00:00:00Z").unwrap()
+    });
+    started.recv().unwrap();
+    Held { release, observed }
+}
+
+#[test]
+fn a_real_calculation_returns_its_id_applies_its_draft_and_only_save_writes_the_file() {
+    use crate::strategy::StrategyPlanState;
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let saved = saved_strategy(&mut session);
+    let path = fixture.0.join("hub/strategy-v2.json");
+    let before = std::fs::read(&path).unwrap();
+
+    let started = compute_strategy(&mut session, &saved);
+    assert_eq!(started.plan.state, StrategyPlanState::Calculating);
+    let id = started
+        .plan
+        .compute_id
+        .expect("the compute reply carries the id");
+    assert!(!started.dirty);
+    session.strategy.test_join_calculation();
+    assert_eq!(
+        std::fs::read(&path).unwrap(),
+        before,
+        "compute never writes"
+    );
+
+    let calculated = view_strategy(&mut session);
+    assert_eq!(calculated.plan.state, StrategyPlanState::Calculated);
+    assert_eq!(calculated.plan.compute_id, Some(id));
+    assert!(calculated.dirty);
+    assert_ne!(calculated.revision, saved.revision);
+    let result = calculated.plan.result.as_ref().unwrap();
+    assert!(!result.degraded);
+    assert_eq!(result.metrics.as_ref().unwrap().laps, 10);
+    assert!(result.timeline.is_some());
+
+    let HostToUi::Response {
+        result: Reply::StrategySave { value },
+        ..
+    } = request(
+        &mut session,
+        &Request::StrategySave {
+            revision: calculated.revision.clone(),
+        },
+    )
+    else {
+        panic!("save calculated draft");
+    };
+    assert!(!value.dirty);
+    let written = std::fs::read(&path).unwrap();
+    assert_ne!(written, before);
+    assert!(
+        String::from_utf8(written)
+            .unwrap()
+            .contains("nativeScalarInput")
+    );
+}
+
+#[test]
+fn compute_is_busy_while_a_calculation_runs_and_cancel_retires_it() {
+    use crate::strategy::StrategyPlanState;
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let saved = saved_strategy(&mut session);
+    let held = hold(&mut session);
+    let running = view_strategy(&mut session);
+    let id = running.plan.compute_id.unwrap();
+    assert_eq!(
+        request(&mut session, &compute_with(&saved, solver_fields())),
+        HostToUi::Failure {
+            id: 9,
+            error: HostError::Busy
+        }
+    );
+    let cancelled = cancel(&mut session, id);
+    assert_eq!(cancelled.plan.state, StrategyPlanState::Uncalculated);
+    assert_eq!(cancelled.plan.compute_id, None);
+    held.release.send(()).unwrap();
+    assert!(held.observed.recv().unwrap());
+    session.strategy.test_join_calculation();
+    let after = view_strategy(&mut session);
+    assert_eq!(after.revision, saved.revision, "late result is discarded");
+    assert_eq!(after.plan.state, StrategyPlanState::Uncalculated);
+}
+
+#[test]
+fn a_late_cancel_of_calculation_a_does_not_stop_the_newer_calculation_b() {
+    use crate::strategy::StrategyPlanState;
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let saved = saved_strategy(&mut session);
+    let held = hold(&mut session);
+    let a = view_strategy(&mut session).plan.compute_id.unwrap();
+    assert_eq!(
+        cancel(&mut session, a).plan.state,
+        StrategyPlanState::Uncalculated
+    );
+    held.release.send(()).unwrap();
+    assert!(held.observed.recv().unwrap());
+    session.strategy.test_join_calculation();
+
+    let b = compute_strategy(&mut session, &saved)
+        .plan
+        .compute_id
+        .unwrap();
+    assert_ne!(a, b, "every calculation has its own id");
+    let late = cancel(&mut session, a);
+    assert_eq!(late.plan.compute_id, Some(b));
+    assert_ne!(late.plan.state, StrategyPlanState::Uncalculated);
+    session.strategy.test_join_calculation();
+    let done = view_strategy(&mut session);
+    assert_eq!(done.plan.state, StrategyPlanState::Calculated);
+    assert_eq!(done.plan.compute_id, Some(b));
+    assert!(done.dirty, "B finished and its draft was applied");
+    // Cancelling a finished calculation, or the reserved id 0, never changes it.
+    assert_eq!(cancel(&mut session, b), done);
+    assert_eq!(
+        request(&mut session, &Request::StrategyCancel { compute_id: 0 }),
+        HostToUi::Failure {
+            id: 9,
+            error: HostError::Rejected
+        }
+    );
+}
+
+#[test]
+fn confirming_during_a_calculation_discards_its_late_document() {
+    use crate::strategy::StrategyPlanState;
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let saved = saved_strategy(&mut session);
+    let held = hold(&mut session);
+    let HostToUi::Response {
+        result: Reply::StrategyConfirm { value: confirmed },
+        ..
+    } = request(
+        &mut session,
+        &Request::StrategyConfirm {
+            event_id: saved.active_event_id.clone().unwrap(),
+            strategy_id: saved.active_strategy_id.clone().unwrap(),
+            revision: saved.revision.clone(),
+            fields: Box::new(confirm_fields("Changed")),
+        },
+    )
+    else {
+        panic!("confirm during calculation");
+    };
+    assert!(confirmed.dirty);
+    assert_ne!(confirmed.revision, saved.revision);
+    held.release.send(()).unwrap();
+    session.strategy.test_join_calculation();
+    let after = view_strategy(&mut session);
+    assert_eq!(after.revision, confirmed.revision);
+    assert_eq!(after.events, confirmed.events);
+    assert_ne!(after.plan.state, StrategyPlanState::Calculated);
+}
+
+#[test]
+fn a_licence_refresh_on_the_same_account_keeps_the_dirty_draft_and_the_calculation() {
+    use crate::strategy::StrategyPlanState;
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    session.current.account_generation = Some("a".repeat(64));
+    let saved = saved_strategy(&mut session);
+    let draft = {
+        let HostToUi::Response {
+            result: Reply::StrategyConfirm { value },
+            ..
+        } = request(
+            &mut session,
+            &Request::StrategyConfirm {
+                event_id: saved.active_event_id.clone().unwrap(),
+                strategy_id: saved.active_strategy_id.clone().unwrap(),
+                revision: saved.revision.clone(),
+                fields: Box::new(confirm_fields("Dirty")),
+            },
+        )
+        else {
+            panic!("dirty draft");
+        };
+        assert!(value.dirty);
+        value
+    };
+    let held = hold(&mut session);
+    let running = view_strategy(&mut session);
+    let id = running.plan.compute_id.unwrap();
+
+    // The refresh re-reads access and identity: each intermediate value denies
+    // requests but must not throw the work away.
+    let denied = HostToUi::Failure {
+        id: 9,
+        error: HostError::Denied,
+    };
+    session.current.access.blocked = true;
+    assert_eq!(request(&mut session, &Request::StrategyView {}), denied);
+    session.current.access.blocked = false;
+    session.current.account_generation = None;
+    assert_eq!(request(&mut session, &Request::StrategyView {}), denied);
+    session.current.access.verified = false;
+    assert_eq!(request(&mut session, &Request::StrategyView {}), denied);
+    session.current.access.verified = true;
+    session.current.account_generation = Some("a".repeat(64));
+
+    let back = view_strategy(&mut session);
+    assert_eq!(back.revision, draft.revision);
+    assert!(back.dirty);
+    assert_eq!(back.plan.state, StrategyPlanState::Calculating);
+    assert_eq!(back.plan.compute_id, Some(id));
+    held.release.send(()).unwrap();
+    assert!(
+        !held.observed.recv().unwrap(),
+        "the calculation was never cancelled"
+    );
+
+    // A different account does discard both.
+    session.current.account_generation = Some("b".repeat(64));
+    assert_eq!(request(&mut session, &Request::StrategyView {}), denied);
+    session.current.account_generation = Some("a".repeat(64));
+    assert_eq!(request(&mut session, &Request::StrategyView {}), denied);
+}
+
+#[test]
+fn invalid_input_names_its_field_only_when_one_field_is_to_blame() {
+    use crate::strategy::{StrategyField, StrategyPlanError, StrategyPlanState};
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let saved = saved_strategy(&mut session);
+    let mut bad_number = solver_fields();
+    bad_number.race_laps = "diez".into();
+    let mut semantic = solver_fields();
+    semantic.base_pace_seconds = "0".into();
+    for (inputs, field) in [
+        (bad_number, Some(StrategyField::RaceLaps)),
+        (semantic, None),
+    ] {
+        assert!(matches!(
+            request(&mut session, &compute_with(&saved, inputs)),
+            HostToUi::Response {
+                result: Reply::StrategyCompute { .. },
+                ..
+            }
+        ));
+        session.strategy.test_join_calculation();
+        let view = view_strategy(&mut session);
+        assert_eq!(view.plan.state, StrategyPlanState::Error);
+        assert_eq!(view.plan.error, Some(StrategyPlanError::InvalidInput));
+        assert_eq!(view.plan.error_field, field);
+        assert!(view.plan.compute_id.is_some());
+        assert_eq!(view.revision, saved.revision);
+    }
 }

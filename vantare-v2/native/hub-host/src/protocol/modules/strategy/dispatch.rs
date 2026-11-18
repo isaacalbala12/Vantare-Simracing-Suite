@@ -12,7 +12,7 @@ pub(super) fn dispatch(
 ) -> io::Result<()> {
     let allowed = allowed(session);
     let strategy = &mut session.strategy;
-    strategy.observe(session.current.account_generation.as_deref(), allowed);
+    let allowed = strategy.observe(session.current.account_generation.as_deref(), allowed);
     strategy.poll_calculation();
     let result = if allowed {
         match request {
@@ -63,8 +63,8 @@ pub(super) fn dispatch(
             } => strategy
                 .compute(event_id, strategy_id, revision, form)
                 .map(|value| Reply::StrategyCompute { value }),
-            Request::StrategyCancel {} => strategy
-                .cancel_calculation()
+            Request::StrategyCancel { compute_id } => strategy
+                .cancel_calculation(*compute_id)
                 .map(|value| Reply::StrategyCancel { value }),
             _ => Err(HostError::Rejected),
         }

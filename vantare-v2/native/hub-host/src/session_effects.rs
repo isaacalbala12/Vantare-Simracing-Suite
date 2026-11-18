@@ -128,7 +128,7 @@ impl Session {
         }
         self.cancel_pending(pipe)?;
         self.closing = Some((reason, now));
-        self.strategy.observe(None, false);
+        self.strategy.retire();
         super::calendar::launch_closing(self, pipe)?;
         frame::write(pipe, &HostToUi::CloseRequested { reason })
     }

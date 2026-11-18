@@ -240,10 +240,7 @@ async function show(page: Page, shot: string) {
     );
     assert.equal(await caption.getAttribute("data-empty"), "true");
     assert.equal(await caption.textContent(), "");
-    assert.equal(
-      await announced.textContent(),
-      "Fotograma 1 de 1 listo.",
-    );
+    assert.equal(await announced.textContent(), "Fotograma 1 de 1 listo.");
     return;
   }
   await message(

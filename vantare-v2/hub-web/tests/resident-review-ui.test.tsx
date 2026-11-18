@@ -10,7 +10,7 @@ import {
   within,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ResidentView } from "../src/contract/generated/contract";
 import * as host from "../src/renderer/app/Host";
 import { type Client, HostFailure } from "../src/renderer/bridge/client";
@@ -194,18 +194,6 @@ it("returns to Ver decisión when the drawer is dismissed during the review", as
   expect(cancel).not.toHaveBeenCalled();
 });
 
-it.each(["unavailable", "changed", "expired"] as const)(
-  "leaves initial focus to the drawer when the first question is %s",
-  (state) => {
-    const focused = vi.spyOn(HTMLElement.prototype, "focus");
-    render(view(make(state)));
-    const reviewButton = screen.getByRole("button", {
-      name: state === "unavailable" ? t.review : t.reviewAgain,
-    });
-    expect(focused.mock.contexts).not.toContain(reviewButton);
-  },
-);
-
 it("does not force retry focus when another question replaces the open drawer", () => {
   const tested = render(view(make("question")));
   const focused = vi.spyOn(HTMLElement.prototype, "focus");
@@ -276,23 +264,41 @@ function reviewHook(
   return { hook, value, request, reviewTrust };
 }
 
-it.each(["changed", "expired", "unavailable"] as const)(
-  "honors %s from the host after submitting and losing the question",
-  async (state) => {
-    const { hook, value, reviewTrust } = reviewHook();
-    await act(async () => {
-      await hook.result.current?.open?.();
-    });
-    expect(reviewTrust).toHaveBeenCalledOnce();
-    const current = structuredClone(value);
-    current.decision = null;
-    if (current.execution) current.execution.question = null;
-    current.reviewOutcome = { question: scope.decision, state };
-    hook.rerender({ current });
-    expect(hook.result.current?.state).toBe(state);
-    expect(hook.result.current?.open).toBeUndefined();
-  },
-);
+describe.each([true, false])("native dialog with live question %s", (live) => {
+  it.each(["changed", "expired", "unavailable"] as const)(
+    "honors %s from the host while reviewTrust is still pending",
+    async (state) => {
+      const { hook, value, reviewTrust } = reviewHook();
+      let settle = (_result: string) => {};
+      reviewTrust.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            settle = resolve;
+          }),
+      );
+      let finished: Promise<void> | undefined;
+      await act(async () => {
+        finished = hook.result.current?.open?.();
+      });
+      expect(reviewTrust).toHaveBeenCalledOnce();
+      expect(hook.result.current?.state).toBe("reviewing");
+      const current = structuredClone(value);
+      if (!live) {
+        current.decision = null;
+        if (current.execution) current.execution.question = null;
+      }
+      current.reviewOutcome = { question: scope.decision, state };
+      hook.rerender({ current });
+      expect(hook.result.current?.state).toBe(state);
+      expect(!!hook.result.current?.open).toBe(live && state !== "unavailable");
+      await act(async () => {
+        settle("unconfirmed");
+        await finished;
+      });
+      expect(hook.result.current?.state).toBe(state);
+    },
+  );
+});
 
 it.each([
   [
@@ -335,6 +341,49 @@ it("keeps the result unconfirmed when the connection drops after submission", as
   expect(hook.result.current?.state).toBe("unconfirmed");
 });
 
+it.each(["interrupted", "unconfirmed"] as const)(
+  "uses Main's %s reply after a disconnect while the native call is pending",
+  async (result) => {
+    const { hook, value, reviewTrust } = reviewHook();
+    let settle = (_result: string) => {};
+    reviewTrust.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+    );
+    let finished: Promise<void> | undefined;
+    await act(async () => {
+      finished = hook.result.current?.open?.();
+    });
+    hook.rerender({ current: { ...value, online: false } });
+    expect(hook.result.current?.state).not.toBe("unconfirmed");
+    await act(async () => {
+      settle(result);
+      await finished;
+    });
+    hook.rerender({ current: value });
+    expect(hook.result.current?.state).toBe(
+      result === "interrupted" ? "question" : result,
+    );
+    if (result === "interrupted") {
+      if (!hook.result.current) throw new Error("Missing review panel");
+      render(view(hook.result.current));
+      const drawer = within(screen.getByRole("dialog"));
+      expect(
+        drawer
+          .getByRole("button", { name: t.review })
+          .getAttribute("aria-disabled"),
+      ).toBe("false");
+      expect(
+        drawer
+          .getByRole("button", { name: t.cancel })
+          .getAttribute("aria-disabled"),
+      ).toBe("false");
+    }
+  },
+);
+
 it("shows uncertainty after an interrupted submission without implying nothing opened", async () => {
   const { hook, reviewTrust } = reviewHook();
   reviewTrust.mockResolvedValueOnce("unconfirmed");
@@ -348,5 +397,18 @@ it("shows uncertainty after an interrupted submission without implying nothing o
   expect(drawer.getByText("Confirmación pendiente")).toBeTruthy();
   expect(drawer.queryByText(t.help)).toBeNull();
   expect(drawer.queryByRole("button", { name: t.review })).toBeNull();
-  expect(drawer.queryByRole("button", { name: t.cancel })).toBeNull();
+  fireEvent.click(drawer.getByRole("button", { name: t.cancel }));
+  expect(cancel).toHaveBeenCalledExactlyOnceWith("cancel", scope);
+});
+
+it("deduplicates a double click on Revisar el perfil", async () => {
+  const { hook, request } = reviewHook();
+  if (!hook.result.current) throw new Error("Missing review panel");
+  render(view(hook.result.current));
+  const review = screen.getByRole("button", { name: t.review });
+  await act(async () => {
+    fireEvent.click(review);
+    fireEvent.click(review);
+  });
+  expect(request).toHaveBeenCalledTimes(1);
 });

@@ -90,7 +90,7 @@ describe("preload connection", () => {
     mocks.invoke.mockResolvedValueOnce("unconfirmed");
     expect(await api.reviewTrust(ticket)).toBe("unconfirmed");
     mocks.invoke.mockRejectedValueOnce(new Error("IPC disconnected"));
-    expect(await api.reviewTrust(ticket)).toBe("unconfirmed");
+    expect(await api.reviewTrust(ticket)).toBe("interrupted");
   });
   it("reports the precise DIP client area without the invisible Windows frame or an IPC request", async () => {
     vi.stubGlobal("outerWidth", 1936);

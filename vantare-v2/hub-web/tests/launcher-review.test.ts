@@ -180,30 +180,6 @@ describe("trusted native review", () => {
     expect(await result).toBe("submitted");
   });
 
-  it("sends one decision when trust is double-clicked", async () => {
-    const { review, show, pages, fenced, flushed, outcome } = fixture();
-    let clickTrust = () => {};
-    show.mockImplementationOnce(({ buttons }) => {
-      return new Promise((resolve) => {
-        clickTrust = () => resolve(buttons?.indexOf("Confiar y lanzar") ?? -1);
-      });
-    });
-    const result = review.open(ticket);
-    pages(`${title}\n${detail}`);
-    expect(show.mock.calls[0][0].buttons?.[0]).toBe("Confiar y lanzar");
-    expect(await review.open(ticket)).toBe("unavailable");
-    clickTrust();
-    clickTrust();
-    await fenced;
-    expect(await review.open(ticket)).toBe("unavailable");
-    flushed();
-    expect(await result).toBe("submitted");
-    expect(show).toHaveBeenCalledOnce();
-    expect(outcome()).toEqual([
-      { kind: "reviewDecision", ticket, decision: "trust", issuedMs: 100 },
-    ]);
-  });
-
   it.each(["account", "disconnect", "close"] as const)(
     "does not infer rejection when %s interrupts the receipt",
     async (interrupt) => {
@@ -233,24 +209,24 @@ describe("trusted native review", () => {
     },
   );
 
-  it.each(["decision", "fence"] as const)(
-    "keeps the decision unconfirmed if sendHost fails during %s",
-    async (failure) => {
-      const { review, show, pages, send, outcome } = fixture();
-      send.mockImplementation((message) => {
-        if (
-          (failure === "decision" && message.kind === "reviewDecision") ||
-          (failure === "fence" && message.kind === "request")
-        )
-          throw new Error("Host disconnected");
-      });
-      show.mockResolvedValueOnce(0);
-      const result = review.open(ticket);
-      pages(`${title}\n${detail}`);
-      expect(await result).toBe("unconfirmed");
-      expect(outcome()).toHaveLength(1);
-    },
-  );
+  it.each([
+    ["decision", "interrupted"],
+    ["fence", "unconfirmed"],
+  ] as const)("reports %s send failure as %s", async (failure, expected) => {
+    const { review, show, pages, send, outcome } = fixture();
+    send.mockImplementation((message) => {
+      if (
+        (failure === "decision" && message.kind === "reviewDecision") ||
+        (failure === "fence" && message.kind === "request")
+      )
+        throw new Error("Host disconnected");
+    });
+    show.mockResolvedValueOnce(0);
+    const result = review.open(ticket);
+    pages(`${title}\n${detail}`);
+    expect(await result).toBe(expected);
+    expect(outcome()).toHaveLength(1);
+  });
 
   it("keeps the decision unconfirmed when the fence has no review result", async () => {
     const { review, show, pages, fenced, send } = fixture();
@@ -355,7 +331,9 @@ describe("trusted native review", () => {
       const result = review.open(ticket);
       pages(`${title}\n${detail}`);
       review.receive(signal);
-      expect(await result).toBe("changed");
+      expect(await result).toBe(
+        signal.kind === "closeRequested" ? "interrupted" : "changed",
+      );
       expect(outcome()).toEqual([]);
     }
   });

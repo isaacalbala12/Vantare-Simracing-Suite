@@ -283,6 +283,13 @@ it("only opens the native review for the connected main frame and one ticket", a
       await handler({ sender, senderFrame: { ...sender.mainFrame } }, ticket),
     ).toBe("unavailable");
     expect(await handler(event, ticket, "extra")).toBe("unavailable");
+    expect(await handler({ ...event, sender: {} }, ticket)).toBe("unavailable");
+    sender.mainFrame.url = "https://example.invalid/";
+    expect(await handler(event, ticket)).toBe("unavailable");
+    sender.mainFrame.url = "app://hub/";
+    sender.mainFrame.detached = true;
+    expect(await handler(event, ticket)).toBe("unavailable");
+    sender.mainFrame.detached = false;
     expect(openReview).not.toHaveBeenCalled();
     expect(await handler(event, ticket)).toBe("submitted");
     expect(openReview).toHaveBeenCalledExactlyOnceWith(ticket);

@@ -113,6 +113,9 @@ it("keeps product screens and UI independent of src/mock and mock build branches
           appExceptions[name] ??
           (
             {
+              "src/renderer/screens/strategy/entry.tsx": [
+                "../../qa/strategy-entry",
+              ],
               "src/renderer/screens/calendar/entry.tsx": [
                 "../../qa/calendar-runs",
               ],

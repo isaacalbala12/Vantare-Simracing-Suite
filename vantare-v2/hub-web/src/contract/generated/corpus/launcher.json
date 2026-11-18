@@ -152,6 +152,7 @@
               "description": "Simulador, captura y música en tres pasos. Reintenta el paso fallido y deja el resto abierto al salir.",
               "favorite": true,
               "id": "creator",
+              "imported": true,
               "launchable": false,
               "name": "Creador de Contenido",
               "options": {
@@ -173,6 +174,7 @@
               "description": "",
               "favorite": false,
               "id": "pro",
+              "imported": false,
               "launchable": false,
               "name": "Pro",
               "options": {

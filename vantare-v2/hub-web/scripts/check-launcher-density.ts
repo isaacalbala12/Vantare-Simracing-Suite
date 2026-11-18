@@ -4,6 +4,106 @@ import { join } from "node:path";
 import type { Page } from "playwright-core";
 
 /** CSS must be exercised by Chromium; jsdom does not evaluate these media rules. */
+export async function checkLauncherOrigin(
+  page: Page,
+  base: string,
+  evidence: string,
+) {
+  const viewport = page.viewportSize();
+  const results = [];
+  try {
+    for (const [width, height, compact] of [
+      [1280, 800, true],
+      [1440, 900, false],
+    ] as const) {
+      await page.setViewportSize({ width, height });
+      await page.goto(`${base}?escena=visual-light:launcher-importado`);
+      await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
+      await page.locator(".v-launcher-profiles").waitFor({ state: "attached" });
+      const layout = await page.locator(".v-launcher-page").evaluate((node) => {
+        const card = (element: HTMLElement) => {
+          const bounds = element.getBoundingClientRect();
+          const origin =
+            element.querySelector<HTMLElement>(".v-launcher-origin");
+          const badge = origin?.querySelector<HTMLElement>(".v-badge");
+          const originBounds = origin?.getBoundingClientRect();
+          return {
+            name: element.querySelector("strong")?.textContent?.trim() ?? "",
+            width: bounds.width,
+            height: bounds.height,
+            origin:
+              originBounds && badge
+                ? {
+                    text: badge.textContent?.trim() ?? "",
+                    title: badge.getAttribute("title"),
+                    ariaLabel: badge.getAttribute("aria-label"),
+                    inside:
+                      originBounds.left >= bounds.left - 1 &&
+                      originBounds.right <= bounds.right + 1 &&
+                      originBounds.top >= bounds.top - 1 &&
+                      originBounds.bottom <= bounds.bottom + 1,
+                  }
+                : null,
+          };
+        };
+        const hero = node.querySelector<HTMLElement>(".v-launcher-hero");
+        return {
+          heroOrigin: hero
+            ? (hero.querySelector(".v-launcher-origin")?.textContent?.trim() ??
+              null)
+            : null,
+          cards: [
+            ...node.querySelectorAll<HTMLElement>(
+              ".v-launcher-profile:not(.v-launcher-profile--new)",
+            ),
+          ].map(card),
+        };
+      });
+      assert.equal(layout.cards.length, 2, "The imported scene has two cards");
+      const [imported, own] = layout.cards;
+      assert.equal(imported.name.includes("Creador de Contenido"), true);
+      assert.equal(own.name.replace(/,$/, ""), "Pro");
+      assert.equal(own.origin, null, "Own profiles keep no origin label");
+      assert.equal(layout.heroOrigin, "Importado · origen no verificado");
+      assert.ok(imported.origin, "The imported card shows its origin");
+      assert.equal(imported.origin?.text, "Importado");
+      assert.equal(imported.origin?.title, "Importado · origen no verificado");
+      assert.equal(
+        imported.origin?.ariaLabel,
+        "Importado · origen no verificado",
+      );
+      assert.equal(
+        imported.origin?.inside,
+        true,
+        "The compact origin label stays inside the card",
+      );
+      if (compact) {
+        assert.equal(imported.width, 200, "Compact cards stay 200 px wide");
+        assert.equal(
+          imported.height,
+          own.height,
+          "Imported and own compact cards keep the same height",
+        );
+      }
+      assert.equal(
+        await page
+          .getByRole("button", { name: /Creador de Contenido, .*Importado/ })
+          .count(),
+        1,
+        "The card's accessible name includes its visible origin label",
+      );
+      results.push({ width, height, compact, ...layout });
+    }
+    await writeFile(
+      join(evidence, "launcher-origin.json"),
+      JSON.stringify(results, null, 2),
+    );
+  } finally {
+    if (viewport) await page.setViewportSize(viewport);
+  }
+}
+
+/** CSS must be exercised by Chromium; jsdom does not evaluate these media rules. */
 export async function checkLauncherDensity(
   page: Page,
   base: string,

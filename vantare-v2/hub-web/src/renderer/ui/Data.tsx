@@ -1,7 +1,12 @@
 import { Avatar as BaseAvatar } from "@base-ui/react/avatar";
 import { Progress as BaseProgress } from "@base-ui/react/progress";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { type CSSProperties, type ReactNode, useRef } from "react";
+import {
+  type CSSProperties,
+  type HTMLAttributes,
+  type ReactNode,
+  useRef,
+} from "react";
 import { TrackedCaps } from "./TrackedCaps";
 export function SettingGroup({
   number,
@@ -88,6 +93,8 @@ export function Badge({
   children,
   tone = "beta",
   dot = false,
+  className,
+  ...rest
 }: {
   children: ReactNode;
   tone?:
@@ -102,9 +109,17 @@ export function Badge({
     | "err"
     | "neutral";
   dot?: boolean;
-}) {
+} & Omit<HTMLAttributes<HTMLSpanElement>, "children">) {
   return (
-    <span className={`v-badge v-badge--${tone}${dot ? " v-badge--dot" : ""}`}>
+    <span
+      className={[
+        `v-badge v-badge--${tone}${dot ? " v-badge--dot" : ""}`,
+        className,
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      {...rest}
+    >
       {dot && <span className="v-badge-dot" aria-hidden="true" />}
       {children}
     </span>

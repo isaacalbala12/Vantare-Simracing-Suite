@@ -304,6 +304,17 @@ fn application_request_samples() -> [Request; 7] {
     ]
 }
 
+fn launcher_view_sample() -> LauncherView {
+    let mut view: LauncherView = serde_json::from_str(include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../hub-web/fixtures/launcher-base.json"
+    )))
+    .expect("launcher fixture");
+    // The shared fixture feeds the renderer mock; the wire sample also covers an imported origin.
+    view.profiles[0].imported = true;
+    view
+}
+
 fn launcher_host_samples() -> Vec<HostToUi> {
     vec![
         HostToUi::Response {
@@ -328,11 +339,7 @@ fn launcher_host_samples() -> Vec<HostToUi> {
         HostToUi::Response {
             id: 1,
             result: Reply::LauncherGet {
-                value: serde_json::from_str(include_str!(concat!(
-                    env!("CARGO_MANIFEST_DIR"),
-                    "/../../hub-web/fixtures/launcher-base.json"
-                )))
-                .expect("launcher fixture"),
+                value: launcher_view_sample(),
             },
         },
         HostToUi::Response {

@@ -15,12 +15,27 @@ import { controlText } from "../../i18n/launcher-control";
 import { resultsText } from "../../i18n/launcher-results";
 import type { ResidentControlController } from "../../screens/launcher/resident-control";
 import { Button } from "../Button";
-import { Callout } from "../Data";
+import { Callout, Pill } from "../Data";
 import { Tooltip } from "../Layers";
 import { circuit } from "./generated/circuit";
 import { type ProfileCardAction, ProfileCardActions } from "./ProfileActions";
 import { ResidentResults } from "./ResidentResults";
 import "./profiles.css";
+
+function ImportedOrigin({ compact = false }: { compact?: boolean }) {
+  return (
+    <span className="v-launcher-origin">
+      <Pill
+        tone="warn"
+        dot
+        aria-label={compact ? text.importedOrigin : undefined}
+        title={compact ? text.importedOrigin : undefined}
+      >
+        {compact ? text.importedShort : text.importedOrigin}
+      </Pill>
+    </span>
+  );
+}
 
 const glyphs: Record<string, IconName> = {
   lmu: "v-helmet",
@@ -196,7 +211,14 @@ export function LauncherProfiles({
               {text.applications}
             </Button>
           </div>
-          <section className="v-launcher-hero" aria-label={profile.name}>
+          <section
+            className="v-launcher-hero"
+            aria-label={
+              profile.imported
+                ? `${profile.name}, ${text.importedOrigin}`
+                : profile.name
+            }
+          >
             <Circuit />
             <div className="v-launcher-meta">
               {view.running
@@ -206,6 +228,7 @@ export function LauncherProfiles({
                   : text.selectedHeading}
             </div>
             <h2>{profile.name}</h2>
+            {profile.imported && <ImportedOrigin />}
             <p>{profile.description || text.defaultDescription}</p>
             <div className="v-launcher-actions">
               {showCancel && (
@@ -432,6 +455,7 @@ export function LauncherProfiles({
                     <small>
                       {text.appCount(item.apps.length, item.favorite)}
                     </small>
+                    {item.imported && <ImportedOrigin compact />}
                   </button>
                 </ProfileCardActions>
               ))}

@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
 import { CSPProvider } from "@base-ui/react/csp-provider";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import fixture from "../fixtures/launcher-base.json";
 import type { LauncherView } from "../src/contract/generated/contract";
@@ -32,6 +38,31 @@ function mount(view: LauncherView = structuredClone(fixture)) {
   return { onLaunch, onSelect };
 }
 describe("launcher contract", () => {
+  it("requires a boolean imported marker in every profile projection", () => {
+    const host = createMockHost("launcher-importado");
+    const reply = host({
+      kind: "request",
+      id: 1,
+      request: { method: "launcher.get" },
+    });
+    if (reply?.kind !== "response" || reply.result.method !== "launcher.get")
+      throw new Error("Expected Launcher profiles");
+    expect(
+      reply.result.value.profiles.map((profile) =>
+        Reflect.get(profile, "imported"),
+      ),
+    ).toEqual([true, false]);
+    expect(isHostMessage(reply)).toBe(true);
+    for (const invalid of [undefined, "true", 1, null]) {
+      const damaged = structuredClone(reply);
+      if (damaged.result.method !== "launcher.get")
+        throw new Error("Expected Launcher profiles");
+      if (invalid === undefined)
+        Reflect.deleteProperty(damaged.result.value.profiles[0], "imported");
+      else Reflect.set(damaged.result.value.profiles[0], "imported", invalid);
+      expect(isHostMessage(damaged)).toBe(false);
+    }
+  });
   it("rejects executable paths, arbitrary commands and malformed revisions", () => {
     const request = {
       method: "launcher.launch",
@@ -97,6 +128,34 @@ describe("launcher contract", () => {
   });
 });
 describe("launcher profile list", () => {
+  it("shows the full origin in the hero and the visible compact origin on the imported card", () => {
+    const view = structuredClone(fixture);
+    Reflect.set(view.profiles[0], "imported", true);
+    Reflect.set(view.profiles[1], "imported", false);
+    mount(view);
+    const full = "Importado · origen no verificado";
+    const short = "Importado";
+    const hero = screen.getByRole("region", {
+      name: `Creador de Contenido, ${full}`,
+    });
+    expect(within(hero).getByText(full)).toBeTruthy();
+    const imported = screen.getByRole("button", {
+      name: /Creador de Contenido, .*Importado/,
+    });
+    expect(within(imported).getByText(short)).toBeTruthy();
+    expect(within(imported).queryByText(full)).toBeNull();
+    const compact = within(imported).getByText(short);
+    expect(compact.getAttribute("aria-label")).toBe(full);
+    expect(compact.getAttribute("title")).toBe(full);
+    expect(
+      within(screen.getByRole("button", { name: /^Pro, / })).queryByText(short),
+    ).toBeNull();
+    expect(screen.getAllByText(full)).toHaveLength(1);
+    cleanup();
+    mount();
+    expect(screen.queryByText(short)).toBeNull();
+    expect(screen.queryByText(full)).toBeNull();
+  });
   it("shows native profiles and disables launch when applications are missing", () => {
     const { onLaunch, onSelect } = mount();
     expect(

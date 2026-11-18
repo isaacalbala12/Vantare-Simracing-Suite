@@ -39,6 +39,7 @@ pub struct LauncherProfile {
     pub name: String,
     pub description: String,
     pub favorite: bool,
+    pub imported: bool,
     pub apps: Vec<String>,
     pub launchable: bool,
     pub options: LauncherOptions,
@@ -131,6 +132,7 @@ fn project(
                 name: profile.name.clone(),
                 description: profile.description.clone(),
                 favorite: profile.favorite,
+                imported: profile.imported,
                 apps: profile
                     .steps
                     .iter()
@@ -281,6 +283,19 @@ pub fn launch(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn projects_imported_origin_and_preserves_it_when_duplicated() {
+        let mut document = Document::fresh_install();
+        document.profiles[0].imported = true;
+        let copy = document.profiles[0].duplicate("qa-copy".into());
+        document.profiles.push(copy);
+        let view = project(b"revision", &document, &Discovery::default(), None, false);
+        let json = serde_json::to_value(view).expect("projection");
+        assert_eq!(json["profiles"][0]["imported"], true);
+        assert_eq!(json["profiles"][1]["imported"], false);
+        assert_eq!(json["profiles"][2]["imported"], true);
+    }
+
     #[test]
     fn projection_contains_ids_without_executables_arguments_or_import_sources() {
         let mut document = Document::fresh_install();

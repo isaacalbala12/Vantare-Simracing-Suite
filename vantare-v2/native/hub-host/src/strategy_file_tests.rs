@@ -16,7 +16,8 @@ const NOW: &str = "2026-11-18T00:00:00Z";
 /// The id of a request of the main process: the host only holds tickets for those.
 const ID: u32 = 0x8000_0007;
 const LIFETIME: Duration = Duration::from_secs(STRATEGY_PICK_LIFETIME_SECONDS);
-const MILLISECOND_BEFORE: Duration = Duration::from_millis(STRATEGY_PICK_LIFETIME_SECONDS * 1000 - 1);
+const MILLISECOND_BEFORE: Duration =
+    Duration::from_millis(STRATEGY_PICK_LIFETIME_SECONDS * 1000 - 1);
 const SECOND_BEFORE: Duration = Duration::from_secs(STRATEGY_PICK_LIFETIME_SECONDS - 1);
 
 struct Root(PathBuf);
@@ -195,7 +196,12 @@ fn the_request_is_acknowledged_with_the_current_view_and_keeps_one_ticket() {
     // a dead ticket does not block the next one
     assert!(
         state
-            .pick_file(ID + 1, StrategyFileMode::Open, &view.revision, now + LIFETIME)
+            .pick_file(
+                ID + 1,
+                StrategyFileMode::Open,
+                &view.revision,
+                now + LIFETIME
+            )
             .is_ok()
     );
     assert_eq!(state.view(), view, "the request changes nothing");
@@ -232,11 +238,7 @@ fn a_ticket_expires_after_120_seconds() {
     let now = Instant::now();
     pick(&mut state, StrategyFileMode::Open, now).unwrap();
     assert_eq!(
-        answer(
-            &mut state,
-            Some(&root.text("late.json")),
-            now + LIFETIME
-        ),
+        answer(&mut state, Some(&root.text("late.json")), now + LIFETIME),
         Err(HostError::StrategyPickExpired)
     );
     assert_eq!(state.view(), view);
@@ -353,9 +355,7 @@ fn open_refuses_unsaved_changes_a_running_calculation_and_a_pending_edit() {
         Err(HostError::StrategyEditPending)
     );
     let id = state.calculation.view().compute_id.unwrap();
-    state
-        .reset_edit(&state.view().revision, id)
-        .unwrap();
+    state.reset_edit(&state.view().revision, id).unwrap();
     assert!(pick(&mut state, StrategyFileMode::Open, now).is_ok());
 }
 
@@ -406,7 +406,12 @@ fn open_loads_the_other_file_discards_the_plan_and_leaves_the_primary_alone() {
     let primary = fs::read(root.primary()).unwrap();
     let other = document("event-9");
     fs::write(root.file("carreras-2026.json"), &other).unwrap();
-    assert_eq!(first.file, Some(StrategyFile { name: PRIMARY.into() }));
+    assert_eq!(
+        first.file,
+        Some(StrategyFile {
+            name: PRIMARY.into()
+        })
+    );
     let view = choose(
         &mut state,
         StrategyFileMode::Open,
@@ -547,7 +552,12 @@ fn discard_of_a_damaged_opened_file_also_keeps_the_copy_in_the_data_directory() 
     let elsewhere = Root::new();
     let (mut state, _) = opened(&root);
     fs::write(elsewhere.file("a.json"), document("event-9")).unwrap();
-    let view = choose(&mut state, StrategyFileMode::Open, &elsewhere.text("a.json")).unwrap();
+    let view = choose(
+        &mut state,
+        StrategyFileMode::Open,
+        &elsewhere.text("a.json"),
+    )
+    .unwrap();
     fs::write(elsewhere.file("a.json"), b"{ broke later").unwrap();
     let before = listing(&elsewhere.0);
     let view = state.discard(&view.revision).unwrap();
@@ -568,10 +578,18 @@ fn a_future_version_is_protected_and_cannot_be_saved_over() {
         .unwrap()
         .replace("\"schemaVersion\":\"2.1.0\"", "\"schemaVersion\":\"9.0.0\"");
     fs::write(root.file("future.json"), &future).unwrap();
-    let view = choose(&mut state, StrategyFileMode::Open, &root.text("future.json")).unwrap();
+    let view = choose(
+        &mut state,
+        StrategyFileMode::Open,
+        &root.text("future.json"),
+    )
+    .unwrap();
     assert_eq!(view.state, StrategyState::Protected);
     assert_eq!(view.file.unwrap().name, "future.json");
-    assert_eq!(fs::read_to_string(root.file("future.json")).unwrap(), future);
+    assert_eq!(
+        fs::read_to_string(root.file("future.json")).unwrap(),
+        future
+    );
     assert_eq!(
         state.save(&state.view().revision.clone()),
         Err(HostError::Protected)
@@ -632,7 +650,11 @@ fn a_path_the_main_process_could_not_have_chosen_is_unavailable() {
     let (mut state, view) = opened(&root);
     // longer than any file system accepts, so nothing needs to exist
     let long = format!("{}.json", "n".repeat(300));
-    let huge = format!("{}/{}", root.0.display(), "d".repeat(STRATEGY_PICK_PATH_MAX));
+    let huge = format!(
+        "{}/{}",
+        root.0.display(),
+        "d".repeat(STRATEGY_PICK_PATH_MAX)
+    );
     for path in [
         "relative/file.json".to_owned(),
         "file.json".to_owned(),
@@ -660,14 +682,23 @@ fn save_as_writes_the_same_bytes_to_a_new_file_and_the_document_moves_there() {
     let primary = fs::read(root.primary()).unwrap();
     let draft = dirty(&mut state);
     let doc_bytes = state.doc.as_ref().unwrap().bytes().to_vec();
-    let view = choose(&mut state, StrategyFileMode::SaveAs, &root.text("copy.json")).unwrap();
+    let view = choose(
+        &mut state,
+        StrategyFileMode::SaveAs,
+        &root.text("copy.json"),
+    )
+    .unwrap();
     assert_eq!(fs::read(root.file("copy.json")).unwrap(), doc_bytes);
     assert_eq!(view.file.as_ref().unwrap().name, "copy.json");
     assert!(!view.dirty);
     assert_eq!(view.revision, draft.revision, "it is the same document");
     assert_eq!(view.events, draft.events);
     assert_eq!(view.active_event_id, draft.active_event_id);
-    assert_eq!(fs::read(root.primary()).unwrap(), primary, "the primary is untouched");
+    assert_eq!(
+        fs::read(root.primary()).unwrap(),
+        primary,
+        "the primary is untouched"
+    );
     // the document lives in the new file now
     let next = state
         .select("native-event-1", "variant-1", &view.revision)
@@ -689,7 +720,12 @@ fn save_as_keeps_the_plan_it_is_a_copy_of_the_same_document() {
     let (mut state, _) = opened(&root);
     pending_edit(&mut state);
     let before = state.view().plan;
-    let view = choose(&mut state, StrategyFileMode::SaveAs, &root.text("copy.json")).unwrap();
+    let view = choose(
+        &mut state,
+        StrategyFileMode::SaveAs,
+        &root.text("copy.json"),
+    )
+    .unwrap();
     assert_eq!(view.plan, before);
 }
 
@@ -701,7 +737,11 @@ fn save_as_never_overwrites_an_unobserved_file() {
     let theirs = b"someone else's bytes";
     fs::write(root.file("theirs.json"), theirs).unwrap();
     assert_eq!(
-        choose(&mut state, StrategyFileMode::SaveAs, &root.text("theirs.json")),
+        choose(
+            &mut state,
+            StrategyFileMode::SaveAs,
+            &root.text("theirs.json")
+        ),
         Err(HostError::StrategyTargetExists)
     );
     assert_eq!(fs::read(root.file("theirs.json")).unwrap(), theirs);
@@ -787,7 +827,11 @@ fn a_target_that_cannot_be_written_is_unavailable_and_nothing_moves() {
     let draft = dirty(&mut state);
     // a folder with that name: the host cannot write a file there
     fs::create_dir(root.file("folder.json")).unwrap();
-    let result = choose(&mut state, StrategyFileMode::SaveAs, &root.text("folder.json"));
+    let result = choose(
+        &mut state,
+        StrategyFileMode::SaveAs,
+        &root.text("folder.json"),
+    );
     assert!(
         matches!(
             result,
@@ -815,7 +859,10 @@ fn no_path_goes_over_the_wire_only_the_last_segment() {
     )
     .unwrap();
     let wire = serde_json::to_string(&view).unwrap();
-    assert!(wire.contains(r#""file":{"name":"carreras-2026.json"}"#), "{wire}");
+    assert!(
+        wire.contains(r#""file":{"name":"carreras-2026.json"}"#),
+        "{wire}"
+    );
     for private in [
         root.0.to_str().unwrap(),
         &root.0.to_str().unwrap().replace('\\', "\\\\"),
@@ -889,11 +936,17 @@ fn the_wire_names_are_the_documented_ones() {
     assert_eq!(STRATEGY_PICK_COOLDOWN_MS, 1500);
     assert_eq!(STRATEGY_PICK_LIFETIME_SECONDS, 120);
     assert_eq!(
-        serde_json::to_value(StrategyFile { name: "a.json".into() }).unwrap(),
+        serde_json::to_value(StrategyFile {
+            name: "a.json".into()
+        })
+        .unwrap(),
         serde_json::json!({"name":"a.json"})
     );
     for (error, kind) in [
-        (HostError::StrategyFileUnavailable, "strategyFileUnavailable"),
+        (
+            HostError::StrategyFileUnavailable,
+            "strategyFileUnavailable",
+        ),
         (HostError::StrategyFileTooLarge, "strategyFileTooLarge"),
         (HostError::StrategyTargetExists, "strategyTargetExists"),
         (HostError::StrategyPickExpired, "strategyPickExpired"),
@@ -960,7 +1013,10 @@ fn a_path_is_a_plain_file_on_a_disk_for_open_and_save_as_alike() {
         }
     }
     assert_eq!(listing(&root.0), before, "nothing was created");
-    assert!(!Path::new(unique).exists(), "nothing in the working directory");
+    assert!(
+        !Path::new(unique).exists(),
+        "nothing in the working directory"
+    );
 }
 
 #[test]
@@ -968,7 +1024,17 @@ fn a_device_name_never_reaches_the_file_system() {
     // CON would hang the read; NUL would swallow the write
     let root = Root::new();
     let (mut state, _) = opened(&root);
-    for name in ["CON", "con.json", "PRN.txt", "aux", "NUL", "COM1", "com9.json", "LPT1", "lpt9.json"] {
+    for name in [
+        "CON",
+        "con.json",
+        "PRN.txt",
+        "aux",
+        "NUL",
+        "COM1",
+        "com9.json",
+        "LPT1",
+        "lpt9.json",
+    ] {
         for mode in both_modes() {
             assert_eq!(
                 choose(&mut state, mode, &root.text(name)),
@@ -1000,7 +1066,11 @@ fn a_file_reached_through_a_junction_is_refused() {
     junction(&elsewhere.file("link"), &root.0);
     let through = elsewhere.file("link").join("real.json");
     assert_eq!(
-        choose(&mut state, StrategyFileMode::Open, through.to_str().unwrap()),
+        choose(
+            &mut state,
+            StrategyFileMode::Open,
+            through.to_str().unwrap()
+        ),
         Err(HostError::StrategyFileUnavailable)
     );
     assert_eq!(state.view(), view);
@@ -1039,7 +1109,15 @@ fn primary_spellings(root: &Root, elsewhere: &Root) -> Vec<(String, bool)> {
     #[cfg(windows)]
     {
         junction(&elsewhere.file("link"), &root.0);
-        spellings.push((elsewhere.file("link").join(PRIMARY).to_str().unwrap().to_owned(), true));
+        spellings.push((
+            elsewhere
+                .file("link")
+                .join(PRIMARY)
+                .to_str()
+                .unwrap()
+                .to_owned(),
+            true,
+        ));
     }
     let _ = elsewhere;
     spellings
@@ -1075,7 +1153,11 @@ fn another_document_never_writes_the_primary_by_any_spelling_existing_or_not() {
             } else {
                 assert!(result.is_err(), "{spelling}");
             }
-            assert_eq!(listing(&root.0), before, "{spelling} (exists: {primary_exists})");
+            assert_eq!(
+                listing(&root.0),
+                before,
+                "{spelling} (exists: {primary_exists})"
+            );
             let view = state.view();
             assert_eq!(view.file.unwrap().name, "other.json");
             assert!(view.dirty);
@@ -1096,11 +1178,19 @@ fn the_short_8_3_name_of_the_primary_is_the_primary() {
     let elsewhere = Root::new();
     let (mut state, _) = opened(&root);
     fs::write(elsewhere.file("other.json"), document("event-9")).unwrap();
-    choose(&mut state, StrategyFileMode::Open, &elsewhere.text("other.json")).unwrap();
+    choose(
+        &mut state,
+        StrategyFileMode::Open,
+        &elsewhere.text("other.json"),
+    )
+    .unwrap();
     dirty(&mut state);
     let short = std::process::Command::new("cmd")
         .arg("/C")
-        .arg(format!("for %I in (\"{}\") do @echo %~sI", root.text(PRIMARY)))
+        .arg(format!(
+            "for %I in (\"{}\") do @echo %~sI",
+            root.text(PRIMARY)
+        ))
         .output()
         .unwrap();
     let short = String::from_utf8_lossy(&short.stdout).trim().to_owned();
@@ -1244,7 +1334,10 @@ fn only_requests_of_the_main_process_hold_a_ticket() {
         ),
         Err(HostError::Denied)
     );
-    assert!(answer(&mut state, None, now).is_ok(), "the real ticket is intact");
+    assert!(
+        answer(&mut state, None, now).is_ok(),
+        "the real ticket is intact"
+    );
 }
 
 #[test]
@@ -1310,7 +1403,14 @@ fn a_collection_over_the_limits_is_an_error_and_the_document_stays() {
         .unwrap();
     }
     fs::write(root.file("crowded.json"), doc.bytes()).unwrap();
-    assert!(choose(&mut state, StrategyFileMode::Open, &root.text("crowded.json")).is_err());
+    assert!(
+        choose(
+            &mut state,
+            StrategyFileMode::Open,
+            &root.text("crowded.json")
+        )
+        .is_err()
+    );
     assert_eq!(state.view(), view);
 }
 
@@ -1345,27 +1445,23 @@ fn a_target_another_writer_holds_is_busy() {
     let lock = fs::File::create(root.file("held.json.lock")).unwrap();
     lock.lock().unwrap();
     assert_eq!(
-        choose(&mut state, StrategyFileMode::SaveAs, &root.text("held.json")),
+        choose(
+            &mut state,
+            StrategyFileMode::SaveAs,
+            &root.text("held.json")
+        ),
         Err(HostError::Busy)
     );
     assert!(!root.file("held.json").exists());
     drop(lock);
-    assert!(choose(&mut state, StrategyFileMode::SaveAs, &root.text("held.json")).is_ok());
-}
-
-#[test]
-fn a_new_file_is_created_not_replaced_even_when_it_appears_after_the_check() {
-    // `Mode::Observed(None)` is create-if-absent under the writer lock: a file
-    // that exists when the host writes is a conflict, whatever it saw before.
-    let root = Root::new();
-    let (mut state, _) = opened(&root);
-    dirty(&mut state);
-    fs::write(root.file("race.json"), b"theirs").unwrap();
-    assert_eq!(
-        choose(&mut state, StrategyFileMode::SaveAs, &root.text("race.json")),
-        Err(HostError::StrategyTargetExists)
+    assert!(
+        choose(
+            &mut state,
+            StrategyFileMode::SaveAs,
+            &root.text("held.json")
+        )
+        .is_ok()
     );
-    assert_eq!(fs::read(root.file("race.json")).unwrap(), b"theirs");
 }
 
 // ------------------------------------------------------- what the view shows
@@ -1392,9 +1488,15 @@ fn the_selection_hides_its_path_when_debug_printed() {
     };
     for text in [
         format!("{selection:?}"),
-        format!("{:?}", crate::protocol::UiToHost::PickedStrategyFile(selection.clone())),
+        format!(
+            "{:?}",
+            crate::protocol::UiToHost::PickedStrategyFile(selection.clone())
+        ),
     ] {
-        assert!(!text.contains("secreto") && !text.contains("carreras"), "{text}");
+        assert!(
+            !text.contains("secreto") && !text.contains("carreras"),
+            "{text}"
+        );
         assert!(text.contains("id: 1"), "{text}");
     }
 }
@@ -1457,13 +1559,23 @@ fn a_file_on_another_local_drive_opens_and_a_document_saves_there() {
     let (mut state, _) = opened(&root);
     fs::write(other.file("lejos.json"), document("event-9")).unwrap();
     // open from the other drive
-    let view = choose(&mut state, StrategyFileMode::Open, &other.text("lejos.json")).unwrap();
+    let view = choose(
+        &mut state,
+        StrategyFileMode::Open,
+        &other.text("lejos.json"),
+    )
+    .unwrap();
     assert_eq!(view.file.as_ref().unwrap().name, "lejos.json");
     assert_eq!(view.events[0].id, "event-9");
     // save the draft to a new file on the other drive, and the primary stays
     let primary = fs::read(root.primary()).unwrap();
     let draft = dirty(&mut state);
-    let saved = choose(&mut state, StrategyFileMode::SaveAs, &other.text("copia.json")).unwrap();
+    let saved = choose(
+        &mut state,
+        StrategyFileMode::SaveAs,
+        &other.text("copia.json"),
+    )
+    .unwrap();
     assert_eq!(saved.file.as_ref().unwrap().name, "copia.json");
     assert!(!saved.dirty);
     assert_eq!(saved.revision, draft.revision);
@@ -1473,6 +1585,260 @@ fn a_file_on_another_local_drive_opens_and_a_document_saves_there() {
     );
     assert_eq!(fs::read(root.primary()).unwrap(), primary);
     // and back: the saved copy opens again
-    let again = choose(&mut state, StrategyFileMode::Open, &other.text("copia.json")).unwrap();
+    let again = choose(
+        &mut state,
+        StrategyFileMode::Open,
+        &other.text("copia.json"),
+    )
+    .unwrap();
     assert_eq!(again.events, draft.events);
+}
+
+// ---- second review: one check of the folder for saving and reading, the lock
+// ---- beside the chosen file, the quarantine copy, and the lettered drives
+
+#[test]
+fn a_document_saved_as_is_still_readable_when_the_screen_opens_again() {
+    let root = Root::new();
+    let elsewhere = Root::new();
+    let (mut state, _) = opened(&root);
+    let draft = dirty(&mut state);
+    let saved = choose(
+        &mut state,
+        StrategyFileMode::SaveAs,
+        &elsewhere.text("copia.json"),
+    )
+    .unwrap();
+    assert_eq!(saved.file.as_ref().unwrap().name, "copia.json");
+    // what the screen calls first when it mounts, and what a conflict or a
+    // discard read again: the document must not turn into an empty, protected one
+    let reopened = state.open().unwrap();
+    assert_eq!(reopened.state, StrategyState::Ready);
+    assert_eq!(reopened.events, draft.events);
+    assert_eq!(reopened.file.as_ref().unwrap().name, "copia.json");
+    let discarded = state.discard(&reopened.revision).unwrap();
+    assert_eq!(discarded.state, StrategyState::Ready);
+    assert_eq!(discarded.events, draft.events);
+    assert!(!discarded.dirty);
+}
+
+#[cfg(windows)]
+#[test]
+fn save_as_through_a_junction_is_refused_and_creates_nothing() {
+    let root = Root::new();
+    let elsewhere = Root::new();
+    let target = Root::new();
+    let (mut state, _) = opened(&root);
+    let draft = dirty(&mut state);
+    junction(&elsewhere.file("link"), &target.0);
+    let before = listing(&target.0);
+    let through = elsewhere.file("link").join("nuevo.json");
+    assert_eq!(
+        choose(
+            &mut state,
+            StrategyFileMode::SaveAs,
+            through.to_str().unwrap()
+        ),
+        Err(HostError::StrategyFileUnavailable)
+    );
+    assert_eq!(listing(&target.0), before, "nothing was created");
+    let view = state.view();
+    assert_eq!(view.file.unwrap().name, PRIMARY);
+    assert!(view.dirty);
+    assert_eq!(view.revision, draft.revision);
+}
+
+/// A drive letter that points at a folder (`subst`), removed when dropped.
+#[cfg(windows)]
+struct Subst(char);
+#[cfg(windows)]
+impl Subst {
+    fn new(folder: &Path) -> Option<Self> {
+        let letter = ('M'..='Z')
+            .rev()
+            .find(|letter| !Path::new(&format!("{letter}:\\")).exists())?;
+        let done = std::process::Command::new("subst")
+            .arg(format!("{letter}:"))
+            .arg(folder)
+            .output()
+            .ok()?;
+        done.status.success().then_some(Self(letter))
+    }
+}
+#[cfg(windows)]
+impl Drop for Subst {
+    fn drop(&mut self) {
+        let _ = std::process::Command::new("subst")
+            .arg(format!("{}:", self.0))
+            .arg("/D")
+            .output();
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn a_substituted_drive_is_refused_for_open_and_for_save_as() {
+    let root = Root::new();
+    let elsewhere = Root::new();
+    let (mut state, view) = opened(&root);
+    fs::write(elsewhere.file("a.json"), document("event-9")).unwrap();
+    let Some(drive) = Subst::new(&elsewhere.0) else {
+        eprintln!("SKIPPED: `subst` could not create a drive letter on this machine");
+        return;
+    };
+    let before = listing(&elsewhere.0);
+    let open = format!("{}:\\a.json", drive.0);
+    let create = format!("{}:\\nuevo.json", drive.0);
+    assert_eq!(
+        choose(&mut state, StrategyFileMode::Open, &open),
+        Err(HostError::StrategyFileUnavailable)
+    );
+    let draft = dirty(&mut state);
+    assert_eq!(
+        choose(&mut state, StrategyFileMode::SaveAs, &create),
+        Err(HostError::StrategyFileUnavailable)
+    );
+    assert_eq!(listing(&elsewhere.0), before, "nothing was created");
+    assert_eq!(state.view().file.unwrap().name, PRIMARY);
+    assert_eq!(state.view().revision, draft.revision);
+    assert_ne!(draft.revision, view.revision);
+}
+
+#[test]
+fn save_as_the_current_file_with_a_clean_document_also_checks_the_revision() {
+    let root = Root::new();
+    let (mut state, view) = opened(&root);
+    assert!(!view.dirty);
+    let theirs = document("event-5");
+    fs::write(root.primary(), &theirs).unwrap();
+    let result = choose(&mut state, StrategyFileMode::SaveAs, &root.text(PRIMARY));
+    let Err(HostError::StrategyConflict { current }) = result else {
+        panic!("not a conflict: {result:?}");
+    };
+    assert_eq!(current.active_event_id.as_deref(), Some("event-5"));
+    assert_eq!(fs::read(root.primary()).unwrap(), theirs);
+    // the file as observed: a normal save of a clean document
+    let other = Root::new();
+    let (mut again, _) = opened(&other);
+    let target = other.text(PRIMARY);
+    assert!(choose(&mut again, StrategyFileMode::SaveAs, &target).is_ok());
+}
+
+#[test]
+fn the_chosen_folder_keeps_no_lock_after_save_as_in_success_or_rejection() {
+    let root = Root::new();
+    let elsewhere = Root::new();
+    let (mut state, _) = opened(&root);
+    dirty(&mut state);
+    fs::write(elsewhere.file("theirs.json"), b"theirs").unwrap();
+    // rejected: the folder is identical
+    let before = listing(&elsewhere.0);
+    assert_eq!(
+        choose(
+            &mut state,
+            StrategyFileMode::SaveAs,
+            &elsewhere.text("theirs.json")
+        ),
+        Err(HostError::StrategyTargetExists)
+    );
+    assert_eq!(listing(&elsewhere.0), before);
+    // saved: the folder has the new file and nothing else
+    choose(
+        &mut state,
+        StrategyFileMode::SaveAs,
+        &elsewhere.text("copia.json"),
+    )
+    .unwrap();
+    let mut expected = before;
+    expected.insert(
+        "copia.json".into(),
+        state.doc.as_ref().unwrap().bytes().to_vec(),
+    );
+    assert_eq!(listing(&elsewhere.0), expected);
+    // a lock somebody else holds is theirs and stays
+    let lock = fs::File::create(elsewhere.file("held.json.lock")).unwrap();
+    lock.lock().unwrap();
+    dirty(&mut state);
+    assert_eq!(
+        choose(
+            &mut state,
+            StrategyFileMode::SaveAs,
+            &elsewhere.text("held.json")
+        ),
+        Err(HostError::Busy)
+    );
+    assert!(elsewhere.file("held.json.lock").exists());
+    assert!(!elsewhere.file("held.json").exists());
+}
+
+#[test]
+fn the_quarantine_copy_itself_cannot_be_opened_or_written() {
+    let root = Root::new();
+    let elsewhere = Root::new();
+    let (mut state, _) = opened(&root);
+    fs::write(elsewhere.file("broken.json"), b"{ damaged").unwrap();
+    choose(
+        &mut state,
+        StrategyFileMode::Open,
+        &elsewhere.text("broken.json"),
+    )
+    .unwrap();
+    let copy: String = listing(&root.0)
+        .into_keys()
+        .find(|name| name.ends_with(".invalid"))
+        .unwrap();
+    let before = listing(&root.0);
+    // back to a clean document, then try the copy and any `.invalid` file
+    fs::write(elsewhere.file("good.json"), document("event-9")).unwrap();
+    choose(
+        &mut state,
+        StrategyFileMode::Open,
+        &elsewhere.text("good.json"),
+    )
+    .unwrap();
+    for name in [copy.as_str(), "x.invalid", "X.INVALID", "a.json.invalid"] {
+        for mode in both_modes() {
+            assert_eq!(
+                choose(&mut state, mode, &root.text(name)),
+                Err(HostError::StrategyFileUnavailable),
+                "{mode:?} {name}"
+            );
+        }
+    }
+    assert_eq!(listing(&root.0), before, "the only copy is untouched");
+    assert_eq!(state.view().file.unwrap().name, "good.json");
+}
+
+#[test]
+fn the_superscript_device_names_of_windows_11_are_devices_too() {
+    let root = Root::new();
+    let (mut state, _) = opened(&root);
+    for name in [
+        "COM\u{00b9}",
+        "COM\u{00b2}.json",
+        "com\u{00b3}",
+        "LPT\u{00b9}",
+        "LPT\u{00b2}.txt",
+        "lpt\u{00b3}.json",
+    ] {
+        for mode in both_modes() {
+            assert_eq!(
+                choose(&mut state, mode, &root.text(name)),
+                Err(HostError::StrategyFileUnavailable),
+                "{mode:?} {name:?}"
+            );
+        }
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn a_lower_case_drive_letter_is_the_same_local_drive() {
+    let root = Root::new();
+    let (mut state, _) = opened(&root);
+    fs::write(root.file("a.json"), document("event-9")).unwrap();
+    let text = root.text("a.json");
+    let lower = format!("{}{}", text[..1].to_lowercase(), &text[1..]);
+    let view = choose(&mut state, StrategyFileMode::Open, &lower).unwrap();
+    assert_eq!(view.file.unwrap().name, "a.json");
 }

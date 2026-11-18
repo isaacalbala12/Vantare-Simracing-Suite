@@ -36,6 +36,7 @@ import { checkStudioCatalogPhotos } from "./check-studio-catalog-photos";
 import { checkStudioPreview } from "./check-studio-preview";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { checkTestingDensity } from "./check-testing-density.ts";
+import { printTimingSummary, timed } from "./check-timing";
 import { checkWorkshopScreen } from "./check-workshop-screen";
 import { collectPageFailures, pageFailuresReport } from "./page-failures";
 import { until } from "./wait-for";
@@ -57,7 +58,61 @@ const evidence = resolve(
 await mkdir(evidence, { recursive: true });
 const server = await webQaPreview();
 const browser = await chromium.launch();
+// Analysis owns its context and page, so it runs beside the main page's checks
+// instead of after them; its result is joined before the script ends.
+async function runAnalysis() {
+  let failures: string[] = [];
+  try {
+    const { checkRecordingStatus } = await import("./analysis-status-web.ts");
+    const { checkAnalysisComparison } = await import(
+      "./analysis-compare-web.ts"
+    );
+    const { checkAnalysisSessions } = await import(
+      "./analysis-sessions-web.ts"
+    );
+    const comparisonContext = await browser.newContext({
+      timezoneId: "UTC",
+      locale: "es-ES",
+      reducedMotion: "reduce",
+      deviceScaleFactor: 1,
+    });
+    const comparisonPage = await comparisonContext.newPage();
+    comparisonPage.setDefaultTimeout(20000);
+    const comparisonFailures = collectPageFailures(comparisonPage);
+    failures = comparisonFailures;
+    try {
+      await timed("checkAnalysisComparison", () =>
+        checkAnalysisComparison(
+          comparisonPage,
+          server.resolvedUrls?.local[0] ?? "",
+          resolve(evidence, "analysis-comparison"),
+        ),
+      );
+      await timed("checkAnalysisSessions", () =>
+        checkAnalysisSessions(
+          comparisonPage,
+          server.resolvedUrls?.local[0] ?? "",
+          resolve(evidence, "analysis-sessions"),
+        ),
+      );
+      await timed("checkRecordingStatus", () =>
+        checkRecordingStatus(
+          comparisonPage,
+          server.resolvedUrls?.local[0] ?? "",
+          resolve(evidence, "analysis-recording-status"),
+        ),
+      );
+    } finally {
+      await comparisonContext.close();
+    }
+    return { failures, error: undefined as unknown };
+  } catch (error) {
+    return { failures, error };
+  }
+}
+const analysisRun = runAnalysis();
 let failures: string[] = [];
+const startedAt = performance.now();
 try {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
@@ -100,7 +155,7 @@ try {
     .getByRole("button", { name: "Abrir diálogo", exact: true })
     .click();
   const dialog = page.getByRole("dialog");
-  await checkNativeAccessLayer(page);
+  await timed("checkNativeAccessLayer", () => checkNativeAccessLayer(page));
   await dialog.getByRole("combobox", { name: "Esquema del diálogo" }).click();
   const light = page.getByRole("option", { name: "Claro", exact: true });
   await light.click(); // Playwright checks that the option receives the pointer above the modal.
@@ -177,51 +232,105 @@ try {
   await page.keyboard.press("F6");
   await toast.getByRole("button", { name: "Cerrar" }).click();
   await until(async () => (await toast.count()) === 0, 5000, "element removed");
-  await checkHomeDensity(page, server.resolvedUrls?.local[0] ?? "");
-  await checkHomePhotos(page, server.resolvedUrls?.local[0] ?? "");
-  await checkWorkshopScreen(page, server.resolvedUrls?.local[0] ?? "");
-  await checkTestingDensity(page, server.resolvedUrls?.local[0] ?? "");
-  const { checkSettingsDensity } = await import("./check-settings-density.ts");
-  await checkSettingsDensity(page, server.resolvedUrls?.local[0] ?? "");
-  await checkAccountDensity(page, server.resolvedUrls?.local[0] ?? "");
-  await checkLauncherDensity(
-    page,
-    server.resolvedUrls?.local[0] ?? "",
-    evidence,
+  await timed("checkHomeDensity", () =>
+    checkHomeDensity(page, server.resolvedUrls?.local[0] ?? ""),
   );
-  await checkAppearanceDensity(page, server.resolvedUrls?.local[0] ?? "");
-  await checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence);
-  await checkResidentControls(page, server.resolvedUrls?.local[0] ?? "");
-  await checkResidentRemoval(page, server.resolvedUrls?.local[0] ?? "");
-  await checkResidentResults(page, server.resolvedUrls?.local[0] ?? "");
+  await timed("checkHomePhotos", () =>
+    checkHomePhotos(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkWorkshopScreen", () =>
+    checkWorkshopScreen(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkTestingDensity", () =>
+    checkTestingDensity(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  const { checkSettingsDensity } = await import("./check-settings-density.ts");
+  await timed("checkSettingsDensity", () =>
+    checkSettingsDensity(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkAccountDensity", () =>
+    checkAccountDensity(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkLauncherDensity", () =>
+    checkLauncherDensity(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  await timed("checkAppearanceDensity", () =>
+    checkAppearanceDensity(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkDialogSafety", () =>
+    checkDialogSafety(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  await timed("checkResidentControls", () =>
+    checkResidentControls(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkResidentRemoval", () =>
+    checkResidentRemoval(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkResidentResults", () =>
+    checkResidentResults(page, server.resolvedUrls?.local[0] ?? ""),
+  );
   const { checkRoadmapDensity } = await import("./check-roadmap-density.ts");
-  await checkRoadmapDensity(page, server.resolvedUrls?.local[0] ?? "");
-  await checkResidentAnswer(page, server.resolvedUrls?.local[0] ?? "");
-  await checkResidentReview(page, server.resolvedUrls?.local[0] ?? "");
-  await checkCalendarDensity(page, server.resolvedUrls?.local[0] ?? "");
-  await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
-  await checkPerformanceDensity(page, server.resolvedUrls?.local[0] ?? "");
-  await checkCommandPalette(page, server.resolvedUrls?.local[0] ?? "");
-  await checkNotificationFocus(page, server.resolvedUrls?.local[0] ?? "");
-  await checkPrivacyGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
-  await checkAccessGate(page, server.resolvedUrls?.local[0] ?? "", evidence);
-  await checkAccount(page, server.resolvedUrls?.local[0] ?? "", evidence);
-  await checkAccessStates(page, server.resolvedUrls?.local[0] ?? "", evidence);
-  await checkOnboarding(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  await timed("checkRoadmapDensity", () =>
+    checkRoadmapDensity(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkResidentAnswer", () =>
+    checkResidentAnswer(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkResidentReview", () =>
+    checkResidentReview(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkCalendarDensity", () =>
+    checkCalendarDensity(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkCalendarDialogSafety", () =>
+    checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkPerformanceDensity", () =>
+    checkPerformanceDensity(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkCommandPalette", () =>
+    checkCommandPalette(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkNotificationFocus", () =>
+    checkNotificationFocus(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkPrivacyGate", () =>
+    checkPrivacyGate(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  await timed("checkAccessGate", () =>
+    checkAccessGate(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  await timed("checkAccount", () =>
+    checkAccount(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  await timed("checkAccessStates", () =>
+    checkAccessStates(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  await timed("checkOnboarding", () =>
+    checkOnboarding(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
   for (const mode of ["private", "protected"] as const)
-    await checkOnboardingGuardedExit(
+    await timed("checkOnboardingGuardedExit", () =>
+      checkOnboardingGuardedExit(
+        page,
+        server.resolvedUrls?.local[0] ?? "",
+        evidence,
+        mode,
+      ),
+    );
+  await timed("checkStudioPreview", () =>
+    checkStudioPreview(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  await timed("checkStudioCatalogPhotos", () =>
+    checkStudioCatalogPhotos(
       page,
       server.resolvedUrls?.local[0] ?? "",
       evidence,
-      mode,
-    );
-  await checkStudioPreview(page, server.resolvedUrls?.local[0] ?? "", evidence);
-  await checkStudioCatalogPhotos(
-    page,
-    server.resolvedUrls?.local[0] ?? "",
-    evidence,
+    ),
   );
-  await checkStudioStates(page, server.resolvedUrls?.local[0] ?? "", evidence);
+  await timed("checkStudioStates", () =>
+    checkStudioStates(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
   const studioResults = [];
   for (const scheme of ["light", "dark"]) {
     await page.goto(
@@ -246,45 +355,20 @@ try {
       `Studio/${scheme}: accessibility violations`,
     );
   }
-  await checkMainScreens(page, server.resolvedUrls?.local[0] ?? "", evidence);
-  await checkLightContrast(page, server.resolvedUrls?.local[0] ?? "", evidence);
-  const { checkRecordingStatus } = await import("./analysis-status-web.ts");
-  const { checkAnalysisComparison } = await import("./analysis-compare-web.ts");
-  const { checkAnalysisSessions } = await import("./analysis-sessions-web.ts");
-  const comparisonContext = await browser.newContext({
-    timezoneId: "UTC",
-    locale: "es-ES",
-    reducedMotion: "reduce",
-    deviceScaleFactor: 1,
-  });
-  const comparisonPage = await comparisonContext.newPage();
-  comparisonPage.setDefaultTimeout(20000);
-  const comparisonFailures = collectPageFailures(comparisonPage);
-  try {
-    await checkAnalysisComparison(
-      comparisonPage,
-      server.resolvedUrls?.local[0] ?? "",
-      resolve(evidence, "analysis-comparison"),
-    );
-    await checkAnalysisSessions(
-      comparisonPage,
-      server.resolvedUrls?.local[0] ?? "",
-      resolve(evidence, "analysis-sessions"),
-    );
-    await checkRecordingStatus(
-      comparisonPage,
-      server.resolvedUrls?.local[0] ?? "",
-      resolve(evidence, "analysis-recording-status"),
-    );
-  } finally {
-    failures.push(...comparisonFailures);
-    await comparisonContext.close();
-  }
-  await checkStudioCanvas(page, server.resolvedUrls?.local[0] ?? "", evidence);
-  await checkStudioCatalogDrop(
-    page,
-    server.resolvedUrls?.local[0] ?? "",
-    evidence,
+  await timed("checkMainScreens", () =>
+    checkMainScreens(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  await timed("checkLightContrast", () =>
+    checkLightContrast(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  const analysis = await analysisRun;
+  failures.push(...analysis.failures);
+  if (analysis.error !== undefined) throw analysis.error;
+  await timed("checkStudioCanvas", () =>
+    checkStudioCanvas(page, server.resolvedUrls?.local[0] ?? "", evidence),
+  );
+  await timed("checkStudioCatalogDrop", () =>
+    checkStudioCatalogDrop(page, server.resolvedUrls?.local[0] ?? "", evidence),
   );
   await writeFile(
     resolve(evidence, "interactions.json"),
@@ -305,6 +389,7 @@ try {
   console.error(pageFailuresReport(failures));
   throw error;
 } finally {
+  printTimingSummary((performance.now() - startedAt) / 1000);
   await browser.close();
   await new Promise<void>((done, reject) =>
     server.httpServer.close((error) => (error ? reject(error) : done())),

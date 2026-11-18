@@ -335,6 +335,7 @@ export async function checkWorkshopScreen(
 ) {
   for (const [shot, schemes, width = 1440, height = 900, zoom = 100] of shots) {
     for (const scheme of schemes) {
+      console.log(`Taller: ${scheme}/${shot}`);
       const page = await parent.context().newPage();
       try {
         await page.setViewportSize({ width, height });

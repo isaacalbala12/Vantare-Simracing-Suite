@@ -2,9 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: calc(100dvh - var(--topbar-h));
+  height: calc(100dvh - var(--topbar-h) - 32px);
   min-height: 0;
-  padding: 16px 24px;
+  padding-inline-end: 24px;
 }
 .v-workshop-pickers {
   display: flex;
@@ -129,8 +129,16 @@
   place-items: center;
   position: relative;
   background-image:
-    linear-gradient(to bottom, var(--edge) 1px, transparent 1px),
-    linear-gradient(to right, var(--edge) 1px, transparent 1px);
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--edge) 48%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--edge) 48%, transparent) 1px,
+      transparent 1px
+    );
   background-size: 24px 24px;
   overflow: auto;
 }
@@ -191,7 +199,7 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 18px;
+  padding: 0;
 }
 .v-workshop-rail section {
   display: flex;
@@ -257,6 +265,7 @@
 .v-workshop-frame-actions .v-button {
   padding-inline: 7px;
   justify-content: center;
+  border-radius: var(--radius-md);
 }
 .v-workshop-watch,
 .v-workshop-id {

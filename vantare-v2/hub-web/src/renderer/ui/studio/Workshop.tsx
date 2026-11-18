@@ -110,10 +110,13 @@ function Picker({
             <Icon name={label === t.scene ? "v-studio" : "v-studio"} />
           </span>
           <span>
-            <small>{label}</small>
+            <small>
+              {label}
+              {count && count !== t.loose ? ` · ${count}` : ""}
+            </small>
             <strong>{selected}</strong>
           </span>
-          {count && <small>{count}</small>}
+          {count === t.loose && <small>{count}</small>}
           <Icon name="down" />
         </Select.Trigger>
         <Select.Portal>

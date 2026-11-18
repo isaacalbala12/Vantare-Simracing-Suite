@@ -9,6 +9,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import type { HostError, Request } from "../src/contract/generated/contract";
+import type { StrategyView } from "../src/contract/generated/strategy";
 import { createMockHost } from "../src/mock/host";
 import {
   SectionChromeProvider,
@@ -24,6 +25,7 @@ function mount(
   scene: string,
   override?: (request: Request) => HostError | undefined,
   cancelPicker = false,
+  mapView?: (view: StrategyView) => StrategyView,
 ) {
   const host = createMockHost(`strategy-${scene}`);
   const request = vi.fn(async (request: Request) => {
@@ -35,7 +37,13 @@ function mount(
     if (id !== 1 && reply?.kind === "response")
       reply = host({ kind: "pickedStrategyFile", id, path: null });
     if (reply?.kind === "failure") throw new HostFailure(reply.error);
-    if (reply?.kind === "response") return reply.result;
+    if (reply?.kind === "response") {
+      const result = reply.result;
+      return mapView &&
+        (result.method === "strategy.open" || result.method === "strategy.view")
+        ? { ...result, value: mapView(result.value) }
+        : result;
+    }
     throw Error("Missing strategy response");
   });
   render(
@@ -310,4 +318,132 @@ it("uses the persisted file and explicit unconfirmed form state for the action m
       plan: { ...view.plan, state: "pendingChanges" },
     }).save,
   ).toBe(true);
+});
+
+async function openRace() {
+  await screen.findByRole("heading", { name: "Tus estrategias" });
+  click("Continuar");
+}
+const field = (name: string) =>
+  screen.getByRole("textbox", { name }) as HTMLInputElement;
+
+it("shows four cards from the active form and distinguishes the estimated laps", async () => {
+  mount("ready", undefined, false, (view) => {
+    if (view.form) view.form.fields.fuelCapacityLiters = "82.0";
+    return view;
+  });
+  await openRace();
+  for (const name of ["Carrera", "Coche", "Boxes", "Piloto"])
+    expect(screen.getByRole("heading", { name })).toBeTruthy();
+  expect(screen.getByText("82 L · 1,83 L/v")).toBeTruthy();
+  expect(screen.getByText("90 min · 3 vueltas")).toBeTruthy();
+  expect(screen.getByText("1:30,472 por vuelta")).toBeTruthy();
+  click("Editar coche");
+  expect(field("Depósito").value).toBe("82");
+  expect(document.body.textContent).not.toMatch(/[a-z]:[\\/]|\\\\/i);
+});
+
+it("explains a null form without showing cards or editing actions", async () => {
+  mount("ready", undefined, false, (view) => ({ ...view, form: null }));
+  await openRace();
+  expect(
+    screen.getByText("No se pueden mostrar los datos de esta carrera."),
+  ).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "Coche" })).toBeNull();
+  expect(screen.queryByRole("button", { name: /Editar/ })).toBeNull();
+});
+
+it("shows absent entries without filling them with defaults", async () => {
+  mount("noInputs");
+  await openRace();
+  click("Editar carrera");
+  expect(field("Vueltas que vas a dar").value).toBe("");
+  expect(field("Velocidad de repostaje").value).toBe("");
+});
+
+it("keeps invalid edits local, then restores the saved values and the triggering button", async () => {
+  const request = mount("ready");
+  await openRace();
+  click("Editar coche");
+  expect(field("Depósito").value).toBe("82");
+  const laps = field("Vueltas que vas a dar");
+  expect(laps.readOnly).toBe(false);
+  fill({ Duración: "180" });
+  expect(screen.getByText(/Vueltas ≈ duración ÷ ritmo/).textContent).toContain(
+    "119",
+  );
+  expect(laps.value).toBe("3");
+  for (const pace of ["", "0", "0,00000000000000001"]) {
+    fill({ "Ritmo por vuelta": pace });
+    expect(screen.queryByText(/Vueltas ≈ duración ÷ ritmo/)).toBeNull();
+  }
+  fill({ "Ritmo por vuelta": "90,472" });
+  expect(laps.value).toBe("3");
+  const date = screen.getByText("Fecha y hora de inicio");
+  expect(date.closest("a, [role=link]")).toBeNull();
+  expect(field("Salida").getAttribute("aria-describedby")).toBe(date.id);
+  fill({ Depósito: "" });
+  click("Confirmar datos");
+  expect(field("Depósito").getAttribute("aria-invalid")).toBe("true");
+  expect(screen.getByRole("alert").textContent).toContain("Revisa 1 dato");
+  expect(
+    request.mock.calls.some(([r]) => r.method === "strategy.confirm"),
+  ).toBe(false);
+  click("Cancelar edición");
+  expect(document.activeElement).toBe(button("Editar coche"));
+  expect(screen.getByText("90 min · 3 vueltas")).toBeTruthy();
+});
+
+it("confirms the complete fields of the active variant and uses the returned view", async () => {
+  const request = mount("ready");
+  await openRace();
+  click("Editar piloto");
+  fill({ "Nombre de la carrera": "Copa Fuji", Depósito: "82,50" });
+  click("Confirmar datos");
+  await screen.findByRole("heading", { name: "Copa Fuji" });
+  expect(
+    request.mock.calls.find(([r]) => r.method === "strategy.confirm")?.[0],
+  ).toMatchObject({
+    method: "strategy.confirm",
+    eventId: "event-1",
+    strategyId: "variant-1",
+    revision: "a".repeat(64),
+    fields: {
+      name: "Copa Fuji",
+      track: "Fuji",
+      class: "GT3",
+      durationMinutes: "90",
+      fuelCapacityLiters: "82.50",
+      pitTransitSeconds: "25",
+      startAt: "",
+      driverName: "Pilot",
+      driverInitials: "PI",
+      team: "",
+      variantName: "Base",
+      variantMode: "dry",
+      variantNote: "",
+    },
+  });
+  expect(screen.getByText("82,5 L · 1,83 L/v")).toBeTruthy();
+  expect(screen.getByRole("status").textContent).toBe("Datos confirmados.");
+  expect(screen.getByText("Sin guardar")).toBeTruthy();
+});
+
+it("keeps the draft visible when confirmation fails", async () => {
+  mount("ready", (r) =>
+    r.method === "strategy.confirm"
+      ? { kind: "strategyInvalidText" }
+      : undefined,
+  );
+  await openRace();
+  click("Editar carrera");
+  fill({ "Nombre de la carrera": "Copa Fuji" });
+  expect((button("Guardar") as HTMLButtonElement).disabled).toBe(true);
+  click("Confirmar datos");
+  expect((await screen.findByRole("alert")).textContent).toBe(
+    "No se han podido usar esos datos. Revisa lo que has escrito.",
+  );
+  expect(field("Nombre de la carrera").value).toBe("Copa Fuji");
+  click("Cancelar edición");
+  expect(screen.queryByRole("alert")).toBeNull();
 });

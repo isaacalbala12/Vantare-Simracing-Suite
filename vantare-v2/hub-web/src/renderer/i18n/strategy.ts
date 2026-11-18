@@ -101,6 +101,27 @@ export const strategy = {
   unsaved: "Si cierras sin guardar, la carrera se pierde.",
   create: "Crear carrera",
   edit: "Editar",
+  editing: "Editando los datos de la carrera",
+  editingDetail:
+    "Los cambios no cuentan hasta que pulses «Confirmar datos». Mientras haya datos sin confirmar no puedes guardar el archivo ni cambiar de carrera.",
+  cancelEdit: "Cancelar edición",
+  confirm: "Confirmar datos",
+  confirmed: "Datos confirmados.",
+  unconfirmed: (count: number) =>
+    count === 1 ? "1 dato sin confirmar" : `${count} datos sin confirmar`,
+  noForm: "No se pueden mostrar los datos de esta carrera.",
+  lapEstimate: (estimate: string) =>
+    `Vueltas ≈ duración ÷ ritmo: unas ${estimate} vueltas. El plan usa las vueltas que indiques.`,
+  before: (value: string) => `Antes: ${value}`,
+  driverAndStrategy: "Piloto y estrategia",
+  noFormation: "No hay",
+  noWear: "sin desgaste",
+  noLimit: "sin límite",
+  together: "Todo a la vez",
+  loads: (fuel: string, energy: string) =>
+    `de ${fuel} L en ${fuel} L · de ${energy} % en ${energy} %`,
+  perLap: (time: string) => `${time} por vuelta`,
+  modes: { dry: "Seco", wet: "Mojado", eco: "Ahorro", humid: "Húmedo" },
   editBlock: (block: string) => `Editar ${block.toLowerCase()}`,
   yourRace: "Tu carrera",
   summaryHelp: "Se guarda al crear la carrera en el último paso.",
@@ -147,6 +168,9 @@ export const strategy = {
     basePaceSeconds: "Ritmo por vuelta",
     variantName: "Nombre de esta estrategia",
     variantNote: "Nota",
+    team: "Equipo",
+    variantMode: "Modo de la estrategia",
+    serviceMode: "En la parada",
   },
   help: {
     startAt: "Fecha y hora de inicio",
@@ -166,6 +190,7 @@ export const strategy = {
     combo: "Circuito · clase",
     duration: "Duración · vueltas",
     laps: "Vueltas",
+    lap: "vuelta",
     fuel: "Depósito · consumo",
     energy: "Energía virtual",
     tyres: "Neumáticos",
@@ -173,6 +198,7 @@ export const strategy = {
     service: "Repostaje · recarga",
     wheels: "Ruedas",
     pace: "Ritmo",
+    loads: "Cargas",
   },
   optional: "Opcional",
 };

@@ -627,12 +627,13 @@ div.v-launcher-app-tile {
     scrollbar-color: var(--text-3) transparent;
     align-items: stretch;
     flex: 1;
-    min-height: 163px;
+    /* Room for the compact «Importado» chip without pushing it out of the card. */
+    min-height: 192px;
   }
   .v-launcher-profile-grid > .v-launcher-profile {
     width: 200px;
     flex: 0 0 200px;
-    min-height: 163px;
+    min-height: 192px;
   }
   .v-launcher-profile-grid > .v-launcher-profile--new {
     width: 150px;

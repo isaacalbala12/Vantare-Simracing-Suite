@@ -22,11 +22,16 @@ import { type ProfileCardAction, ProfileCardActions } from "./ProfileActions";
 import { ResidentResults } from "./ResidentResults";
 import "./profiles.css";
 
-function ImportedOrigin() {
+function ImportedOrigin({ compact = false }: { compact?: boolean }) {
   return (
     <span className="v-launcher-origin">
-      <Pill tone="warn" dot>
-        {text.importedOrigin}
+      <Pill
+        tone="warn"
+        dot
+        aria-label={compact ? text.importedOrigin : undefined}
+        title={compact ? text.importedOrigin : undefined}
+      >
+        {compact ? text.importedShort : text.importedOrigin}
       </Pill>
     </span>
   );
@@ -450,7 +455,7 @@ export function LauncherProfiles({
                     <small>
                       {text.appCount(item.apps.length, item.favorite)}
                     </small>
-                    {item.imported && <ImportedOrigin />}
+                    {item.imported && <ImportedOrigin compact />}
                   </button>
                 </ProfileCardActions>
               ))}

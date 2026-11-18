@@ -177,6 +177,10 @@ mod tests {
     use super::*;
     use serde_json::Value;
 
+    /// Bounds of the budget scan of the partial-plan test (it fails loudly past them).
+    const MAX_COMPLETING_BUDGET: usize = 20_000;
+    const MAX_SCANNED_BUDGETS: usize = 2_000;
+
     fn solver_input() -> Input {
         let cases: Vec<Value> =
             serde_json::from_str(include_str!("../../testdata/oracle/solver.json"))
@@ -304,8 +308,12 @@ mod tests {
     fn fuji_with_virtual_energy_recalculates_the_edited_schedule_with_the_fallback() {
         for (index, delta) in [(None, 0), (Some(0), -1), (Some(3), -1), (Some(4), -1)] {
             let edited = witness(index, delta);
+            // 20.000 candidates are enough for the scalar search to give up without a plan
+            // (it does not find one with 250.000 either) and keep the test short.
+            let mut input = manual(236);
+            input.budget.max_candidates = 20_000;
             let (outcome, fallback) =
-                recalculate_edited_plan_detailed(&manual(236), &edited, &AtomicBool::new(false))
+                recalculate_edited_plan_detailed(&input, &edited, &AtomicBool::new(false))
                     .expect("recalculate");
             assert!(outcome.result.feasible, "{edited:?}: no plan");
             assert_eq!(outcome.result.stints, edited.stints);
@@ -464,19 +472,28 @@ mod tests {
         };
         // The plan of this calendar is found at the very end of the search, so the
         // partial answers sit just below the budget that completes it: double the
-        // budget until the search completes, then scan downwards.
+        // budget until the search completes, then scan downwards. Both loops have an
+        // explicit bound and fail loudly when it is reached, never by running long.
         let mut complete = 50_usize;
         while scalar_with(complete).1.certificate.status == solver::OptimalityStatus::NotProven {
             complete *= 2;
-            assert!(complete < 1_000_000, "the scalar search never completes");
+            assert!(
+                complete <= MAX_COMPLETING_BUDGET,
+                "the scalar search of this tiny race must complete within {MAX_COMPLETING_BUDGET} candidates"
+            );
         }
-        let found = (1..complete).rev().take(5_000).find_map(|candidates| {
-            let (budget, scalar) = scalar_with(candidates);
-            (scalar.certificate.status == solver::OptimalityStatus::NotProven
-                && scalar.result.feasible)
-                .then_some((budget, scalar))
-        });
-        let (budget, expected) = found.expect("a budget that ends partial with a plan");
+        let found = (1..complete)
+            .rev()
+            .take(MAX_SCANNED_BUDGETS)
+            .find_map(|candidates| {
+                let (budget, scalar) = scalar_with(candidates);
+                (scalar.certificate.status == solver::OptimalityStatus::NotProven
+                    && scalar.result.feasible)
+                    .then_some((budget, scalar))
+            });
+        let (budget, expected) = found.expect(
+            "no budget below the completing one ends partial with a plan (scanned the bounded range)",
+        );
         let (outcome, fallback) =
             recalculate_edited_plan_detailed(&budget, &edited, &AtomicBool::new(false))
                 .expect("recalculate");

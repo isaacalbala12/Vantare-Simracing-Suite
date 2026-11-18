@@ -103,14 +103,16 @@ pub fn calculate_with_route(
     if source_status != SourceStatus::Open {
         return Err("source_not_open".into());
     }
-    calculate_inner(prepared, cancel, &|| {})
+    calculate_inner(prepared, cancel, &|| {}, &|| {})
 }
 
-/// `before_greedy` runs once, right before the greedy fallback starts.
+/// `before_greedy` runs right before the greedy fallback starts and
+/// `after_greedy` right after it ends; tests use them to place a cancellation.
 fn calculate_inner(
     prepared: &PreparedCalculation,
     cancel: &AtomicBool,
     before_greedy: &dyn Fn(),
+    after_greedy: &dyn Fn(),
 ) -> Result<(SolverOutcome, CalculationRoute), String> {
     let input = &prepared.input;
     let mut outcome = solver::solve_v2_cancellable(input, cancel)?;
@@ -126,7 +128,9 @@ fn calculate_inner(
     if cancel.load(Ordering::Relaxed) {
         return Err("cancelled".into());
     }
-    match solver::solve_greedy_fallback(input) {
+    let greedy = solver::solve_greedy_fallback(input);
+    after_greedy();
+    match greedy {
         Ok(plan) => {
             if cancel.load(Ordering::Relaxed) {
                 return Err("cancelled".into());
@@ -196,27 +200,46 @@ mod tests {
         assert_eq!(error, "source_not_open");
     }
 
-    #[test]
-    fn a_cancellation_during_the_greedy_fallback_publishes_nothing() {
+    fn manual_prepared() -> PreparedCalculation {
         let mut input: Input =
             serde_json::from_str(include_str!("../testdata/fuji-1450-input.json")).expect("Fuji");
         input.extra.clear();
         input.budget.p95_millis = 2_000;
         input.budget.max_candidates = 250_000;
         input.budget.max_iterations = 1_000_000;
-        let prepared = prepare_manual(input).expect("valid manual input");
+        prepare_manual(input).expect("valid manual input")
+    }
+
+    // The two cancellation checks around the fallback are each protected: removing
+    // either one makes one of these tests fail. The hooks run on the calling
+    // thread, so the cancellation lands deterministically, without sleeping.
+    #[test]
+    fn a_cancellation_before_the_greedy_fallback_stops_it_from_running() {
         let cancel = AtomicBool::new(false);
-        let reached = AtomicBool::new(false);
-        // The hook runs on the calling thread right before the fallback: the
-        // cancellation lands there deterministically, without sleeping.
-        let result = calculate_inner(&prepared, &cancel, &|| {
-            reached.store(true, Ordering::Relaxed);
+        let (reached, ran) = (AtomicBool::new(false), AtomicBool::new(false));
+        let result = calculate_inner(
+            &manual_prepared(),
+            &cancel,
+            &|| {
+                reached.store(true, Ordering::Relaxed);
+                cancel.store(true, Ordering::Relaxed);
+            },
+            &|| ran.store(true, Ordering::Relaxed),
+        );
+        assert!(reached.load(Ordering::Relaxed), "the fallback was reached");
+        assert!(!ran.load(Ordering::Relaxed), "the fallback must not run");
+        assert_eq!(result.expect_err("cancelled"), "cancelled");
+    }
+
+    #[test]
+    fn a_cancellation_while_the_greedy_fallback_runs_publishes_no_plan() {
+        let cancel = AtomicBool::new(false);
+        let ran = AtomicBool::new(false);
+        let result = calculate_inner(&manual_prepared(), &cancel, &|| {}, &|| {
+            ran.store(true, Ordering::Relaxed);
             cancel.store(true, Ordering::Relaxed);
         });
-        assert!(
-            reached.load(Ordering::Relaxed),
-            "the scalar search must hand over to the greedy fallback"
-        );
+        assert!(ran.load(Ordering::Relaxed), "the fallback ran");
         assert_eq!(result.expect_err("cancelled"), "cancelled");
     }
 }

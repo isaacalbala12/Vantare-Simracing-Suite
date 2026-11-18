@@ -128,7 +128,7 @@ fn plan(input: &Input, fuel: Resource, ve: Resource, cap: u32) -> Result<ResultV
             if reach == 0 {
                 return Err(GreedyRefusal::ResourceTooSmall);
             }
-            let mut stop = (done + reach).min(input.race_laps - 1);
+            let mut stop = done.saturating_add(reach).min(input.race_laps - 1);
             if let Some(deadline) = deadline {
                 if deadline <= done {
                     return Err(GreedyRefusal::WindowUnreachable);

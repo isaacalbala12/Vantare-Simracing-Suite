@@ -609,18 +609,7 @@ fn solve_search(
     return_partial: bool,
     deadline_millis: Option<u64>,
 ) -> Result<SolverOutcome, String> {
-    let (effective, requested) = budget::effective(input);
-    let degraded = effective
-        .discretization
-        .fuel_liters
-        .total_cmp(&requested.fuel_liters)
-        .is_ne()
-        || effective
-            .discretization
-            .ve_percent
-            .total_cmp(&requested.ve_percent)
-            .is_ne();
-    if search::needs_extended(input) || degraded {
+    if runs_extended_search(input) {
         return search::solve(input, cancel, return_partial, deadline_millis);
     }
     input.validate()?;

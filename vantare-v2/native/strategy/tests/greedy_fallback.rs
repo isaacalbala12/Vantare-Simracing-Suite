@@ -3,13 +3,13 @@
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 
-use serde_json::Value;
+use serde_json::{Value, json};
 use vantare_strategy::application::{
     CalculationRoute, SourceStatus, calculate_with_route, prepare_manual,
 };
 use vantare_strategy::solver::{
-    GreedyRefusal, Input, OptimalityStatus, ResultV2, SolverOutcome, Window, solve_greedy_fallback,
-    solve_v2_cancellable,
+    GreedyRefusal, Input, OptimalityStatus, ResultV2, SolverOutcome, Window, runs_extended_search,
+    solve_greedy_fallback, solve_v2_cancellable,
 };
 
 /// The manual bridge input: the Fuji fixture without `extra`, with the manual

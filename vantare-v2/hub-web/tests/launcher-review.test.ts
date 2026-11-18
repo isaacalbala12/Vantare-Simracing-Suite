@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { HostToUi } from "../src/contract/generated/contract";
+import type {
+  HostToUi,
+  ResidentView,
+} from "../src/contract/generated/contract";
 import { postHostMessageToRenderer } from "../src/contract/validation";
 import { launcherReview } from "../src/main/launcher-review";
 import { isRendererMessage } from "../src/main/security";
@@ -49,6 +52,21 @@ function fixture() {
     show,
     send,
     view,
+    changed: () =>
+      review.receive({
+        kind: "event",
+        event: {
+          topic: "launcherResident",
+          value: {
+            ...view,
+            execution: {
+              ...view.execution,
+              question: { ...view.execution.question, decision: "3" },
+            },
+            decision: { id: "3" },
+          } as ResidentView,
+        },
+      }),
     clickAt: (time: number) => {
       now = time;
     },
@@ -178,7 +196,7 @@ describe("trusted native review", () => {
     "sends nothing on signal close (%s)",
     async (reason) => {
       vi.useFakeTimers();
-      const { review, show, pages, send } = fixture();
+      const { review, show, pages, send, changed } = fixture();
       show.mockImplementationOnce(
         (options) =>
           new Promise((resolve) => {
@@ -190,7 +208,7 @@ describe("trusted native review", () => {
       const result = review.open(ticket);
       pages(`${title}\n${detail}`);
       expect(show).toHaveBeenCalledOnce();
-      if (reason === "changed") review.invalidate();
+      if (reason === "changed") changed();
       else await vi.advanceTimersByTimeAsync(180_000);
       expect(show.mock.calls[0][0].signal.aborted).toBe(true);
       expect(await result).toBe(reason);
@@ -208,6 +226,37 @@ describe("trusted native review", () => {
     expect(await result).toBe("unavailable");
     expect(show).not.toHaveBeenCalled();
     expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not deliver a late private reply to a new question", async () => {
+    const { review, show, pages, changed } = fixture();
+    const result = review.open(ticket);
+    changed();
+    expect(await result).toBe("changed");
+    expect(review.expect(5, { ...target, decision: "3" })).toBe(false);
+    pages(`${title}\n${detail}`);
+    expect(show).not.toHaveBeenCalled();
+    expect(review.expect(5, { ...target, decision: "3" })).toBe(true);
+  });
+
+  it("returns the host failure after confirmation even if the decision was sent", async () => {
+    const { review, show, pages, flushed, outcome } = fixture();
+    show.mockResolvedValueOnce(0);
+    const result = review.open(ticket);
+    pages(`${title}\n${detail}`);
+    await vi.waitFor(() => expect(outcome()).toHaveLength(1));
+    review.receive({ kind: "reviewFailure", reason: "changed" });
+    flushed();
+    expect(await result).toBe("changed");
+  });
+
+  it("returns a closed unavailable status if the host has no review", async () => {
+    const { review, show, outcome } = fixture();
+    const result = review.open(ticket);
+    review.receive({ kind: "reviewFailure", reason: "unavailable" });
+    expect(await result).toBe("unavailable");
+    expect(show).not.toHaveBeenCalled();
+    expect(outcome()).toEqual([]);
   });
 
   it("keeps text and private requests off the renderer port", () => {

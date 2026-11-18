@@ -7,6 +7,7 @@ import type {
   Topic,
   UiToHost,
 } from "../../contract/generated/contract";
+import type { LauncherReviewResult } from "../../contract/launcher-review-bridge";
 import { bounded, isHostMessage } from "../../contract/validation";
 import {
   type CloseClock,
@@ -81,10 +82,19 @@ export class Client {
     private cleanup: () => void = () => {},
     private bootstrap?: () => void,
     clock?: CloseClock,
+    private review: (ticket: string) => Promise<LauncherReviewResult> = async (
+      ticket,
+    ) => (await window.vantare?.reviewTrust(ticket)) ?? "unavailable",
   ) {
     this.reportClose = new ReportClosePreparation(clock);
     port.onmessage = ({ data }: MessageEvent<unknown>) => {
-      if (!isHostMessage(data) || !bounded(data)) return;
+      if (
+        !isHostMessage(data) ||
+        data.kind === "reviewContent" ||
+        data.kind === "reviewFailure" ||
+        !bounded(data)
+      )
+        return;
       if (data.kind === "closeRequested") {
         this.beginClose(data.reason);
         for (const receive of this.listeners) receive(data);
@@ -145,6 +155,8 @@ export class Client {
                 undefined,
             ),
           ),
+        undefined,
+        mockReply.reviewTrust,
       );
     }
     if (!window.vantare) throw new Error("Host preload unavailable");
@@ -175,6 +187,10 @@ export class Client {
   }
   send(value: UiToHost) {
     this.port.postMessage(value);
+  }
+  async reviewTrust(ticket: string): Promise<LauncherReviewResult> {
+    if (this.disposed || this.closing) return "unavailable";
+    return this.review(ticket);
   }
   listen(receive: (message: HostToUi) => void) {
     this.listeners.add(receive);

@@ -28,6 +28,7 @@ import { checkResidentAnswer } from "./check-resident-answer.ts";
 import { checkResidentControls } from "./check-resident-control.ts";
 import { checkResidentRemoval } from "./check-resident-removal.ts";
 import { checkResidentResults } from "./check-resident-results.ts";
+import { checkResidentReview } from "./check-resident-review.ts";
 import { checkMainScreens } from "./check-screens-a11y.ts";
 import { checkStudioCanvas } from "./check-studio-canvas.ts";
 import { checkStudioCatalogDrop } from "./check-studio-catalog-drop.ts";
@@ -194,6 +195,7 @@ try {
   const { checkRoadmapDensity } = await import("./check-roadmap-density.ts");
   await checkRoadmapDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkResidentAnswer(page, server.resolvedUrls?.local[0] ?? "");
+  await checkResidentReview(page, server.resolvedUrls?.local[0] ?? "");
   await checkCalendarDensity(page, server.resolvedUrls?.local[0] ?? "");
   await checkCalendarDialogSafety(page, server.resolvedUrls?.local[0] ?? "");
   await checkPerformanceDensity(page, server.resolvedUrls?.local[0] ?? "");

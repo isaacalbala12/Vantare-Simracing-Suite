@@ -1,8 +1,24 @@
 import { contextBridge, ipcRenderer, webFrame } from "electron";
+import {
+  launcherReviewChannel,
+  reviewResult,
+  reviewTicket,
+} from "../contract/launcher-review-bridge";
 
 let connecting = false;
 contextBridge.exposeInMainWorld("vantare", {
   platform: process.platform,
+  async reviewTrust(...args: unknown[]) {
+    const ticket = reviewTicket(args);
+    if (!ticket) return "unavailable";
+    try {
+      return reviewResult(
+        await ipcRenderer.invoke(launcherReviewChannel, ticket),
+      );
+    } catch {
+      return "unavailable";
+    }
+  },
   viewport() {
     // Client area in DIP, excluding Windows' invisible resize frame. The visual
     // viewport retains subpixel precision after Chromium applies page zoom.

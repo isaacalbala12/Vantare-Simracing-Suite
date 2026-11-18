@@ -1,16 +1,24 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   cleanup,
   fireEvent,
   render,
+  renderHook,
   screen,
   within,
 } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { ResidentView } from "../src/contract/generated/contract";
+import * as host from "../src/renderer/app/Host";
+import type { Client } from "../src/renderer/bridge/client";
 import { residentReviewText as t } from "../src/renderer/i18n/launcher-review";
-import type { ResidentReviewPanel } from "../src/renderer/screens/launcher/resident-review";
+import {
+  type ResidentReviewPanel,
+  useResidentReview,
+} from "../src/renderer/screens/launcher/resident-review";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 import { ResidentInbox } from "../src/renderer/ui/launcher/ResidentInbox";
 
@@ -142,4 +150,73 @@ it("restores focus to the retry button or drawer following native review", () =>
   mounted.rerender(view(make("reviewing")));
   mounted.rerender(view(make("trusted")));
   expect(document.activeElement).toBe(drawer);
+});
+
+it("drops a native completion arriving after another question replaces it", async () => {
+  const account = scope.accountGeneration;
+  const native = Promise.withResolvers<"expired">();
+  const client = {
+    request: vi.fn(async () => ({
+      method: "launcher.resident.reviewOpen",
+      value: { ticket: "e".repeat(32) },
+    })),
+    reviewTrust: vi.fn(() => native.promise),
+  };
+  const observe = vi
+    .spyOn(host, "useHost")
+    .mockReturnValue({ client: client as unknown as Client });
+  const cache = new QueryClient();
+  cache.setQueryData(host.coreKey, {
+    ...host.offline,
+    services: "connected",
+    accountGeneration: account,
+    access: { ...host.offline.access, verified: true, blocked: false },
+  });
+  const makeView = (id: string): ResidentView => ({
+    decision: { ...question, id },
+    execution: {
+      instance: scope.instance,
+      question: { ...scope, decision: id },
+      results: { kind: "unknown" },
+      active: null,
+      checkedAnswer: true,
+      checkedControl: false,
+      revisionCheckedLaunch: true,
+      firstRetainedSeq: "1",
+      events: [],
+    },
+    ownership: { kind: "unsupported" },
+    protected: false,
+    online: true,
+    running: true,
+    error: false,
+    reviewOutcome: null,
+    registrations: [],
+  });
+  try {
+    const screen = renderHook(({ value }) => useResidentReview(value, answer), {
+      initialProps: { value: makeView("1") },
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={cache}>{children}</QueryClientProvider>
+      ),
+    });
+    let finished: Promise<void> | undefined;
+    await act(async () => {
+      finished = screen.result.current?.open();
+    });
+    expect(screen.result.current?.state).toBe("reviewing");
+    expect(client.reviewTrust).toHaveBeenCalledOnce();
+    screen.rerender({ value: makeView("3") });
+    expect(screen.result.current?.state).toBe("question");
+    await act(async () => {
+      native.resolve("expired");
+      await finished;
+    });
+    expect(screen.result.current).toMatchObject({
+      state: "question",
+      scope: { decision: "3" },
+    });
+  } finally {
+    observe.mockRestore();
+  }
 });

@@ -99,7 +99,10 @@ async function boot(minimized: boolean, secondBeforeReady = false) {
     BrowserWindow: FakeWindow,
     clipboard: {},
     dialog: { showErrorBox: failure },
-    ipcMain: new EventEmitter(),
+    ipcMain: Object.assign(new EventEmitter(), {
+      handle: vi.fn(),
+      removeHandler: vi.fn(),
+    }),
     Menu: { setApplicationMenu: vi.fn() },
     MessageChannelMain: class {},
     nativeTheme: Object.assign(new EventEmitter(), {

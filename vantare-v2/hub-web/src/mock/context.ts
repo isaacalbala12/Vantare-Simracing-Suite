@@ -6,7 +6,9 @@ import type {
   TestingView,
   UiToHost,
 } from "../contract/generated/contract";
+import type { LauncherReviewResult } from "../contract/launcher-review-bridge";
 export interface MockContext {
+  reviewTrust?: (ticket: string) => Promise<LauncherReviewResult>;
   studioData?: import("../contract/generated/contract").StudioView;
   settingsData?: import("../contract/generated/contract").SettingsView;
   launchForNotice?: (profile: string) => void;

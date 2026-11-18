@@ -67,7 +67,11 @@ export function create(
       },
       { id: "pro", name: "Pro", hotkey: "ctrl+shift+2", state: "error" },
     ];
-  const checked = context.sceneName.startsWith("launcher-answer-");
+  const reviewScene = context.sceneName.startsWith("launcher-review-")
+    ? context.sceneName.slice("launcher-review-".length)
+    : undefined;
+  const checked =
+    !!reviewScene || context.sceneName.startsWith("launcher-answer-");
   if (checked) {
     context.core.accountGeneration = "a".repeat(64);
     context.core.services = "connected";
@@ -98,17 +102,62 @@ export function create(
         { id: "cancel", label: residentActionLabels.cancel },
       ],
     };
-    if (context.sceneName === "launcher-answer-trust") {
+    if (reviewScene || context.sceneName === "launcher-answer-trust") {
       context.core.access.verified = true;
       view.decision = {
         id: "2",
         kind: "authorization",
-        review: "available",
+        review:
+          reviewScene === "unavailable" || reviewScene === "too-long"
+            ? reviewScene
+            : "available",
         actions: [
           { id: "trust", label: residentActionLabels.trust },
           { id: "cancel", label: residentActionLabels.cancel },
         ],
       };
+      if (reviewScene && context.launcherData && view.execution.question) {
+        view.execution.checkedControl = true;
+        const launcher = context.launcherData;
+        const profile = launcher.profiles[0];
+        launcher.apps.forEach((app) => {
+          app.available = true;
+        });
+        if (reviewScene === "too-long") {
+          launcher.apps.push({
+            id: "custom:1",
+            name: "Actualizador de overlays",
+            available: true,
+          });
+          profile.name = "Overlays PRO (pack gratis)";
+          profile.apps = ["lmu", "custom:1"];
+        }
+        view.execution.question = {
+          ...view.execution.question,
+          revision: launcher.revision,
+        };
+        view.execution.active = {
+          run: "1",
+          accountGeneration: "a".repeat(64),
+          revision: launcher.revision,
+        };
+        view.execution.results = {
+          kind: "known",
+          value: {
+            run: "1",
+            accountGeneration: "a".repeat(64),
+            revision: launcher.revision,
+            profile: profile.id,
+            mode: "profile",
+            outcome: null,
+            retryFailed: false,
+            steps: profile.apps.map((_, index) => ({
+              index,
+              state: "pending",
+            })),
+          },
+        };
+      }
     }
   }
   const control = createResidentControlMock(context, view, schedule);
@@ -122,6 +171,24 @@ export function create(
   let pending:
     | { ticket: string; target: ResidentReviewTarget; deadline?: number }
     | undefined;
+  if (reviewScene)
+    context.reviewTrust = async (ticket) => {
+      if (!pending || pending.ticket !== ticket) return "unavailable";
+      const { target } = pending;
+      pending = undefined;
+      if (reviewScene === "reviewing") return new Promise(() => {});
+      if (
+        reviewScene === "trusted" ||
+        reviewScene === "declined" ||
+        reviewScene === "changed" ||
+        reviewScene === "expired"
+      ) {
+        view.reviewOutcome = { question: target.decision, state: reviewScene };
+        context.emit?.(event());
+        return "submitted";
+      }
+      return "unavailable";
+    };
   const reviewRejection = (
     target: ResidentReviewTarget,
   ): ResidentAnswerRejection | undefined => {

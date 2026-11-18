@@ -12,6 +12,7 @@ import { useResident } from "./resident";
 import { useResidentAnswer } from "./resident-answer";
 import { useResidentControl } from "./resident-control";
 import { useResidentRemoval } from "./resident-removal";
+import { useResidentReview } from "./resident-review";
 export default function LauncherEntry() {
   return (
     <ProfileEditorProvider>
@@ -25,6 +26,7 @@ function LauncherContent() {
   const resident = useResident();
   const removal = useResidentRemoval(resident);
   const answer = useResidentAnswer(resident);
+  const review = useResidentReview(resident, answer);
   const control = useResidentControl(resident);
   const activeTab = editor.value ? "profile" : editor.tab;
   return (
@@ -68,7 +70,7 @@ function LauncherContent() {
           <Launcher control={control} removal={removal} />
         )}
       </SectionPanel>
-      <ResidentInbox view={resident} answer={answer} />
+      <ResidentInbox view={resident} answer={answer} review={review} />
     </>
   );
 }

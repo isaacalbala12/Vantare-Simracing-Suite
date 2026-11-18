@@ -602,6 +602,10 @@
 .strategy-edit-notice h3 {
   width: fit-content;
 }
+/* The title takes focus by script so it is announced; it is not a control. */
+.strategy-edit-notice h3:focus-visible {
+  outline: none;
+}
 
 .strategy-race-cards {
   align-items: stretch;

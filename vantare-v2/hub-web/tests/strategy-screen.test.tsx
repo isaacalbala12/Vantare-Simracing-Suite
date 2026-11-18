@@ -507,3 +507,16 @@ it("does not mark a focused field without an error as invalid", async () => {
   expect(deposit.getAttribute("aria-invalid")).toBeNull();
   expect(screen.queryByRole("alert")).toBeNull();
 });
+
+it("moves focus to the editing title, which is not a control, and returns it to Editar", async () => {
+  mount("ready");
+  await openRace();
+  click("Editar carrera");
+  const title = screen.getByRole("heading", {
+    name: "Editando los datos de la carrera",
+  });
+  expect(title.getAttribute("tabindex")).toBe("-1");
+  expect(document.activeElement).toBe(title);
+  click("Cancelar edición");
+  expect(document.activeElement).toBe(button("Editar carrera"));
+});

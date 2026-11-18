@@ -239,10 +239,16 @@ async function editRace(page: Page, shot: (name: string) => Promise<void>) {
   await page
     .getByRole("button", { name: "Editar carrera", exact: true })
     .press("Enter");
-  assert(
-    await page
-      .getByRole("heading", { name: "Editando los datos de la carrera" })
-      .evaluate((node) => node.matches(":focus-visible")),
+  // The title takes programmatic focus so a screen reader announces it, but it
+  // is not a control: it keeps tabindex -1 and draws no focus ring.
+  const title = page.getByRole("heading", {
+    name: "Editando los datos de la carrera",
+  });
+  assert(await title.evaluate((node) => node === document.activeElement));
+  assert.equal(await title.getAttribute("tabindex"), "-1");
+  assert.equal(
+    await title.evaluate((node) => getComputedStyle(node).outlineStyle),
+    "none",
   );
   await shot("carrera-editar");
   const body = page.locator(".strategy-race-editor-body");

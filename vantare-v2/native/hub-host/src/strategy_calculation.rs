@@ -308,7 +308,7 @@ impl From<StrategyPlanError> for Failure {
 pub(super) type Work = Result<(Document, StrategyPlanView, Option<Editing>), Failure>;
 
 enum Done {
-    Calculation(Work),
+    Calculation(Box<Work>),
     Recalculation(Recalculation),
 }
 
@@ -389,7 +389,7 @@ impl Calculation {
         &mut self,
         run: impl FnOnce(&AtomicBool) -> Work + Send + 'static,
     ) -> Result<(), HostError> {
-        let id = self.spawn(move |cancel| Done::Calculation(run(cancel)))?;
+        let id = self.spawn(move |cancel| Done::Calculation(Box::new(run(cancel))))?;
         self.editing = None;
         self.view = StrategyPlanView {
             state: StrategyPlanState::Calculating,
@@ -514,23 +514,25 @@ impl Calculation {
         }
         let id = Some(worker.id);
         match done {
-            Ok(Done::Calculation(Ok((document, view, editing)))) => {
-                self.editing = editing;
-                self.view = StrategyPlanView {
-                    compute_id: id,
-                    ..view
-                };
-                Some(document)
-            }
+            Ok(Done::Calculation(work)) => match *work {
+                Ok((document, view, editing)) => {
+                    self.editing = editing;
+                    self.view = StrategyPlanView {
+                        compute_id: id,
+                        ..view
+                    };
+                    Some(document)
+                }
+                Err(failure) => {
+                    self.fail(worker.id, failure);
+                    None
+                }
+            },
             Ok(Done::Recalculation(done)) => {
                 if let Some(editing) = &mut self.editing {
                     editing.apply(done);
                 }
                 self.show_edit(id);
-                None
-            }
-            Ok(Done::Calculation(Err(failure))) => {
-                self.fail(worker.id, failure);
                 None
             }
             Err(_) if self.editing.is_some() => {

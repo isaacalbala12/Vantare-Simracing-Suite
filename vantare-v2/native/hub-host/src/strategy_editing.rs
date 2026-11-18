@@ -271,7 +271,7 @@ pub(super) fn recalculate(
     pilot: &str,
     cancel: &AtomicBool,
 ) -> Recalculation {
-    let outcome = recalculate_edited_plan(input, edited, cancel).map_err(edit_error)?;
+    let outcome = recalculate_edited_plan(input, edited, cancel).map_err(|error| edit_error(&error))?;
     let view = project(input, &outcome, pilot).map_err(|_| StrategyEditError::Failed)?;
     Ok(Recalculated {
         view,
@@ -280,8 +280,8 @@ pub(super) fn recalculate(
 }
 
 /// The crate reports these as fixed strings; anything else is a plain failure.
-fn edit_error(error: String) -> StrategyEditError {
-    match error.as_str() {
+fn edit_error(error: &str) -> StrategyEditError {
+    match error {
         "invalid_edited_stint_schedule" | "too_many_required_pit_windows" => {
             StrategyEditError::InvalidSchedule
         }

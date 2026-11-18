@@ -123,7 +123,7 @@ fn a_plan_with_one_stint_has_no_boundary_to_edit() {
     let mut editing = calculate(manual(3, false)).2.expect("a feasible plan");
     let view = editing.edit_view();
     assert_eq!(view.stints.len(), 1);
-    assert!(view.stops.is_empty());
+    assert_eq!(view.stops, vec![]);
     assert_eq!(editing.move_boundary(0, 1), Err(HostError::Rejected));
     assert_eq!(editing.move_stop(0, 1), Err(HostError::Rejected));
 }
@@ -346,7 +346,7 @@ fn the_crates_error_strings_map_to_closed_errors() {
         ("cancelled", StrategyEditError::Failed),
         ("anything else", StrategyEditError::Failed),
     ] {
-        assert_eq!(edit_error(text.into()), error, "{text}");
+        assert_eq!(edit_error(text), error, "{text}");
     }
 }
 
@@ -354,7 +354,7 @@ fn the_crates_error_strings_map_to_closed_errors() {
 fn reset_returns_exactly_to_the_calculated_plan() {
     let mut editing = editable();
     let base = editing.plan_view(Some(1));
-    assert_eq!(base.edit.as_ref().unwrap().can_reset, false);
+    assert!(!base.edit.as_ref().unwrap().can_reset);
     editing.move_boundary(0, editing.edit_view().stops[0].min_lap).unwrap();
     editing.move_stop(1, 1).unwrap();
     assert_eq!(editing.plan_view(Some(1)).state, StrategyPlanState::Edited);
@@ -396,7 +396,7 @@ fn a_plan_that_does_not_cover_the_input_laps_cannot_be_edited() {
 /// builds it, edited by one lap. The solver must keep the schedule exactly.
 /// Measured on 2026-11-18: today the scalar search reaches its 250.000-candidate
 /// limit without a plan (`partial`, as in the base calculation of such races), so
-/// this stays ignored until the greedy seed (#2628) or the solver covers it.
+/// this stays ignored until the greedy seed (#2628, PR #2635) is merged.
 #[test]
 #[ignore = "the manual bridge finds no plan for a race this size before #2628"]
 fn fuji_with_ve_recalculates_an_edited_witness_schedule() {

@@ -10,6 +10,7 @@
             "kind": "standings",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "standings",
@@ -17,6 +18,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "standings-default",
@@ -24,6 +28,12 @@
                 "watchFor": "Clasificación de carrera de tu clase con posición, piloto, gap, intervalo, última vuelta y PIT: Lotterer abre la tabla en P1 y Ben Hanley lleva la etiqueta PIT. El pie resume pista y vueltas estimadas."
               },
               {
+                "captions": [
+                  "Giovinazzi a 2,00 s: aún no hay batalla.",
+                  "Se acerca a 0,65 s: aparece el acento de batalla.",
+                  "A 0,95 s el acento permanece estable.",
+                  "Se separa a 1,35 s: el acento se retira."
+                ],
                 "frameMs": 1700,
                 "frames": 4,
                 "id": "standings-functional-battle",
@@ -31,6 +41,20 @@
                 "watchFor": "Lotterer y Giovinazzi son consecutivos de su clase. El acento ámbar entra al acercarse, se mantiene estable y se retira al separarse; no cambia el tamaño del texto ni pulsa continuamente."
               },
               {
+                "captions": [
+                  "Clasificación inicial.",
+                  "Giovinazzi mejora su referencia personal.",
+                  "Cambio de posición; PIT sigue a Albuquerque.",
+                  "Giovinazzi marca el récord de sesión.",
+                  "Albuquerque sale de boxes.",
+                  "Giovinazzi se acerca a Lotterer: aparece el acento de batalla a 0,65 s.",
+                  "La batalla se mantiene estable a 0,95 s.",
+                  "Se separan a 1,35 s: desaparece el acento de batalla.",
+                  "Giovinazzi entra en boxes; ventana alrededor de P1.",
+                  "Ventana alrededor de P7: entran y salen pilotos con sus indicadores PIT.",
+                  "Ventana alrededor de P9: las filas restantes se recolocan suavemente.",
+                  "Vuelta a P1: reaparecen sus pilotos y PIT, sin avisos de adelantamiento."
+                ],
                 "frameMs": 1600,
                 "frames": 12,
                 "id": "standings-functional-combined",
@@ -38,6 +62,11 @@
                 "watchFor": "Doce fotogramas en orden: mejora personal de Giovinazzi, cambio de posición con PIT siguiendo a Albuquerque, récord de sesión, salida de boxes, acento de batalla a 0.65 s que se retira a 1.35 s, entrada en boxes y ventanas en P1, P7 y P9. Mira que los avisos sean breves, las cifras estables y que el cambio de ventana no simule adelantamientos."
               },
               {
+                "captions": [
+                  "Referencia personal inicial.",
+                  "Giovinazzi mejora su vuelta en 0,150 s.",
+                  "La nueva vuelta permanece; el aviso se retira."
+                ],
                 "frameMs": 1700,
                 "frames": 3,
                 "id": "standings-functional-personal-best",
@@ -45,6 +74,12 @@
                 "watchFor": "Tres fotogramas: referencia personal, Giovinazzi mejora 0.150 s con un barrido verde y el aviso se retira dejando la nueva vuelta. Mira que las cifras conserven su posición y su tamaño."
               },
               {
+                "captions": [
+                  "Lotterer está en pista.",
+                  "Lotterer entra en boxes: aparece PIT.",
+                  "Lotterer sigue en boxes.",
+                  "Lotterer vuelve a pista: desaparece PIT."
+                ],
                 "frameMs": 1600,
                 "frames": 4,
                 "id": "standings-functional-pit",
@@ -52,6 +87,11 @@
                 "watchFor": "Cuatro fotogramas de Lotterer: en pista, entrada en boxes con la etiqueta PIT, permanencia y vuelta a pista sin ella. Mira que la etiqueta entre y salga suavemente pegada a su piloto."
               },
               {
+                "captions": [
+                  "Posiciones iniciales.",
+                  "Albuquerque gana posición; Hanley la pierde.",
+                  "Clasificación estable tras el cambio."
+                ],
                 "frameMs": 1600,
                 "frames": 3,
                 "id": "standings-functional-position",
@@ -59,6 +99,12 @@
                 "watchFor": "Tres fotogramas: posiciones iniciales, Albuquerque gana la posición a Hanley y la tabla se estabiliza. Mira el deslizamiento de las filas, el acento verde o rojo y el aviso temporal de puestos ganados o perdidos."
               },
               {
+                "captions": [
+                  "Lotterer tiene la referencia de la sesión.",
+                  "Giovinazzi marca la mejor vuelta.",
+                  "Bovy mejora esa referencia y recibe el distintivo.",
+                  "Los avisos se retiran; el récord queda identificado."
+                ],
                 "frameMs": 1700,
                 "frames": 4,
                 "id": "standings-functional-session-best",
@@ -66,6 +112,12 @@
                 "watchFor": "Cuatro fotogramas: Lotterer tiene la referencia, Giovinazzi marca la mejor vuelta, Bovy la mejora y recibe el distintivo, y los avisos se retiran. Mira el acento morado pasar de piloto sin ampliar ni desplazar los tiempos."
               },
               {
+                "captions": [
+                  "Ventana alrededor de P1; posiciones estables.",
+                  "Ventana alrededor de P7: entran nuevos pilotos y salen otros.",
+                  "Ventana alrededor de P9: los supervivientes mantienen su identidad.",
+                  "Vuelta a P1: reaparecen sus pilotos y PIT."
+                ],
                 "frameMs": 1600,
                 "frames": 4,
                 "id": "standings-functional-window",
@@ -73,6 +125,7 @@
                 "watchFor": "Cuatro fotogramas con la ventana en P1, P7, P9 y de vuelta a P1: entran y salen filas con su PIT mientras las demás se recolocan. Mira que las posiciones reales no cambien y que no aparezcan avisos de adelantamiento."
               },
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "standings-legacy",
@@ -80,6 +133,15 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Carrera · vuelta 14/38",
+                  "FCY · amarilla en todo el circuito",
+                  "Amarilla local · sector 2",
+                  "Última vuelta · 38/38",
+                  "Jugador en boxes",
+                  "Sin datos · esperando al simulador",
+                  "Espectador · sin coche propio"
+                ],
                 "frameMs": 2400,
                 "frames": 7,
                 "id": "standings-vantare",
@@ -87,6 +149,13 @@
                 "watchFor": "Datos de demostración del catálogo vantare-widgets-r10b (15 coches, 3 clases). No es telemetría real."
               },
               {
+                "captions": [
+                  "Vuelta 14 · posiciones estables",
+                  "Albalá adelanta a Pier Guidi",
+                  "Albalá marca la vuelta rápida de Hypercar",
+                  "Buemi entra en boxes y cae a P6",
+                  "Albalá pasa a liderar"
+                ],
                 "frameMs": 2600,
                 "frames": 5,
                 "id": "standings-vantare-carrera",
@@ -99,6 +168,7 @@
             "kind": "radar",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "radar",
@@ -106,6 +176,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "radar-default",
@@ -113,6 +186,18 @@
                 "watchFor": "Radar centrado en tu coche con tres marcas cercanas: una solapada 4 m por delante, otra 8 m detrás y 12 m a la derecha, y una tercera 20 m delante y 2 m a la izquierda. El color indica cercanía y solape."
               },
               {
+                "captions": [
+                  "Pista despejada",
+                  "Tres coches entran en el radar",
+                  "Se acercan por delante y detrás",
+                  "Proximidad en ambos lados",
+                  "Solapamiento a la izquierda",
+                  "Solapamiento a ambos lados",
+                  "Solapamiento a la derecha y doblado cercano",
+                  "El doblado se solapa antes de alejarse",
+                  "Los coches se alejan",
+                  "El radar vuelve a quedar libre"
+                ],
                 "frameMs": 1000,
                 "frames": 10,
                 "id": "radar-nearby-traffic",
@@ -125,6 +210,7 @@
             "kind": "pedals",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "pedals",
@@ -132,6 +218,12 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Parado: embrague a fondo",
+                  "Gas y embrague",
+                  "Suelta embrague",
+                  "Embragado del todo"
+                ],
                 "frameMs": 800,
                 "frames": 4,
                 "id": "pedals-clutch",
@@ -139,6 +231,9 @@
                 "watchFor": "El carril del embrague se llena y se suelta; los tres carriles pueden estar activos a la vez sin pisarse."
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "pedals-default",
@@ -146,6 +241,15 @@
                 "watchFor": "Tres carriles verticales C, B y T con su porcentaje encima: embrague 6 %, freno 13 % y acelerador 75 %. El relleno sube desde abajo y el valor se lee sobre cada carril."
               },
               {
+                "captions": [
+                  "Recta: gas a fondo",
+                  "Levanta",
+                  "Frenada fuerte",
+                  "Suelta el freno progresivamente",
+                  "Trail braking: solapan freno y gas",
+                  "Sale acelerando",
+                  "Otra vez a fondo"
+                ],
                 "frameMs": 700,
                 "frames": 7,
                 "id": "pedals-lap",
@@ -158,6 +262,7 @@
             "kind": "delta",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "delta",
@@ -165,6 +270,13 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Perdiendo 0,45 s",
+                  "Perdiendo 0,12 s",
+                  "Cruza a ganar: el ancla late en verde",
+                  "Ganando 0,7 s",
+                  "Vuelve a perder: el ancla late en rojo"
+                ],
                 "frameMs": 1300,
                 "frames": 5,
                 "id": "delta-cross-zero",
@@ -172,6 +284,9 @@
                 "watchFor": "El ancla del centro late en el sentido tomado —verde al pasar a ganar, rojo al pasar a perder— y el relleno crece hacia el lado nuevo."
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "delta-default",
@@ -179,6 +294,11 @@
                 "watchFor": "Píldora con la etiqueta DELTA y el valor +0.214 s en rojo: vas 0.214 s por detrás de tu mejor vuelta. Es una foto fija; el número se pinta en verde cuando el delta es negativo."
               },
               {
+                "captions": [
+                  "Referencia personal 1:38.031",
+                  "Nueva vuelta personal: aparece el aviso a la izquierda",
+                  "El aviso permanece hasta retirarse"
+                ],
                 "frameMs": 1500,
                 "frames": 3,
                 "id": "delta-new-best",
@@ -186,6 +306,16 @@
                 "watchFor": "La nueva mejor vuelta dispara un aviso personal a la izquierda y mantiene la última vuelta a la derecha."
               },
               {
+                "captions": [
+                  "Más rápido · −0.214 en el S2",
+                  "Más lento · +0.382",
+                  "Vuelta invalidada · límites de pista",
+                  "Sin referencia · primera vuelta",
+                  "En boxes · delta en pausa",
+                  "FCY · delta en pausa",
+                  "Sin datos · esperando al simulador",
+                  "Sin coche propio · espectador"
+                ],
                 "frameMs": 2600,
                 "frames": 8,
                 "id": "delta-vantare",
@@ -193,6 +323,15 @@
                 "watchFor": "Datos de demostración del catálogo vantare-widgets-r10b. No es telemetría real."
               },
               {
+                "captions": [
+                  "Vuelta 15 · S1",
+                  "S1 récord de la sesión",
+                  "S2 a mitad",
+                  "S2 mejor personal",
+                  "S3 a 0.30",
+                  "Vuelta récord personal · 3:27.594",
+                  "Vuelta 16 · S1 más lento"
+                ],
                 "frameMs": 1600,
                 "frames": 7,
                 "id": "delta-vantare-carrera",
@@ -205,6 +344,7 @@
             "kind": "car-damage-visual",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "car-damage-visual",
@@ -212,6 +352,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "car-damage-visual-default",
@@ -224,6 +367,7 @@
             "kind": "input-telemetry",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "input-telemetry",
@@ -231,6 +375,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "input-telemetry-default",
@@ -243,6 +390,7 @@
             "kind": "multiclass-relative",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "multiclass-relative",
@@ -250,6 +398,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "multiclass-relative-default",
@@ -262,6 +413,7 @@
             "kind": "broadcast-tower",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "broadcast-tower",
@@ -269,6 +421,10 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Ben Hanley P2; Filipe Albuquerque P5",
+                  "Cruce: Albuquerque P2; Hanley P5"
+                ],
                 "frameMs": 1200,
                 "frames": 2,
                 "id": "broadcast-tower-crossing",
@@ -276,6 +432,9 @@
                 "watchFor": "Albuquerque y Hanley intercambian posiciones con un desplazamiento suave y una señal de puesto tenue; sus cifras permanecen quietas."
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "broadcast-tower-default",
@@ -283,6 +442,11 @@
                 "watchFor": "Tira de torre con once tarjetas agrupadas por clase (HY, LMP y GT3): puesto, nombre abreviado y gap de cada coche, con CARRERA y el tiempo restante en la cabecera. Es una sola foto: revisa el orden de las tarjetas y que ninguna cifra se mueva."
               },
               {
+                "captions": [
+                  "Kévin Estre ocupa P3 entre los pilotos visibles",
+                  "Estre deja la clasificación visible",
+                  "Estre reentra en P3"
+                ],
                 "frameMs": 1200,
                 "frames": 3,
                 "id": "broadcast-tower-exit-reentry",
@@ -290,6 +454,11 @@
                 "watchFor": "Kévin Estre sale de la franja y vuelve a P3 con un fundido breve; las demás tarjetas se recolocan suavemente."
               },
               {
+                "captions": [
+                  "Inicio: Hanley P2; Albuquerque P5",
+                  "Inversión: Albuquerque P2; Hanley P5",
+                  "Vuelta inmediata: Hanley P2; Albuquerque P5"
+                ],
                 "frameMs": 180,
                 "frames": 3,
                 "id": "broadcast-tower-fast-inversion",
@@ -297,6 +466,15 @@
                 "watchFor": "Tres fotogramas: Hanley P2 y Albuquerque P5, luego se intercambian (Albuquerque P2, Hanley P5) y el tercero vuelve al orden inicial. Mira que el puesto siga legible en cada tarjeta y que las cifras no se animen."
               },
               {
+                "captions": [
+                  "Ben Hanley P2; Filipe Albuquerque P5",
+                  "Cruce: Albuquerque P2; Hanley P5",
+                  "Vuelta inmediata: Hanley P2; Albuquerque P5",
+                  "Estre deja la clasificación visible",
+                  "Estre reentra en P3",
+                  "Ben sigue P2; gap al líder 0,2 s",
+                  "Ben sigue P2; gap al líder 0,3 s"
+                ],
                 "frameMs": 1200,
                 "frames": 7,
                 "id": "broadcast-tower-overtake-sequence",
@@ -304,6 +482,11 @@
                 "watchFor": "Las tarjetas de Albuquerque y Hanley cruzan, vuelven a su orden inicial y después Estre sale y reentra. Los cambios de gap no desplazan las tarjetas."
               },
               {
+                "captions": [
+                  "Ben Hanley permanece P2; gap al líder 0,4 s",
+                  "Ben sigue P2; gap al líder 0,2 s",
+                  "Ben sigue P2; gap al líder 0,3 s"
+                ],
                 "frameMs": 1200,
                 "frames": 3,
                 "id": "broadcast-tower-stable-values",
@@ -316,6 +499,7 @@
             "kind": "delta-trace",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "delta-trace",
@@ -323,6 +507,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "delta-trace-default",
@@ -335,6 +522,7 @@
             "kind": "track-map",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "track-map",
@@ -342,6 +530,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "track-map-default",
@@ -354,6 +545,7 @@
             "kind": "track-weather",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "track-weather",
@@ -361,6 +553,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "track-weather-default",
@@ -373,6 +568,7 @@
             "kind": "car-damage-numbers",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "car-damage-numbers",
@@ -380,6 +576,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "car-damage-numbers-default",
@@ -392,6 +591,7 @@
             "kind": "head-to-head",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "head-to-head",
@@ -399,6 +599,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "head-to-head-default",
@@ -406,6 +609,7 @@
                 "watchFor": "Duelo H2H · DELANTE con sitio para el rival de delante, tú y el de detrás. En esta foto vas P1, así que no hay nadie por delante y el panel queda con el aviso SIN RIVAL y sin filas."
               },
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "head-to-head-player-p2",
@@ -418,6 +622,7 @@
             "kind": "fuel-strategy",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "fuel-strategy",
@@ -425,6 +630,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "fuel-strategy-default",
@@ -432,6 +640,16 @@
                 "watchFor": "Estrategia de combustible con COMBUSTIBLE, MED., VUELTAS, NEC. y EST. META:. La foto deja 42.0 L en el depósito, una media de 2.14 L por vuelta y 79 vueltas por delante."
               },
               {
+                "captions": [
+                  "LMGT3 · solo combustible",
+                  "Hypercar · limita la energía virtual",
+                  "Combustible bajo · entra esta vuelta",
+                  "Repostando · 34.1 de 58.0 L",
+                  "FCY · el consumo cae",
+                  "Última vuelta · llegas",
+                  "Sin datos · esperando al simulador",
+                  "Sin coche propio · espectador"
+                ],
                 "frameMs": 2600,
                 "frames": 8,
                 "id": "fuel-vantare",
@@ -439,6 +657,16 @@
                 "watchFor": "Datos de demostración del catálogo vantare-widgets-r10b. No es telemetría real."
               },
               {
+                "captions": [
+                  "Vuelta 14 · stint 2",
+                  "Vuelta 15",
+                  "FCY · ahorras combustible",
+                  "Vuelta 17 · bandera verde",
+                  "Vuelta 22 · combustible bajo",
+                  "Repostando · 20 de 58 L",
+                  "Repostando · casi listo",
+                  "Stint 3 · llegas a meta"
+                ],
                 "frameMs": 2600,
                 "frames": 8,
                 "id": "fuel-vantare-carrera",
@@ -451,6 +679,7 @@
             "kind": "pedals-telemetry",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "pedals-telemetry",
@@ -458,6 +687,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "pedals-telemetry-default",
@@ -470,6 +702,7 @@
             "kind": "relative",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "relative",
@@ -477,6 +710,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "relative-default",
@@ -484,6 +720,12 @@
                 "watchFor": "Ventana de tu clase: Lotterer P1 en el centro, Giovinazzi a 4.2 s por delante y, por detrás, Jensen a 9 s, Laursen a 22.5 s y Cameron a 36 s. La cabecera muestra SEBRING y la insignia P1 · HYPERCAR."
               },
               {
+                "captions": [
+                  "Nico Pino detrás del jugador: −0,65 s",
+                  "Se acerca: −0,12 s",
+                  "Cruza hacia delante: +0,12 s",
+                  "Se aleja delante: +0,65 s"
+                ],
                 "frameMs": 1200,
                 "frames": 4,
                 "id": "relative-functional-cross-ahead",
@@ -491,6 +733,12 @@
                 "watchFor": "Sigue al mismo rival y deja fijo al jugador: la fila cruza de detrás a delante cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas."
               },
               {
+                "captions": [
+                  "Nico Pino delante del jugador: +0,65 s",
+                  "Se acerca: +0,12 s",
+                  "Cruza hacia detrás: −0,12 s",
+                  "Se aleja detrás: −0,65 s"
+                ],
                 "frameMs": 1200,
                 "frames": 4,
                 "id": "relative-functional-cross-behind",
@@ -498,6 +746,12 @@
                 "watchFor": "Sigue al mismo rival y deja fijo al jugador: la fila cruza de delante a detrás cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas."
               },
               {
+                "captions": [
+                  "Nico Pino detrás: −0,14 s",
+                  "Cruza delante en 180 ms: +0,14 s",
+                  "Invierte y vuelve detrás en 180 ms: −0,14 s",
+                  "Cruza delante otra vez en 180 ms: +0,14 s"
+                ],
                 "frameMs": 180,
                 "frames": 4,
                 "id": "relative-functional-fast-reversal",
@@ -505,6 +759,10 @@
                 "watchFor": "Escena de estrés: el mismo rival cambia de lado cada 180 ms (<300 ms). Comprueba que no se pierde la fila ni el jugador y que el acento tenue solo aparece en cada cruce real."
               },
               {
+                "captions": [
+                  "Carrera: jugador P10; Ben Hanley P2 +2 V, Kévin Estre P3 +1 V, Giovinazzi P4 +1 V; Maro Engel P18 en la misma vuelta; Jensen P19 −1 V y Nico Pino P20 −2 V",
+                  "Carrera: Ben Hanley P2 +3 V, Estre P3 y Giovinazzi P4 +2 V; Maro Engel P18 sin dato; Jensen P19 −1 V y Nico Pino P20 −2 V"
+                ],
                 "frameMs": 1400,
                 "frames": 2,
                 "id": "relative-functional-lap-difference",
@@ -512,6 +770,17 @@
                 "watchFor": "Escena solo de carrera. Compara la vuelta del rival con la tuya: el signo marca más o menos vueltas, sin afirmar el lado físico del coche. El jugador conserva su fila; cero y datos ausentes no llevan etiqueta."
               },
               {
+                "captions": [
+                  "En carrera: Nico Pino detrás (−0,45 s); Giovinazzi P4 delante con −1 V; Mikkel Jensen fuera de la ventana",
+                  "Nico Pino se acerca: −0,12 s",
+                  "Primer cruce: Nico Pino queda delante (+0,12 s); Mikkel Jensen entra",
+                  "Mikkel Jensen asentado en la ventana; Nico Pino mantiene +0,45 s",
+                  "Mikkel Jensen sale de la ventana; Nico Pino sigue delante",
+                  "Mikkel Jensen reentra con el mismo gap: −2,6 s",
+                  "Nico Pino se acerca desde delante: +0,12 s",
+                  "Segundo cruce: Nico Pino vuelve detrás (−0,12 s)",
+                  "Cierre estable: Nico Pino −0,45 s; Mikkel Jensen −2,6 s"
+                ],
                 "frameMs": 900,
                 "frames": 9,
                 "id": "relative-functional-sequence",
@@ -519,6 +788,11 @@
                 "watchFor": "Nueve fotogramas: Nico Pino se acerca por detrás, cruza a delante y vuelve; Mikkel Jensen entra, sale y reentra en la ventana con el mismo gap. Giovinazzi P4 aparece delante con −1 V. Mira que las filas no se muevan cuando solo cambian las distancias."
               },
               {
+                "captions": [
+                  "Muestra 1: Nico Pino −0,30 s; Mikkel Jensen −2,6 s",
+                  "Muestra 2: Nico Pino −0,27 s; Mikkel Jensen −2,5 s",
+                  "Muestra 3: Nico Pino −0,24 s; Mikkel Jensen −2,4 s"
+                ],
                 "frameMs": 1200,
                 "frames": 3,
                 "id": "relative-functional-stable-values",
@@ -526,6 +800,15 @@
                 "watchFor": "Las distancias cambian sin cruzar al jugador ni alterar el orden visible. Revisa que los números se actualicen sin mover las filas ni reiniciar transiciones."
               },
               {
+                "captions": [
+                  "Mikkel Jensen aún fuera de la ventana",
+                  "Entra en la ventana: gap estable de −2,6 s",
+                  "Mikkel Jensen ya asentado; las cifras siguen iguales",
+                  "Sale de la ventana visible",
+                  "Continúa fuera",
+                  "Reentra con la misma fila y el mismo gap",
+                  "Reentrada asentada: −2,6 s"
+                ],
                 "frameMs": 1200,
                 "frames": 7,
                 "id": "relative-functional-window-cycle",
@@ -533,6 +816,13 @@
                 "watchFor": "Mikkel Jensen sale y reentra con la misma identidad mientras la fila del jugador conserva su ID y posición. Revisa entrada y salida por opacidad, alrededor de 120 ms, y confirma que las cifras no pulsan."
               },
               {
+                "captions": [
+                  "Carrera · ±3 con tu Ferrari #50",
+                  "Si corres en LMGT3 · Hypercar por detrás",
+                  "En boxes · estimación de salida",
+                  "FCY · sin flechas de acercamiento",
+                  "Sin datos · esperando al simulador"
+                ],
                 "frameMs": 2600,
                 "frames": 5,
                 "id": "relative-vantare",
@@ -540,6 +830,15 @@
                 "watchFor": "Datos de demostración del catálogo vantare-widgets-r10b. No es telemetría real."
               },
               {
+                "captions": [
+                  "Persigues a Pier Guidi",
+                  "Le recortas: 0.9 s",
+                  "Adelantas a Pier Guidi",
+                  "Te escapas",
+                  "En LMGT3: Hypercar a 1.8 s",
+                  "Albalá se acerca: 0.9 s",
+                  "Albalá te dobla"
+                ],
                 "frameMs": 2600,
                 "frames": 7,
                 "id": "relative-vantare-carrera",
@@ -552,6 +851,7 @@
             "kind": "racing-flags",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "racing-flags",
@@ -559,6 +859,9 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "racing-flags-default",
@@ -566,6 +869,7 @@
                 "watchFor": "Etiqueta BANDERA con VERDE, la única bandera de la foto: la sesión va en verde y no hay avisos por sector porque esa señal no llega. Comprueba que el rótulo y el verde se leen bien sobre el panel."
               },
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "racing-flags-stale",
@@ -578,6 +882,7 @@
             "kind": "fastest-lap",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "fastest-lap",
@@ -585,6 +890,12 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Referencias iniciales: personal 1:32.304 y Hypercar 1:30.904",
+                  "Mejor personal de Lotterer (1:31.202): aviso personal",
+                  "Giovinazzi bate el récord de Hypercar (1:29.902): aviso de clase",
+                  "Lotterer consigue ambas marcas (1:29.402): un único aviso de clase"
+                ],
                 "frameMs": 8000,
                 "frames": 4,
                 "id": "fastest-lap-alert",
@@ -592,6 +903,9 @@
                 "watchFor": "Cuatro fotogramas con las referencias 1:32.304 personal y 1:30.904 de Hypercar: Lotterer baja a 1:31.202 (aviso personal), Giovinazzi marca 1:29.902 (aviso de clase) y Lotterer firma 1:29.402, que suma las dos marcas en un único aviso de clase. Cada aviso entra y sale a lo largo de seis segundos."
               },
               {
+                "captions": [
+                  "Diseño estático"
+                ],
                 "frameMs": 1200,
                 "frames": 1,
                 "id": "fastest-lap-default",
@@ -604,6 +918,7 @@
             "kind": "session-alerts",
             "scenes": [
               {
+                "captions": [],
                 "frameMs": null,
                 "frames": 1,
                 "id": "session-alerts",
@@ -611,6 +926,13 @@
                 "watchFor": null
               },
               {
+                "captions": [
+                  "Prácticas: aviso leve de fin previsto",
+                  "Prácticas: último minuto del horario previsto",
+                  "Fin confirmado sintético; no acredita fuente LMU",
+                  "Qualy consecutiva: fin previsto reiniciado",
+                  "Cambio a carrera sin fin confirmado: oculto"
+                ],
                 "frameMs": 1200,
                 "frames": 5,
                 "id": "session-alerts-default",

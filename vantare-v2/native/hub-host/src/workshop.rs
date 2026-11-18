@@ -15,6 +15,8 @@ use ts_rs::TS;
 const FILE_LIMIT: usize = 256;
 const BYTE_LIMIT: u64 = 16 * 1024 * 1024;
 pub const FRAME_LIMIT: usize = 512;
+pub const CAPTION_LIMIT: usize = 160;
+pub const CAPTION_COUNT_LIMIT: usize = 12;
 pub const ID_PATTERN: &str = "^[a-z0-9][a-z0-9-]{0,95}$";
 #[cfg(any(test, feature = "bindings"))]
 pub(crate) fn id_cases() -> [(String, bool); 9] {
@@ -40,6 +42,7 @@ pub struct WorkshopScene {
     pub frames: u32,
     pub frame_ms: Option<u32>,
     pub watch_for: Option<String>,
+    pub captions: Vec<String>,
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -70,9 +73,32 @@ struct SceneFile<'a> {
 struct Frame<'a> {
     #[serde(borrow)]
     snapshot: &'a RawValue,
+    caption: Option<&'a RawValue>,
 }
 fn valid_text(value: &str, max: usize) -> bool {
     !value.contains(['\0', '\r', '\n']) && value.chars().count() <= max
+}
+fn valid_caption(value: &str) -> bool {
+    !value.trim().is_empty()
+        && !value.contains(['\0', '\r', '\n', '\t'])
+        && value.chars().count() <= CAPTION_LIMIT
+}
+fn caption_text(raw: &RawValue) -> Option<&str> {
+    serde_json::from_str(raw.get()).ok()
+}
+fn scene_captions(frames: &[Frame<'_>]) -> Vec<String> {
+    if frames.len() > CAPTION_COUNT_LIMIT {
+        return Vec::new();
+    }
+    let mut captions = Vec::with_capacity(frames.len());
+    for frame in frames {
+        let Some(text) = frame.caption.and_then(caption_text).filter(|text| valid_caption(text))
+        else {
+            return Vec::new();
+        };
+        captions.push(text.to_owned());
+    }
+    captions
 }
 fn scene_file(bytes: &[u8]) -> Option<SceneFile<'_>> {
     let scene: SceneFile<'_> = serde_json::from_slice(bytes).ok()?;
@@ -291,7 +317,7 @@ fn sorted_fixture_names(names: impl Iterator<Item = String>) -> Vec<String> {
 fn load_entry(root: &Path, filename: String) -> Option<Entry> {
     let (id, format) = fixture_name(&filename)?;
     let bytes = read_fixture(root, &filename)?;
-    let (widget, label, frames, frame_ms, watch_for) = match format {
+    let (widget, label, frames, frame_ms, watch_for, captions) = match format {
         Format::Scene => {
             let scene = scene_file(&bytes)?;
             if !scene
@@ -301,12 +327,14 @@ fn load_entry(root: &Path, filename: String) -> Option<Entry> {
             {
                 return None;
             }
+            let captions = scene_captions(&scene.frames);
             (
                 scene.widget,
                 scene.label,
                 u32::try_from(scene.frames.len()).ok()?,
                 scene.frame_ms,
                 scene.watch_for,
+                captions,
             )
         }
         Format::Snapshot => {
@@ -314,7 +342,7 @@ fn load_entry(root: &Path, filename: String) -> Option<Entry> {
             if !valid_snapshot(std::str::from_utf8(&bytes).ok()?) {
                 return None;
             }
-            (widget, widget.info(None).name, 1, None, None)
+            (widget, widget.info(None).name, 1, None, None, Vec::new())
         }
     };
     Some(Entry {
@@ -325,6 +353,7 @@ fn load_entry(root: &Path, filename: String) -> Option<Entry> {
             frames,
             frame_ms,
             watch_for,
+            captions,
         },
         #[cfg(any(windows, test))]
         filename,

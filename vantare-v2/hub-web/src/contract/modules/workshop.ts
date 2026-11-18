@@ -1,5 +1,7 @@
 import { studioKinds } from "../generated/studio";
 import {
+  workshopCaptionCountLimit,
+  workshopCaptionLimit,
   workshopFrameLimit,
   workshopSceneIdPattern,
 } from "../generated/workshop";
@@ -22,10 +24,30 @@ function text(value: unknown, limit: number): value is string {
     [...value].length <= limit
   );
 }
+function captions(value: unknown, frames: number): boolean {
+  return (
+    Array.isArray(value) &&
+    value.length <= workshopCaptionCountLimit &&
+    (value.length === 0 || value.length === frames) &&
+    value.every(
+      (caption) =>
+        text(caption, workshopCaptionLimit) &&
+        caption.trim() !== "" &&
+        !caption.includes("\t"),
+    )
+  );
+}
 function isScene(value: unknown): boolean {
   return (
     record(value) &&
-    exact(value, ["id", "label", "frames", "frameMs", "watchFor"]) &&
+    exact(value, [
+      "id",
+      "label",
+      "frames",
+      "frameMs",
+      "watchFor",
+      "captions",
+    ]) &&
     isSceneId(value.id) &&
     text(value.label, 120) &&
     integer(value.frames) &&
@@ -35,7 +57,8 @@ function isScene(value: unknown): boolean {
       (integer(value.frameMs) &&
         value.frameMs >= 0 &&
         value.frameMs <= 0xffffffff)) &&
-    (value.watchFor === null || text(value.watchFor, 400))
+    (value.watchFor === null || text(value.watchFor, 400)) &&
+    captions(value.captions, value.frames)
   );
 }
 export function isRequest(value: Record<string, unknown>): boolean {

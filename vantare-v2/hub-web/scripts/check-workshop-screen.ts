@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "playwright-core";
+import type { Locator, Page } from "playwright-core";
 import type {
   CoreStatus,
   HostError,
@@ -9,6 +9,7 @@ import type {
 } from "../src/contract/generated/contract";
 import type { PreviewImage } from "../src/contract/generated/preview";
 import { workshopCatalog } from "../src/mock/modules/workshop";
+import { until } from "./wait-for";
 
 type Scheme = "dark" | "light";
 type Shot = readonly [string, readonly Scheme[], number?, number?, 125?];
@@ -138,7 +139,7 @@ async function setup(
   );
 }
 
-async function show(page: Page, shot: string) {
+async function show(page: Page, shot: string): Promise<Locator | undefined> {
   const next = page.getByRole("button", { name: "Siguiente", exact: true });
   const message = (text: string) =>
     page.getByText(text, { exact: true }).waitFor();
@@ -161,16 +162,20 @@ async function show(page: Page, shot: string) {
   switch (shot) {
     case "sin-escenas":
       await chooseWidget(/^Mapa del circuito/);
-      return message("Mapa del circuito no tiene escenas de ejemplo");
+      await message("Mapa del circuito no tiene escenas de ejemplo");
+      return undefined;
     case "sin-ejemplo":
       await chooseWidget(/^Telemetría de entrada/);
-      return message("Esta escena no tiene ejemplo real");
+      await message("Esta escena no tiene ejemplo real");
+      return undefined;
     case "bloqueado-plan":
       await chooseWidget(/^Radar/);
-      return message("Radar no está incluido en tu plan");
+      await message("Radar no está incluido en tu plan");
+      return undefined;
     case "demasiado-grande":
       await chooseWidget(/^Fuel y stint/);
-      return message("Esta foto es demasiado grande para el Taller");
+      await message("Esta foto es demasiado grande para el Taller");
+      return undefined;
   }
 
   await choose(page, /^Escena/, /Batalla cercana · conducción/);
@@ -228,12 +233,16 @@ async function show(page: Page, shot: string) {
     return;
   }
   if (shot === "lista-widgets" || shot.endsWith("lista-escenas")) {
-    await page
-      .getByRole("combobox", {
-        name: shot === "lista-widgets" ? /^Widget/ : /^Escena/,
-      })
-      .click();
-    await page.getByRole("listbox").waitFor();
+    const picker = page.getByRole("combobox", {
+      name: shot === "lista-widgets" ? /^Widget/ : /^Escena/,
+    });
+    await picker.click();
+    await until(
+      async () => (await picker.getAttribute("aria-expanded")) === "true",
+      5000,
+      `expanded ${shot === "lista-widgets" ? "widget" : "scene"} picker`,
+    );
+    return picker;
   } else {
     await next.press("Shift+Tab");
     await page.keyboard.press("Tab");
@@ -272,28 +281,44 @@ export async function checkWorkshopScreen(
         if (collapsed !== (shot === "barra-plegada"))
           await page.keyboard.press("Control+b");
         await page.getByRole("tab", { name: "Taller", exact: true }).click();
-        await show(page, shot);
+        const trigger = await show(page, shot);
         if (zoom === 125)
           await page.waitForFunction(
             () => document.documentElement.style.zoom === "1.25",
           );
-        const list = page.getByRole("listbox");
-        const open = await list.isVisible();
-        if (open) {
-          const trigger = page.getByRole("combobox", { expanded: true });
+        if (trigger) {
           const name = await trigger.getAttribute("aria-label");
           assert(name);
+          // The workshop keeps both pickers' popups mounted, so the open one is
+          // the popup its trigger controls, never "any listbox on the page".
+          const popup = async () => {
+            // Base UI marks the trigger expanded one commit before the popup
+            // registers its id, so the reference itself needs a bounded wait.
+            await until(
+              async () =>
+                (await trigger.getAttribute("aria-controls")) !== null,
+              5000,
+              "picker popup reference",
+            );
+            const controls = await trigger.getAttribute("aria-controls");
+            assert(controls, "an expanded picker points at its popup");
+            return page.locator(`[id="${controls}"]`);
+          };
+          let list = await popup();
+          await list.waitFor();
           await page.keyboard.press("Escape");
           await list.waitFor({ state: "hidden" });
-          const closed = page.getByRole("combobox", {
-            name,
-            exact: true,
-            expanded: false,
-          });
-          assert(
-            await closed.evaluate((node) => node === document.activeElement),
+          await until(
+            async () =>
+              (await trigger.getAttribute("aria-expanded")) === "false",
+            5000,
+            "collapsed picker",
           );
-          await closed.press("Enter");
+          assert(
+            await trigger.evaluate((node) => node === document.activeElement),
+          );
+          await trigger.press("Enter");
+          list = await popup();
           await list.waitFor();
           await page.keyboard.press("Tab");
           await page.waitForFunction(
@@ -304,13 +329,15 @@ export async function checkWorkshopScreen(
           );
           if (await list.isVisible()) await page.keyboard.press("Escape");
           await list.waitFor({ state: "hidden" });
-          await closed.click();
+          await trigger.click();
+          list = await popup();
           await list.waitFor();
         }
         await evidence?.capture(page, shot, scheme);
         const axe = new AxeBuilder({ page });
         // Base UI's nonmodal portal redirects focus from these hidden sentinels.
-        if (open) axe.exclude('[data-base-ui-focus-guard][aria-hidden="true"]');
+        if (trigger)
+          axe.exclude('[data-base-ui-focus-guard][aria-hidden="true"]');
         assert.deepEqual(
           (await axe.analyze()).violations,
           [],

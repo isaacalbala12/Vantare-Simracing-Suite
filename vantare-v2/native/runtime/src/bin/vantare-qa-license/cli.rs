@@ -3,15 +3,16 @@ use chrono::{DateTime, TimeDelta, Utc};
 use ed25519_dalek::{Signer, SigningKey};
 use sha2::{Digest, Sha256};
 use std::{
-    ffi::OsString,
+    ffi::{OsStr, OsString},
     fs::{self, File, OpenOptions},
     io::{self, Read, Write},
     os::windows::fs::MetadataExt,
     path::{Component, Path, PathBuf, Prefix},
     time::Duration,
 };
-use vantare_runtime::rights::{Devices, Owner};
+use vantare_runtime::rights::{Devices, Owner, verifier::Verifier};
 use vantare_services::{
+    Error,
     license::{Capability, ClaimsV1, CredentialV1},
     storage::private_acl,
 };
@@ -26,6 +27,16 @@ const KEY_FILE: &str = "qa-license.key";
 const KEY_ID_LEN: usize = 11;
 const REPARSE_POINT: u32 = 0x400; // FILE_ATTRIBUTE_REPARSE_POINT
 
+const QA_OWNER: &str = "vantare.operational.owner";
+const MAX_CREDENTIAL_BYTES: usize = 32 * 1024;
+const HELP: &str = "\
+Uso de vantare-qa-license:
+  fingerprint
+  keygen --out <dir>
+  sign --key <priv> --fingerprint <huella> --out <cred.json>  (servidor)
+  install-credential --credential <cred.json> --qa-root <dir>  (PC QA)
+  install --key <priv> --qa-root <dir> --channel nightly  (solo pruebas en el mismo equipo)";
+
 pub(super) fn run(
     args: &[OsString],
     env: impl Fn(&str) -> Option<OsString>,
@@ -39,52 +50,187 @@ pub(super) fn run(
         return Err(invalid("ejecuta la herramienta fuera de una instalación de Vantare").into());
     }
     match args {
+        [flag] if flag == "--help" => Ok(Some(HELP.into())),
+        [command] if command == "fingerprint" => Ok(Some(fingerprint()?)),
         [command, flag, dir] if command == "keygen" && flag == "--out" => {
             keygen(Path::new(dir)).map(Some)
         }
+        [command, options @ ..] if command == "sign" => {
+            let [private, device, out] =
+                option_values(options, ["--key", "--fingerprint", "--out"]).ok_or_else(usage)?;
+            let device = device.to_str().ok_or_else(usage)?;
+            sign_to_file(Path::new(private), device, Path::new(out), &env, now())?;
+            Ok(None)
+        }
+        [command, options @ ..] if command == "install-credential" => {
+            let [credential, root] =
+                option_values(options, ["--credential", "--qa-root"]).ok_or_else(usage)?;
+            let registry = env("VANTARE_LICENSE_PUBLIC_KEYS")
+                .and_then(|value| value.into_string().ok())
+                .filter(|value| !value.is_empty())
+                .ok_or(Error::Unconfigured)?;
+            let device = fingerprint()?;
+            let now = now();
+            let text = read_transfer(Path::new(credential))?;
+            verify_transfer(&text, &registry, &device, now)?;
+            install_binding(Path::new(root), &env, text, &registry, device, now)?;
+            Ok(None)
+        }
         [command, options @ ..] if command == "install" => {
-            let (key, root) = install_paths(options).ok_or_else(usage)?;
-            let key = load_key(key)?;
+            let [private, root, channel] =
+                option_values(options, ["--key", "--qa-root", "--channel"]).ok_or_else(usage)?;
+            if channel != "nightly" {
+                return Err(usage().into());
+            }
+            let key = load_key(Path::new(private))?;
             let device = fingerprint()?;
             let now = now();
             let credential = sign(&key, &device, now)?;
-            let (profile, _marker_lock) = prepare_profile(root, &env)?;
-            // Mismo almacén que ipc::paths::Root::rights() y rights::production.
-            let rights = profile.join("Vantare/native/rights/nightly");
-            let mut owner = Owner::open(
-                &rights,
-                Some(&key.public_entry()),
-                Devices { legacy: device },
-                1,
+            install_binding(
+                Path::new(root),
+                &env,
+                serde_json::to_string(&credential)?,
+                &key.public_entry(),
+                device,
                 now,
             )?;
-            owner.install(serde_json::to_string(&credential)?, now, Duration::ZERO)?;
             Ok(None)
         }
         _ => Err(usage().into()),
     }
 }
 
-fn install_paths(options: &[OsString]) -> Option<(&Path, &Path)> {
-    if options.len() != 6 {
+fn option_values<'a, const N: usize>(
+    options: &'a [OsString],
+    names: [&str; N],
+) -> Option<[&'a OsStr; N]> {
+    let (pairs, tail) = options.as_chunks::<2>();
+    if pairs.len() != N || !tail.is_empty() {
         return None;
     }
-    let value = |flag| {
-        options
-            .as_chunks::<2>()
-            .0
-            .iter()
-            .find(|pair| pair[0] == flag)
-            .map(|pair| pair[1].as_os_str())
-    };
-    if value("--channel")? != "nightly" {
-        return None;
+    let mut values = [OsStr::new(""); N];
+    for (name, value) in names.into_iter().zip(&mut values) {
+        *value = pairs.iter().find(|pair| pair[0] == name)?[1].as_os_str();
     }
-    Some((Path::new(value("--key")?), Path::new(value("--qa-root")?)))
+    Some(values)
 }
 
 fn usage() -> io::Error {
-    invalid("uso: keygen --out <dir> | install --key <priv> --qa-root <dir> --channel nightly")
+    invalid(HELP)
+}
+
+fn sign_to_file(
+    private: &Path,
+    device: &str,
+    out: &Path,
+    env: &impl Fn(&str) -> Option<OsString>,
+    now: DateTime<Utc>,
+) -> Result<()> {
+    if device.len() != 64
+        || !device
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    {
+        return Err(invalid("huella legacy inválida").into());
+    }
+    let out = canonical_candidate(out)?;
+    let parent = out
+        .parent()
+        .ok_or_else(|| invalid("falta directorio de salida"))?;
+    reject_git(parent)?;
+    let key_path = canonical_candidate(private)?;
+    let key_dir = key_path
+        .parent()
+        .ok_or_else(|| invalid("falta directorio de clave"))?;
+    if path_starts_with(&out, key_dir) {
+        return Err(
+            invalid("la credencial debe quedar fuera de la carpeta de la clave privada").into(),
+        );
+    }
+    reject_real_path(&out, env)?;
+    reject_real_path(&key_path, env)?;
+
+    let credential = sign(&load_key(private)?, device, now)?;
+    let encoded = serde_json::to_vec(&credential)?;
+    let mut file = OpenOptions::new().write(true).create_new(true).open(out)?;
+    file.write_all(&encoded)?;
+    file.sync_all()?;
+    Ok(())
+}
+
+fn read_transfer(path: &Path) -> Result<String> {
+    let path = canonical_candidate(path)?;
+    if !fs::metadata(&path)?.is_file() {
+        return Err(invalid("la credencial debe ser un archivo local").into());
+    }
+    let mut text = String::new();
+    File::open(path)?
+        .take((MAX_CREDENTIAL_BYTES + 1) as u64)
+        .read_to_string(&mut text)?;
+    if text.len() > MAX_CREDENTIAL_BYTES {
+        return Err(Error::TooLarge.into());
+    }
+    Ok(text)
+}
+
+fn verify_transfer(text: &str, registry: &str, device: &str, now: DateTime<Utc>) -> Result<()> {
+    let credential: CredentialV1 = serde_json::from_str(text)?;
+    if !credential.key_id.starts_with("qa-") {
+        return Err(Error::InvalidCredential.into());
+    }
+    Verifier::public_keys(registry)?.v1(&credential, QA_SUBJECT, device)?;
+    let [owner] = credential.claims.capabilities.as_slice() else {
+        return Err(Error::InvalidCredential.into());
+    };
+    if owner.key != QA_OWNER || owner.perpetual || !owner.scope_version.is_empty() {
+        return Err(Error::InvalidCredential.into());
+    }
+    let issued = DateTime::parse_from_rfc3339(&credential.claims.issued_at)?;
+    let until = DateTime::parse_from_rfc3339(&owner.paid_through)?;
+    if until <= now.fixed_offset() {
+        return Err(Error::Expired.into());
+    }
+    if until <= issued || until - issued > TimeDelta::hours(24) {
+        return Err(Error::InvalidCredential.into());
+    }
+    Ok(())
+}
+
+fn install_binding(
+    root: &Path,
+    env: &impl Fn(&str) -> Option<OsString>,
+    text: String,
+    registry: &str,
+    device: String,
+    now: DateTime<Utc>,
+) -> Result<()> {
+    let (profile, _marker_lock) = prepare_profile(root, env)?;
+    // Mismo almacén que ipc::paths::Root::rights() y rights::production.
+    let rights = profile.join("Vantare/native/rights/nightly");
+    let mut owner = Owner::open(&rights, Some(registry), Devices { legacy: device }, 1, now)?;
+    owner.install(text, now, Duration::ZERO)?;
+    Ok(())
+}
+
+fn reject_git(directory: &Path) -> io::Result<()> {
+    for ancestor in directory.ancestors() {
+        if ancestor.join(".git").try_exists()? {
+            return Err(invalid("la salida QA debe quedar fuera del repositorio"));
+        }
+    }
+    Ok(())
+}
+
+fn reject_real_path(path: &Path, env: &impl Fn(&str) -> Option<OsString>) -> Result<()> {
+    for name in ["LOCALAPPDATA", "APPDATA", "VANTARE_NATIVE_DATA_ROOT"] {
+        if let Some(real) = env(name).filter(|value| !value.is_empty()) {
+            let real = canonical_candidate(Path::new(&real))?;
+            if path_starts_with(path, &real) || path_starts_with(&real, path) {
+                return Err(invalid("la ruta QA coincide con una raíz de datos real").into());
+            }
+        }
+    }
+    Ok(())
 }
 
 fn invalid(message: &'static str) -> io::Error {
@@ -115,11 +261,7 @@ impl QaKey {
 
 fn keygen(out: &Path) -> Result<String> {
     let out = canonical_candidate(out)?;
-    for ancestor in out.ancestors() {
-        if ancestor.join(".git").try_exists()? {
-            return Err(invalid("la clave privada debe quedar fuera del repositorio").into());
-        }
-    }
+    reject_git(&out)?;
 
     let mut seed = [0; 32];
     getrandom::fill(&mut seed).map_err(|error| io::Error::other(error.to_string()))?;
@@ -178,7 +320,7 @@ fn sign(key: &QaKey, device: &str, now: DateTime<Utc>) -> Result<CredentialV1> {
             device_fingerprint: device.into(),
             issued_at: now.to_rfc3339(),
             capabilities: vec![Capability {
-                key: "vantare.operational.owner".into(),
+                key: QA_OWNER.into(),
                 paid_through: (now + TimeDelta::hours(24)).to_rfc3339(),
                 perpetual: false,
                 scope_version: String::new(),
@@ -196,14 +338,7 @@ fn prepare_profile(
     env: &impl Fn(&str) -> Option<OsString>,
 ) -> Result<(PathBuf, File)> {
     let profile = canonical_candidate(path)?;
-    for name in ["LOCALAPPDATA", "APPDATA", "VANTARE_NATIVE_DATA_ROOT"] {
-        if let Some(real) = env(name).filter(|value| !value.is_empty()) {
-            let real = canonical_candidate(Path::new(&real))?;
-            if path_starts_with(&profile, &real) || path_starts_with(&real, &profile) {
-                return Err(invalid("--qa-root coincide con una raíz de datos real").into());
-            }
-        }
-    }
+    reject_real_path(&profile, env)?;
 
     let marker_path = profile.join(MARKER);
     let marker = match fs::symlink_metadata(path) {

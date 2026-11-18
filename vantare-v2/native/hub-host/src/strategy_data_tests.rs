@@ -759,3 +759,487 @@ fn the_form_and_the_flag_never_put_a_path_or_the_document_on_the_wire() {
         );
     }
 }
+
+// ---- review of E4-datos: each entry in its own place, honest spelling, guards ----
+
+/// Thirteen different fields (a real RFC 3339 `startAt` among them): a swapped
+/// mapping cannot hide behind equal values.
+fn distinct_fields() -> StrategyFields {
+    StrategyFields {
+        name: "Fuji 6 h".into(),
+        duration_minutes: "360".into(),
+        fuel_capacity_liters: "82.5".into(),
+        pit_transit_seconds: "27.5".into(),
+        track: "Fuji".into(),
+        class: "GT3".into(),
+        variant_name: "Plan A".into(),
+        variant_note: "Plan largo".into(),
+        variant_mode: "dry".into(),
+        start_at: "2026-11-20T10:30:00+01:00".into(),
+        team: "Equipo Uno".into(),
+        driver_name: "Ana Pérez".into(),
+        driver_initials: "AP".into(),
+    }
+}
+
+/// Fifteen different inputs.
+fn distinct_inputs() -> StrategySolverFields {
+    StrategySolverFields {
+        base_pace_seconds: "91.25".into(),
+        fuel_per_lap_liters: "2.5".into(),
+        race_laps: "12".into(),
+        ve_capacity_percent: "80".into(),
+        ve_per_lap_percent: "4".into(),
+        tyre_life_laps: "25".into(),
+        degradation_seconds: "0.05".into(),
+        refuel_rate: "3.5".into(),
+        ve_rate: "2.25".into(),
+        tyre_service_seconds: "28".into(),
+        formation_seconds: "7".into(),
+        fuel_step: "2".into(),
+        ve_step: "5".into(),
+        reserve_laps: "1.5".into(),
+        service_mode: "sequential".into(),
+    }
+}
+
+#[test]
+fn each_entry_is_written_to_and_read_from_its_own_place() {
+    use vantare_strategy::solver::Input;
+    let root = Root::new();
+    let mut state = root.state();
+    let empty = state.open().unwrap();
+    let draft = state
+        .create(
+            &empty.revision,
+            &distinct_fields(),
+            None,
+            None,
+            Some(&distinct_inputs()),
+            NOW,
+        )
+        .unwrap();
+    // read back field by field, with no help from a normalising comparison
+    assert_eq!(form_of(&draft).fields, distinct_fields());
+    assert_eq!(form_of(&draft).inputs, distinct_inputs());
+
+    // and the document itself, read by hand, says each value where it belongs
+    let saved = state.save(&draft.revision).unwrap();
+    let doc = Document::parse(&fs::read(root.primary()).unwrap()).unwrap();
+    let event = &doc.value()["events"][0];
+    assert_eq!(event["name"]["value"], "Fuji 6 h");
+    assert_eq!(event["durationMin"]["value"], 360);
+    assert_eq!(event["tankLiters"]["value"], 82.5);
+    assert_eq!(event["pitLossSeconds"]["value"], 27.5);
+    assert_eq!(event["track"]["value"], "Fuji");
+    assert_eq!(event["cls"]["value"], "GT3");
+    assert_eq!(event["startAt"]["value"], "2026-11-20T10:30:00+01:00");
+    assert_eq!(event["team"]["value"], "Equipo Uno");
+    assert_eq!(event["drivers"][0]["name"]["value"], "Ana Pérez");
+    assert_eq!(event["drivers"][0]["ini"]["value"], "AP");
+    let variant = &event["strategies"][0];
+    assert_eq!(variant["name"]["value"], "Plan A");
+    assert_eq!(variant["note"]["value"], "Plan largo");
+    assert_eq!(variant["mode"]["value"], "dry");
+    let input: Input =
+        serde_json::from_value(variant["overrides"]["nativeScalarInput"].clone()).unwrap();
+    assert_eq!(input.race_laps, 12);
+    assert_eq!(input.base_lap_seconds.value, 91.25);
+    assert_eq!(input.fuel_per_lap_liters.value, 2.5);
+    assert_eq!(input.ve_capacity_percent.value, 80.0);
+    assert_eq!(input.ve_per_lap_percent.value, 4.0);
+    assert_eq!(input.tyre_life_laps.value, 25.0);
+    assert_eq!(input.degradation_per_lap_seconds.value, 0.05);
+    assert_eq!(input.pit_cost.refuel_rate_l_per_s.value, 3.5);
+    assert_eq!(input.pit_cost.ve_rate_p_per_s.value, 2.25);
+    assert_eq!(input.pit_cost.tyre_seconds.value, 28.0);
+    assert_eq!(input.pit_cost.transit_seconds.value, 27.5);
+    assert_eq!(input.formation.seconds.value, 7.0);
+    assert_eq!(input.discretization.fuel_liters, 2.0);
+    assert_eq!(input.discretization.ve_percent, 5.0);
+    assert_eq!(input.fuel_capacity_liters.value, 82.5);
+    assert_eq!(input.fuel_reserve["laps"]["value"], 1.5);
+    assert_eq!(input.pit_cost.service_mode, "sequential");
+    assert_eq!(root.state().open().unwrap().form, saved.form);
+
+    // a calculation with the same form is a no-op on the document and the form
+    let form = draft.form.clone().unwrap();
+    compute_form(&mut state, &saved, &form);
+    let computed = state.view();
+    assert!(computed.plan.result.is_some(), "{:?}", computed.plan.state);
+    assert_eq!(computed.form, draft.form);
+    assert_eq!(computed.revision, draft.revision);
+}
+
+#[test]
+fn numbers_are_spelled_as_each_source_spells_them() {
+    // The confirmed inputs come out as plain numbers; the entries the event
+    // itself holds (tank, pit loss, the reserve laps, and the pace and consumption
+    // when no confirmed inputs hold them) as the document stores them: a whole
+    // number keeps its ".0".
+    let root = Root::new();
+    let mut state = root.state();
+    let empty = state.open().unwrap();
+    let confirmed = state
+        .create(
+            &empty.revision,
+            &fields("Whole"),
+            None,
+            None,
+            Some(&inputs()),
+            NOW,
+        )
+        .unwrap();
+    let form = form_of(&confirmed);
+    assert_eq!(form.fields.duration_minutes, "90");
+    assert_eq!(form.fields.fuel_capacity_liters, "82.0");
+    assert_eq!(form.fields.pit_transit_seconds, "25.0");
+    assert_eq!(form.inputs.base_pace_seconds, "90.5");
+    assert_eq!(form.inputs.race_laps, "10");
+    assert_eq!(form.inputs.ve_capacity_percent, "0");
+    assert_eq!(form.inputs.tyre_life_laps, "30");
+    assert_eq!(form.inputs.fuel_step, "1");
+    assert_eq!(form.inputs.reserve_laps, "0.0");
+
+    let mut other = root.state();
+    other.open().unwrap();
+    let loose = {
+        let revision = other.view().revision;
+        other
+            .create(&revision, &fields("Loose"), Some("90"), Some("2"), None, NOW)
+            .unwrap()
+    };
+    assert_eq!(form_of(&loose).inputs.base_pace_seconds, "90.0");
+    assert_eq!(form_of(&loose).inputs.fuel_per_lap_liters, "2.0");
+}
+
+#[test]
+fn a_calculation_normalises_a_document_that_is_not_canonical_in_the_draft_only() {
+    use vantare_strategy::document::{manual, new_event};
+    // numbers as whole JSON integers (the older Hub wrote them so) and texts with
+    // spaces around them
+    let mut event = new_event("event-1", "Practice", 90, 90.0, 18.0);
+    event["tankLiters"]["value"] = serde_json::json!(82);
+    event["pitLossSeconds"]["value"] = serde_json::json!(18);
+    event["team"] = manual(" Local team ".into());
+    event["activeStrategyId"] = "variant-1".into();
+    let mut doc = Document::empty(NOW).unwrap();
+    doc.append_event(&event).unwrap();
+    doc.put("/activeEventId", &"event-1".into()).unwrap();
+    let root = Root::new();
+    fs::write(root.primary(), doc.bytes()).unwrap();
+    let mut state = root.state();
+    let opened = state.open().unwrap();
+    assert!(!opened.dirty);
+    // the form says what the document holds
+    let form = form_of(&opened);
+    assert_eq!(form.fields.fuel_capacity_liters, "82");
+    assert_eq!(form.fields.pit_transit_seconds, "18");
+    assert_eq!(form.fields.team, " Local team ");
+    // KNOWN: `ManualEvent::confirm` (the crate, untouched here) compares a stored
+    // whole integer with the number it parses (a float) and a stored text with its
+    // trimmed form, so a calculation with the form as it is normalises the spelling:
+    // the draft becomes «Sin guardar» with «82.0» and «Local team». The file is not
+    // touched until Save; the pantalla can say it (E4c).
+    let mut calculate = form.clone();
+    calculate.inputs = inputs();
+    compute_form(&mut state, &opened, &calculate);
+    let view = state.view();
+    assert!(view.plan.result.is_some());
+    assert_eq!(fs::read(root.primary()).unwrap(), doc.bytes());
+    assert!(view.dirty);
+    let written = form_of(&view);
+    assert_eq!(written.fields.team, "Local team");
+    assert_eq!(written.fields.fuel_capacity_liters, "82.0");
+    // and a second calculation with what it now shows changes nothing more
+    let again = view.clone();
+    compute_form(&mut state, &again, written);
+    assert_eq!(state.view().revision, again.revision);
+}
+
+fn with_text(fields: &StrategyFields, key: &str, text: &str) -> StrategyFields {
+    let mut value = serde_json::to_value(fields).unwrap();
+    value[key] = text.into();
+    serde_json::from_value(value).unwrap()
+}
+
+fn with_input_text(inputs: &StrategySolverFields, key: &str, text: &str) -> StrategySolverFields {
+    let mut value = serde_json::to_value(inputs).unwrap();
+    value[key] = text.into();
+    serde_json::from_value(value).unwrap()
+}
+
+#[test]
+fn a_text_out_of_range_in_any_of_the_28_entries_creates_nothing() {
+    let root = Root::new();
+    let mut state = root.state();
+    let empty = state.open().unwrap();
+    let bad = [
+        ("over the limit", "x".repeat(TEXT_LIMIT + 1)),
+        ("a control character", "a\u{7}b".to_owned()),
+        ("a line break", "a\nb".to_owned()),
+    ];
+    let field_keys: Vec<String> = serde_json::to_value(fields("x"))
+        .unwrap()
+        .as_object()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect();
+    let input_keys: Vec<String> = serde_json::to_value(inputs())
+        .unwrap()
+        .as_object()
+        .unwrap()
+        .keys()
+        .cloned()
+        .collect();
+    assert_eq!((field_keys.len(), input_keys.len()), (13, 15));
+    for (case, text) in &bad {
+        for key in &field_keys {
+            assert_eq!(
+                state.create(
+                    &empty.revision,
+                    &with_text(&fields("New"), key, text),
+                    None,
+                    None,
+                    Some(&inputs()),
+                    NOW
+                ),
+                Err(HostError::StrategyInvalidText),
+                "{case} in field {key}"
+            );
+        }
+        for key in &input_keys {
+            assert_eq!(
+                state.create(
+                    &empty.revision,
+                    &fields("New"),
+                    None,
+                    None,
+                    Some(&with_input_text(&inputs(), key, text)),
+                    NOW
+                ),
+                Err(HostError::StrategyInvalidText),
+                "{case} in input {key}"
+            );
+        }
+        assert_eq!(state.view_opened().unwrap(), empty, "{case}");
+        assert!(!root.primary().exists(), "{case}");
+    }
+}
+
+/// A saved document with one event whose stored entries `change` rewrites.
+fn stored_with(root: &Root, change: impl FnOnce(&mut serde_json::Value)) {
+    let mut state = root.state();
+    let draft = create_with_inputs(&mut state, "Stored");
+    state.save(&draft.revision).unwrap();
+    let bytes = fs::read(root.primary()).unwrap();
+    let mut value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+    change(&mut value["events"][0]);
+    fs::write(root.primary(), serde_json::to_vec(&value).unwrap()).unwrap();
+}
+
+#[test]
+fn a_stored_text_out_of_range_in_any_entry_makes_the_form_null() {
+    let long = "x".repeat(TEXT_LIMIT + 1);
+    let exact = "x".repeat(TEXT_LIMIT);
+    type Change = fn(&mut serde_json::Value, &str);
+    // `startAt` and `variantMode` cannot exceed the limit: the crate refuses a
+    // document whose start is not RFC 3339 or whose mode is not one of four
+    let places: [(&str, Change); 3] = [
+        ("service mode", |event, text| {
+            event["strategies"][0]["overrides"]["nativeScalarInput"]["pitCost"]["serviceMode"] =
+                text.into();
+        }),
+        ("reserve laps", |event, text| {
+            event["strategies"][0]["overrides"]["nativeScalarInput"]["fuelReserve"]["laps"]
+                ["value"] = text.into();
+        }),
+        ("name", |event, text| {
+            event["name"]["value"] = text.into();
+        }),
+    ];
+    let mut checked = 0;
+    for (place, change) in places {
+        for (case, text, ok) in [
+            ("at the limit", exact.as_str(), true),
+            ("over the limit", long.as_str(), false),
+            ("a control character", "a\u{7}", false),
+        ] {
+            let root = Root::new();
+            stored_with(&root, |event| change(event, text));
+            let bytes = fs::read(root.primary()).unwrap();
+            let mut state = root.state();
+            // a text the host cannot project (an event name) protects the file
+            // instead; the others leave it readable and only drop the form
+            let Ok(view) = state.open() else {
+                assert!(place == "name" && !ok, "{place}, {case}");
+                continue;
+            };
+            assert_eq!(view.form.is_some(), ok, "{place}, {case}");
+            assert_eq!(
+                fs::read(root.primary()).unwrap(),
+                bytes,
+                "{place}, {case}: never rewritten"
+            );
+            checked += 1;
+        }
+    }
+    assert!(checked >= 7, "{checked} cases ran");
+}
+
+#[test]
+fn has_inputs_is_about_plain_stored_inputs_and_a_form_with_invalid_ones_is_still_filled() {
+    // stored inputs that read as an input but do not validate: the form shows them
+    // (the user can correct them), and the event does not count as having inputs
+    let root = Root::new();
+    stored_with(&root, |event| {
+        event["strategies"][0]["overrides"]["nativeScalarInput"]["raceLaps"] = 0.into();
+    });
+    let view = root.state().open().unwrap();
+    assert!(!view.events[0].has_inputs);
+    assert_eq!(form_of(&view).inputs.race_laps, "0");
+    assert_eq!(form_of(&view).inputs.base_pace_seconds, "90.5");
+    // inputs with an extended dimension are not plain stored inputs
+    let root = Root::new();
+    stored_with(&root, |event| {
+        event["strategies"][0]["overrides"]["nativeScalarInput"]["futureDimension"] =
+            serde_json::json!([1]);
+    });
+    assert!(!root.state().open().unwrap().events[0].has_inputs);
+}
+
+#[test]
+fn a_calculation_with_no_solution_confirms_its_inputs_and_a_failed_one_confirms_nothing() {
+    let root = Root::new();
+    let mut state = root.state();
+    let empty = state.open().unwrap();
+    let plain = state
+        .create(&empty.revision, &fields("Plain"), None, None, None, NOW)
+        .unwrap();
+    // a tank smaller than a lap's fuel: valid inputs, and no plan
+    let mut infeasible = StrategyComputeForm {
+        fields: fields("Plain"),
+        inputs: inputs(),
+    };
+    infeasible.fields.fuel_capacity_liters = "1".into();
+    infeasible.inputs.fuel_per_lap_liters = "5".into();
+
+    // a failed calculation (an invalid input) does not touch the draft
+    let mut invalid = infeasible.clone();
+    invalid.inputs.race_laps = "diez".into();
+    compute_form(&mut state, &plain, &invalid);
+    let failed = state.view();
+    assert_eq!(failed.plan.state, StrategyPlanState::Error);
+    assert!(!failed.events[0].has_inputs);
+    assert_eq!(failed.form, plain.form);
+    assert_eq!(failed.revision, plain.revision);
+
+    compute_form(&mut state, &plain, &infeasible);
+    let none = state.view();
+    assert_eq!(none.plan.state, StrategyPlanState::Calculated);
+    assert_eq!(
+        none.plan.result.as_ref().unwrap().certificate,
+        Some(StrategyCertificate::NoSolution)
+    );
+    assert!(
+        none.events[0].has_inputs,
+        "the document does not know the outcome"
+    );
+    assert_eq!(form_of(&none).inputs.fuel_per_lap_liters, "5");
+}
+
+#[test]
+fn the_guards_of_create_run_in_a_fixed_order() {
+    // dirty, protected, not open, a malformed revision, a stale one, the inputs
+    // with the loose pair, a text, the checks of the crate, and last the limit
+    let root = Root::new();
+    let mut state = root.state();
+    let empty = state.open().unwrap();
+    let outdated = "0".repeat(64);
+    let create = |state: &mut State,
+                  revision: &str,
+                  form: &StrategyFields,
+                  pace: Option<&str>,
+                  solver: &StrategySolverFields| {
+        state.create(revision, form, pace, None, Some(solver), NOW)
+    };
+
+    // 1. a draft first: dirty beats a stale revision
+    let draft = state
+        .create(&empty.revision, &fields("One"), None, None, None, NOW)
+        .unwrap();
+    assert_eq!(
+        create(&mut state, &outdated, &fields("Two"), None, &inputs()),
+        Err(HostError::StrategyDirty)
+    );
+    state.discard(&draft.revision).unwrap();
+
+    // 2. a malformed revision is `rejected`, a well formed stale one a conflict
+    assert_eq!(
+        create(&mut state, "short", &fields("Two"), None, &inputs()),
+        Err(HostError::Rejected)
+    );
+    assert!(matches!(
+        create(&mut state, &outdated, &fields("Two"), None, &inputs()),
+        Err(HostError::StrategyConflict { .. })
+    ));
+    // 3. the revision beats the inputs with the loose pair
+    assert!(matches!(
+        create(&mut state, &outdated, &fields("Two"), Some("90"), &inputs()),
+        Err(HostError::StrategyConflict { .. })
+    ));
+    // 4. the pair beats a text
+    let long = with_input_text(&inputs(), "serviceMode", &"x".repeat(TEXT_LIMIT + 1));
+    assert_eq!(
+        create(&mut state, &empty.revision, &fields("Two"), Some("90"), &long),
+        Err(HostError::Rejected)
+    );
+    // 5. a text beats the checks of the crate (a zero pace as well)
+    let mut both = long;
+    both.base_pace_seconds = "0".into();
+    assert_eq!(
+        create(&mut state, &empty.revision, &fields("Two"), None, &both),
+        Err(HostError::StrategyInvalidText)
+    );
+    // 6. the checks of the crate beat the limit of events
+    let mut zero = inputs();
+    zero.base_pace_seconds = "0".into();
+    let mut crowded = Document::empty(NOW).unwrap();
+    for number in 0..EVENT_LIMIT {
+        crowded
+            .append_event(&vantare_strategy::document::new_event(
+                &format!("event-{number}"),
+                "Practice",
+                90,
+                90.0,
+                18.0,
+            ))
+            .unwrap();
+    }
+    fs::write(root.primary(), crowded.bytes()).unwrap();
+    let mut full = root.state();
+    let opened = full.open().unwrap();
+    assert_eq!(
+        create(&mut full, &opened.revision, &fields("Two"), None, &zero),
+        Err(HostError::Rejected)
+    );
+    assert_eq!(
+        create(&mut full, &opened.revision, &fields("Two"), None, &inputs()),
+        Err(HostError::StrategyInvalidText)
+    );
+    // 7. protected beats the revision; and a state that is not open is `denied`
+    let future = br#"{"contractVersion":"strategy.v2","schemaVersion":"9.0.0","events":[]}"#;
+    fs::write(root.primary(), future).unwrap();
+    let mut protected = root.state();
+    protected.open().unwrap();
+    assert_eq!(
+        create(&mut protected, &outdated, &fields("Two"), None, &inputs()),
+        Err(HostError::Protected)
+    );
+    let mut closed = root.state();
+    assert_eq!(
+        create(&mut closed, "short", &fields("Two"), None, &inputs()),
+        Err(HostError::Denied)
+    );
+}

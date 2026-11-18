@@ -49,6 +49,17 @@ function session(scene: string) {
   return { send, view, failure, open, create };
 }
 
+// How the host spells what it reads: the confirmed inputs as plain numbers, the
+// reserve laps (kept by the event) as the document stores a number: «1.0».
+const spell = (value: string) =>
+  Number.isInteger(Number(value))
+    ? `${Number(value)}.0`
+    : String(Number(value));
+const hostInputs = (value: StrategySolverFields): StrategySolverFields => ({
+  ...value,
+  reserveLaps: spell(value.reserveLaps),
+});
+
 const blank = (value: StrategySolverFields) =>
   Object.fromEntries(Object.keys(value).map((key) => [key, ""]));
 
@@ -286,7 +297,7 @@ it("create without inputs keeps the fields and no inputs; with them it keeps all
   expect(withInputs.events[0]?.hasInputs).toBe(true);
   expect(withInputs.form).toEqual({
     fields: expect.objectContaining({ name: fields.name.trim() }),
-    inputs,
+    inputs: hostInputs(inputs),
   });
   expect(withInputs.plan.state).toBe("uncalculated");
   expect(isReply({ method: "strategy.create", value: withInputs })).toBe(true);
@@ -367,7 +378,7 @@ it("the form follows create, confirm and compute and returns to the saved one on
     name: "Changed",
     team: "Local team",
   });
-  expect(edited.form?.inputs).toEqual(inputs);
+  expect(edited.form?.inputs).toEqual(hostInputs(inputs));
 
   expect(
     host.view({ method: "strategy.discard", revision: edited.revision }).form,
@@ -391,7 +402,7 @@ it("the form follows create, confirm and compute and returns to the saved one on
   const computed = host.view({ method: "strategy.view" });
   expect(computed.plan.state).toBe("calculated");
   expect(computed.form?.fields.name).toBe("Computed");
-  expect(computed.form?.inputs).toEqual(next);
+  expect(computed.form?.inputs).toEqual(hostInputs(next));
   expect(computed.events[0]?.hasInputs).toBe(true);
 });
 
@@ -409,7 +420,7 @@ it("a calculation that confirms inputs marks an event created without them", () 
   });
   const computed = host.view({ method: "strategy.view" });
   expect(computed.events[0]?.hasInputs).toBe(true);
-  expect(computed.form?.inputs).toEqual(inputs);
+  expect(computed.form?.inputs).toEqual(hostInputs(inputs));
 });
 
 it("selecting another variant or event shows its own form", () => {
@@ -443,4 +454,105 @@ it("every reply of the mock passes the strict validator, with and without a form
     if (reply?.kind !== "response") throw Error(scene);
     expect(isReply(reply.result as unknown as Loose), scene).toBe(true);
   }
+});
+
+// ---- the mock says what the host says ----
+
+it("a variant with no stored inputs has empty inputs, even when another variant of its event has them", () => {
+  const host = session("strategy-ready");
+  const opened = host.open();
+  expect(opened.form?.inputs.raceLaps).not.toBe("");
+  const other = host.view({
+    method: "strategy.select",
+    eventId: "event-1",
+    strategyId: "variant-2",
+    revision: opened.revision,
+  });
+  expect(other.form?.inputs).toMatchObject({
+    raceLaps: "",
+    tyreLifeLaps: "",
+    reserveLaps: "",
+    serviceMode: "",
+    // the pace and consumption belong to the event
+    basePaceSeconds: opened.form?.inputs.basePaceSeconds,
+    fuelPerLapLiters: opened.form?.inputs.fuelPerLapLiters,
+  });
+});
+
+it("stored inputs that read but do not validate fill the form and leave the flag down (QA scene)", () => {
+  const view = session("strategy-invalidInputs").open();
+  expect(view.events[0]?.hasInputs).toBe(false);
+  expect(view.form?.inputs).toMatchObject({
+    raceLaps: "0",
+    serviceMode: "parallel",
+  });
+  expect(isReply({ method: "strategy.view", value: view })).toBe(true);
+});
+
+it("create writes what the host writes: defaults, spellings and trimmed texts", () => {
+  const host = session("strategy-empty");
+  const empty = host.open();
+  const created = host.view(
+    host.create(empty.revision, {
+      fields: {
+        ...fields,
+        name: "  Fuji  ",
+        variantName: "  ",
+        fuelCapacityLiters: "82",
+        pitTransitSeconds: "25",
+        team: " Local ",
+      },
+      inputs: { ...inputs, fuelPerLapLiters: "1.830", reserveLaps: "1" },
+    }),
+  );
+  expect(created.events[0]?.strategies[0]?.name).toBe("Base");
+  expect(created.form?.fields).toMatchObject({
+    name: "Fuji",
+    team: "Local",
+    variantName: "Base",
+    variantMode: "dry",
+    durationMinutes: "90",
+    fuelCapacityLiters: "82.0",
+    pitTransitSeconds: "25.0",
+  });
+  expect(created.form?.inputs).toMatchObject({
+    fuelPerLapLiters: "1.83",
+    raceLaps: "3",
+    veCapacityPercent: "100",
+    reserveLaps: "1.0",
+  });
+  // without inputs an empty mode is «dry», and the loose pair is the event's pace
+  const other = session("strategy-empty");
+  const start = other.open();
+  const loose = other.view(
+    other.create(start.revision, {
+      fields: { ...fields, variantMode: "" },
+      inputs: null,
+      basePaceSeconds: "90",
+      fuelPerLapLiters: "1.830",
+    }),
+  );
+  expect(loose.form?.fields.variantMode).toBe("dry");
+  expect(loose.form?.inputs).toMatchObject({
+    basePaceSeconds: "90.0",
+    fuelPerLapLiters: "1.83",
+    raceLaps: "",
+  });
+});
+
+it("a full collection answers the checks of the inputs first and its limit last", () => {
+  const host = session("strategy-empty");
+  let view = host.open();
+  for (let index = 0; index < 32; index++) {
+    view = host.view(host.create(view.revision, { inputs: null }));
+    view = host.view({ method: "strategy.save", revision: view.revision });
+  }
+  expect(view.events).toHaveLength(32);
+  const bad = host.create(view.revision, {
+    inputs: { ...inputs, raceLaps: "0" },
+  });
+  expect(host.failure(bad)).toEqual({ kind: "rejected" });
+  expect(host.failure(host.create(view.revision))).toEqual({
+    kind: "strategyInvalidText",
+  });
 });

@@ -60,7 +60,7 @@ function photoRequests() {
   );
 }
 function button(name: string) {
-  return screen.getByRole("button", { name, exact: true });
+  return screen.getByRole("button", { name });
 }
 async function choose(
   user: ReturnType<typeof userEvent.setup>,
@@ -97,9 +97,7 @@ function mount() {
 async function enter() {
   const user = userEvent.setup();
   const ui = mount();
-  await user.click(
-    await screen.findByRole("tab", { name: "Taller", exact: true }),
-  );
+  await user.click(await screen.findByRole("tab", { name: "Taller" }));
   return { ui, user };
 }
 async function openBattle(user: ReturnType<typeof userEvent.setup>) {
@@ -323,7 +321,6 @@ it.each(failures)(
     expect(photoRequests()).toHaveLength(1);
     const control = screen.queryByRole("button", {
       name: "Volver a generar",
-      exact: true,
     });
     if (retry) {
       if (!control) throw Error("Missing retry");
@@ -379,9 +376,7 @@ it.each(["exit", "account", "live", "rights"] as const)(
     const { user } = await enter();
     await waitFor(() => expect(photoRequests()).toHaveLength(1));
     if (reason === "exit") {
-      await user.click(
-        screen.getByRole("tab", { name: "Studio", exact: true }),
-      );
+      await user.click(screen.getByRole("tab", { name: "Studio" }));
     } else {
       await emit({
         ...core,
@@ -423,7 +418,7 @@ it.each(["tester", "ordinary", "blocked", "unverified"] as const)(
     };
     mount();
     await waitFor(() => expect(cache.getQueryData(["core"])).toEqual(core));
-    expect(!!screen.queryByRole("tab", { name: "Taller", exact: true })).toBe(
+    expect(!!screen.queryByRole("tab", { name: "Taller" })).toBe(
       account === "tester",
     );
     expect(requests.some(({ method }) => method === "workshop.catalog")).toBe(

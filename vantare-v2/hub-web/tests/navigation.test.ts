@@ -43,3 +43,18 @@ describe("navigation from core access", () => {
     expect(lock("engineer", owner)).toBeTruthy();
   });
 });
+
+it.each(["nightly", "testers", "master", undefined])(
+  "gates Analysis on both the beta preference and channel %s",
+  (channel) => {
+    for (const analysis of [true, false]) {
+      const access = { ...anonymous, analysis };
+      for (const enabled of [true, false, undefined]) {
+        const expected = channel === "nightly" && enabled === true;
+        expect(visible("analysis", access, channel, enabled)).toBe(expected);
+        expect(navigation(access, channel, enabled).some(({ id }) => id === "analysis")).toBe(expected);
+      }
+      expect(lock("analysis", access)).toBeUndefined();
+    }
+  },
+);

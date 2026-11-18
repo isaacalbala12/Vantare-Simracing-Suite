@@ -523,3 +523,32 @@ fn legacy_v1_general_without_recording_migrates_to_v2_with_recording_enabled() {
     assert_eq!(saved["general"], expected);
     assert_eq!(fs::read(legacy).unwrap(), bytes);
 }
+
+#[test]
+fn analysis_beta_defaults_off_and_round_trips_through_cas() {
+    let root = Root::new();
+    let mut doc = serde_json::to_value(store::Document::default()).unwrap();
+    let general = doc["general"].as_object_mut().unwrap();
+    assert_eq!(general.remove("analisisBeta"), Some(false.into()));
+    let path = root.0.join(store::FILE);
+    fs::write(&path, serde_json::to_vec(&doc).unwrap()).unwrap();
+    let mut settings = root.settings();
+    assert!(!settings.view().general.analisis_beta);
+    assert!(!settings.view().protected);
+    assert!(serde_json::from_value::<SettingsPatch>(
+        serde_json::json!({"field":"analisisBeta","value":"true"})
+    ).is_err());
+    for enabled in [true, false] {
+        let before = serde_json::to_value(settings.view()).unwrap();
+        let patch = serde_json::from_value(
+            serde_json::json!({"field":"analisisBeta","value":enabled})
+        ).unwrap();
+        let view = settings.update(patch, &settings.view().revision).unwrap();
+        let wire = serde_json::to_value(view).unwrap();
+        let mut expected = before;
+        expected["general"]["analisisBeta"] = enabled.into();
+        expected["revision"] = wire["revision"].clone();
+        assert_eq!(wire, expected);
+        assert_eq!(serde_json::to_value(root.settings().view()).unwrap(), wire);
+    }
+}

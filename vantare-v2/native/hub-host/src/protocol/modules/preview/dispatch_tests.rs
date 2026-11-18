@@ -139,7 +139,7 @@ fn permitted_scene_starts_a_capture_and_tick_replies_with_the_photo() {
         )
         .unwrap();
     assert!(session.preview_state.busy());
-    assert!(pipe.get_ref().is_empty());
+    assert_eq!(pipe.get_ref(), &[] as &[u8]);
     session.preview_state.wait_for_fake_painter();
     preview_tick::tick_at(&mut session, &mut pipe, now).unwrap();
     let mut response = Pipe::new(pipe.into_inner());

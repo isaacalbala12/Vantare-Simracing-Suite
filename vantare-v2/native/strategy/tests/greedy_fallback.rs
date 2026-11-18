@@ -801,16 +801,18 @@ fn the_text_reason_stays_next_to_the_typed_cause() {
 }
 
 // An input with a populated extra dimension runs on the extended route, which
-// the greedy plan does not model. This one repeats the scalar model exactly (the
-// service grid the Fuji fixture already carries), so the extended search ends
-// with the same budget exhaustion and no plan, independently of the clock.
+// the greedy plan does not model. This one only states the full tank and battery
+// the scalar model already starts with (the Fuji fixture's own initial levels),
+// so it is the same race: the extended search ends by exhausting its budget
+// without a plan, independently of the clock.
 #[test]
 fn an_extra_dimension_without_a_plan_reports_not_scalar() {
+    let fixture: Input = serde_json::from_str(include_str!("../testdata/fuji-1450-input.json"))
+        .expect("frozen Fuji input");
     let mut input = manual(240, true);
-    input.extra.insert(
-        "serviceDiscretization".into(),
-        json!({"fuelLiters": 1, "vePercent": 1}),
-    );
+    for key in ["initialFuelLiters", "initialVEPercent"] {
+        input.extra.insert(key.into(), fixture.extra[key].clone());
+    }
     assert!(runs_extended_search(&input));
     // The precondition: the search really ends here without a plan.
     let search = solve_v2_cancellable(&input, &AtomicBool::new(false)).expect("extended search");

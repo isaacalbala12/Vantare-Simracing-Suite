@@ -21,6 +21,44 @@ fn registry_reserves_qa_ids_for_opt_in_builds() {
 use std::process::Command;
 
 #[test]
+fn rejected_qa_registry_logs_once_without_key_details() {
+    const CHILD: &str = "VANTARE_QA_REGISTRY_DIAGNOSTIC_CHILD";
+    const KEY: &str = "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo";
+    const ID: &str = "qa-a1b2c3d4";
+
+    if std::env::var_os(CHILD).is_some() {
+        let result = Verifier::public_keys(&format!("{ID}:{KEY}"));
+        if cfg!(feature = "qa-license") {
+            assert!(result.is_ok());
+        } else {
+            assert!(matches!(result, Err(Error::Unconfigured)));
+        }
+        return;
+    }
+
+    // Let the child write directly to stderr instead of libtest's capture.
+    let output = Command::new(std::env::current_exe().expect("integration test executable"))
+        .args([
+            "--exact",
+            "rejected_qa_registry_logs_once_without_key_details",
+            "--nocapture",
+        ])
+        .env(CHILD, "1")
+        .output()
+        .expect("registry probe");
+    assert!(output.status.success(), "registry probe failed");
+    let stderr = std::str::from_utf8(&output.stderr).expect("UTF-8 diagnostic");
+    assert!(!stderr.contains(KEY));
+    assert!(!stderr.contains(ID));
+    let expected: &[&str] = if cfg!(feature = "qa-license") {
+        &[]
+    } else {
+        &["clave QA ignorada en build sin qa-license"]
+    };
+    assert_eq!(stderr.lines().collect::<Vec<_>>(), expected);
+}
+
+#[test]
 fn qa_license_binary_requires_opt_in() {
     let manifest =
         std::env::var_os("CARGO_MANIFEST_DIR").unwrap_or_else(|| env!("CARGO_MANIFEST_DIR").into());

@@ -82,6 +82,7 @@ impl Verifier {
                     .get(..3)
                     .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"qa-"))
             {
+                eprintln!("clave QA ignorada en build sin qa-license");
                 return Err(Error::Unconfigured);
             }
             let bytes: [u8; 32] = URL_SAFE_NO_PAD

@@ -108,7 +108,7 @@ mod windows {
     use super::cli;
     use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
     use chrono::{DateTime, TimeDelta, Utc};
-    use ed25519_dalek::SigningKey;
+    use ed25519_dalek::{Signer, SigningKey};
     use std::{
         ffi::OsString,
         fs,
@@ -122,7 +122,11 @@ mod windows {
         Devices, Owner,
         verifier::{CacheIssue, Verifier},
     };
-    use vantare_services::{Error, license::CredentialV1, storage::Store};
+    use vantare_services::{
+        Error,
+        license::{Capability, ClaimsV1, CredentialV1},
+        storage::Store,
+    };
 
     const DEVICE: &str = "qa-local-device";
     const OWNER: &str = "vantare.operational.owner";
@@ -393,6 +397,240 @@ mod windows {
         )
         .expect("reopen transfer binding");
         assert!(binding.account_generation().is_some());
+    }
+
+    fn transfer_template() -> (SigningKey, CredentialV1) {
+        let mut seed = [0; 32];
+        getrandom::fill(&mut seed).expect("ephemeral signing key");
+        let key = SigningKey::from_bytes(&seed);
+        let credential = CredentialV1 {
+            version: 1,
+            algorithm: "Ed25519".into(),
+            key_id: "qa-a1b2c3d4".into(),
+            claims: ClaimsV1 {
+                issuer: "vantare-license".into(),
+                subject: "5a5a5a5a-0000-4000-8000-51414c494345".into(),
+                device_fingerprint: TRANSFER_DEVICE.into(),
+                issued_at: now().to_rfc3339(),
+                capabilities: vec![Capability {
+                    key: OWNER.into(),
+                    paid_through: (now() + TimeDelta::hours(24)).to_rfc3339(),
+                    perpetual: false,
+                    scope_version: String::new(),
+                }],
+            },
+            signature: String::new(),
+        };
+        (key, credential)
+    }
+
+    fn write_transfer(path: &Path, key: &SigningKey, mut credential: CredentialV1) -> String {
+        credential.signature = URL_SAFE_NO_PAD.encode(
+            key.sign(&credential.signing_bytes().expect("signable credential"))
+                .to_bytes(),
+        );
+        fs::write(
+            path,
+            serde_json::to_vec(&credential).expect("credential JSON"),
+        )
+        .expect("save ephemeral credential");
+        format!(
+            "{}:{}",
+            credential.key_id,
+            URL_SAFE_NO_PAD.encode(key.verifying_key().as_bytes())
+        )
+    }
+
+    #[test]
+    fn install_rejects_out_of_range_issuance_before_creating_profile() {
+        let fixture = Fixture::new();
+        let (key, template) = transfer_template();
+        let path = fixture.0.join("credential.json");
+        let root = fixture.0.join("profile");
+        for issued in [
+            now() + TimeDelta::minutes(5) + TimeDelta::seconds(1),
+            now() - TimeDelta::hours(24) - TimeDelta::seconds(1),
+        ] {
+            let mut credential = template.clone();
+            credential.claims.issued_at = issued.to_rfc3339();
+            credential.claims.capabilities[0].paid_through =
+                (issued + TimeDelta::hours(24)).to_rfc3339();
+            let registry = write_transfer(&path, &key, credential);
+            let error = install_transfer(&path, &root, Some(&registry), TRANSFER_DEVICE, now())
+                .expect_err("out-of-range issue time");
+            assert!(
+                !root.exists(),
+                "rejected issue time must not create the profile"
+            );
+            assert!(matches!(error.downcast_ref::<Error>(), Some(Error::Clock)));
+        }
+    }
+
+    #[test]
+    fn install_accepts_issuance_at_future_limit_and_just_inside_past_limit() {
+        let fixture = Fixture::new();
+        let (key, template) = transfer_template();
+        let path = fixture.0.join("credential.json");
+        for (name, issued) in [
+            ("future", now() + TimeDelta::minutes(5)),
+            ("past", now() - TimeDelta::hours(24) + TimeDelta::seconds(1)),
+        ] {
+            let mut credential = template.clone();
+            credential.claims.issued_at = issued.to_rfc3339();
+            credential.claims.capabilities[0].paid_through =
+                (issued + TimeDelta::hours(24)).to_rfc3339();
+            let registry = write_transfer(&path, &key, credential);
+            install_transfer(
+                &path,
+                &fixture.0.join(name),
+                Some(&registry),
+                TRANSFER_DEVICE,
+                now(),
+            )
+            .expect("valid signed credential within issue time limits");
+        }
+    }
+
+    #[test]
+    fn rejected_credential_claims_leave_qa_profiles_untouched() {
+        let fixture = Fixture::new();
+        let (key, template) = transfer_template();
+        let path = fixture.0.join("credential.json");
+        let missing = fixture.0.join("missing");
+        let marked = fixture.0.join("marked");
+        fs::create_dir(&marked).expect("marker-only profile");
+        let marker = marked.join(".vantare-qa-license");
+        let marker_bytes = b"vantare-qa-license-v1";
+        fs::write(&marker, marker_bytes).expect("write marker");
+
+        let mut wrong_subject = template.clone();
+        wrong_subject.claims.subject = "11111111-2222-4333-8444-555555555555".into();
+        let mut wrong_id = template.clone();
+        wrong_id.key_id = "production-fixture".into();
+        let mut too_long = template.clone();
+        too_long.claims.capabilities[0].paid_through =
+            (now() + TimeDelta::hours(24) + TimeDelta::seconds(1)).to_rfc3339();
+        let mut perpetual = template.clone();
+        perpetual.claims.capabilities[0].perpetual = true;
+        perpetual.claims.capabilities[0].paid_through.clear();
+        let mut extra = template;
+        let mut grant = extra.claims.capabilities[0].clone();
+        grant.key = "vantare.plan.pro".into();
+        extra.claims.capabilities.push(grant);
+
+        for (name, credential) in [
+            ("non-QA subject", wrong_subject),
+            ("non-QA key ID", wrong_id),
+            ("validity over 24 hours", too_long),
+            ("perpetual Owner", perpetual),
+            ("extra capability", extra),
+        ] {
+            let registry = write_transfer(&path, &key, credential);
+            for root in [&missing, &marked] {
+                assert!(
+                    install_transfer(&path, root, Some(&registry), TRANSFER_DEVICE, now()).is_err(),
+                    "{name}"
+                );
+            }
+            assert!(!missing.exists(), "{name} created the profile");
+            assert_eq!(
+                fs::read_dir(&marked)
+                    .expect("inspect marked profile")
+                    .count(),
+                1,
+                "{name} changed the profile"
+            );
+            assert_eq!(
+                fs::read(&marker).expect("marker intact").as_slice(),
+                marker_bytes,
+                "{name} changed the marker"
+            );
+        }
+    }
+
+    fn create_junction(link: &Path, target: &Path) {
+        let dos_path = |path: &Path| {
+            path.to_str()
+                .expect("test path")
+                .trim_start_matches(r"\\?\")
+                .to_owned()
+        };
+        let output = std::process::Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command",
+                "$ErrorActionPreference='Stop'; New-Item -ItemType Junction -Path $env:VANTARE_TEST_LINK -Target $env:VANTARE_TEST_TARGET | Out-Null"])
+            .env("VANTARE_TEST_LINK", dos_path(link))
+            .env("VANTARE_TEST_TARGET", dos_path(target))
+            .output().expect("create a Windows directory junction");
+        assert!(
+            output.status.success(),
+            "junction creation failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert_eq!(
+            link.canonicalize().expect("resolve junction"),
+            target.canonicalize().expect("resolve target")
+        );
+    }
+
+    #[test]
+    fn sign_refuses_aliases_of_git_and_private_directories() {
+        let fixture = Fixture::new();
+        let (_, private) = fixture.keygen();
+        let git = fixture.0.join("git-repo");
+        let nested = git.join("nested");
+        fs::create_dir_all(git.join(".git")).expect("git directory");
+        fs::create_dir(&nested).expect("nested repo directory");
+        let key_dir = private.parent().expect("private key directory");
+        let git_link = fixture.0.join("git-alias");
+        let key_link = fixture.0.join("key-alias");
+        create_junction(&git_link, &nested);
+        create_junction(&key_link, key_dir);
+        let mixed_case = PathBuf::from(key_dir.to_str().expect("key path").to_ascii_uppercase());
+        for out in [
+            git_link.join("credential.json"),
+            key_link.join("credential.json"),
+            nested.join("credential.json"),
+            mixed_case.join("credential.json"),
+            key_dir.to_owned(),
+        ] {
+            let error = sign_transfer(&private, &out, |_| None).expect_err("protected output path");
+            assert_eq!(
+                error
+                    .downcast_ref::<std::io::Error>()
+                    .map(std::io::Error::kind),
+                Some(std::io::ErrorKind::InvalidInput),
+                "{}",
+                out.display()
+            );
+        }
+        assert!(!nested.join("credential.json").exists());
+        assert!(!key_dir.join("credential.json").exists());
+        fs::remove_dir(git_link).expect("retire git junction");
+        fs::remove_dir(key_link).expect("retire key junction");
+    }
+
+    #[test]
+    fn sign_requires_exact_lowercase_legacy_hex() {
+        let fixture = Fixture::new();
+        let (_, private) = fixture.keygen();
+        let out = fixture.0.join("credential.json");
+        for value in [
+            "not-a-fingerprint".to_owned(),
+            TRANSFER_DEVICE.to_ascii_uppercase(),
+        ] {
+            let mut args = sign_args(&private, &out);
+            args[4] = value.into();
+            assert!(
+                cli::run(
+                    &args,
+                    |_| None,
+                    || unreachable!("sign uses the supplied fingerprint"),
+                    now
+                )
+                .is_err()
+            );
+            assert!(!out.exists());
+        }
     }
 
     #[test]

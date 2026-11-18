@@ -24,6 +24,7 @@ function setup(sceneName = "launcher-results-finished") {
     ownership: { kind: "unsupported" },
     execution: null,
     registrations: [],
+    reviewOutcome: null,
   };
   const tasks: (() => void)[] = [];
   const emit = vi.fn();

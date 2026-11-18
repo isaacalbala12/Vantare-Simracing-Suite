@@ -4,10 +4,27 @@ import { demoNameMax, palettes, schemes, topics } from "./generated/contract";
 import { validators } from "./generated/validators";
 import { isZoom } from "./settings-validation";
 import { exact, integer, oneOf, record } from "./validation-common";
+
+function isReviewTicket(ticket: unknown): boolean {
+  return typeof ticket === "string" && /^[a-f0-9]{32}$/.test(ticket);
+}
 export const FRAME_LIMIT = 1024 * 1024;
 export function isUiMessage(value: unknown): value is UiToHost {
   if (!record(value)) return false;
   switch (value.kind) {
+    case "reviewContentRequest":
+      return exact(value, ["kind", "ticket"]) && isReviewTicket(value.ticket);
+    case "reviewDecision":
+      return (
+        isReviewTicket(value.ticket) &&
+        (value.decision === "trust"
+          ? exact(value, ["kind", "ticket", "decision", "issuedMs"]) &&
+            typeof value.issuedMs === "number" &&
+            Number.isSafeInteger(value.issuedMs) &&
+            value.issuedMs >= 0
+          : value.decision === "cancel" &&
+            exact(value, ["kind", "ticket", "decision"]))
+      );
     case "pickedExecutable":
       return isPickedExecutable(value);
     case "hello":
@@ -38,9 +55,37 @@ export function isUiMessage(value: unknown): value is UiToHost {
       return false;
   }
 }
+// The trusted Main transport can decode messages that never belong on the port.
+export function postHostMessageToRenderer(
+  message: HostToUi,
+  postMessage: (message: HostToUi) => void,
+): void {
+  if (message.kind === "reviewContent" || message.kind === "reviewFailure")
+    return;
+  postMessage(message);
+}
 export function isHostMessage(value: unknown): value is HostToUi {
   if (!record(value)) return false;
   switch (value.kind) {
+    case "reviewContent":
+      return (
+        exact(value, ["kind", "pages"]) &&
+        Array.isArray(value.pages) &&
+        value.pages.length > 0 &&
+        value.pages.length <= 3 &&
+        value.pages.every(
+          (page) =>
+            typeof page === "string" &&
+            page.length > 0 &&
+            !page.includes("\0") &&
+            new TextEncoder().encode(page).byteLength <= 64 * 1024,
+        )
+      );
+    case "reviewFailure":
+      return (
+        exact(value, ["kind", "reason"]) &&
+        oneOf(value.reason, ["changed", "expired", "unavailable"])
+      );
     case "hello":
       return (
         exact(value, [

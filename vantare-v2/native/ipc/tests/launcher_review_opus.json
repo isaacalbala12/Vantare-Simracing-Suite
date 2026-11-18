@@ -1,0 +1,246 @@
+{
+  "corto": {
+    "input": {
+      "startup": false,
+      "hotkey": "Ctrl + L",
+      "firstDelay": 0,
+      "retries": 0,
+      "name": "Creador de Contenido",
+      "steps": [
+        {
+          "steam": true,
+          "delay": 0,
+          "app": "Le Mans Ultimate",
+          "path": "C:\\Program Files (x86)\\Steam\\steam.exe",
+          "args": [
+            "-applaunch",
+            "2399420"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 5,
+          "app": "OBS Studio",
+          "path": "C:\\Program Files\\obs-studio\\bin\\64bit\\obs64.exe",
+          "args": [
+            "--startreplaybuffer",
+            "--minimize-to-tray"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "Spotify",
+          "path": "C:\\Users\\isaac\\AppData\\Roaming\\Spotify\\Spotify.exe",
+          "args": []
+        }
+      ]
+    },
+    "pages": [
+      "Revisa los 3 pasos de este perfil importado\nPerfil: «Creador de Contenido»\nOrigen: importado. Vantare no sabe quién lo creó y no puede comprobar que sea fiable.\n\n1. Le Mans Ultimate (se abre con Steam)\n   Programa: C:\\Program Files (x86)\\Steam\\steam.exe\n   Argumentos: -applaunch 2399420\n2. OBS Studio · espera 5 s\n   Programa: C:\\Program Files\\obs-studio\\bin\\64bit\\obs64.exe\n   Argumentos: --startreplaybuffer --minimize-to-tray\n3. Spotify\n   Programa: C:\\Users\\isaac\\AppData\\Roaming\\Spotify\\Spotify.exe\n   Sin argumentos\n\nAl iniciar Windows: no se abre solo · Atajo: Ctrl + L\n\nPulsa «Confiar y lanzar» solo si reconoces todos los programas. Vantare recordará exactamente este contenido y volverá a preguntar si cambia algo."
+    ]
+  },
+  "largo": {
+    "input": {
+      "startup": true,
+      "hotkey": "Ctrl + Mayús + 1",
+      "firstDelay": 10,
+      "retries": 2,
+      "name": "Resistencia completa",
+      "steps": [
+        {
+          "steam": true,
+          "delay": 0,
+          "app": "Le Mans Ultimate",
+          "path": "C:\\Program Files (x86)\\Steam\\steam.exe",
+          "args": [
+            "-applaunch",
+            "2399420"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "SimHub",
+          "path": "C:\\Program Files (x86)\\SimHub\\SimHubWPF.exe",
+          "args": []
+        },
+        {
+          "steam": false,
+          "delay": 3,
+          "app": "CrewChief",
+          "path": "C:\\Program Files (x86)\\Britton IT Ltd\\CrewChiefV4\\CrewChiefV4.exe",
+          "args": [
+            "-game",
+            "LMU"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "MOZA Pit House",
+          "path": "C:\\Program Files (x86)\\MOZA Pit House\\MOZA Pit House.exe",
+          "args": []
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "TrackIR 5",
+          "path": "C:\\Program Files (x86)\\NaturalPoint\\TrackIR5\\TrackIR5.exe",
+          "args": []
+        },
+        {
+          "steam": false,
+          "delay": 5,
+          "app": "OBS Studio",
+          "path": "C:\\Program Files\\obs-studio\\bin\\64bit\\obs64.exe",
+          "args": [
+            "--startreplaybuffer",
+            "--minimize-to-tray"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "Discord",
+          "path": "C:\\Users\\isaac\\AppData\\Local\\Discord\\Update.exe",
+          "args": [
+            "--processStart",
+            "Discord.exe"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "Spotify",
+          "path": "C:\\Users\\isaac\\AppData\\Roaming\\Spotify\\Spotify.exe",
+          "args": [
+            "--minimized"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "Stream Deck",
+          "path": "C:\\Program Files\\Elgato\\StreamDeck\\StreamDeck.exe",
+          "args": [
+            "--runinbk"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "VoiceAttack",
+          "path": "C:\\Program Files\\VoiceAttack\\VoiceAttack.exe",
+          "args": [
+            "-nofocus"
+          ]
+        }
+      ]
+    },
+    "pages": [
+      "Revisa los 10 pasos de este perfil importado (parte 1 de 2)\nPerfil: «Resistencia completa»\nOrigen: importado. Vantare no sabe quién lo creó y no puede comprobar que sea fiable.\n\n1. Le Mans Ultimate (se abre con Steam)\n   Programa: C:\\Program Files (x86)\\Steam\\steam.exe\n   Argumentos: -applaunch 2399420\n2. SimHub\n   Programa: C:\\Program Files (x86)\\SimHub\\SimHubWPF.exe\n   Sin argumentos\n3. CrewChief · espera 3 s\n   Programa: C:\\Program Files (x86)\\Britton IT Ltd\\CrewChiefV4\\CrewChiefV4.exe\n   Argumentos: -game LMU\n4. MOZA Pit House\n   Programa: C:\\Program Files (x86)\\MOZA Pit House\\MOZA Pit House.exe\n   Sin argumentos\n5. TrackIR 5\n   Programa: C:\\Program Files (x86)\\NaturalPoint\\TrackIR5\\TrackIR5.exe\n   Sin argumentos\n\nSigue en la parte siguiente.",
+      "Revisa los 10 pasos de este perfil importado (parte 2 de 2)\nPerfil: «Resistencia completa»\nOrigen: importado. Vantare no sabe quién lo creó y no puede comprobar que sea fiable.\n\n6. OBS Studio · espera 5 s\n   Programa: C:\\Program Files\\obs-studio\\bin\\64bit\\obs64.exe\n   Argumentos: --startreplaybuffer --minimize-to-tray\n7. Discord\n   Programa: C:\\Users\\isaac\\AppData\\Local\\Discord\\Update.exe\n   Argumentos: --processStart Discord.exe\n8. Spotify\n   Programa: C:\\Users\\isaac\\AppData\\Roaming\\Spotify\\Spotify.exe\n   Argumentos: --minimized\n9. Stream Deck\n   Programa: C:\\Program Files\\Elgato\\StreamDeck\\StreamDeck.exe\n   Argumentos: --runinbk\n10. VoiceAttack\n   Programa: C:\\Program Files\\VoiceAttack\\VoiceAttack.exe\n   Argumentos: -nofocus\n\nAl iniciar Windows: se abre solo · Atajo: Ctrl + Mayús + 1 · Espera 10 s antes del primer paso · Si falla, lo reintenta hasta 2 veces\n\nPulsa «Confiar y lanzar» solo si reconoces todos los programas. Vantare recordará exactamente este contenido y volverá a preguntar si cambia algo."
+    ]
+  },
+  "argumentos": {
+    "input": {
+      "startup": false,
+      "hotkey": "",
+      "firstDelay": 0,
+      "retries": 0,
+      "name": "Liga Endurance (configurado por el club)",
+      "steps": [
+        {
+          "steam": true,
+          "delay": 0,
+          "app": "Le Mans Ultimate",
+          "path": "C:\\Program Files (x86)\\Steam\\steam.exe",
+          "args": [
+            "-applaunch",
+            "2399420"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "CrewChief",
+          "path": "C:\\Program Files (x86)\\Britton IT Ltd\\CrewChiefV4\\CrewChiefV4.exe",
+          "args": [
+            "-game",
+            "LMU",
+            "-profile",
+            "C:\\Users\\isaac\\Documents\\CrewChiefV4\\Profiles\\Liga Endurance Hypercar 2026 - spotter y estrategia.json",
+            "-sound_pack",
+            "Jim (inglés)"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "Telemetría Liga",
+          "path": "C:\\Users\\isaac\\AppData\\Local\\Programs\\LigaTelemetria\\uploader.exe",
+          "args": [
+            "--server",
+            "https://telemetria.liga-endurance.example/api/v2/upload",
+            "--token-file",
+            "C:\\Users\\isaac\\AppData\\Roaming\\LigaTelemetria\\token.json",
+            "--interval",
+            "5",
+            "--quiet"
+          ]
+        }
+      ]
+    },
+    "pages": [
+      "Revisa los 3 pasos de este perfil importado (parte 1 de 2)\nPerfil: «Liga Endurance (configurado por el club)»\nOrigen: importado. Vantare no sabe quién lo creó y no puede comprobar que sea fiable.\n\n1. Le Mans Ultimate (se abre con Steam)\n   Programa: C:\\Program Files (x86)\\Steam\\steam.exe\n   Argumentos: -applaunch 2399420\n2. CrewChief\n   Programa: C:\\Program Files (x86)\\Britton IT Ltd\\CrewChiefV4\\CrewChiefV4.exe\n   Argumentos (6):\n     -game LMU -profile\n     \"C:\\Users\\isaac\\Documents\\CrewChiefV4\\Profiles\\Liga Endurance Hypercar 2026 - spotter y estrategia.json\"\n     -sound_pack \"Jim (inglés)\"\n\nSigue en la parte siguiente.",
+      "Revisa los 3 pasos de este perfil importado (parte 2 de 2)\nPerfil: «Liga Endurance (configurado por el club)»\nOrigen: importado. Vantare no sabe quién lo creó y no puede comprobar que sea fiable.\n\n3. Telemetría Liga\n   Programa: C:\\Users\\isaac\\AppData\\Local\\Programs\\LigaTelemetria\\uploader.exe\n   Argumentos (7):\n     --server https://telemetria.liga-endurance.example/api/v2/upload\n     --token-file C:\\Users\\isaac\\AppData\\Roaming\\LigaTelemetria\\token.json\n     --interval 5 --quiet\n\nAl iniciar Windows: no se abre solo · Atajo: ninguno\n\nPulsa «Confiar y lanzar» solo si reconoces todos los programas. Vantare recordará exactamente este contenido y volverá a preguntar si cambia algo."
+    ]
+  },
+  "invisibles": {
+    "input": {
+      "startup": false,
+      "hotkey": "",
+      "firstDelay": 0,
+      "retries": 0,
+      "name": "Música y sim",
+      "steps": [
+        {
+          "steam": true,
+          "delay": 0,
+          "app": "Le Mans Ultimate",
+          "path": "C:\\Program Files (x86)\\Steam\\steam.exe",
+          "args": [
+            "-applaunch",
+            "2399420"
+          ]
+        },
+        {
+          "steam": false,
+          "delay": 0,
+          "app": "Spotify",
+          "path": "C:\\Users\\isaac\\Downloads\\Spotify‮gpj.exe",
+          "args": [
+            "--minimized\n3. OBS Studio"
+          ]
+        }
+      ]
+    },
+    "pages": [
+      "Revisa los 2 pasos de este perfil importado\nPerfil: «Música y sim»\nOrigen: importado. Vantare no sabe quién lo creó y no puede comprobar que sea fiable.\nAtención: contiene caracteres invisibles; aquí se muestran como [U+…].\n\n1. Le Mans Ultimate (se abre con Steam)\n   Programa: C:\\Program Files (x86)\\Steam\\steam.exe\n   Argumentos: -applaunch 2399420\n2. Spotify\n   Programa: C:\\Users\\isaac\\Downloads\\Spotify[U+202E]gpj.exe\n   Argumentos: \"--minimized[U+000A]3. OBS Studio\"\n\nAl iniciar Windows: no se abre solo · Atajo: ninguno\n\nPulsa «Confiar y lanzar» solo si reconoces todos los programas. Vantare recordará exactamente este contenido y volverá a preguntar si cambia algo."
+    ]
+  },
+  "sin-pasos": {
+    "input": {
+      "startup": false,
+      "hotkey": "",
+      "firstDelay": 0,
+      "retries": 0,
+      "name": "Perfil vacío",
+      "steps": []
+    },
+    "pages": [
+      "Este perfil importado no tiene pasos\nPerfil: «Perfil vacío»\nOrigen: importado. Vantare no sabe quién lo creó y no puede comprobar que sea fiable.\n\nNo hay ninguna aplicación que revisar ni que lanzar. Pulsa «Cancelar» para cancelar el lanzamiento."
+    ]
+  }
+}

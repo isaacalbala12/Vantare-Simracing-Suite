@@ -11,6 +11,7 @@ pub mod answer;
 pub mod control;
 pub mod ownership;
 pub mod results;
+pub mod review;
 pub use answer::AnswerChecked;
 pub use control::{CancelChecked, RehearseChecked};
 

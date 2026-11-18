@@ -1,7 +1,7 @@
 //! Closed answer writer. Only the resident can accept the live question.
-use super::{ResidentAction, ResidentAnswerRejection};
+use super::{ResidentAction, ResidentAnswerRejection, ResidentReviewTarget};
 use crate::protocol::HostError;
-use native::answer::{AnswerRejection, permits_answer};
+use native::answer::{AnswerRejection, ReviewProof, permits_answer, permits_reviewed_trust};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 #[cfg(any(test, feature = "bindings"))]
@@ -24,7 +24,7 @@ pub struct ResidentAnswerTarget {
 pub enum ResidentQueued {
     Queued { request: String },
 }
-fn rejected(reason: AnswerRejection) -> HostError {
+pub(super) fn rejected(reason: AnswerRejection) -> HostError {
     HostError::ResidentAnswerRejected {
         reason: ResidentAnswerRejection::from(reason),
     }
@@ -36,6 +36,7 @@ fn checked_target(
     (
         native::execution::ResidentInstance,
         native::answer::QuestionScope,
+        native::Decision,
     ),
     HostError,
 > {
@@ -80,7 +81,7 @@ fn checked_target(
     if !question.actions.contains(&action) {
         return Err(rejected(AnswerRejection::InvalidAction));
     }
-    Ok((instance, scope))
+    Ok((instance, scope, question))
 }
 pub(crate) fn answer(
     path: &Path,
@@ -102,7 +103,7 @@ pub(crate) fn answer(
     if observation.generation != account {
         return Err(rejected(AnswerRejection::AccountChanged));
     }
-    let (instance, scope) = checked_target(path, target)?;
+    let (instance, scope, _) = checked_target(path, target)?;
     if scope.account != account {
         return Err(rejected(AnswerRejection::AccountChanged));
     }
@@ -112,17 +113,118 @@ pub(crate) fn answer(
     {
         return Err(rejected(AnswerRejection::Denied));
     }
+    write_answer(path, instance, scope, action, None)
+}
+
+fn write_answer(
+    path: &Path,
+    instance: native::execution::ResidentInstance,
+    scope: native::answer::QuestionScope,
+    action: native::Action,
+    review: Option<ReviewProof>,
+) -> Result<ResidentQueued, HostError> {
     super::order_mailbox::enqueue(path, |request| {
         native::Request::AnswerChecked(native::AnswerChecked {
             request,
             instance,
-            account,
+            account: scope.account,
             run: scope.run,
             revision: scope.revision,
             decision: scope.decision,
             action,
+            review,
         })
     })
+}
+
+impl ResidentReviewTarget {
+    pub(super) fn answer_target(&self, action: ResidentAction) -> ResidentAnswerTarget {
+        ResidentAnswerTarget {
+            instance: self.instance.clone(),
+            account_generation: self.account_generation.clone(),
+            run: self.run.clone(),
+            revision: self.revision.clone(),
+            decision: self.decision.clone(),
+            action,
+        }
+    }
+}
+
+pub(super) struct CheckedReview {
+    instance: native::execution::ResidentInstance,
+    scope: native::answer::QuestionScope,
+    pub(super) pages: Vec<String>,
+}
+impl CheckedReview {
+    pub(super) fn digest(&self) -> String {
+        vantare_services::content_hash(&native::review::frame_pages(&self.pages))
+    }
+}
+
+pub(super) fn checked_review(
+    path: &Path,
+    observation: Option<&AccountObservation>,
+    target: &ResidentReviewTarget,
+) -> Result<CheckedReview, HostError> {
+    if path.is_absolute() && !vantare_launcher::is_local_path(path) {
+        return Err(HostError::Denied);
+    }
+    let observation = observation.ok_or(HostError::CoreUnavailable)?;
+    let account: vantare_ipc::account_session::AccountGeneration = target
+        .account_generation
+        .clone()
+        .try_into()
+        .map_err(|_| HostError::Denied)?;
+    if observation.generation != account {
+        return Err(rejected(AnswerRejection::AccountChanged));
+    }
+    let (instance, scope, question) =
+        checked_target(path, &target.answer_target(ResidentAction::Trust))?;
+    if scope.account != account {
+        return Err(rejected(AnswerRejection::AccountChanged));
+    }
+    let pages = native::review::review_pages(&question.message)
+        .map_err(|_| rejected(AnswerRejection::Unavailable))?;
+    if !native::review::can_trust(&pages) {
+        return Err(rejected(AnswerRejection::Unavailable));
+    }
+    Ok(CheckedReview {
+        instance,
+        scope,
+        pages,
+    })
+}
+
+pub(super) fn check_review_permission(
+    observation: Option<&AccountObservation>,
+) -> Result<(), HostError> {
+    let observation = observation.ok_or(HostError::CoreUnavailable)?;
+    if !vantare_ipc::control::wall_ms()
+        .is_ok_and(|now| permits_reviewed_trust(&observation.policy, now))
+    {
+        return Err(rejected(AnswerRejection::Denied));
+    }
+    Ok(())
+}
+
+pub(super) fn answer_reviewed(
+    path: &Path,
+    observation: Option<&AccountObservation>,
+    checked: CheckedReview,
+    pages_digest: String,
+    issued_ms: u64,
+) -> Result<ResidentQueued, HostError> {
+    check_review_permission(observation)?;
+    write_answer(
+        path,
+        checked.instance,
+        checked.scope,
+        native::Action::Trust,
+        Some(ReviewProof {
+            pages_digest,
+            issued_ms,
+        }),
+    )
 }
 #[cfg(test)]
 #[path = "answer_tests.rs"]

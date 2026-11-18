@@ -7,7 +7,7 @@ use ts_rs::TS;
 #[cfg(any(test, feature = "bindings"))]
 pub mod bindings;
 include!(concat!(env!("OUT_DIR"), "/wire.rs"));
-pub const VERSION: u32 = 53;
+pub const VERSION: u32 = 54;
 pub const DEMO_NAME_LIMIT: usize = 128;
 pub const REQUEST_TIMEOUT_MS: u32 = 45_000;
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -78,6 +78,10 @@ pub enum CloseReason {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostToUi {
+    ReviewContent(crate::launcher_resident::ReviewContent),
+    ReviewFailure {
+        reason: crate::launcher_resident::ReviewFailure,
+    },
     Hello {
         version: u32,
         theme: ThemeBoot,
@@ -105,6 +109,9 @@ pub enum HostToUi {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum UiToHost {
+    // Trusted main-process requests; never admitted by the renderer port guard.
+    ReviewContentRequest(crate::launcher_resident::ReviewContentRequest),
+    ReviewDecision(crate::launcher_resident::ReviewDecision),
     PickedExecutable(crate::launcher::apps::ExecutableSelection),
     Hello { version: u32 },
     Request { id: u32, request: Request },

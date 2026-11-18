@@ -18,6 +18,8 @@ mod order_mailbox;
 pub(crate) mod ownership;
 #[path = "results.rs"]
 pub(crate) mod results;
+#[path = "review.rs"]
+pub(crate) mod review;
 pub use answer::{ResidentAnswerTarget, ResidentQueued};
 pub use control::{
     ResidentActiveRun, ResidentCancelTarget, ResidentOrderRejection, ResidentRehearseTarget,
@@ -34,6 +36,11 @@ pub use ownership::{
 pub use results::{
     ResidentResults, ResidentRetryScope, ResidentRetryTarget, ResidentRunMode, ResidentRunResults,
     ResidentStepResult, ResidentStepState,
+};
+pub use review::{
+    ResidentReview, ResidentReviewOutcome, ResidentReviewState, ResidentReviewTarget,
+    ResidentReviewTicket, ReviewChoice, ReviewContent, ReviewContentRequest, ReviewDecision,
+    ReviewFailure,
 };
 
 pub const DECISION_ID_MAX: usize = 20;
@@ -125,6 +132,7 @@ pub struct ResidentQuestion {
     pub id: String,
     pub kind: ResidentQuestionKind,
     pub actions: Vec<ResidentChoice>,
+    pub review: ResidentReview,
 }
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -138,6 +146,7 @@ pub struct ResidentView {
     pub running: bool,
     pub error: bool,
     pub decision: Option<ResidentQuestion>,
+    pub review_outcome: Option<ResidentReviewOutcome>,
     pub registrations: Vec<crate::shortcuts::ProfileShortcut>,
 }
 fn question(decision: &mailbox::Decision) -> Option<ResidentQuestion> {
@@ -166,6 +175,7 @@ fn question(decision: &mailbox::Decision) -> Option<ResidentQuestion> {
     Some(ResidentQuestion {
         id: decision.id.to_string(),
         kind,
+        review: ResidentReview::Unavailable,
         actions: decision
             .actions
             .iter()
@@ -182,6 +192,7 @@ pub struct State {
     last: Option<Instant>,
     observed: Option<ResidentView>,
     document: document_cache::Cache,
+    pub(crate) review: review::Review,
     #[cfg(test)]
     status_reads: usize,
 }
@@ -192,6 +203,7 @@ impl State {
             last: None,
             observed: None,
             document: document_cache::Cache::default(),
+            review: review::Review::default(),
             #[cfg(test)]
             status_reads: 0,
         }
@@ -203,13 +215,21 @@ impl State {
         &mut self,
         account: Option<&vantare_ipc::account_session::AccountObservation>,
     ) -> ResidentView {
-        self.view_with_clock(account, || {
+        self.view_at(Instant::now(), account)
+    }
+    fn view_at(
+        &mut self,
+        monotonic_now: Instant,
+        account: Option<&vantare_ipc::account_session::AccountObservation>,
+    ) -> ResidentView {
+        self.view_with_clock(account, monotonic_now, || {
             vantare_ipc::control::wall_ms().unwrap_or_default()
         })
     }
     fn view_with_clock(
         &mut self,
         account: Option<&vantare_ipc::account_session::AccountObservation>,
+        monotonic_now: Instant,
         now: impl FnOnce() -> u64,
     ) -> ResidentView {
         if self.path.is_absolute() && !vantare_launcher::is_local_path(&self.path) {
@@ -245,11 +265,34 @@ impl State {
                 status.as_ref(),
             );
         }
+        let now = now();
+        if let (Some(projected), Some(status), Some(account)) =
+            (&mut view.decision, status.as_ref(), account)
+            && projected.kind == ResidentQuestionKind::Authorization
+            && status.running
+            && account.policy.permits_launch(now)
+            && let Some(extension) = &status.extension
+            && extension
+                .capabilities
+                .contains(&mailbox::execution::Capability::CheckedAnswer)
+            && extension.question.as_ref().is_some_and(|scope| {
+                scope.decision == projected.id && scope.account == account.generation
+            })
+            && let Some(question) = &status.decision
+        {
+            use mailbox::review::{ReviewError, can_trust, review_pages};
+            projected.review = match review_pages(&question.message) {
+                Ok(pages) if can_trust(&pages) => ResidentReview::Available,
+                Err(ReviewError::TooLong) => ResidentReview::TooLong,
+                _ => ResidentReview::Unavailable,
+            };
+        }
+        view.review_outcome = self.review.outcome(status.as_ref(), account, monotonic_now);
         // Evaluate account TTL after document I/O; cached legacy policy cannot renew it.
         view.ownership = Box::new(ownership::project(
             status.as_ref().and_then(|s| s.extension.as_ref()),
             account,
-            now(),
+            now,
         ));
         view.protected = protected;
         if protected
@@ -275,7 +318,7 @@ impl State {
         now: Instant,
         account: Option<&vantare_ipc::account_session::AccountObservation>,
     ) -> ResidentView {
-        let view = self.view_for_account(account);
+        let view = self.view_at(now, account);
         self.last = Some(now);
         self.observed = Some(view.clone());
         view
@@ -300,7 +343,7 @@ impl State {
             return None;
         }
         self.last = Some(now);
-        let view = self.view_for_account(account);
+        let view = self.view_at(now, account);
         if self.observed.as_ref() == Some(&view) {
             return None;
         }

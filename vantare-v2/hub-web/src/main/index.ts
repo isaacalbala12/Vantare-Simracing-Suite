@@ -22,7 +22,7 @@ import {
   HOST_PROTOCOL_VERSION,
   reportExportName,
 } from "../contract/generated/contract";
-import { bounded } from "../contract/validation";
+import { bounded, postHostMessageToRenderer } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme, zoomWindow } from "./appearance";
@@ -304,7 +304,9 @@ async function start() {
         }
       }
       if (message.kind === "failure") copies.delete(message.id);
-      port1.postMessage(message);
+      postHostMessageToRenderer(message, (forward) =>
+        port1.postMessage(forward),
+      );
     });
     const controls = bindWindowControls(
       currentWindow,

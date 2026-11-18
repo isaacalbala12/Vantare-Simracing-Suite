@@ -4,7 +4,18 @@ use crate::launcher_resident::{
 use crate::protocol::bindings::{constants, declare};
 use crate::protocol::{Event, HostToUi, Reply, Request, Topic, UiToHost};
 pub(crate) fn typescript() -> String {
+    use crate::launcher_resident::*;
     let mut text = String::new();
+    declare::<ResidentReview>(&mut text);
+    declare::<ResidentReviewState>(&mut text);
+    declare::<ResidentReviewOutcome>(&mut text);
+    declare::<ResidentReviewTarget>(&mut text);
+    declare::<ResidentReviewTicket>(&mut text);
+    declare::<ReviewContent>(&mut text);
+    declare::<ReviewContentRequest>(&mut text);
+    declare::<ReviewChoice>(&mut text);
+    declare::<ReviewDecision>(&mut text);
+    declare::<ReviewFailure>(&mut text);
     result_types(&mut text);
     ownership_types(&mut text);
     declare::<ResidentAction>(&mut text);
@@ -106,6 +117,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         decision: Some(ResidentQuestion {
             id: u64::MAX.to_string(),
             kind: ResidentQuestionKind::Authorization,
+            review: crate::launcher_resident::ResidentReview::Available,
             actions: vec![
                 ResidentChoice {
                     id: ResidentAction::Trust,
@@ -139,7 +151,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         HostToUi::Response {
             id: 1,
             result: Reply::LauncherResidentGet {
-                value: value.clone(),
+                value: Box::new(value.clone()),
             },
         },
         HostToUi::Event {
@@ -170,10 +182,52 @@ pub(crate) fn corpus() -> serde_json::Value {
             topic: Topic::LauncherResident,
         },
     ];
+    review_samples(&mut host, &mut ui);
     control_samples(&mut host, &mut ui);
     result_samples(&mut host, &mut ui);
     ownership_samples(&mut host, &mut ui);
     serde_json::json!({"host":host,"ui":ui})
+}
+
+fn review_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {
+    use crate::launcher_resident::*;
+    let ticket = "f".repeat(32);
+    ui.extend([
+        UiToHost::Request {
+            id: 10,
+            request: Request::LauncherResidentReviewOpen {
+                target: ResidentReviewTarget {
+                    instance: "b".repeat(64),
+                    account_generation: "c".repeat(64),
+                    run: "1".into(),
+                    revision: "d".repeat(64),
+                    decision: "2".into(),
+                },
+            },
+        },
+        UiToHost::ReviewContentRequest(ReviewContentRequest {
+            ticket: ticket.clone(),
+        }),
+        UiToHost::ReviewDecision(ReviewDecision {
+            ticket: ticket.clone(),
+            decision: ReviewChoice::Trust,
+            issued_ms: Some(1_000),
+        }),
+    ]);
+    host.extend([
+        HostToUi::Response {
+            id: 10,
+            result: Reply::LauncherResidentReviewOpen {
+                value: ResidentReviewTicket { ticket },
+            },
+        },
+        HostToUi::ReviewContent(ReviewContent {
+            pages: vec!["Contenido sintético de revisión".into()],
+        }),
+        HostToUi::ReviewFailure {
+            reason: ReviewFailure::Expired,
+        },
+    ]);
 }
 
 fn result_types(text: &mut String) {

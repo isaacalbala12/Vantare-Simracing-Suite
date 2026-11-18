@@ -471,6 +471,12 @@ impl Owner {
             Ok(Request::RehearseChecked(request)) => self.rehearse_checked(request),
             Ok(Request::RetryChecked(request)) => self.retry_checked(request),
             Ok(Request::RemoveProfileChecked(request)) => self.remove_profile_checked(request),
+            Ok(Request::Answer {
+                action: Action::Trust,
+                ..
+            }) => {
+                self.status.error = Some("trust-requires-editor".into());
+            }
             Ok(Request::Answer { decision, action }) => {
                 // El descarte de Parar/Continuar cancela, aunque no tenga botón Cancel.
                 // El ID sigue siendo obligatorio; una decisión de cierre conserva sus opciones.

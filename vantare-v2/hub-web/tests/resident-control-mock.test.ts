@@ -22,6 +22,7 @@ function fixture(sceneName = "launcher-control-finished") {
     execution: null,
     ownership: { kind: "unsupported" },
     registrations: [],
+    reviewOutcome: null,
   };
   const emit = vi.fn(),
     tasks: (() => void)[] = [];

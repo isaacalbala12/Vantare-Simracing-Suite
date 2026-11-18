@@ -31,9 +31,11 @@ const view: ResidentView = {
   error: false,
   ownership: { kind: "unsupported" },
   registrations: [],
+  reviewOutcome: null,
   decision: {
     id: "2",
     kind: "authorization",
+    review: "unavailable",
     actions: [
       { id: "trust", label: "Confiar y lanzar" },
       { id: "cancel", label: "Cancelar" },

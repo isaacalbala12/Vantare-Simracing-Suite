@@ -99,6 +99,7 @@ function harness() {
           execution: null,
           ownership: { kind: "unsupported" },
           registrations: [],
+          reviewOutcome: null,
           ...patch,
         },
       },
@@ -176,7 +177,9 @@ it("does not call an offline/protected or questioned execution ready", () => {
   h.resident({ running: true });
   h.resident({ protected: true });
   h.resident({ running: true });
-  h.resident({ decision: { id: "1", kind: "failure", actions: [] } });
+  h.resident({
+    decision: { id: "1", kind: "failure", actions: [], review: "unavailable" },
+  });
   expect(h.records()).toEqual([]);
   h.connection.dispose();
 });

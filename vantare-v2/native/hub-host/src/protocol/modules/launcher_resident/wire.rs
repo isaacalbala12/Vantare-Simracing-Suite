@@ -6,6 +6,10 @@ use ts_rs::TS;
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Request {
+    #[serde(rename = "launcher.resident.reviewOpen")]
+    LauncherResidentReviewOpen {
+        target: crate::launcher_resident::ResidentReviewTarget,
+    },
     #[serde(rename = "launcher.profile.removeChecked")]
     LauncherProfileRemoveChecked {
         target: crate::launcher_resident::ResidentRemoveTarget,
@@ -33,6 +37,10 @@ pub enum Request {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "method", deny_unknown_fields)]
 pub enum Reply {
+    #[serde(rename = "launcher.resident.reviewOpen")]
+    LauncherResidentReviewOpen {
+        value: crate::launcher_resident::ResidentReviewTicket,
+    },
     #[serde(rename = "launcher.profile.removeChecked")]
     LauncherProfileRemoveChecked {
         value: crate::launcher_resident::ResidentQueued,
@@ -56,7 +64,7 @@ pub enum Reply {
 
     #[serde(rename = "launcher.resident.get")]
     LauncherResidentGet {
-        value: crate::launcher_resident::ResidentView,
+        value: Box<crate::launcher_resident::ResidentView>,
     },
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]

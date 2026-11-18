@@ -68,6 +68,7 @@ fn fits_frame(profiles: &[ProfileShortcut]) -> bool {
         decision: Some(ResidentQuestion {
             id: u64::MAX.to_string(),
             kind: ResidentQuestionKind::AlreadyRunning,
+            review: super::ResidentReview::Unavailable,
             actions: ResidentAction::ALL
                 .into_iter()
                 .map(|id| ResidentChoice {
@@ -81,7 +82,9 @@ fn fits_frame(profiles: &[ProfileShortcut]) -> bool {
     };
     let envelope = crate::protocol::HostToUi::Response {
         id: u32::MAX,
-        result: crate::protocol::Reply::LauncherResidentGet { value },
+        result: crate::protocol::Reply::LauncherResidentGet {
+            value: Box::new(value),
+        },
     };
     serde_json::to_vec(&envelope)
         .is_ok_and(|bytes| bytes.len() <= crate::frame::LIMIT.saturating_sub(16 * 1024))

@@ -205,7 +205,9 @@ fn the_host_downgrades_unreconciled_protected_and_missing_documents_to_unknown()
     let f = Fixture::new();
     let mut reader = super::super::State::new(f.path.clone());
     let current = observed();
-    let read = |reader: &mut super::super::State| reader.view_with_clock(Some(&current), || 10_000);
+    let read = |reader: &mut super::super::State| {
+        reader.view_with_clock(Some(&current), std::time::Instant::now(), || 10_000)
+    };
     assert!(matches!(
         read(&mut reader).ownership.as_ref(),
         ResidentOwnership::Known { .. }

@@ -180,6 +180,7 @@ export function createResidentControlMock(
           view.decision = {
             id: execution.question.decision,
             kind: "closing",
+            review: "unavailable",
             actions: [
               { id: "leave", label: "Dejar abiertas" },
               { id: "close-started", label: "Cerrar solo las iniciadas" },

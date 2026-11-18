@@ -28,6 +28,19 @@ pub struct AnswerChecked {
     #[serde(deserialize_with = "decision")]
     pub decision: String,
     pub action: Action,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub review: Option<ReviewProof>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReviewProof {
+    #[serde(deserialize_with = "super::checked::revision")]
+    pub pages_digest: String,
+    pub issued_ms: u64,
+}
+
+pub fn permits_reviewed_trust(policy: &crate::control::Policy, now: u64) -> bool {
+    policy.permits_launch(now)
 }
 fn decision<'de, D: serde::Deserializer<'de>>(decoder: D) -> Result<String, D::Error> {
     let value = String::deserialize(decoder)?;

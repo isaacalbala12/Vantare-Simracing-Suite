@@ -53,6 +53,7 @@ function setup(running = false) {
     error: false,
     ownership: { kind: "unsupported" },
     registrations: [],
+    reviewOutcome: null,
     decision: null,
     execution: {
       instance: "b".repeat(64),

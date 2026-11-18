@@ -29,6 +29,8 @@ const REPARSE_POINT: u32 = 0x400; // FILE_ATTRIBUTE_REPARSE_POINT
 
 const QA_OWNER: &str = "vantare.operational.owner";
 const MAX_CREDENTIAL_BYTES: usize = 32 * 1024;
+const MAX_QA_LIFETIME: TimeDelta = TimeDelta::hours(24);
+const MAX_FUTURE_ISSUANCE: TimeDelta = TimeDelta::minutes(5);
 const HELP: &str = "\
 Uso de vantare-qa-license:
   fingerprint
@@ -186,11 +188,15 @@ fn verify_transfer(text: &str, registry: &str, device: &str, now: DateTime<Utc>)
         return Err(Error::InvalidCredential.into());
     }
     let issued = DateTime::parse_from_rfc3339(&credential.claims.issued_at)?;
+    let age = now.fixed_offset() - issued;
+    if !(-MAX_FUTURE_ISSUANCE..=MAX_QA_LIFETIME).contains(&age) {
+        return Err(Error::Clock.into());
+    }
     let until = DateTime::parse_from_rfc3339(&owner.paid_through)?;
     if until <= now.fixed_offset() {
         return Err(Error::Expired.into());
     }
-    if until <= issued || until - issued > TimeDelta::hours(24) {
+    if until <= issued || until - issued > MAX_QA_LIFETIME {
         return Err(Error::InvalidCredential.into());
     }
     Ok(())
@@ -321,7 +327,7 @@ fn sign(key: &QaKey, device: &str, now: DateTime<Utc>) -> Result<CredentialV1> {
             issued_at: now.to_rfc3339(),
             capabilities: vec![Capability {
                 key: QA_OWNER.into(),
-                paid_through: (now + TimeDelta::hours(24)).to_rfc3339(),
+                paid_through: (now + MAX_QA_LIFETIME).to_rfc3339(),
                 perpetual: false,
                 scope_version: String::new(),
             }],

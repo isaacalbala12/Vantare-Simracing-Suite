@@ -21,7 +21,7 @@ pub enum Request {
     #[serde(rename = "strategy.create")]
     StrategyCreate {
         revision: String,
-        fields: crate::strategy::StrategyFields,
+        fields: Box<crate::strategy::StrategyFields>,
         #[serde(rename = "basePaceSeconds")]
         base_pace_seconds: Option<String>,
         #[serde(rename = "fuelPerLapLiters")]
@@ -34,7 +34,7 @@ pub enum Request {
         #[serde(rename = "strategyId")]
         strategy_id: String,
         revision: String,
-        fields: crate::strategy::StrategyFields,
+        fields: Box<crate::strategy::StrategyFields>,
     },
     #[serde(rename = "strategy.save")]
     StrategySave { revision: String },

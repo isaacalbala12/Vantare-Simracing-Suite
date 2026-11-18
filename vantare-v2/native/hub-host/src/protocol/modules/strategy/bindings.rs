@@ -139,7 +139,7 @@ pub(crate) fn corpus() -> serde_json::Value {
         },
         Request::StrategyCreate {
             revision: "a".repeat(64),
-            fields: fields.clone(),
+            fields: Box::new(fields.clone()),
             base_pace_seconds: Some("90.472".into()),
             fuel_per_lap_liters: Some("1.83".into()),
         },
@@ -147,7 +147,7 @@ pub(crate) fn corpus() -> serde_json::Value {
             event_id: "event-1".into(),
             strategy_id: "variant-1".into(),
             revision: "b".repeat(64),
-            fields,
+            fields: Box::new(fields),
         },
         Request::StrategySave {
             revision: "b".repeat(64),

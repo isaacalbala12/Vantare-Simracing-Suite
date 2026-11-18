@@ -1489,3 +1489,89 @@ fn retiring_the_session_with_a_recalculation_running_cancels_it_and_leaves_no_ed
     assert_eq!(after.plan.edit, None);
     assert_eq!(after.plan.state, StrategyPlanState::Uncalculated);
 }
+
+// ---- Review of E3: obsolete revisions, no-change recalculation, replaced plans ----
+
+#[test]
+fn recalculating_without_a_pending_edit_is_rejected_and_starts_nothing() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    assert_eq!(
+        failure(&mut session, &recalculate(&view)),
+        HostError::Rejected
+    );
+    assert_eq!(view_strategy(&mut session), view, "no worker, no new id");
+    // Moving to the same lap changes nothing either, so there is still nothing to do.
+    let lap = view.plan.edit.as_ref().unwrap().stops[0].lap;
+    let same = edited(&mut session, &boundary(&view, 0, lap));
+    assert_eq!(same.plan.state, StrategyPlanState::Calculated);
+    assert_eq!(
+        failure(&mut session, &recalculate(&same)),
+        HostError::Rejected
+    );
+}
+
+#[test]
+fn every_edit_with_an_obsolete_revision_is_a_conflict_with_the_current_view() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let (_, moved) = moved_plan(&mut session);
+    let id = moved.plan.compute_id.unwrap();
+    let stale = "f".repeat(64);
+    for sent in [
+        Request::StrategyMoveBoundary {
+            revision: stale.clone(),
+            compute_id: id,
+            index: 0,
+            lap: 1,
+        },
+        Request::StrategyMoveStop {
+            revision: stale.clone(),
+            compute_id: id,
+            index: 0,
+            delta: 1,
+        },
+        Request::StrategyRecalculate {
+            revision: stale.clone(),
+            compute_id: id,
+        },
+        Request::StrategyResetEdit {
+            revision: stale.clone(),
+            compute_id: id,
+        },
+    ] {
+        assert_eq!(
+            failure(&mut session, &sent),
+            HostError::StrategyConflict {
+                current: Box::new(moved.clone())
+            },
+            "{sent:?}"
+        );
+    }
+    assert_eq!(view_strategy(&mut session), moved, "nothing ran or changed");
+}
+
+#[test]
+fn a_new_calculation_replaces_the_editable_plan_and_cancel_does_not_revive_it() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    assert!(view.plan.edit.is_some());
+    let current = view_strategy(&mut session);
+    let started = compute_ok(&mut session, &current);
+    assert_eq!(started.plan.state, StrategyPlanState::Calculating);
+    assert_eq!(started.plan.edit, None, "the old schedule is gone at once");
+    let cancelled = cancel(&mut session, started.plan.compute_id.unwrap());
+    assert_eq!(cancelled.plan.state, StrategyPlanState::Uncalculated);
+    assert_eq!(cancelled.plan.edit, None, "cancel does not bring it back");
+    assert_eq!(cancelled.plan.result, None);
+    session.strategy.test_join_calculation();
+    let after = view_strategy(&mut session);
+    assert_eq!(after.plan.edit, None);
+    // The old id means nothing now.
+    assert!(matches!(
+        failure(&mut session, &stop(&view, 0, 1)),
+        HostError::StrategyConflict { .. }
+    ));
+}

@@ -1,8 +1,10 @@
 #![allow(clippy::unwrap_used)]
 use super::*;
+use crate::strategy::calculation::{Calculation, StrategyPlanView as PlanView};
 use crate::strategy::calculation::{StrategyCertificate, StrategyPlanState};
 use vantare_strategy::{
-    application::{self, EditedPlan, SourceStatus},
+    application::{self, EditedPlan, SourceStatus, recalculate_edited_plan},
+    document::Document,
     solver::Input,
 };
 
@@ -45,7 +47,12 @@ fn editable() -> Editing {
 }
 
 fn laps(editing: &Editing) -> Vec<u32> {
-    editing.edit_view().stops.iter().map(|stop| stop.lap).collect()
+    editing
+        .edit_view()
+        .stops
+        .iter()
+        .map(|stop| stop.lap)
+        .collect()
 }
 
 fn lengths(editing: &Editing) -> Vec<u32> {
@@ -61,14 +68,21 @@ fn lengths(editing: &Editing) -> Vec<u32> {
 fn a_boundary_moves_inside_its_range_and_keeps_the_other_boundaries_and_the_total() {
     let mut editing = editable();
     let before = laps(&editing);
-    assert!(before.len() >= 2, "the case needs two boundaries to be useful");
+    assert!(
+        before.len() >= 2,
+        "the case needs two boundaries to be useful"
+    );
     let stop = editing.edit_view().stops[0].clone();
     assert!(stop.lap < stop.max_lap);
     editing.move_boundary(0, stop.lap + 1).unwrap();
     let after = laps(&editing);
     assert_eq!(after[0], before[0] + 1);
     assert_eq!(&after[1..], &before[1..], "the other boundaries stay");
-    assert_eq!(lengths(&editing).iter().sum::<u32>(), RACE, "the total stays");
+    assert_eq!(
+        lengths(&editing).iter().sum::<u32>(),
+        RACE,
+        "the total stays"
+    );
     assert!(editing.pending());
     let view = editing.edit_view();
     assert!(view.can_reset);
@@ -87,7 +101,14 @@ fn a_boundary_never_leaves_an_empty_stint_nor_passes_its_neighbours_or_the_finis
         let stop = editing.edit_view().stops[index].clone();
         let before = laps(&editing);
         let index = u32::try_from(index).unwrap();
-        for bad in [0, stop.min_lap - 1, stop.max_lap + 1, RACE, RACE + 1, u32::MAX] {
+        for bad in [
+            0,
+            stop.min_lap - 1,
+            stop.max_lap + 1,
+            RACE,
+            RACE + 1,
+            u32::MAX,
+        ] {
             assert_eq!(
                 editing.move_boundary(index, bad),
                 Err(HostError::Rejected),
@@ -187,7 +208,10 @@ fn consecutive_stops_cannot_cross_and_the_last_one_cannot_reach_the_finish() {
         let index = u32::try_from(index).unwrap();
         while editing.move_stop(index, -1).is_ok() {}
     }
-    assert_eq!(laps(&editing), (1..=u32::try_from(count).unwrap()).collect::<Vec<_>>());
+    assert_eq!(
+        laps(&editing),
+        (1..=u32::try_from(count).unwrap()).collect::<Vec<_>>()
+    );
 }
 
 #[test]
@@ -202,7 +226,14 @@ fn the_amounts_of_each_stop_are_the_solvers_and_do_not_move_with_the_lap() {
             .collect::<Vec<_>>()
     };
     let before = amounts(&editing);
-    let timeline = editing.base.result.as_ref().unwrap().timeline.clone().unwrap();
+    let timeline = editing
+        .base
+        .result
+        .as_ref()
+        .unwrap()
+        .timeline
+        .clone()
+        .unwrap();
     assert_eq!(
         before,
         timeline
@@ -216,54 +247,67 @@ fn the_amounts_of_each_stop_are_the_solvers_and_do_not_move_with_the_lap() {
 }
 
 #[test]
-fn recalculating_keeps_exactly_the_edited_schedule_and_returns_the_new_cost() {
-    // A short race without VE. The Fuji case with VE is the next test.
-    let cases = [calculate(manual(RACE, false))];
-    for (case, (outcome, _, editing)) in cases.into_iter().enumerate() {
-        let laps_in_race = case;
-        let mut editing = editing.unwrap_or_else(|| {
-            panic!("case {case}: no editable plan: {:?}", outcome.certificate.status)
-        });
-        let before = editing
-            .base
-            .result
-            .as_ref()
-            .unwrap()
-            .metrics
-            .as_ref()
-            .unwrap()
-            .total_seconds
-            .clone();
-        let stop = editing.edit_view().stops[0].clone();
-        let lap = if stop.lap > stop.min_lap { stop.lap - 1 } else { stop.lap + 1 };
-        editing.move_boundary(0, lap).unwrap();
-        let edited = editing.edit_view();
-        let job = editing.job();
-        let done = job(&AtomicBool::new(false)).expect("recalculate");
-        assert!(done.feasible, "case {laps_in_race}");
-        let result = done.view.result.as_ref().unwrap();
-        let timeline = result.timeline.as_ref().unwrap();
-        assert_eq!(timeline.stints, edited.stints, "stints preserved exactly");
-        assert_eq!(
-            timeline.pits.iter().map(|pit| pit.lap).collect::<Vec<_>>(),
-            edited.stops.iter().map(|stop| stop.lap).collect::<Vec<_>>(),
-            "stops preserved exactly"
-        );
-        let metrics = result.metrics.as_ref().unwrap();
-        assert_eq!(usize::try_from(metrics.pit_count).unwrap(), edited.stops.len());
-        assert_eq!(metrics.laps, edited.stints.last().unwrap().to_lap);
-        // The cost is the solver's for this schedule; moving a stop need not change it.
-        assert!(metrics.total_seconds.as_f64().unwrap() > 0.0);
-        let _ = &before;
-        editing.apply(Ok(done));
-        assert!(!editing.pending());
-        let view = editing.plan_view(Some(2));
-        assert_ne!(view.state, StrategyPlanState::Edited);
-        assert_eq!(view.edit.as_ref().unwrap().stints, edited.stints);
-        assert!(!view.edit.unwrap().can_reset, "the recalculated plan is the new base");
-        editing.reset();
-        assert_eq!(editing.edit_view().stints, edited.stints, "reset stops there");
-    }
+fn recalculating_keeps_exactly_the_edited_schedule_and_returns_its_cost() {
+    // A short race without VE. The Fuji case with VE waits for #2628 (below).
+    let mut editing = editable();
+    let stop = editing.edit_view().stops[0].clone();
+    let lap = if stop.lap > stop.min_lap {
+        stop.lap - 1
+    } else {
+        stop.lap + 1
+    };
+    editing.move_boundary(0, lap).unwrap();
+    let edited = editing.edit_view();
+    let schedule = EditedPlan {
+        stints: edited
+            .stints
+            .iter()
+            .map(|stint| stint.to_lap - stint.from_lap + 1)
+            .collect(),
+        pit_stop_laps: edited.stops.iter().map(|stop| stop.lap).collect(),
+    };
+    // The cost the crate gives for exactly this schedule, asked independently.
+    let expected = recalculate_edited_plan(&editing.input, &schedule, &AtomicBool::new(false))
+        .unwrap()
+        .cost_seconds
+        .expect("a feasible schedule has a cost");
+    let job = editing.job();
+    let done = job(&AtomicBool::new(false)).expect("recalculate");
+    assert!(done.feasible);
+    let result = done.view.result.as_ref().unwrap();
+    let timeline = result.timeline.as_ref().unwrap();
+    assert_eq!(timeline.stints, edited.stints, "stints preserved exactly");
+    assert_eq!(
+        timeline.pits.iter().map(|pit| pit.lap).collect::<Vec<_>>(),
+        schedule.pit_stop_laps,
+        "stops preserved exactly"
+    );
+    let metrics = result.metrics.as_ref().unwrap();
+    assert_eq!(
+        usize::try_from(metrics.pit_count).unwrap(),
+        edited.stops.len()
+    );
+    assert_eq!(metrics.laps, edited.stints.last().unwrap().to_lap);
+    assert_eq!(
+        metrics.total_seconds.as_f64().unwrap(),
+        expected,
+        "the cost is the one of the edited schedule"
+    );
+    editing.apply(Ok(done));
+    assert!(!editing.pending());
+    let view = editing.plan_view(Some(2));
+    assert_ne!(view.state, StrategyPlanState::Edited);
+    assert_eq!(view.edit.as_ref().unwrap().stints, edited.stints);
+    assert!(
+        !view.edit.unwrap().can_reset,
+        "the recalculated plan is the new base"
+    );
+    editing.reset();
+    assert_eq!(
+        editing.edit_view().stints,
+        edited.stints,
+        "reset stops there"
+    );
 }
 
 #[test]
@@ -290,7 +334,11 @@ fn a_schedule_that_has_no_solution_is_shown_and_can_be_reset() {
     assert!(result.metrics.is_none() && result.timeline.is_none());
     assert!(shown.edit.as_ref().unwrap().can_reset);
     editing.reset();
-    assert_eq!(editing.plan_view(Some(1)), base, "back to the feasible plan");
+    assert_eq!(
+        editing.plan_view(Some(1)),
+        base,
+        "back to the feasible plan"
+    );
 }
 
 #[test]
@@ -311,7 +359,11 @@ fn recalculating_conflicts_with_the_event_rules_on_the_number_of_stops() {
         Some(StrategyEditError::EventRulesConflict)
     );
     editing.move_stop(0, -1).unwrap();
-    assert_eq!(editing.edit_view().error, None, "a new move clears the error");
+    assert_eq!(
+        editing.edit_view().error,
+        None,
+        "a new move clears the error"
+    );
 }
 
 fn job_error(error: StrategyEditError) -> Recalculation {
@@ -333,8 +385,14 @@ fn a_cancelled_recalculation_ends_without_a_plan() {
 #[test]
 fn the_crates_error_strings_map_to_closed_errors() {
     for (text, error) in [
-        ("invalid_edited_stint_schedule", StrategyEditError::InvalidSchedule),
-        ("too_many_required_pit_windows", StrategyEditError::InvalidSchedule),
+        (
+            "invalid_edited_stint_schedule",
+            StrategyEditError::InvalidSchedule,
+        ),
+        (
+            "too_many_required_pit_windows",
+            StrategyEditError::InvalidSchedule,
+        ),
         (
             "edited_stop_count_conflicts_with_event_rules",
             StrategyEditError::EventRulesConflict,
@@ -355,7 +413,9 @@ fn reset_returns_exactly_to_the_calculated_plan() {
     let mut editing = editable();
     let base = editing.plan_view(Some(1));
     assert!(!base.edit.as_ref().unwrap().can_reset);
-    editing.move_boundary(0, editing.edit_view().stops[0].min_lap).unwrap();
+    editing
+        .move_boundary(0, editing.edit_view().stops[0].min_lap)
+        .unwrap();
     editing.move_stop(1, 1).unwrap();
     assert_eq!(editing.plan_view(Some(1)).state, StrategyPlanState::Edited);
     editing.reset();
@@ -370,18 +430,34 @@ fn the_wire_names_are_the_documented_ones() {
     assert_eq!(json["state"], "calculated");
     let edit = &json["edit"];
     assert_eq!(
-        edit.as_object().unwrap().keys().cloned().collect::<std::collections::BTreeSet<_>>(),
-        ["stints", "stops", "canReset", "error"].map(String::from).into()
+        edit.as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect::<std::collections::BTreeSet<_>>(),
+        ["stints", "stops", "canReset", "error"]
+            .map(String::from)
+            .into()
     );
     assert_eq!(
-        edit["stops"][0].as_object().unwrap().keys().cloned().collect::<std::collections::BTreeSet<_>>(),
-        ["lap", "minLap", "maxLap", "fuelLiters", "vePercent"].map(String::from).into()
+        edit["stops"][0]
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect::<std::collections::BTreeSet<_>>(),
+        ["lap", "minLap", "maxLap", "fuelLiters", "vePercent"]
+            .map(String::from)
+            .into()
     );
     assert_eq!(
         serde_json::to_value(StrategyEditError::ScheduleNotPreserved).unwrap(),
         "scheduleNotPreserved"
     );
-    assert_eq!(serde_json::to_value(StrategyPlanState::Edited).unwrap(), "edited");
+    assert_eq!(
+        serde_json::to_value(StrategyPlanState::Edited).unwrap(),
+        "edited"
+    );
 }
 
 #[test]
@@ -410,7 +486,9 @@ fn fuji_with_ve_recalculates_an_edited_witness_schedule() {
     for (index, delta) in [(None, 0_i32), (Some(1), 1), (Some(4), -1)] {
         let mut edited = edited.clone();
         if let Some(index) = index {
-            edited.pit_stop_laps[index] = edited.pit_stop_laps[index].checked_add_signed(delta).unwrap();
+            edited.pit_stop_laps[index] = edited.pit_stop_laps[index]
+                .checked_add_signed(delta)
+                .unwrap();
             edited.stints[index] = edited.stints[index].checked_add_signed(delta).unwrap();
             edited.stints[index + 1] = edited.stints[index + 1].checked_add_signed(-delta).unwrap();
         }
@@ -419,7 +497,11 @@ fn fuji_with_ve_recalculates_an_edited_witness_schedule() {
         assert!(done.feasible, "{edited:?}");
         let timeline = done.view.result.unwrap().timeline.unwrap();
         assert_eq!(
-            timeline.stints.iter().map(|s| s.to_lap - s.from_lap + 1).collect::<Vec<_>>(),
+            timeline
+                .stints
+                .iter()
+                .map(|s| s.to_lap - s.from_lap + 1)
+                .collect::<Vec<_>>(),
             edited.stints
         );
         assert_eq!(
@@ -427,4 +509,133 @@ fn fuji_with_ve_recalculates_an_edited_witness_schedule() {
             edited.pit_stop_laps
         );
     }
+}
+
+/// A plan the solver returned with a schedule that does not describe a plan.
+#[test]
+fn a_malformed_schedule_is_not_editable_instead_of_panicking() {
+    let (outcome, view, editing) = calculate(manual(RACE, false));
+    let input = editing.unwrap().input;
+    let broken = |change: &dyn Fn(&mut SolverOutcome)| {
+        let mut outcome = outcome.clone();
+        change(&mut outcome);
+        Editing::new(&input, &outcome, &view, "Pilot").is_none()
+    };
+    assert!(!broken(&|_| {}), "the unchanged plan is editable");
+    assert!(
+        broken(&|outcome| outcome.result.stints[0] = 0),
+        "empty stint"
+    );
+    assert!(
+        broken(&|outcome| {
+            outcome.result.stints[0] += 1;
+            outcome.result.stints[1] -= 1;
+        }),
+        "stops are not the running totals of the stints"
+    );
+    assert!(
+        broken(&|outcome| outcome.result.pit_stops[0].lap += 1),
+        "stop off its stint"
+    );
+    assert!(
+        broken(&|outcome| {
+            let last = outcome.result.stints.len() - 1;
+            outcome.result.stints[last] = 0;
+            outcome.result.stints[0] += 1;
+        }),
+        "an empty last stint"
+    );
+}
+
+fn calculation_with_edit() -> (Calculation, u32) {
+    let editing = editable();
+    let view = editing.plan_view(None);
+    let mut calculation = Calculation::default();
+    calculation
+        .start(move |_| {
+            Ok((
+                Document::empty("2026-11-18T00:00:00Z").unwrap(),
+                view,
+                Some(editing),
+            ))
+        })
+        .unwrap();
+    calculation.finish().unwrap();
+    let id = calculation.view().compute_id.unwrap();
+    (calculation, id)
+}
+
+/// Moves some stop by one lap so that the edit is pending.
+fn nudge(calculation: &mut Calculation, id: u32) {
+    let moved = (0..3).any(|index| {
+        [1, -1].into_iter().any(|delta| {
+            calculation
+                .edit(id, |editing| editing.move_stop(index, delta))
+                .is_ok_and(|done| done.is_some())
+        })
+    });
+    assert!(moved);
+    assert!(calculation.edit_pending());
+}
+
+/// A recalculation that waits to be released and then fails recognisably.
+fn held(
+    calculation: &mut Calculation,
+) -> (
+    std::sync::mpsc::SyncSender<()>,
+    std::sync::mpsc::Receiver<bool>,
+) {
+    use std::sync::{atomic::Ordering, mpsc};
+    let (ready, started) = mpsc::sync_channel(1);
+    let (release, wait) = mpsc::sync_channel(1);
+    let (seen, observed) = mpsc::sync_channel(1);
+    calculation
+        .test_recalculate_with(move |cancel| {
+            ready.send(()).unwrap();
+            wait.recv().unwrap();
+            seen.send(cancel.load(Ordering::Relaxed)).unwrap();
+            Err(StrategyEditError::EventRulesConflict)
+        })
+        .unwrap();
+    started.recv().unwrap();
+    (release, observed)
+}
+
+#[test]
+fn a_late_recalculation_is_not_applied_after_cancel_or_reset_even_with_the_edit_alive() {
+    for reset in [false, true] {
+        let (mut calculation, id) = calculation_with_edit();
+        nudge(&mut calculation, id);
+        let (release, observed) = held(&mut calculation);
+        let running = calculation.view().compute_id.unwrap();
+        assert_eq!(calculation.view().state, StrategyPlanState::Calculating);
+        if reset {
+            assert!(calculation.reset(running).is_some());
+        } else {
+            calculation.cancel(running);
+        }
+        let shown: PlanView = calculation.view().clone();
+        release.send(()).unwrap();
+        assert!(observed.recv().unwrap(), "the worker saw its flag");
+        assert!(calculation.finish().is_none());
+        assert_eq!(calculation.view(), &shown, "the late failure is discarded");
+        assert_eq!(calculation.view().edit.as_ref().unwrap().error, None);
+    }
+}
+
+#[test]
+fn a_panicking_recalculation_leaves_the_edit_pending_with_a_failed_error() {
+    let (mut calculation, id) = calculation_with_edit();
+    nudge(&mut calculation, id);
+    calculation
+        .test_recalculate_with(|_| panic!("the solver panicked on purpose"))
+        .unwrap();
+    assert!(calculation.finish().is_none());
+    let view = calculation.view();
+    assert_eq!(view.state, StrategyPlanState::Edited);
+    assert_eq!(
+        view.edit.as_ref().unwrap().error,
+        Some(StrategyEditError::Failed)
+    );
+    assert!(!calculation.running());
 }

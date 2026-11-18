@@ -127,14 +127,18 @@ def prefixes(count):
     return sorted({value for value in (1, 3, 10, 121, 197, count) if value <= count})
 
 
-def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
+def prepare(repo, output, binary_directory, presentmon=None, corpus=None, inventory=None, *, visual_sha=None):
     repo, output = Path(repo), Path(output)
-    if subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip() != SOURCE_SHA:
+    source_sha = visual_sha or SOURCE_SHA
+    visual = visual_sha is not None
+    if subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip() != source_sha:
         raise ValueError("Base distinta del SHA congelado")
+    if not visual and not all((presentmon, corpus, inventory)):
+        raise ValueError("La medición requiere PresentMon, corpus e inventario")
     output.mkdir(parents=True, exist_ok=False)
     (output / "bin").mkdir()
     (output / "inputs").mkdir()
-    manifest = {"schema": 1, "source_sha": SOURCE_SHA, "captures": [], "measurements": [],
+    manifest = {"schema": 1, "source_sha": source_sha, "captures": [], "measurements": [],
                 "presentmon": {"version": "2.6.0", "repository": "GameTechDev/PresentMon",
                                "url": "https://github.com/GameTechDev/PresentMon/releases/download/v2.6.0/PresentMon-2.6.0-x64.exe",
                                "sha256": PRESENTMON_SHA}, "files": [],
@@ -154,38 +158,64 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
     if not isinstance(builds, list):
         builds = [builds]
     by_name = {row["name"]: row for row in builds}
-    for name in ("vantare-overlays-rune.exe", "vantare-overlays.exe", "vantare-core.exe", "vantare-services.exe", "vantare.exe"):
+    required = ["vantare-overlays-rune.exe", "vantare-overlays.exe", "vantare.exe"]
+    if visual:
+        required += ["lifecycle.exe"]
+    else:
+        required += ["vantare-core.exe", "vantare-services.exe"]
+    for name in required:
         build = by_name[name.removesuffix(".exe")]
-        source_ok = build["source_sha"] == SOURCE_SHA
-        if name == "vantare.exe" and build.get("origin") == "GitHub Actions 44006217558":
+        source_ok = build["source_sha"] == source_sha
+        if not visual and name == "vantare.exe" and build.get("origin") == "GitHub Actions 44006217558":
             source_ok = build["source_sha"] == "8358fdae1a03dda5ac7c47bc8721c5c0c0e1fd0c"
         if not source_ok or build["sha256"] != digest(Path(binary_directory) / name):
             raise ValueError("Binario sin procedencia/hash del SHA congelado")
         shutil.copyfile(Path(binary_directory) / name, output / "bin" / name)
-    if "paint-stats" not in by_name["vantare-core"]["features"]:
+    if not visual and "paint-stats" not in by_name["vantare-core"]["features"]:
         raise ValueError("El núcleo necesita la instrumentación existente paint-stats para QPC real")
-    lifecycle = json.loads((Path(binary_directory).parent / "lifecycle-binarios.json").read_text(encoding="utf-8-sig"))
-    for row in lifecycle["binaries"]:
-        name = row["name"]
-        if name not in ("lifecycle-harness.exe", "lifecycle-rune-tests.exe") or row["sha256"] != digest(Path(binary_directory) / name):
-            raise ValueError("Arnés lifecycle sin hash válido")
-        shutil.copyfile(Path(binary_directory) / name, output / "bin" / name)
-    if {row["name"] for row in lifecycle["binaries"]} != {"lifecycle-harness.exe", "lifecycle-rune-tests.exe"}:
-        raise ValueError("Falta un ejecutable de pruebas lifecycle")
-    manifest["lifecycle"] = {**lifecycle, "product_contains_m1_m2": False, "selector": "--overlays-bin", "launcher_build": by_name["vantare"],
+    if visual:
+        receipt = Path(binary_directory).parent / "ci-binarios.json"
+        ci = json.loads(receipt.read_text(encoding="utf-8-sig"))
+        builds = [by_name[name.removesuffix(".exe")] for name in required]
+        if ci["source_sha"] != source_sha or any(str(row.get("run_id")) != str(ci["run_id"]) for row in builds):
+            raise ValueError("Los binarios visuales deben venir de un solo run del SHA congelado")
+        ci_hashes = {row["file"]: row["sha256"] for row in ci["files"]}
+        if any(ci_hashes.get(name) != by_name[name.removesuffix(".exe")]["sha256"] for name in required):
+            raise ValueError("Hashes del kit no coinciden con el recibo original de CI")
+        shutil.copyfile(receipt, output / "ci-binarios.json")
+        write_json(output / "binarios.json", {"source_sha": source_sha, "run_id": ci["run_id"], "files": builds})
+        manifest["ci_artifact"] = {"run_id": ci["run_id"], "name": "qa-kit-" + source_sha,
+                                   "receipt": "ci-binarios.json", "receipt_sha256": digest(receipt)}
+        lifecycle = {"source_sha": source_sha, "harness": by_name["lifecycle"],
+                     "scenarios": ["eof", "restart", "exit-zero", "single"]}
+    else:
+        lifecycle = json.loads((Path(binary_directory).parent / "lifecycle-binarios.json").read_text(encoding="utf-8-sig"))
+        for row in lifecycle["binaries"]:
+            name = row["name"]
+            if name not in ("lifecycle-harness.exe", "lifecycle-rune-tests.exe") or row["sha256"] != digest(Path(binary_directory) / name):
+                raise ValueError("Arnés lifecycle sin hash válido")
+            shutil.copyfile(Path(binary_directory) / name, output / "bin" / name)
+        if {row["name"] for row in lifecycle["binaries"]} != {"lifecycle-harness.exe", "lifecycle-rune-tests.exe"}:
+            raise ValueError("Falta un ejecutable de pruebas lifecycle")
+    manifest["lifecycle"] = {**lifecycle, "selector": "--overlays-bin", "launcher_build": by_name["vantare"],
                              "tests": 4, "synthetic_core_not_performance": True}
     manifest["builds"] = builds
-    manifest["production_rights_configured"] = bool(by_name["vantare-core"]["license_public_keys_configured"])
-    if digest(presentmon) != PRESENTMON_SHA:
-        raise ValueError("PresentMon no coincide con digest oficial fijado")
-    shutil.copyfile(presentmon, output / "bin/PresentMon-2.6.0-x64.exe")
+    manifest["production_rights_configured"] = not visual and bool(by_name["vantare-core"]["license_public_keys_configured"])
+    if visual:
+        manifest["scope"] = "visual-lifecycle"
+        del manifest["measurement"], manifest["presentmon"]
+        del manifest["limitations"][:2]
+    else:
+        if digest(presentmon) != PRESENTMON_SHA:
+            raise ValueError("PresentMon no coincide con digest oficial fijado")
+        if digest(corpus) != "c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c":
+            raise ValueError("Corpus distinto del inventariado")
+        shutil.copyfile(presentmon, output / "bin/PresentMon-2.6.0-x64.exe")
+        shutil.copyfile(corpus, output / "inputs/lmu47-high-rate-60s.tar.gz")
+        shutil.copyfile(inventory, output / "inputs/INVENTARIO-LMU47-HISTORICO.md")
     # Redist ya verificado del kit histórico, cuando se proporcione junto a los exe.
     for dll in Path(binary_directory).glob("*.dll"):
         shutil.copyfile(dll, output / "bin" / dll.name)
-    if digest(corpus) != "c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c":
-        raise ValueError("Corpus distinto del inventariado")
-    shutil.copyfile(corpus, output / "inputs/lmu47-high-rate-60s.tar.gz")
-    shutil.copyfile(inventory, output / "inputs/INVENTARIO-LMU47-HISTORICO.md")
     for spec in specifications(repo):
         kind = spec["kind"]
         source = spec["source"]
@@ -240,7 +270,7 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
                         "source_catalog": str(spec["catalog"].relative_to(repo)).replace("\\", "/") if "catalog" in spec else None,
                         "source_catalog_entry": spec.get("catalog_entry"), "transform": "state.source_state=paused" if spec.get("paused") else None,
                         "photo_count": count, "source_order_preserved": True})
-                if spec.get("measure") and tone != "neutro":
+                if not visual and spec.get("measure") and tone != "neutro":
                     number = list(SCENES).index(kind)
                     motors = ("gpui", "rune") if number % 2 == 0 else ("rune", "gpui")
                     for state in ("replay", "waiting"):
@@ -280,7 +310,9 @@ def prepare(repo, output, binary_directory, presentmon, corpus, inventory):
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    for arg in ("repo", "output", "binary-directory", "presentmon", "corpus", "inventory"):
+    for arg in ("repo", "output", "binary-directory"):
         p.add_argument("--" + arg, required=True)
+    for arg in ("presentmon", "corpus", "inventory", "visual-sha"):
+        p.add_argument("--" + arg)
     a = p.parse_args()
-    prepare(a.repo, a.output, a.binary_directory, a.presentmon, a.corpus, a.inventory)
+    prepare(a.repo, a.output, a.binary_directory, a.presentmon, a.corpus, a.inventory, visual_sha=a.visual_sha)

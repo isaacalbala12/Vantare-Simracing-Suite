@@ -12,6 +12,7 @@ param(
  [string]$LimiteUtc='',
  [string]$Salida='',
  [string]$DestinoServidor='D:/VantareServer/evidence/overlays-rune',
+ [switch]$SoloVisual,
  [switch]$SoloFunciones
 )
 $ErrorActionPreference='Stop'
@@ -37,7 +38,10 @@ function Resolve-TandaPath([string]$Root,[string]$Relative){
 function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
  $manifest=Read-TandaJson (Join-Path $Root 'manifiesto.json')
  if($manifest.schema -ne 1 -or $manifest.source_sha -notmatch '^[0-9a-f]{40}$'){throw 'Manifiesto sin schema/SHA válido'}
- if(-not $manifest.production_rights_configured -and -not ($DryValidation -and $env:VANTARE_SIN_GRAFICOS -eq '1')){throw 'BLOCKED_LICENSE_CONFIG: núcleo compilado sin registro público de licencia; no medir overlays ocultos'}
+ $visualManifest=$manifest.ContainsKey('scope') -and $manifest.scope -ceq 'visual-lifecycle'
+ if([bool]$SoloVisual -ne $visualManifest){throw 'Modo y alcance del manifiesto no coinciden'}
+ if($SoloVisual -and $manifest.measurements.Count -ne 0){throw 'El modo visual no admite rondas de medición'}
+ if(-not $SoloVisual -and -not $manifest.production_rights_configured -and -not ($DryValidation -and $env:VANTARE_SIN_GRAFICOS -eq '1')){throw 'BLOCKED_LICENSE_CONFIG: núcleo compilado sin registro público de licencia; no medir overlays ocultos'}
  $seen=@{}
  foreach($file in $manifest.files){
   $path=Resolve-TandaPath $Root $file.path
@@ -45,17 +49,22 @@ function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
   if(-not(Test-Path -LiteralPath $path -PathType Leaf)){throw "Falta input: $($file.path)"}
   if((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ine $file.sha256){throw "Hash incorrecto: $($file.path)"}
  }
- foreach($required in @('bin/vantare-overlays-rune.exe','bin/vantare-overlays.exe','bin/vantare-core.exe','bin/vantare-services.exe','bin/vantare.exe','bin/lifecycle-harness.exe','bin/lifecycle-rune-tests.exe','bin/PresentMon-2.6.0-x64.exe')){
+ $requiredFiles=@('bin/vantare-overlays-rune.exe','bin/vantare-overlays.exe','bin/vantare.exe')
+ if($SoloVisual){
+  $requiredFiles+=@('bin/lifecycle.exe','ci-binarios.json','binarios.json')
+  if([string]$manifest.ci_artifact.run_id -notmatch '\A[1-9][0-9]*\z' -or $manifest.ci_artifact.name -cne ('qa-kit-'+$manifest.source_sha)){throw 'Procedencia CI visual inválida'}
+ }else{$requiredFiles+=@('bin/lifecycle-harness.exe','bin/lifecycle-rune-tests.exe','bin/vantare-core.exe','bin/vantare-services.exe','bin/PresentMon-2.6.0-x64.exe')}
+ foreach($required in $requiredFiles){
   $path=Resolve-TandaPath $Root $required
   if(-not $seen.ContainsKey($path)){throw "Binario sin hash: $required"}
  }
- if($manifest.presentmon.version -ne '2.6.0' -or $manifest.presentmon.repository -ne 'GameTechDev/PresentMon'){throw 'PresentMon sin procedencia oficial fijada'}
+ if(-not $SoloVisual -and ($manifest.presentmon.version -ne '2.6.0' -or $manifest.presentmon.repository -ne 'GameTechDev/PresentMon')){throw 'PresentMon sin procedencia oficial fijada'}
  foreach($case in $manifest.measurements){
   if($case.id -notmatch '^[a-z0-9][a-z0-9-]+$' -or $case.motor -notin @('gpui','rune') -or $case.state -notin @('waiting','replay')){throw 'Caso de medición inválido'}
   $layout=Resolve-TandaPath $Root $case.layout
   if(-not $seen.ContainsKey($layout)){throw 'Layout de medición sin hash'}
  }
- if($manifest.captures.Count -eq 0 -or $manifest.measurements.Count -eq 0){throw 'Tanda sin casos'}
+ if($manifest.captures.Count -eq 0 -or (-not $SoloVisual -and $manifest.measurements.Count -eq 0)){throw 'Tanda sin casos'}
  $outputs=@{}
  foreach($case in $manifest.captures){
   if($case.id -notmatch '^[a-z0-9][a-z0-9-]+$' -or $outputs.ContainsKey($case.id)){throw 'ID de captura inválido/repetido'}
@@ -174,8 +183,13 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  $env:VANTARE_SIN_GRAFICOS='1'
  $guard=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays-rune.exe') @('--capture-scene') (Join-Path $Output 'guard') 20
  if($guard.code -ne 6 -or $guard.stderr -notmatch '^GRAPHICS_DISABLED\b'){throw 'El binario no cumple el guard gráfico'}
- $list=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--list','--ignored') (Join-Path $Output 'lifecycle-list') 20
- if($list.code -ne 0 -or @($list.stdout -split "`n"|Where-Object {$_ -match '^rune_[a-z_]+: test\s*$'}).Count -ne 4){throw 'No se enumeraron exactamente cuatro tests lifecycle, sin ejecutarlos'}
+ if(-not $SoloVisual){
+  $list=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--list','--ignored') (Join-Path $Output 'lifecycle-list') 20
+  if($list.code -ne 0 -or @($list.stdout -split "`n"|Where-Object {$_ -match '^rune_[a-z_]+: test\s*$'}).Count -ne 4){throw 'No se enumeraron exactamente cuatro tests lifecycle, sin ejecutarlos'}
+ }else{
+  $import=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_IMPORTAR_TANDA.ps1')) (Join-Path $Output 'importacion-falsa') 60
+  if($import.code -ne 0){throw 'Las regresiones del importador de CI fallaron'}
+ }
  $fake=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_TANDA.ps1')) (Join-Path $Output 'controlador-falso') 90
  if($fake.code -ne 0){throw 'El ensayo del controlador falso falló'}
  $round=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_RONDA.ps1')) (Join-Path $Output 'ronda-falsa') 30
@@ -184,7 +198,9 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  if($security.code -ne 0){throw 'Regresiones de seguridad fallaron'}
  $csv=Invoke-TandaPython @('-m','unittest','discover','-s',(Join-Path $Root 'tools/qa-overlays'),'-p','test_*.py') (Join-Path $Output 'csv-falsos') 180
  if($csv.code -ne 0){throw 'Las regresiones de CSV falsos fallaron'}
- Write-TandaJson @{source_sha=$manifest.source_sha;production_rights_configured=$manifest.production_rights_configured;guard_code=6;guard_token='GRAPHICS_DISABLED';input_hashes='PASS';captures=$manifest.captures.Count;measurements=$manifest.measurements.Count;gpu_executed=$false;shutdown_executed=$false;utc=[DateTime]::UtcNow.ToString('o')} (Join-Path $Output 'ensayo.json')
+ $result=@{source_sha=$manifest.source_sha;production_rights_configured=$manifest.production_rights_configured;guard_code=6;guard_token='GRAPHICS_DISABLED';input_hashes='PASS';captures=$manifest.captures.Count;measurements=$manifest.measurements.Count;gpu_executed=$false;shutdown_executed=$false;utc=[DateTime]::UtcNow.ToString('o')}
+ if($SoloVisual){$result.ci_run_id=$manifest.ci_artifact.run_id;$result.lifecycle_executed=$false}
+ Write-TandaJson $result (Join-Path $Output 'ensayo.json')
 }
 function Start-TandaOwned([string]$Image,[string[]]$Arguments,[string]$Log,[hashtable]$Environment=@{}){
  $info=[Diagnostics.ProcessStartInfo]::new($Image)
@@ -433,9 +449,20 @@ function Invoke-TandaLifecycle([string]$Root,[string]$Output){
    $qa=Join-Path $directory $name;$null=New-Item -ItemType Directory -Path $qa -Force
    [Environment]::SetEnvironmentVariable($name,$qa,'Process')
   }
-  $result=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--ignored','--test-threads=1','--nocapture') (Join-Path $directory 'tests') 600 -WatchSession
-  Write-TandaJson @{code=$result.code;stdout=$result.stdout;stderr=$result.stderr;selector='--overlays-bin';measurement=$false;scenario_core='synthetic lifecycle fixture, not LMU performance'} (Join-Path $directory 'resultado.json')
-  if($result.code -ne 0 -or $result.stdout -notmatch '4 passed; 0 failed'){throw 'LIFECYCLE_FAILED: consultar lifecycle/tests y resultado.json'}
+  if($SoloVisual){
+   $scenarios=@()
+   foreach($scenario in @('eof','restart','exit-zero','single')){
+    Assert-TandaUnattended
+    $result=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle.exe') @('rune-lifecycle',$scenario) (Join-Path $directory $scenario) 150 -WatchSession
+    $scenarios+=@{name=$scenario;code=$result.code;stdout=$result.stdout;stderr=$result.stderr}
+    Write-TandaJson @{scenarios=$scenarios;selector='--overlays-bin';measurement=$false;scenario_core='synthetic lifecycle fixture'} (Join-Path $directory 'resultado.json')
+    if($result.code -ne 0){throw "LIFECYCLE_FAILED: $scenario"}
+   }
+  }else{
+   $result=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--ignored','--test-threads=1','--nocapture') (Join-Path $directory 'tests') 600 -WatchSession
+   Write-TandaJson @{code=$result.code;stdout=$result.stdout;stderr=$result.stderr;selector='--overlays-bin';measurement=$false;scenario_core='synthetic lifecycle fixture, not LMU performance'} (Join-Path $directory 'resultado.json')
+   if($result.code -ne 0 -or $result.stdout -notmatch '4 passed; 0 failed'){throw 'LIFECYCLE_FAILED: consultar lifecycle/tests y resultado.json'}
+  }
  } finally {
   foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$prior[$name],'Process')}
  }
@@ -455,6 +482,7 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
   $captureEnvironment[$name]=$qa
  }
  $state=@{source_sha=$manifest.source_sha;status='running';completed_without_error=$false;captures=@();measurements=@()}
+ if($SoloVisual){$state.scope='visual-lifecycle'}
  try {
   $python=Invoke-TandaPython @('-c','import sys, PIL, numpy; print(sys.version); print(PIL.__version__); print(numpy.__version__)') (Join-Path $Output 'logs/python-preflight') 30
   if($python.code -ne 0){throw 'BLOCKED_PYTHON: faltan Python/Pillow/numpy ya instalados; no instalar durante la tanda'}
@@ -482,9 +510,11 @@ function Invoke-TandaWorker([string]$Root,[string]$Output){
     if($pair.code -ne 0){throw 'No se pudo guardar la pareja/revisión separada de texto'}
    }
   }
+  Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
   Invoke-TandaLifecycle $Root $Output
   $state.lifecycle='4 passed; 0 failed'
-  foreach($case in $manifest.measurements){
+  $measurementCases=if(-not $SoloVisual){$manifest.measurements}
+  foreach($case in $measurementCases){
    Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
    try {Invoke-TandaMeasurement $Root $Output $case;$state.measurements+=@{id=$case.id;status='complete'}}
    catch {$state.measurements+=@{id=$case.id;status='invalid';error=$_.Exception.Message};throw}
@@ -508,7 +538,7 @@ function Invoke-TandaSsh([string]$Target,[string]$Code){
 }
 function Invoke-TandaServer([string]$Root){
  Assert-TandaWindow $NoAntesUtc $LimiteUtc
- Assert-TandaMachineRegistry
+ if(-not $SoloVisual){Assert-TandaMachineRegistry}
  Assert-TandaPython $PythonExe -SyntaxOnly
  $manifest=Assert-TandaInputs $Root
  if($Pc -notmatch '^isaac@100\.83\.142\.118$' -or $Usuario -ne 'isaac'){throw 'Destino/usuario fuera de autorización'}
@@ -525,9 +555,11 @@ function Invoke-TandaServer([string]$Root){
  $task="Vantare-tanda-$stamp"
  $start=$NoAntesUtc;$end=$LimiteUtc
  $action="-NoProfile -WindowStyle Hidden -File $remote/kit/TANDA.ps1 -Modo Trabajador -Kit $remote/kit -Salida $remote/evidence -Sesion $Sesion -Usuario isaac -NoAntesUtc $start -LimiteUtc $end -SamplerTaskPrefix $task -PythonExe `"$PythonExe`""
+ if($SoloVisual){$action+=' -SoloVisual'}
  $registered=@()
  try {
-  foreach($definition in @(Get-TandaSamplerDefinitions ($remote+'/kit') ($remote+'/evidence') $task $manifest.measurements)){
+  $samplerDefinitions=if(-not $SoloVisual){Get-TandaSamplerDefinitions ($remote+'/kit') ($remote+'/evidence') $task $manifest.measurements}
+  foreach($definition in $samplerDefinitions){
    $null=Invoke-TandaSsh $Pc "`$a=New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument '$($definition.arguments)';`$p=New-ScheduledTaskPrincipal -UserId 'isaac' -LogonType Interactive -RunLevel Highest;Register-ScheduledTask -TaskName '$($definition.name)' -Action `$a -Principal `$p|Out-Null"
    $registered+= $definition.name
   }
@@ -555,6 +587,9 @@ function Invoke-TandaServer([string]$Root){
   }
   $state=Read-TandaJson (Join-Path $destination 'estado.json')
   if($state.status -ne 'complete' -or -not $state.completed_without_error){throw 'Tanda abortada: evidencia copiada, no apagar'}
+  if($SoloVisual -and ($state.scope -cne 'visual-lifecycle' -or $state.source_sha -cne $manifest.source_sha -or $state.measurements.Count -ne 0 -or $state.lifecycle -cne '4 passed; 0 failed' -or $state.captures.Count -ne (3*$manifest.captures.Count))){
+   throw 'Evidencia visual/lifecycle incompleta o de otra tanda: no apagar'
+  }
   # ACK solo tras verificar archivo y hashes de CADA fichero en servidor.
   $hash=(Get-FileHash -LiteralPath (Join-Path $destination 'evidence-hashes.json') -Algorithm SHA256).Hash
   $null=Invoke-TandaSsh $Pc "if(Test-Path '$remote/evidence/copia-servidor.json'){throw 'ACK ya existe'};@{verified=`$true;hash_manifest='$hash';destination='$destination'}|ConvertTo-Json|Set-Content '$remote/evidence/copia-servidor.json' -Encoding utf8"
@@ -595,7 +630,7 @@ function Invoke-TandaShutdown([string]$Root,[string]$Output){
 }
 if($SoloFunciones){return}
 switch($Modo){
- 'Validar' {Assert-TandaMachineRegistry;$null=Assert-TandaInputs $Kit; 'PASS: entradas/rutas/hashes/TSV'}
+ 'Validar' {if(-not $SoloVisual){Assert-TandaMachineRegistry};$null=Assert-TandaInputs $Kit; 'PASS: entradas/rutas/hashes/TSV'}
  'Ensayo' {if(-not $Salida){throw 'Falta -Salida nueva'};Invoke-TandaDryRun $Kit $Salida}
  'Trabajador' {if(-not $Salida){throw 'Falta -Salida nueva'};Invoke-TandaWorker $Kit $Salida}
  'Servidor' {Invoke-TandaServer $Kit}

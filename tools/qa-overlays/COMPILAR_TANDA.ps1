@@ -1,7 +1,13 @@
 # Compilación reproducible por UN slot de la cola; jamás ejecuta overlays.
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Output,[switch]$DentroDelSlot,[switch]$SoloNucleo,[string]$BaseArtifacts='')
+param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Output,[switch]$DentroDelSlot,[switch]$SoloNucleo,[string]$BaseArtifacts='',[long]$CiRunId=0,[string]$SourceSha='')
 $ErrorActionPreference='Stop'
+if($PSBoundParameters.ContainsKey('CiRunId') -or $PSBoundParameters.ContainsKey('SourceSha')){
+ if($DentroDelSlot -or $SoloNucleo -or $BaseArtifacts){throw 'La importación CI es incompatible con la compilación local'}
+ . (Join-Path $PSScriptRoot 'IMPORTAR_ARTEFACTO_TANDA.ps1')
+ Import-TandaArtifact $Source $Output $CiRunId $SourceSha
+ return
+}
 $sha='fb2e2e520be96b59066e2a69c3899cf9842a0752'
 if(Test-Path D:/VantareServer/qa/captura.lock){throw 'BLOCKED_CAPTURE_LOCK: no lanzar Rust'}
 if((Get-PSDrive D).Free -lt 40GB -or (Get-PSDrive C).Free -lt 8GB){throw 'BLOCKED_DISK: D >=40 GiB y C >=8 GiB'}

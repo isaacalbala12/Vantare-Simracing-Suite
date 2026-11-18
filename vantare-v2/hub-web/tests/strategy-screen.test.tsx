@@ -520,3 +520,13 @@ it("moves focus to the editing title, which is not a control, and returns it to 
   click("Cancelar edición");
   expect(document.activeElement).toBe(button("Editar carrera"));
 });
+
+it("returns focus to the Editar button that opened the form after confirming", async () => {
+  mount("ready");
+  await openRace();
+  click("Editar piloto");
+  fill({ "Nombre del piloto": "Pilot Two" });
+  click("Confirmar datos");
+  await screen.findByText("Pilot Two (PI)");
+  expect(document.activeElement).toBe(button("Editar piloto"));
+});

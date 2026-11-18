@@ -649,3 +649,38 @@ fn a_legacy_collection_over_the_limit_is_rejected_without_creating_a_primary() {
     assert!(!root.primary().exists());
     assert_eq!(fs::read(root.legacy()).unwrap(), source.as_bytes());
 }
+
+#[test]
+fn a_switching_account_cancels_compute_and_keeps_its_prepared_document_private() {
+    use std::sync::{atomic::Ordering, mpsc};
+
+    let root = Root::new();
+    let mut state = root.state();
+    let original = document("2.1.0");
+    fs::write(root.primary(), &original).unwrap();
+    state.observe(Some("account-a"), true);
+    let opened = state.open().unwrap();
+    let (ready, started) = mpsc::sync_channel(1);
+    let (release, wait) = mpsc::sync_channel(1);
+    state
+        .calculation
+        .start(move |cancel| {
+            ready.send(()).unwrap();
+            wait.recv().unwrap();
+            assert!(cancel.load(Ordering::Relaxed));
+            Ok((Document::empty(NOW).unwrap(), StrategyPlanView::default()))
+        })
+        .unwrap();
+    started.recv().unwrap();
+    assert_eq!(state.view_opened().unwrap().revision, opened.revision);
+    assert_eq!(
+        state.view_opened().unwrap().plan.state,
+        StrategyPlanState::Calculating
+    );
+    state.observe(Some("account-b"), true);
+    assert_eq!(state.view_opened(), Err(HostError::Denied));
+    release.send(()).unwrap();
+    assert!(state.calculation.finish().is_none());
+    assert_eq!(state.open().unwrap(), opened);
+    assert_eq!(fs::read(root.primary()).unwrap(), original);
+}

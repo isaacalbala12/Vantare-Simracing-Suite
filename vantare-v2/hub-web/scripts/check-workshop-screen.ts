@@ -283,8 +283,13 @@ export async function checkWorkshopScreen(
         await page.getByRole("tab", { name: "Taller", exact: true }).click();
         const trigger = await show(page, shot);
         if (zoom === 125)
-          await page.waitForFunction(
-            () => document.documentElement.style.zoom === "1.25",
+          await until(
+            () =>
+              page.evaluate(
+                () => document.documentElement.style.zoom === "1.25",
+              ),
+            5000,
+            `page zoom 1.25 (Workshop ${scheme}/${shot})`,
           );
         if (trigger) {
           const name = await trigger.getAttribute("aria-label");
@@ -298,7 +303,7 @@ export async function checkWorkshopScreen(
               async () =>
                 (await trigger.getAttribute("aria-controls")) !== null,
               5000,
-              "picker popup reference",
+              `popup id on aria-controls of "${name}" (Workshop ${scheme}/${shot})`,
             );
             const controls = await trigger.getAttribute("aria-controls");
             assert(controls, "an expanded picker points at its popup");
@@ -312,7 +317,7 @@ export async function checkWorkshopScreen(
             async () =>
               (await trigger.getAttribute("aria-expanded")) === "false",
             5000,
-            "collapsed picker",
+            `aria-expanded=false on "${name}" after Escape (Workshop ${scheme}/${shot})`,
           );
           assert(
             await trigger.evaluate((node) => node === document.activeElement),
@@ -321,11 +326,18 @@ export async function checkWorkshopScreen(
           list = await popup();
           await list.waitFor();
           await page.keyboard.press("Tab");
-          await page.waitForFunction(
+          await until(
             () =>
-              document.activeElement instanceof HTMLElement &&
-              document.activeElement !== document.body &&
-              !document.activeElement.hasAttribute("data-base-ui-focus-guard"),
+              page.evaluate(
+                () =>
+                  document.activeElement instanceof HTMLElement &&
+                  document.activeElement !== document.body &&
+                  !document.activeElement.hasAttribute(
+                    "data-base-ui-focus-guard",
+                  ),
+              ),
+            5000,
+            `focus leaves "${name}" for a real control (Workshop ${scheme}/${shot})`,
           );
           if (await list.isVisible()) await page.keyboard.press("Escape");
           await list.waitFor({ state: "hidden" });

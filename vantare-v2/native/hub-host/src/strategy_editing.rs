@@ -96,9 +96,11 @@ impl Editing {
             || result.pit_stops.len() + 1 != result.stints.len()
             || result.pit_stops.len() > STRATEGY_PIT_LIMIT
             || timeline.pits.len() != result.pit_stops.len()
-            // A plan that does not cover the input's laps (a timed race) cannot be
-            // constrained: the crate would reject every edited schedule of it.
-            || result.stints.iter().sum::<u32>() != input.race_laps
+            // Only a schedule the crate would accept back is editable: stints of at
+            // least one lap that add up to the race, each stop the running total of
+            // the stints before it. (A plan of the extended route with `extra` may
+            // not cover `race_laps`; the manual bridge never produces one.)
+            || !is_schedule(&result.stints, result.pit_stops.iter().map(|stop| stop.lap), input.race_laps)
         {
             return None;
         }
@@ -265,13 +267,30 @@ impl Editing {
     }
 }
 
+fn is_schedule(stints: &[u32], stops: impl Iterator<Item = u32>, race_laps: u32) -> bool {
+    let mut total = 0_u32;
+    let mut stops = stops;
+    for &laps in stints {
+        let Some(sum) = total.checked_add(laps).filter(|_| laps > 0) else {
+            return false;
+        };
+        total = sum;
+        // Every stint but the last ends in a stop on its last lap.
+        if total != race_laps && stops.next() != Some(total) {
+            return false;
+        }
+    }
+    total == race_laps && stops.next().is_none()
+}
+
 pub(super) fn recalculate(
     input: &Input,
     edited: &EditedPlan,
     pilot: &str,
     cancel: &AtomicBool,
 ) -> Recalculation {
-    let outcome = recalculate_edited_plan(input, edited, cancel).map_err(|error| edit_error(&error))?;
+    let outcome =
+        recalculate_edited_plan(input, edited, cancel).map_err(|error| edit_error(&error))?;
     let view = project(input, &outcome, pilot).map_err(|_| StrategyEditError::Failed)?;
     Ok(Recalculated {
         view,

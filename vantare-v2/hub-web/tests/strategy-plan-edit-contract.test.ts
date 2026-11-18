@@ -143,8 +143,8 @@ it("rejects an inconsistent edit", () => {
   expect(isReply(many)).toBe(false);
 });
 
-function planned() {
-  const host = createMockHost("strategy-ready");
+function planned(scene = "strategy-ready") {
+  const host = createMockHost(scene);
   let id = 0;
   const send = (request: unknown) =>
     host({ kind: "request", id: ++id, request });
@@ -291,4 +291,130 @@ it("recalculates with a new id, keeps the schedule and can be cancelled", () => 
     }),
   );
   expect(reset.edit.stints).toEqual(done.edit.stints);
+});
+
+it("answers like the host when the plan has no edit: recalculate is rejected, the rest conflict", () => {
+  const { send, value } = planned();
+  // an invalid form leaves an error plan that has an id but no schedule
+  const failed = plan(
+    send({
+      ...compute,
+      revision: value.revision,
+      form: {
+        ...compute.form,
+        inputs: { ...compute.form.inputs, basePaceSeconds: "" },
+      },
+    }),
+  );
+  expect(failed.state).toBe("calculating");
+  const error = plan(send({ method: "strategy.view" }));
+  expect(error.state).toBe("error");
+  const request = (extra: Record<string, unknown>) => ({
+    revision: (value as { revision: string }).revision,
+    computeId: error.computeId,
+    ...extra,
+  });
+  expect(
+    send({ method: "strategy.recalculate", ...request({}) }),
+  ).toMatchObject({ kind: "failure", error: { kind: "rejected" } });
+  for (const message of [
+    { method: "strategy.resetEdit", ...request({}) },
+    { method: "strategy.moveStop", ...request({ index: 0, delta: 1 }) },
+    { method: "strategy.moveBoundary", ...request({ index: 0, lap: 1 }) },
+  ])
+    expect(send(message)).toMatchObject({
+      kind: "failure",
+      error: { kind: "strategyConflict" },
+    });
+});
+
+it("keeps the edit when a calculation is refused for naming another strategy", () => {
+  const { send, value } = planned();
+  const base = value.plan;
+  expect(
+    send({
+      ...compute,
+      revision: value.revision,
+      eventId: "another-event",
+    }),
+  ).toMatchObject({ kind: "failure", error: { kind: "rejected" } });
+  const moved = send({
+    method: "strategy.moveStop",
+    revision: value.revision,
+    computeId: base.computeId,
+    index: 0,
+    delta: -1,
+  });
+  expect(moved).toMatchObject({
+    kind: "response",
+    result: { value: { plan: { state: "edited" } } },
+  });
+});
+
+it("shows a recalculation that fails to keep the schedule (QA scene)", () => {
+  const { send, value } = planned("strategy-recalcError");
+  const request = (computeId: number) => ({
+    revision: value.revision,
+    computeId,
+  });
+  const base = value.plan;
+  send({
+    method: "strategy.moveStop",
+    ...request(base.computeId),
+    index: 0,
+    delta: -1,
+  });
+  const started = plan(
+    send({ method: "strategy.recalculate", ...request(base.computeId) }),
+  );
+  const failed = send({ method: "strategy.view" });
+  expect(isReply((failed as { result: Record<string, unknown> }).result)).toBe(
+    true,
+  );
+  const after = plan(failed);
+  expect(after.state).toBe("edited");
+  expect(after.computeId).toBe(started.computeId);
+  expect(after.edit.error).toBe("scheduleNotPreserved");
+  expect(after.edit.canReset).toBe(true);
+  // moving again clears the error
+  const moved = plan(
+    send({
+      method: "strategy.moveStop",
+      ...request(after.computeId),
+      index: 0,
+      delta: 1,
+    }),
+  );
+  expect(moved.edit.error).toBeNull();
+});
+
+it("shows a schedule without a solution and the way back (QA scene)", () => {
+  const { send, value } = planned("strategy-recalcNoSolution");
+  const request = (computeId: number) => ({
+    revision: value.revision,
+    computeId,
+  });
+  const base = value.plan;
+  send({
+    method: "strategy.moveStop",
+    ...request(base.computeId),
+    index: 0,
+    delta: -1,
+  });
+  send({ method: "strategy.recalculate", ...request(base.computeId) });
+  const answer = send({ method: "strategy.view" });
+  expect(isReply((answer as { result: Record<string, unknown> }).result)).toBe(
+    true,
+  );
+  const none = plan(answer);
+  expect(none.state).toBe("calculated");
+  expect(none.result.certificate).toBe("no_solution");
+  expect(none.result.metrics).toBeNull();
+  expect(none.result.timeline).toBeNull();
+  expect(none.edit.canReset).toBe(true);
+  const reset = plan(
+    send({ method: "strategy.resetEdit", ...request(none.computeId) }),
+  );
+  expect(reset.result).toEqual(base.result);
+  expect(reset.edit.stints).toEqual(base.edit.stints);
 });

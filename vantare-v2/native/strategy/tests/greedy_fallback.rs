@@ -8,8 +8,8 @@ use vantare_strategy::application::{
     CalculationRoute, SourceStatus, calculate_with_route, prepare_manual,
 };
 use vantare_strategy::solver::{
-    GreedyRefusal, Input, OptimalityStatus, ResultV2, SolverOutcome, Window, runs_extended_search,
-    solve_greedy_fallback, solve_v2_cancellable,
+    GreedyRefusal, Input, OptimalityStatus, PitStop, ResultV2, SolverOutcome, Window,
+    runs_extended_search, solve_greedy_fallback, solve_v2_cancellable,
 };
 
 /// The manual bridge input: the Fuji fixture without `extra`, with the manual
@@ -61,9 +61,38 @@ fn reserve(value: &Value, per_lap: f64) -> f64 {
 /// Independent verifier: walks the plan and checks every rule. It shares no
 /// code with the solver.
 fn verify(input: &Input, result: &ResultV2) {
+    assert!(result.feasible, "a plan was expected");
+    verify_schedule(input, result);
+    verify_rules(input, result);
     // The solver rounds each per-lap consumption to 1e-6: up to that error per lap.
     let eps = 1e-6 * f64::from(input.race_laps);
-    assert!(result.feasible, "a plan was expected");
+    let serviced =
+        |amount: fn(&PitStop) -> f64| -> Vec<f64> { result.pit_stops.iter().map(amount).collect() };
+    let fuel = Resource {
+        name: "fuel",
+        capacity: input.fuel_capacity_liters.value,
+        per_lap: input.fuel_per_lap_liters.value,
+        start: result.fuel_start_liters,
+        remaining: result.fuel_remaining_liters,
+        reserve: &input.fuel_reserve,
+        serviced: serviced(|stop| stop.fuel_liters),
+    };
+    let ve = Resource {
+        name: "ve",
+        capacity: input.ve_capacity_percent.value,
+        per_lap: input.ve_per_lap_percent.value,
+        start: result.ve_start_percent,
+        remaining: result.ve_remaining_percent,
+        reserve: &input.virtual_energy_reserve,
+        serviced: serviced(|stop| stop.ve_percent),
+    };
+    verify_resource(&fuel, &result.stints, eps);
+    verify_resource(&ve, &result.stints, eps);
+    verify_total(input, result);
+}
+
+/// Laps, stop positions, tyres and the way every stop is serviced.
+fn verify_schedule(input: &Input, result: &ResultV2) {
     assert_eq!(result.stints.iter().sum::<u32>(), input.race_laps, "laps");
     assert_eq!(result.pit_stops.len() + 1, result.stints.len(), "stops");
     assert!(
@@ -92,6 +121,10 @@ fn verify(input: &Input, result: &ResultV2) {
             );
         }
     }
+}
+
+/// Stop count limits and required windows.
+fn verify_rules(input: &Input, result: &ResultV2) {
     let rules = &input.event_rules;
     let stops = result.pit_stops.len();
     assert!(rules.min_pit_stops.is_none_or(|n| stops >= n), "min stops");
@@ -107,48 +140,57 @@ fn verify(input: &Input, result: &ResultV2) {
             w.to_lap
         );
     }
-    let fuel_serviced: Vec<f64> = result.pit_stops.iter().map(|s| s.fuel_liters).collect();
-    let ve_serviced: Vec<f64> = result.pit_stops.iter().map(|s| s.ve_percent).collect();
-    for (name, capacity, per_lap, start, remaining, reserve_value, serviced) in [
-        (
-            "fuel",
-            input.fuel_capacity_liters.value,
-            input.fuel_per_lap_liters.value,
-            result.fuel_start_liters,
-            result.fuel_remaining_liters,
-            &input.fuel_reserve,
-            fuel_serviced,
-        ),
-        (
-            "ve",
-            input.ve_capacity_percent.value,
-            input.ve_per_lap_percent.value,
-            result.ve_start_percent,
-            result.ve_remaining_percent,
-            &input.virtual_energy_reserve,
-            ve_serviced,
-        ),
-    ] {
-        if capacity == 0.0 {
-            assert!(serviced.iter().all(|&s| s == 0.0), "{name} without a tank");
-            continue;
-        }
-        assert!(start <= capacity + eps, "{name} start above capacity");
-        let mut level = start;
-        for (index, stint) in result.stints.iter().enumerate() {
-            level -= f64::from(*stint) * per_lap;
-            assert!(level >= -eps, "{name} runs dry in stint {index}");
-            if let Some(added) = serviced.get(index) {
-                level += added;
-                assert!(level <= capacity + eps, "{name} overfilled at stop {index}");
-            }
-        }
-        assert!(
-            level >= reserve(reserve_value, per_lap) - eps,
-            "{name} reserve not kept"
-        );
-        assert!((level - remaining).abs() < 1e-3, "{name} remaining");
+}
+
+/// A tank or battery as the plan reports it.
+struct Resource<'a> {
+    name: &'static str,
+    capacity: f64,
+    per_lap: f64,
+    start: f64,
+    remaining: f64,
+    reserve: &'a Value,
+    serviced: Vec<f64>,
+}
+
+/// Never dry, never over capacity, the reserve kept at the finish.
+fn verify_resource(resource: &Resource, stints: &[u32], eps: f64) {
+    let Resource {
+        name,
+        capacity,
+        per_lap,
+        ..
+    } = *resource;
+    if capacity == 0.0 {
+        let none = resource.serviced.iter().all(|&s| s == 0.0);
+        assert!(none, "{name} without a tank");
+        return;
     }
+    assert!(
+        resource.start <= capacity + eps,
+        "{name} start above capacity"
+    );
+    let mut level = resource.start;
+    for (index, stint) in stints.iter().enumerate() {
+        level -= f64::from(*stint) * per_lap;
+        assert!(level >= -eps, "{name} runs dry in stint {index}");
+        if let Some(added) = resource.serviced.get(index) {
+            level += added;
+            assert!(level <= capacity + eps, "{name} overfilled at stop {index}");
+        }
+    }
+    assert!(
+        level >= reserve(resource.reserve, per_lap) - eps,
+        "{name} reserve not kept"
+    );
+    assert!(
+        (level - resource.remaining).abs() < 1e-3,
+        "{name} remaining"
+    );
+}
+
+/// The race time, recomputed from the plan.
+fn verify_total(input: &Input, result: &ResultV2) {
     let pit = &input.pit_cost;
     let mut total = input.formation.seconds.value;
     for stint in &result.stints {

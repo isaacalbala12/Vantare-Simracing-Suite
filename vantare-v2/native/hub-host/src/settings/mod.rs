@@ -9,6 +9,7 @@ pub(crate) mod layout;
 pub(crate) use layout::studio;
 pub mod model;
 mod store;
+mod unknown;
 use crate::args::Args;
 use model::{AppearanceSettings, Density, InterfaceFont, MonoFont, Palette, Preferences, Scheme};
 use serde::{Deserialize, Serialize};

@@ -580,3 +580,108 @@ fn wrong_typed_general_flags_fall_back_to_defaults_like_recording() {
         }
     }
 }
+
+fn document_with_future_fields() -> serde_json::Value {
+    let future = serde_json::json!({"a": [1, null, {"b": false}], "c": null, "d": 1.5});
+    let mut doc = serde_json::to_value(store::Document::default()).unwrap();
+    doc["futureRoot"] = future.clone();
+    doc["general"]["futureGeneral"] = future.clone();
+    doc["appearance"]["futureAppearance"] = future;
+    doc
+}
+
+#[test]
+fn future_fields_at_every_level_are_read_without_protection_and_survive_a_save() {
+    let root = Root::new();
+    let path = root.0.join(store::FILE);
+    let doc = document_with_future_fields();
+    fs::write(&path, serde_json::to_vec_pretty(&doc).unwrap()).unwrap();
+    let mut settings = root.settings();
+    let view = settings.view();
+    assert!(!view.protected && !view.warning);
+    for patch in [
+        SettingsPatch::Updates(false),
+        SettingsPatch::Contrast(110),
+        SettingsPatch::Zoom(125),
+    ] {
+        let revision = settings.view().revision;
+        settings.update(patch, &revision).unwrap();
+    }
+    let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    let mut expected = doc;
+    expected["general"]["updates"] = false.into();
+    expected["appearance"]["contrast"] = 110.into();
+    expected["zoom"] = 125.into();
+    assert_eq!(saved, expected);
+    assert!(!root.settings().view().protected);
+}
+
+#[test]
+fn known_fields_keep_their_order_when_future_fields_follow_them() {
+    let root = Root::new();
+    let path = root.0.join(store::FILE);
+    fs::write(&path, serde_json::to_vec(&document_with_future_fields()).unwrap()).unwrap();
+    let mut settings = root.settings();
+    let revision = settings.view().revision;
+    settings.update(SettingsPatch::Zoom(110), &revision).unwrap();
+    let text = fs::read_to_string(&path).unwrap();
+    let at = |key: &str| text.find(&format!("\"{key}\"")).unwrap();
+    assert!(at("version") < at("general") && at("general") < at("onboarding_completed"));
+    assert!(at("analisisBeta") < at("futureGeneral"));
+    assert!(at("reducedMotion") < at("futureAppearance"));
+    assert!(at("zoom") < at("futureRoot"));
+}
+
+#[test]
+fn a_known_field_with_the_wrong_type_is_still_rejected_next_to_future_fields() {
+    let root = Root::new();
+    let path = root.0.join(store::FILE);
+    let mut doc = document_with_future_fields();
+    doc["general"]["density"] = "huge".into();
+    let bytes = serde_json::to_vec(&doc).unwrap();
+    fs::write(&path, &bytes).unwrap();
+    let view = root.settings().view();
+    assert!(view.warning);
+    assert_eq!(view.general.density, Density::Balanced);
+    assert_eq!(fs::read(&path).unwrap(), bytes);
+}
+
+#[test]
+fn a_newer_document_version_stays_protected_even_with_future_fields() {
+    let root = Root::new();
+    let path = root.0.join(store::FILE);
+    let mut doc = document_with_future_fields();
+    doc["version"] = 999.into();
+    let bytes = serde_json::to_vec(&doc).unwrap();
+    fs::write(&path, &bytes).unwrap();
+    let mut settings = root.settings();
+    let view = settings.view();
+    assert!(view.protected);
+    assert!(matches!(
+        settings.update(SettingsPatch::Zoom(125), &view.revision),
+        Err(SaveError::Protected)
+    ));
+    assert_eq!(fs::read(&path).unwrap(), bytes);
+}
+
+#[test]
+fn a_conflict_retry_keeps_the_future_fields_of_the_winning_writer() {
+    let root = Root::new();
+    let path = root.0.join(store::FILE);
+    let mut settings = root.settings();
+    let revision = settings.view().revision;
+    let mut winner = document_with_future_fields();
+    winner["general"]["launcher"] = false.into();
+    fs::write(&path, serde_json::to_vec_pretty(&winner).unwrap()).unwrap();
+    // Parche con la revisión vieja del primer cargado: conflicto y reintento.
+    assert!(matches!(
+        settings.update(SettingsPatch::Updates(false), &revision),
+        Err(SaveError::Conflict(_))
+    ));
+    settings.retry().unwrap();
+    let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(saved["general"]["futureGeneral"], winner["general"]["futureGeneral"]);
+    assert_eq!(saved["futureRoot"], winner["futureRoot"]);
+    assert_eq!(saved["general"]["launcher"], false);
+    assert_eq!(saved["general"]["updates"], false);
+}

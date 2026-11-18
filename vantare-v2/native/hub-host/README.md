@@ -227,6 +227,14 @@ Launcher y exige derechos frescos; el renderer no recibe rutas ni ejecutables.
 El inicio con Windows llama al motor del instalador existente. En una build
 `qa-e2e`, el motor solo admite contexto de registro/shell aislado explícito.
 
+`hub-settings.json` conserva los campos desconocidos (en la raíz, `general` y
+`appearance`): se leen sin rechazar el documento, no cuentan para la lógica y se
+reescriben al guardar tras los conocidos. Así un usuario puede volver a un canal
+anterior, cuyo build no conoce un campo nuevo (`grabacion`, `analisisBeta`), sin
+entrar en modo protegido ni perder ese ajuste. Un campo conocido con tipo erróneo y
+una `version` mayor que la soportada siguen protegiéndose; los parches del cable
+siguen siendo estrictos y el TS generado no incluye los desconocidos.
+
 
 ## Evidencia del endurecimiento
 

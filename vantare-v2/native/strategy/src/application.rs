@@ -9,7 +9,7 @@ mod editing;
 mod manual;
 pub use manual::{ManualEvent, ManualField, select_event};
 pub mod repository;
-pub use editing::{EditedPlan, recalculate_edited_plan};
+pub use editing::{EditedPlan, recalculate_edited_plan, recalculate_edited_plan_detailed};
 
 #[derive(Clone, Debug)]
 pub struct PreparedCalculation {

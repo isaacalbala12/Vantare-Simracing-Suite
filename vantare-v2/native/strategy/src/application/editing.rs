@@ -3,6 +3,7 @@ use std::sync::atomic::AtomicBool;
 
 use serde::{Deserialize, Serialize};
 
+use super::Fallback;
 use super::solver::{self, Input, SolverOutcome, Window};
 
 const MAX_PIT_STOPS: usize = 16;
@@ -25,6 +26,16 @@ pub fn recalculate_edited_plan(
     edited: &EditedPlan,
     cancel: &AtomicBool,
 ) -> Result<SolverOutcome, String> {
+    recalculate_edited_plan_detailed(input, edited, cancel).map(|(outcome, _)| outcome)
+}
+
+/// Like [`recalculate_edited_plan`], also saying whether the greedy fallback was
+/// needed, applied or refused, so that the caller can report the cause.
+pub fn recalculate_edited_plan_detailed(
+    input: &Input,
+    edited: &EditedPlan,
+    cancel: &AtomicBool,
+) -> Result<(SolverOutcome, Fallback), String> {
     input.validate()?;
     validate_edited_plan(input.race_laps, edited)?;
 
@@ -74,7 +85,7 @@ pub fn recalculate_edited_plan(
     {
         return Err("solver_did_not_preserve_edited_schedule".into());
     }
-    Ok(outcome)
+    Ok((outcome, Fallback::NotApplicable))
 }
 
 fn validate_edited_plan(race_laps: u32, edited: &EditedPlan) -> Result<(), String> {
@@ -197,6 +208,114 @@ mod tests {
             recalculate_edited_plan(&input, &edited, &AtomicBool::new(false))
                 .expect_err("event minimum conflicts with edit"),
             "edited_stop_count_conflicts_with_event_rules"
+        );
+    }
+
+    fn manual(laps: u32) -> Input {
+        let mut input: Input =
+            serde_json::from_str(include_str!("../../testdata/fuji-1450-input.json"))
+                .expect("frozen Fuji input");
+        input.extra.clear();
+        input.race_laps = laps;
+        input.budget.p95_millis = 60_000; // the candidate limit, not the clock, ends the search
+        input.budget.max_candidates = 250_000;
+        input.budget.max_iterations = 1_000_000;
+        input
+    }
+
+    /// The Fuji witness (236 laps; stints 43-42-42-43-42-24), edited by one lap.
+    fn witness(index: Option<usize>, delta: i32) -> EditedPlan {
+        let mut edited = EditedPlan {
+            stints: vec![43, 42, 42, 43, 42, 24],
+            pit_stop_laps: vec![43, 85, 127, 170, 212],
+        };
+        if let Some(index) = index {
+            edited.pit_stop_laps[index] = edited.pit_stop_laps[index]
+                .checked_add_signed(delta)
+                .expect("lap");
+            edited.stints[index] = edited.stints[index].checked_add_signed(delta).expect("lap");
+            edited.stints[index + 1] = edited.stints[index + 1]
+                .checked_add_signed(-delta)
+                .expect("lap");
+        }
+        edited
+    }
+
+    // The scalar search alone ends without a plan for a Fuji race with virtual
+    // energy and an exact calendar; the greedy fallback must keep that calendar.
+    #[test]
+    fn fuji_with_virtual_energy_recalculates_the_edited_schedule_with_the_fallback() {
+        for (index, delta) in [(None, 0), (Some(1), 1), (Some(4), -1)] {
+            let edited = witness(index, delta);
+            let (outcome, fallback) =
+                recalculate_edited_plan_detailed(&manual(236), &edited, &AtomicBool::new(false))
+                    .expect("recalculate");
+            assert!(outcome.result.feasible, "{edited:?}: no plan");
+            assert_eq!(outcome.result.stints, edited.stints);
+            assert_eq!(
+                outcome
+                    .result
+                    .pit_stops
+                    .iter()
+                    .map(|s| s.lap)
+                    .collect::<Vec<_>>(),
+                edited.pit_stop_laps
+            );
+            assert_eq!(
+                outcome.certificate.status,
+                solver::OptimalityStatus::NotProven
+            );
+            assert!(outcome.certificate.proof.is_none());
+            assert_eq!(fallback, Fallback::Applied, "{edited:?}");
+        }
+    }
+
+    // A calendar no plan can follow is still "no plan", never a plan that breaks it,
+    // and the cause is typed.
+    #[test]
+    fn an_impossible_calendar_has_no_plan_and_a_typed_cause() {
+        let mut input = manual(236);
+        input.budget.max_candidates = 1; // the scalar search ends at once, without a plan
+        let edited = EditedPlan {
+            stints: vec![100, 136],
+            pit_stop_laps: vec![100],
+        };
+        let (outcome, fallback) =
+            recalculate_edited_plan_detailed(&input, &edited, &AtomicBool::new(false))
+                .expect("a result, not an error");
+        assert!(!outcome.result.feasible);
+        assert_eq!(
+            fallback,
+            Fallback::Refused(solver::GreedyRefusal::MaxStops),
+            "a 100-lap stint needs more stops than the one edited"
+        );
+    }
+
+    // Where the scalar search already gives its answer, nothing changes: the
+    // result is the scalar solver's on the same constrained input.
+    #[test]
+    fn a_calendar_the_scalar_search_solves_is_the_scalar_result() {
+        let input = solver_input();
+        let edited = EditedPlan {
+            stints: vec![1, 2],
+            pit_stop_laps: vec![1],
+        };
+        let mut constrained = input.clone();
+        constrained.event_rules.min_pit_stops = Some(1);
+        constrained.event_rules.max_pit_stops = Some(1);
+        constrained.event_rules.required_windows.push(Window {
+            from_lap: 1,
+            to_lap: 1,
+        });
+        let expected = solver::solve_v2_cancellable(&constrained, &AtomicBool::new(false))
+            .expect("scalar result");
+        let (outcome, fallback) =
+            recalculate_edited_plan_detailed(&input, &edited, &AtomicBool::new(false))
+                .expect("recalculate");
+        assert_eq!(fallback, Fallback::NotApplicable);
+        assert_eq!(
+            serde_json::to_value(&outcome).expect("json"),
+            serde_json::to_value(&expected).expect("json")
         );
     }
 }

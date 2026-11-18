@@ -349,3 +349,243 @@ fn the_fallback_is_instant_and_never_proven() {
     );
     assert_eq!(outcome.certificate.status, OptimalityStatus::NotProven);
 }
+
+// Limits that Fuji alone never reaches (its tyres, 43 laps, bind before the
+// tank, 44, and the battery, 43, and the reserve never tightens).
+fn plain(laps: u32) -> Input {
+    let mut input = manual(laps, false);
+    input.tyre_life_laps.value = 0.0;
+    input
+}
+
+fn plan_of(input: &Input) -> ResultV2 {
+    let outcome = solve_greedy_fallback(input).expect("a plan");
+    assert_eq!(outcome.certificate.status, OptimalityStatus::NotProven);
+    verify(input, &outcome.result);
+    outcome.result
+}
+
+#[test]
+fn a_small_tank_is_what_limits_the_stints() {
+    let mut input = plain(100);
+    input.fuel_capacity_liters.value = 30.0; // 16 laps of 1.83 L; the tyres do not limit
+    let result = plan_of(&input);
+    assert_eq!(result.stints[0], 16);
+    assert!(result.stints.iter().all(|&laps| laps <= 16));
+    assert!(result.pit_stops.len() <= 16);
+}
+
+#[test]
+fn the_battery_is_what_limits_the_stints() {
+    let mut input = manual(100, true);
+    input.tyre_life_laps.value = 0.0;
+    input.ve_per_lap_percent.value = 5.0; // 20 laps of battery; the tank covers 44
+    let result = plan_of(&input);
+    assert_eq!(result.stints[0], 20);
+    assert!(result.stints.iter().all(|&laps| laps <= 20));
+}
+
+#[test]
+fn the_tyres_are_what_limits_the_stints_when_they_are_the_shortest() {
+    let mut input = manual(100, true);
+    input.tyre_life_laps.value = 10.0;
+    let result = plan_of(&input);
+    assert!(result.stints.iter().all(|&laps| laps <= 10));
+    assert_eq!(result.stints[0], 10);
+}
+
+#[test]
+fn the_reserve_forces_a_stop_the_plain_reach_would_not() {
+    // 20 L cover 10 laps of 1.83 L, but two laps of reserve must remain: a
+    // 10-lap race fits the tank (reach) and not the reserve (final reach).
+    let mut input = plain(10);
+    input.fuel_capacity_liters.value = 20.0;
+    input.fuel_reserve["laps"]["value"] = json!(2.0);
+    let result = plan_of(&input);
+    assert!(!result.pit_stops.is_empty(), "the reserve needs a stop");
+    // No stop sits on the final lap, and the last stint is not empty.
+    assert!(result.pit_stops.last().expect("a stop").lap < 10);
+}
+
+#[test]
+fn the_battery_reserve_forces_a_stop_too() {
+    let mut input = manual(40, true);
+    input.tyre_life_laps.value = 0.0;
+    input.ve_per_lap_percent.value = 2.4; // 41 laps of battery, 1.5 laps of reserve below
+    input.virtual_energy_reserve["laps"]["value"] = json!(1.5);
+    let result = plan_of(&input);
+    assert!(
+        result.pit_stops.first().is_some(),
+        "the reserve needs a stop"
+    );
+}
+
+#[test]
+fn degradation_formation_and_sequential_service_are_priced() {
+    for mode in ["parallel", "sequential"] {
+        let mut input = manual(120, true);
+        input.degradation_per_lap_seconds.value = 0.07;
+        input.formation.seconds.value = 12.5;
+        input.pit_cost.service_mode = mode.into();
+        plan_of(&input);
+    }
+}
+
+// The reach of an input with no tank, no battery and no tyre limit is unbounded:
+// the next stop must not overflow adding it to the lap count.
+#[test]
+fn an_unbounded_reach_does_not_overflow() {
+    let mut input = plain(50);
+    input.fuel_capacity_liters.value = 0.0;
+    input.fuel_per_lap_liters.value = 0.0;
+    input.ve_capacity_percent.value = 0.0;
+    input.ve_per_lap_percent.value = 0.0;
+    input.event_rules.required_windows = vec![Window {
+        from_lap: 10,
+        to_lap: 12,
+    }];
+    let result = plan_of(&input);
+    assert_eq!(
+        result.pit_stops.iter().map(|s| s.lap).collect::<Vec<_>>(),
+        [12]
+    );
+}
+
+// A partial scalar plan (not proven, but a plan) is the scalar answer.
+#[test]
+fn a_partial_scalar_plan_is_never_replaced_by_the_greedy_one() {
+    let input = manual(40, true);
+    let scalar = solve_v2_cancellable(&input, &AtomicBool::new(false)).expect("scalar");
+    assert_eq!(scalar.certificate.status, OptimalityStatus::NotProven);
+    assert!(scalar.result.feasible, "the scalar search ends with a plan");
+    let (outcome, route) = run(input);
+    assert_eq!(route, CalculationRoute::Scalar);
+    assert_eq!(stable(&outcome), stable(&scalar));
+    assert_eq!(
+        outcome.certificate.reason.as_deref(),
+        Some("candidate_budget_exhausted")
+    );
+}
+
+// Property: deterministic generated inputs. Every plan passes the independent
+// verifier; every refusal names a cause. A mutated tank, battery, reserve,
+// window, tyre or timing rule fails here without running it by hand.
+struct Lcg(u64);
+
+impl Lcg {
+    fn next(&mut self) -> u64 {
+        self.0 = self
+            .0
+            .wrapping_mul(6_364_136_223_846_793_005)
+            .wrapping_add(1_442_695_040_888_963_407);
+        self.0 >> 33
+    }
+
+    /// A value in `low..=high`.
+    fn range(&mut self, low: u64, high: u64) -> u64 {
+        low + self.next() % (high - low + 1)
+    }
+
+    /// A value in tenths, `low / 10 ..= high / 10`.
+    #[allow(clippy::cast_precision_loss)]
+    fn tenths(&mut self, low: u64, high: u64) -> f64 {
+        self.range(low, high) as f64 / 10.0
+    }
+}
+
+fn generated(rng: &mut Lcg) -> Input {
+    let laps = u32::try_from(rng.range(1, 400)).expect("laps");
+    let mut input = manual(laps, true);
+    input.fuel_capacity_liters.value = rng.tenths(50, 1_200);
+    input.fuel_per_lap_liters.value = rng.tenths(5, 40);
+    if rng.range(0, 2) == 0 {
+        input.ve_capacity_percent.value = 0.0;
+        input.ve_per_lap_percent.value = 0.0;
+    } else {
+        input.ve_capacity_percent.value = rng.tenths(200, 1_000);
+        input.ve_per_lap_percent.value = rng.tenths(5, 80);
+    }
+    #[allow(clippy::cast_precision_loss)]
+    {
+        input.tyre_life_laps.value = if rng.range(0, 2) == 0 {
+            0.0
+        } else {
+            rng.range(5, 80) as f64
+        };
+    }
+    let reserve = rng.tenths(0, 30);
+    if reserve > 0.0 {
+        input.fuel_reserve["laps"]["value"] = json!(reserve);
+        input.virtual_energy_reserve["laps"]["value"] = json!(reserve / 2.0);
+    } else {
+        input.fuel_reserve = json!({});
+        input.virtual_energy_reserve = json!({});
+    }
+    input.formation.seconds.value = rng.tenths(0, 300);
+    input.degradation_per_lap_seconds.value = rng.tenths(0, 2) / 10.0;
+    input.pit_cost.service_mode = if rng.range(0, 1) == 0 {
+        "parallel"
+    } else {
+        "sequential"
+    }
+    .into();
+    if input.race_laps >= 2 {
+        let laps = u64::from(input.race_laps);
+        for _ in 0..rng.range(0, 3) {
+            let from = rng.range(1, laps - 1);
+            let to = (from + rng.range(0, 6)).min(laps - 1);
+            input.event_rules.required_windows.push(Window {
+                from_lap: u32::try_from(from).expect("lap"),
+                to_lap: u32::try_from(to).expect("lap"),
+            });
+        }
+    }
+    if rng.range(0, 3) == 0 {
+        let min = usize::try_from(rng.range(0, 4)).expect("stops");
+        input.event_rules.min_pit_stops = Some(min);
+        if rng.range(0, 1) == 0 {
+            let spread = usize::try_from(rng.range(0, 6)).expect("stops");
+            input.event_rules.max_pit_stops = Some(min + spread);
+        }
+    } else if rng.range(0, 2) == 0 {
+        input.event_rules.max_pit_stops = Some(usize::try_from(rng.range(0, 8)).expect("stops"));
+    }
+    input
+}
+
+#[test]
+fn every_generated_plan_passes_the_independent_verifier() {
+    let mut rng = Lcg(0x5eed_2627);
+    let (mut plans, mut refusals, mut tried) = (0, 0, 0);
+    for case in 0..3_000 {
+        let input = generated(&mut rng);
+        if input.validate().is_err() || runs_extended_search(&input) {
+            continue;
+        }
+        tried += 1;
+        match solve_greedy_fallback(&input) {
+            Ok(outcome) => {
+                plans += 1;
+                assert_eq!(outcome.certificate.status, OptimalityStatus::NotProven);
+                assert!(outcome.certificate.proof.is_none(), "case {case}");
+                assert_eq!(
+                    outcome.cost_seconds,
+                    Some(outcome.result.expected.total_seconds)
+                );
+                verify(&input, &outcome.result);
+                if case % 10 == 0 {
+                    let again = solve_greedy_fallback(&input).expect("same input, same plan");
+                    assert_eq!(stable(&again), stable(&outcome), "case {case} determinism");
+                }
+            }
+            Err(refusal) => {
+                refusals += 1;
+                assert_ne!(refusal, GreedyRefusal::NotScalar, "case {case}");
+            }
+        }
+    }
+    // The generator must exercise both outcomes, or the test proves nothing.
+    assert!(tried > 2_000, "{tried} valid inputs");
+    assert!(plans > 1_000, "{plans} plans");
+    assert!(refusals > 50, "{refusals} refusals");
+}

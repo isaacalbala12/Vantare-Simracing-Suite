@@ -1,5 +1,6 @@
 import {
   type StrategyFields,
+  type StrategySolverFields,
   strategyLimits,
   strategyMethods,
   strategyStates,
@@ -54,6 +55,106 @@ function event(value: unknown): boolean {
     value.strategies.every(variant)
   );
 }
+function count(value: unknown): boolean {
+  return integer(value) && value >= 0 && value <= 0xffffffff;
+}
+function number(value: unknown): boolean {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+function measure(value: unknown): boolean {
+  return value === null || number(value);
+}
+const metricValues = ["totalSeconds", "fuelReserveRequiredLaps"];
+function metrics(value: unknown): boolean {
+  return (
+    record(value) &&
+    exact(value, [
+      ...metricValues,
+      "laps",
+      "pitCount",
+      "fuelReserveRealLaps",
+    ]) &&
+    metricValues.every((key) => number(value[key])) &&
+    count(value.laps) &&
+    count(value.pitCount) &&
+    measure(value.fuelReserveRealLaps)
+  );
+}
+const timelineValues = [
+  "basePaceSeconds",
+  "fuelStartLiters",
+  "fuelFinishLiters",
+  "veStartPercent",
+  "veFinishPercent",
+];
+function timeline(value: unknown): boolean {
+  return (
+    record(value) &&
+    exact(value, [...timelineValues, "pilot", "stints", "pits"]) &&
+    text(value.pilot) &&
+    timelineValues.every((key) => number(value[key])) &&
+    Array.isArray(value.stints) &&
+    value.stints.length <= strategyLimits.pits + 1 &&
+    value.stints.every(
+      (stint) =>
+        record(stint) &&
+        exact(stint, ["fromLap", "toLap"]) &&
+        count(stint.fromLap) &&
+        count(stint.toLap),
+    ) &&
+    Array.isArray(value.pits) &&
+    value.pits.length <= strategyLimits.pits &&
+    value.pits.every(
+      (pit) =>
+        record(pit) &&
+        exact(pit, [
+          "lap",
+          "fuelLiters",
+          "vePercent",
+          "changeTyres",
+          "service",
+        ]) &&
+        count(pit.lap) &&
+        number(pit.fuelLiters) &&
+        number(pit.vePercent) &&
+        typeof pit.changeTyres === "boolean" &&
+        oneOf(pit.service, ["parallel", "sequential"]),
+    )
+  );
+}
+function result(value: unknown): boolean {
+  return (
+    record(value) &&
+    exact(value, ["certificate", "steps", "metrics", "timeline"]) &&
+    (value.certificate === null ||
+      oneOf(value.certificate, ["proven", "not_proven", "no_solution"])) &&
+    record(value.steps) &&
+    exact(value.steps, ["fuelLiters", "vePercent"]) &&
+    measure(value.steps.fuelLiters) &&
+    measure(value.steps.vePercent) &&
+    (value.metrics === null || metrics(value.metrics)) &&
+    (value.timeline === null || timeline(value.timeline))
+  );
+}
+function plan(value: unknown): boolean {
+  if (!record(value) || !exact(value, ["state", "result", "error"]))
+    return false;
+  switch (value.state) {
+    case "uncalculated":
+    case "calculating":
+    case "pendingChanges":
+      return value.result === null && value.error === null;
+    case "partial":
+    case "calculated":
+      return result(value.result) && value.error === null;
+    case "error":
+      return (
+        value.result === null && oneOf(value.error, ["invalidInput", "failed"])
+      );
+    default:
+      return false;
+  }
+}
 function view(value: unknown): boolean {
   return (
     record(value) &&
@@ -64,6 +165,7 @@ function view(value: unknown): boolean {
       "activeEventId",
       "activeStrategyId",
       "dirty",
+      "plan",
     ]) &&
     revision(value.revision) &&
     oneOf(value.state, strategyStates) &&
@@ -71,7 +173,8 @@ function view(value: unknown): boolean {
     value.events.every(event) &&
     (value.activeEventId === null || id(value.activeEventId)) &&
     (value.activeStrategyId === null || id(value.activeStrategyId)) &&
-    typeof value.dirty === "boolean"
+    typeof value.dirty === "boolean" &&
+    plan(value.plan)
   );
 }
 const fieldKeys = [
@@ -95,6 +198,39 @@ function fields(value: unknown): boolean {
     record(value) &&
     exact(value, fieldKeys) &&
     fieldKeys.every((key) => text(value[key]))
+  );
+}
+
+const solverKeys = [
+  "basePaceSeconds",
+  "fuelPerLapLiters",
+  "raceLaps",
+  "veCapacityPercent",
+  "vePerLapPercent",
+  "tyreLifeLaps",
+  "degradationSeconds",
+  "refuelRate",
+  "veRate",
+  "tyreServiceSeconds",
+  "formationSeconds",
+  "fuelStep",
+  "veStep",
+  "reserveLaps",
+  "serviceMode",
+] satisfies (keyof StrategySolverFields)[];
+
+function form(value: unknown): boolean {
+  if (
+    !record(value) ||
+    !exact(value, ["fields", "inputs"]) ||
+    !fields(value.fields)
+  )
+    return false;
+  const { inputs } = value;
+  return (
+    record(inputs) &&
+    exact(inputs, solverKeys) &&
+    solverKeys.every((key) => text(inputs[key]))
   );
 }
 
@@ -134,6 +270,14 @@ export function isRequest(value: Record<string, unknown>): boolean {
         fields(value.fields) &&
         (value.basePaceSeconds === null || text(value.basePaceSeconds)) &&
         (value.fuelPerLapLiters === null || text(value.fuelPerLapLiters))
+      );
+    case "strategy.compute":
+      return (
+        exact(value, ["method", "eventId", "strategyId", "revision", "form"]) &&
+        id(value.eventId) &&
+        id(value.strategyId) &&
+        revision(value.revision) &&
+        form(value.form)
       );
     case "strategy.save":
     case "strategy.discard":

@@ -38,10 +38,14 @@ fn the_grid_reports_coarsening_and_solver_unit_rounding() {
     let prepared = application::prepare_manual(input).unwrap();
     let outcome =
         application::calculate(&prepared, SourceStatus::Open, &AtomicBool::new(false)).unwrap();
-    let result = project(prepared.input(), &outcome, "Pilot")
-        .unwrap()
-        .result
-        .unwrap();
+    let first = project(prepared.input(), &outcome, "Pilot").unwrap();
+    let repeated =
+        application::calculate(&prepared, SourceStatus::Open, &AtomicBool::new(false)).unwrap();
+    assert_eq!(
+        first,
+        project(prepared.input(), &repeated, "Pilot").unwrap()
+    );
+    let result = first.result.unwrap();
     assert_eq!(result.steps.fuel_liters, Number::from_f64(0.8));
     assert_eq!(result.steps.ve_percent, Number::from_f64(0.8));
     assert!(outcome.certificate.proof.unwrap().discretization_degraded);
@@ -51,12 +55,13 @@ fn the_grid_reports_coarsening_and_solver_unit_rounding() {
 fn cancellation_does_not_reuse_the_worker_slot_or_publish_a_late_result() {
     let (ready, started) = mpsc::sync_channel(1);
     let (release, wait) = mpsc::sync_channel(1);
+    let (cancelled, observed) = mpsc::sync_channel(1);
     let mut calculation = Calculation::default();
     calculation
         .start(move |cancel| {
             ready.send(()).unwrap();
             wait.recv().unwrap();
-            assert!(cancel.load(Ordering::Relaxed));
+            cancelled.send(cancel.load(Ordering::Relaxed)).unwrap();
             Ok((
                 Document::empty("2026-11-18T00:00:00Z").unwrap(),
                 StrategyPlanView {
@@ -72,6 +77,7 @@ fn cancellation_does_not_reuse_the_worker_slot_or_publish_a_late_result() {
     calculation.invalidate(false);
     assert_eq!(calculation.start(|_| unreachable!()), Err(HostError::Busy));
     release.send(()).unwrap();
+    assert!(observed.recv().unwrap());
     assert!(calculation.finish().is_none());
     assert_eq!(calculation.view().state, StrategyPlanState::Uncalculated);
     assert!(!calculation.running());

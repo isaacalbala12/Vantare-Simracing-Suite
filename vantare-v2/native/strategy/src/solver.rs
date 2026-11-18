@@ -488,6 +488,32 @@ fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2, Str
         .map(|outcome| outcome.result)
 }
 
+/// Reads the scalar service steps after budget coarsening and solver-unit rounding.
+/// An inactive resource has no grid and is reported as zero.
+pub fn manual_service_grid(input: &Input) -> Result<Discretization, String> {
+    let (effective, _) = budget::effective(input);
+    let step = |capacity, per_lap, requested| {
+        let resource = Resource::new(capacity, per_lap, requested, &Value::Null, input.race_laps)?;
+        Ok::<_, String>(if resource.capacity == 0 {
+            0.0
+        } else {
+            amount(resource.step)
+        })
+    };
+    Ok(Discretization {
+        fuel_liters: step(
+            effective.fuel_capacity_liters.value,
+            effective.fuel_per_lap_liters.value,
+            effective.discretization.fuel_liters,
+        )?,
+        ve_percent: step(
+            effective.ve_capacity_percent.value,
+            effective.ve_per_lap_percent.value,
+            effective.discretization.ve_percent,
+        )?,
+    })
+}
+
 /// Solver API for UI consumers: carries the model certificate and the visible cost.
 pub fn solve_v2(input: &Input) -> Result<SolverOutcome, String> {
     solve_v2_cancellable(input, &AtomicBool::new(false))

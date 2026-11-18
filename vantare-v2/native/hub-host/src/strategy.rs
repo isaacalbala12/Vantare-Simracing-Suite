@@ -11,6 +11,15 @@ use vantare_strategy::{
     document::{Document, MAX_BYTES, SCHEMA_VERSION_V2, SCHEMA_VERSION_V2_RULES},
 };
 
+#[path = "strategy_calculation.rs"]
+mod calculation;
+use calculation::Calculation;
+pub use calculation::{
+    STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyComputeForm,
+    StrategyMetrics, StrategyPit, StrategyPitService, StrategyPlanError, StrategyPlanState,
+    StrategyPlanView, StrategyServiceSteps, StrategySolverFields, StrategyStint, StrategyTimeline,
+};
+
 const PRIMARY: &str = "strategy-v2.json";
 const OPTIONS: Options = Options {
     limit: MAX_BYTES as u64,
@@ -65,6 +74,7 @@ pub struct StrategyView {
     pub active_event_id: Option<String>,
     pub active_strategy_id: Option<String>,
     pub dirty: bool,
+    pub plan: StrategyPlanView,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -135,6 +145,7 @@ pub(crate) struct State {
     observed: Option<Vec<u8>>,
     status: StrategyState,
     revision: String,
+    calculation: Calculation,
 }
 impl State {
     pub(crate) fn new(root: PathBuf) -> Self {
@@ -146,10 +157,12 @@ impl State {
             observed: None,
             status: StrategyState::Empty,
             revision: hash(b""),
+            calculation: Calculation::default(),
         }
     }
     pub(crate) fn observe(&mut self, generation: Option<&str>, allowed: bool) {
         if !allowed || self.generation.as_deref() != generation {
+            self.calculation.invalidate(false);
             self.doc = None;
             self.observed = None;
             self.opened = false;
@@ -165,11 +178,10 @@ impl State {
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
                 let mut current = Self::new(self.root.clone());
                 current.import()?;
-                current.opened = true;
-                current.generation.clone_from(&self.generation);
-                *self = current;
+                self.replace_document(current);
             }
             _ => {
+                self.calculation.invalidate(false);
                 self.opened = true;
                 self.read_primary()?;
             }
@@ -268,6 +280,7 @@ impl State {
             active_event_id,
             active_strategy_id,
             dirty: self.dirty(),
+            plan: self.calculation.view().clone(),
         }
     }
     pub(crate) fn select(
@@ -284,10 +297,18 @@ impl State {
         select_event(&mut next, event, variant).map_err(|_| HostError::Rejected)?;
         if let Err(error) = self.write(&next) {
             if error.kind().is_conflict() {
+                self.calculation.invalidate(false);
                 self.read_primary()?;
                 return Err(self.conflict());
             }
             return Err(write_error(&error));
+        }
+        if self
+            .doc
+            .as_ref()
+            .is_some_and(|doc| doc.bytes() != next.bytes())
+        {
+            self.calculation.invalidate(false);
         }
         self.commit(next);
         Ok(self.view())
@@ -364,10 +385,72 @@ impl State {
         self.require_revision(revision)?;
         let mut current = Self::new(self.root.clone());
         current.read_primary()?;
+        self.replace_document(current);
+        Ok(self.view())
+    }
+
+    fn replace_document(&mut self, mut current: Self) {
+        self.calculation.invalidate(false);
+        current.calculation = std::mem::take(&mut self.calculation);
         current.opened = true;
         current.generation.clone_from(&self.generation);
         *self = current;
+    }
+
+    pub(crate) fn compute(
+        &mut self,
+        event_id: &str,
+        strategy_id: &str,
+        revision: &str,
+        form: &StrategyComputeForm,
+    ) -> Result<StrategyView, HostError> {
+        self.require_edit(revision)?;
+        if self.calculation.running() {
+            return Err(HostError::Busy);
+        }
+        let doc = self.doc.as_ref().ok_or(HostError::Rejected)?;
+        let (event, variant) = indices(doc, event_id, strategy_id)?;
+        if doc.value()["activeEventId"] != event_id
+            || doc.value()["events"][event]["activeStrategyId"] != strategy_id
+        {
+            return Err(HostError::Rejected);
+        }
+        let manual = form.manual()?;
+        let document = doc.clone();
+        self.calculation
+            .start(move |cancel| calculation::run(document, event, variant, &manual, cancel))?;
         Ok(self.view())
+    }
+
+    pub(crate) fn cancel_calculation(&mut self) -> Result<StrategyView, HostError> {
+        self.require_open()?;
+        if self.calculation.view().state == StrategyPlanState::Calculating {
+            self.calculation.invalidate(false);
+        }
+        Ok(self.view())
+    }
+
+    pub(crate) fn poll_calculation(&mut self) {
+        if let Some(doc) = self.calculation.poll() {
+            self.apply_draft(doc);
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_start_calculation(
+        &mut self,
+        run: impl FnOnce(&std::sync::atomic::AtomicBool) -> Document + Send + 'static,
+    ) {
+        self.calculation
+            .start(move |cancel| Ok((run(cancel), StrategyPlanView::default())))
+            .expect("start controlled calculation");
+    }
+
+    #[cfg(test)]
+    pub(crate) fn test_join_calculation(&mut self) {
+        if let Some(doc) = self.calculation.finish() {
+            self.apply_draft(doc);
+        }
     }
 
     fn dirty(&self) -> bool {
@@ -434,10 +517,21 @@ impl State {
 
     fn set_draft(&mut self, doc: Document) -> Result<StrategyView, HostError> {
         validate_projection(&doc, HostError::StrategyInvalidText)?;
+        if self
+            .doc
+            .as_ref()
+            .is_none_or(|current| current.bytes() != doc.bytes())
+        {
+            self.calculation.invalidate(true);
+        }
+        self.apply_draft(doc);
+        Ok(self.view())
+    }
+
+    fn apply_draft(&mut self, doc: Document) {
         self.revision = hash(doc.bytes());
         self.status = document_state(&doc);
         self.doc = Some(doc);
-        Ok(self.view())
     }
 }
 fn indices(doc: &Document, event_id: &str, strategy_id: &str) -> Result<(usize, usize), HostError> {

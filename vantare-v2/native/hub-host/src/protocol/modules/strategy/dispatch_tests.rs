@@ -418,15 +418,19 @@ fn invalid_compute_input_does_not_modify_the_draft_or_disk() {
 fn bounded_strategy_timeline_fits_even_with_a_full_document_view() {
     use crate::strategy::{
         STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyMetrics,
-        StrategyPit, StrategyPitService, StrategyPlanState, StrategyPlanView,
-        StrategyServiceSteps, StrategyStint, StrategyTimeline, TEXT_LIMIT,
+        StrategyPit, StrategyPitService, StrategyPlanState, StrategyPlanView, StrategyServiceSteps,
+        StrategyStint, StrategyTimeline, TEXT_LIMIT,
     };
     use serde_json::Number;
 
     let fixture = Fixture::new();
     let data = fixture.0.join("hub");
     std::fs::create_dir_all(&data).unwrap();
-    std::fs::write(data.join("strategy-v2.json"), large_strategy_document(32, 16)).unwrap();
+    std::fs::write(
+        data.join("strategy-v2.json"),
+        large_strategy_document(32, 16),
+    )
+    .unwrap();
     let mut value = open_strategy(&mut fixture.session());
     let amount = Number::from_f64(f64::MAX).unwrap();
     value.plan = StrategyPlanView {
@@ -451,17 +455,32 @@ fn bounded_strategy_timeline_fits_even_with_a_full_document_view() {
                 fuel_finish_liters: amount.clone(),
                 ve_start_percent: amount.clone(),
                 ve_finish_percent: amount.clone(),
-                stints: vec![StrategyStint { from_lap: u32::MAX, to_lap: u32::MAX }; STRATEGY_PIT_LIMIT + 1],
-                pits: vec![StrategyPit {
-                    lap: u32::MAX, fuel_liters: amount.clone(), ve_percent: amount,
-                    change_tyres: true, service: StrategyPitService::Sequential,
-                }; STRATEGY_PIT_LIMIT],
+                stints: vec![
+                    StrategyStint {
+                        from_lap: u32::MAX,
+                        to_lap: u32::MAX
+                    };
+                    STRATEGY_PIT_LIMIT + 1
+                ],
+                pits: vec![
+                    StrategyPit {
+                        lap: u32::MAX,
+                        fuel_liters: amount.clone(),
+                        ve_percent: amount,
+                        change_tyres: true,
+                        service: StrategyPitService::Sequential,
+                    };
+                    STRATEGY_PIT_LIMIT
+                ],
             }),
         })),
         error: None,
     };
     let mut pipe = Pipe::new(Vec::new());
-    let message = HostToUi::Response { id: 9, result: Reply::StrategyView { value } };
+    let message = HostToUi::Response {
+        id: 9,
+        result: Reply::StrategyView { value },
+    };
     frame::write(&mut pipe, &message).unwrap();
     assert!(pipe.into_inner().len() <= frame::LIMIT);
 }

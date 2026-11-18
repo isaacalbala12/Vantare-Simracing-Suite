@@ -52,6 +52,10 @@ impl Session {
         {
             self.request_close_at(pipe, CloseReason::Live, now)?;
         }
+        let strategy_allowed = super::strategy::allowed(self);
+        self.strategy
+            .observe(self.current.account_generation.as_deref(), strategy_allowed);
+        self.strategy.poll_calculation();
         if self.last.as_ref() != Some(&self.current)
             && self.last_event.is_none_or(|time| {
                 now.saturating_duration_since(time) >= Duration::from_millis(100)

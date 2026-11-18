@@ -1,16 +1,19 @@
 use super::{HostError, HostToUi, Pipe, Reply, Request, Session, frame, io};
 
+pub(super) fn allowed(session: &Session) -> bool {
+    session.current.access.verified && !session.current.access.blocked && session.closing.is_none()
+}
+
 pub(super) fn dispatch(
     session: &mut Session,
     pipe: &mut Pipe,
     id: u32,
     request: &Request,
 ) -> io::Result<()> {
-    let allowed = session.current.access.verified
-        && !session.current.access.blocked
-        && session.closing.is_none();
+    let allowed = allowed(session);
     let strategy = &mut session.strategy;
     strategy.observe(session.current.account_generation.as_deref(), allowed);
+    strategy.poll_calculation();
     let result = if allowed {
         match request {
             Request::StrategyOpen {} => strategy.open().map(|value| Reply::StrategyOpen { value }),
@@ -52,6 +55,17 @@ pub(super) fn dispatch(
             Request::StrategyDiscard { revision } => strategy
                 .discard(revision)
                 .map(|value| Reply::StrategyDiscard { value }),
+            Request::StrategyCompute {
+                event_id,
+                strategy_id,
+                revision,
+                form,
+            } => strategy
+                .compute(event_id, strategy_id, revision, form)
+                .map(|value| Reply::StrategyCompute { value }),
+            Request::StrategyCancel {} => strategy
+                .cancel_calculation()
+                .map(|value| Reply::StrategyCancel { value }),
             _ => Err(HostError::Rejected),
         }
     } else {

@@ -4,15 +4,21 @@ import { join } from "node:path";
 import { afterEach, expect, it, vi } from "vitest";
 import fixture from "../fixtures/ajustes-base.json";
 import { HOST_PROTOCOL_VERSION } from "../src/contract/generated/contract";
+import { launcherReviewChannel } from "../src/contract/launcher-review-bridge";
 
 afterEach(() => {
   vi.resetModules();
   vi.unstubAllEnvs();
   vi.doUnmock("electron");
   vi.doUnmock("../src/main/host");
+  vi.doUnmock("../src/main/launcher-review");
 });
 
-async function boot(minimized: boolean, secondBeforeReady = false) {
+async function boot(
+  minimized: boolean,
+  secondBeforeReady = false,
+  testReviewGate = false,
+) {
   vi.resetModules();
   vi.stubEnv("VANTARE_HUB_DATA_DIR", join(tmpdir(), "vantare-startup-double"));
   vi.stubEnv("ELECTRON_RENDERER_URL", undefined);
@@ -32,6 +38,12 @@ async function boot(minimized: boolean, secondBeforeReady = false) {
       getZoomFactor: () => this.zoomFactor,
       setWindowOpenHandler: vi.fn(),
       isDestroyed: () => false,
+      mainFrame: {
+        isDestroyed: () => false,
+        detached: false,
+        url: "app://hub/",
+        postMessage: vi.fn(),
+      },
     });
     constructor(options: Record<string, unknown>) {
       super();
@@ -94,14 +106,40 @@ async function boot(minimized: boolean, secondBeforeReady = false) {
   const send = vi.fn((message: { kind: string }) => {
     if (message.kind === "ready") calls.push("ready");
   });
+  const ipc = Object.assign(new EventEmitter(), {
+    handle:
+      vi.fn<
+        (
+          channel: string,
+          handler: (event: unknown, ...args: unknown[]) => unknown,
+        ) => void
+      >(),
+    removeHandler: vi.fn(),
+  });
+  const openReview = vi.fn(async (_ticket: string) => "submitted");
+  if (testReviewGate)
+    vi.doMock("../src/main/launcher-review", () => ({
+      launcherReview: () => ({
+        open: openReview,
+        receive: vi.fn(),
+        invalidate: vi.fn(),
+      }),
+    }));
   vi.doMock("electron", () => ({
     app,
     BrowserWindow: FakeWindow,
     clipboard: {},
     dialog: { showErrorBox: failure },
-    ipcMain: new EventEmitter(),
+    ipcMain: ipc,
     Menu: { setApplicationMenu: vi.fn() },
-    MessageChannelMain: class {},
+    MessageChannelMain: class {
+      port1 = Object.assign(new EventEmitter(), {
+        start: vi.fn(),
+        close: vi.fn(),
+        postMessage: vi.fn(),
+      });
+      port2 = {};
+    },
     nativeTheme: Object.assign(new EventEmitter(), {
       themeSource: "dark",
       shouldUseDarkColors: true,
@@ -140,7 +178,7 @@ async function boot(minimized: boolean, secondBeforeReady = false) {
   });
   expect(exit).not.toHaveBeenCalled();
   expect(failure).not.toHaveBeenCalled();
-  return { window: windows[0], calls, send, app };
+  return { window: windows[0], calls, send, app, ipc, openReview };
 }
 
 it.each([false, true])(
@@ -226,4 +264,36 @@ it("remembers activation even before BrowserWindow exists", async () => {
   expect(calls).toEqual(["create:hidden", "load", "show", "ready"]);
   expect(window.active).toBe(true);
   window.webContents.emit("destroyed");
+}, 15000);
+
+it("only opens the native review for the connected main frame and one ticket", async () => {
+  const { window, ipc, openReview } = await boot(false, false, true);
+  const sender = window.webContents;
+  const event = { sender, senderFrame: sender.mainFrame };
+  const handler = ipc.handle.mock.calls.find(
+    ([name]) => name === launcherReviewChannel,
+  )?.[1];
+  if (!handler) throw new Error("Missing review IPC handler");
+  const ticket = "c".repeat(32);
+  try {
+    expect(await handler(event, ticket)).toBe("unavailable");
+    expect(openReview).not.toHaveBeenCalled();
+    ipc.emit("vantare:connect", event);
+    expect(
+      await handler({ sender, senderFrame: { ...sender.mainFrame } }, ticket),
+    ).toBe("unavailable");
+    expect(await handler(event, ticket, "extra")).toBe("unavailable");
+    expect(await handler({ ...event, sender: {} }, ticket)).toBe("unavailable");
+    sender.mainFrame.url = "https://example.invalid/";
+    expect(await handler(event, ticket)).toBe("unavailable");
+    sender.mainFrame.url = "app://hub/";
+    sender.mainFrame.detached = true;
+    expect(await handler(event, ticket)).toBe("unavailable");
+    sender.mainFrame.detached = false;
+    expect(openReview).not.toHaveBeenCalled();
+    expect(await handler(event, ticket)).toBe("submitted");
+    expect(openReview).toHaveBeenCalledExactlyOnceWith(ticket);
+  } finally {
+    sender.emit("destroyed");
+  }
 }, 15000);

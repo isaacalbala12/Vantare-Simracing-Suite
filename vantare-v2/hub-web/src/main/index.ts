@@ -22,6 +22,10 @@ import {
   HOST_PROTOCOL_VERSION,
   reportExportName,
 } from "../contract/generated/contract";
+import {
+  launcherReviewChannel,
+  reviewTicket,
+} from "../contract/launcher-review-bridge";
 import { bounded, postHostMessageToRenderer } from "../contract/validation";
 import { es } from "../renderer/i18n/es";
 import { appText } from "../renderer/i18n/launcher-apps";
@@ -31,6 +35,7 @@ import { calendarExportQa } from "./calendar-export-qa";
 import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker } from "./launcher-picker";
+import { launcherReview } from "./launcher-review";
 import { notificationDelivery } from "./notification-delivery";
 import { observeOperationNoticeSafely } from "./operation-notices";
 import { reportExportSession } from "./report-export";
@@ -47,6 +52,7 @@ import {
   requireDataDirectory,
   webPreferences,
 } from "./security";
+import { HOST_BACKGROUND_ID } from "./transport-ids";
 import { bindWindowControls } from "./window-controls";
 
 const openPublicPage = externalPages((url) => shell.openExternal(url));
@@ -149,6 +155,11 @@ async function start() {
     ? developmentUrl(process.env.ELECTRON_RENDERER_URL)
     : undefined;
   const allowed = (value: string) => navigationAllowed(value, devUrl);
+  const review = launcherReview(
+    async (options) =>
+      (await dialog.showMessageBox(currentWindow, options)).response,
+    (message) => host.send(message),
+  );
   const denyNavigation = (event: Electron.Event, url: string) => {
     if (!allowed(url)) {
       event.preventDefault();
@@ -168,6 +179,7 @@ async function start() {
   });
   contents.setWindowOpenHandler(() => ({ action: "deny" }));
   let disconnect: (() => void) | undefined;
+  const removeReview = host.listen(review.receive);
   // The same closed QA bootstrap as createHost; captures never emit OS notices.
   const notices = notificationDelivery({
     mockRequested: process.env.VANTARE_HUB_HOST === "mock",
@@ -210,6 +222,8 @@ async function start() {
     nativeTheme.removeListener("updated", repaint);
     disconnect?.();
     ipcMain.removeListener("vantare:connect", connectRenderer);
+    ipcMain.removeHandler(launcherReviewChannel);
+    removeReview();
     removeHostFailure();
     calendarNotices.close();
     notices.operations.close();
@@ -237,18 +251,21 @@ async function start() {
     },
     (message) => host.send(message),
   );
-  const connectRenderer = (event: IpcMainEvent) => {
+  function trustedFrame(event: IpcMainEvent | Electron.IpcMainInvokeEvent) {
     const frame = event.senderFrame;
-    if (
-      contents.isDestroyed() ||
-      !frame ||
-      frame.isDestroyed() ||
-      frame.detached ||
-      event.sender !== contents ||
-      frame !== contents.mainFrame ||
-      !allowed(frame.url)
-    )
-      return;
+    return !contents.isDestroyed() &&
+      frame &&
+      !frame.isDestroyed() &&
+      !frame.detached &&
+      event.sender === contents &&
+      frame === contents.mainFrame &&
+      allowed(frame.url)
+      ? frame
+      : undefined;
+  }
+  const connectRenderer = (event: IpcMainEvent) => {
+    const frame = trustedFrame(event);
+    if (!frame) return;
     disconnect?.();
     const { port1, port2 } = new MessageChannelMain();
     let portAlive = true;
@@ -281,6 +298,7 @@ async function start() {
       calendarQa?.now,
     );
     const unsubscribe = host.listen((message) => {
+      if ("id" in message && message.id === HOST_BACKGROUND_ID) return;
       const observed = calendarNotices.observe(message);
       if (!observed) return;
       message = observed;
@@ -323,7 +341,9 @@ async function start() {
     function dispose() {
       if (!portAlive) return;
       portAlive = false;
+      if (disconnect === dispose) disconnect = undefined;
       controls.dispose();
+      review.invalidate();
       unsubscribe();
       pickExecutable.cancel();
       port1.close();
@@ -343,6 +363,19 @@ async function start() {
         console.error("HUB_QA_CLOSE_REQUESTED");
       if (controls.dispatch(data)) return;
       if (!compatible) return;
+      if (
+        data.kind === "request" &&
+        data.request.method === "launcher.resident.reviewOpen"
+      ) {
+        if (review.expect(data.id, data.request.target)) host.send(data);
+        else
+          port1.postMessage({
+            kind: "failure",
+            id: data.id,
+            error: { kind: "busy" },
+          });
+        return;
+      }
       if (
         data.kind === "request" &&
         data.request.method === "launcher.app.pick"
@@ -481,6 +514,12 @@ async function start() {
     }
   };
   ipcMain.on("vantare:connect", connectRenderer);
+  ipcMain.handle(launcherReviewChannel, (event, ...args: unknown[]) => {
+    const ticket = reviewTicket(args);
+    return compatible && disconnect && trustedFrame(event) && ticket
+      ? review.open(ticket)
+      : "unavailable";
+  });
   contents.on(
     "did-frame-navigate",
     (_event, _url, _code, _status, mainFrame) => {

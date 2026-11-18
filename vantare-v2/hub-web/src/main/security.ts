@@ -109,11 +109,16 @@ export function fitWindow(
 }
 
 // Only the main process owns the host handshake and window readiness.
-export function isRendererMessage(
-  value: unknown,
-): value is Exclude<
+export function isRendererMessage(value: unknown): value is Exclude<
   UiToHost,
-  { kind: "hello" | "ready" | "pickedExecutable" }
+  {
+    kind:
+      | "hello"
+      | "ready"
+      | "pickedExecutable"
+      | "reviewContentRequest"
+      | "reviewDecision";
+  }
 > {
   return (
     isUiMessage(value) &&

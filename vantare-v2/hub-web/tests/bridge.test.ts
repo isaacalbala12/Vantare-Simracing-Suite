@@ -6,9 +6,52 @@ import {
   postHostMessageToRenderer,
 } from "../src/contract/validation";
 import { isRendererMessage, mockAllowed } from "../src/main/security";
+import { helloForScene } from "../src/mock/host";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 
 describe("typed client with an isolated simulated host", () => {
+  it("discards private review frames even if they arrive on the renderer port", async () => {
+    const { port1, port2 } = new MessageChannel();
+    vi.stubGlobal("vantare", {
+      connect: async () => {
+        window.dispatchEvent(
+          new MessageEvent("message", {
+            source: window,
+            data: "vantare:port",
+            ports: [port1],
+          }),
+        );
+      },
+    });
+    let client: Client | undefined;
+    try {
+      client = await Client.connect();
+      const observed = vi.fn();
+      client.listen(observed);
+      const delivered = new Promise<void>((resolve) => {
+        client?.listen((message) => {
+          if (message.kind === "hello") resolve();
+        });
+      });
+      const privateMessages = [
+        { kind: "reviewContent", pages: ["Detalle reservado para Main"] },
+        { kind: "reviewFailure", reason: "changed" },
+      ];
+      for (const message of privateMessages) {
+        expect(isHostMessage(message)).toBe(true);
+        port2.postMessage(message);
+      }
+      const bootstrap = helloForScene();
+      port2.postMessage(bootstrap);
+      await delivered;
+      expect(observed).toHaveBeenCalledExactlyOnceWith(bootstrap);
+    } finally {
+      client?.close();
+      port1.close();
+      port2.close();
+      vi.unstubAllGlobals();
+    }
+  });
   it("Live cancels an outstanding request and overrides a failing guard", async () => {
     window.history.replaceState(null, "", "/?escena=cierre-live-pendiente");
     const client = await Client.connect();

@@ -21,6 +21,7 @@ import { residentAnswerScenes } from "./resident-answer.ts";
 import { residentControlScenes } from "./resident-control.ts";
 import { residentRemovalScenes } from "./resident-removal.ts";
 import { residentResultsScenes } from "./resident-results.ts";
+import { residentReviewScenes } from "./resident-review.ts";
 import { roadmapScenes } from "./roadmap.ts";
 import { settingsSearchScenes } from "./settings-search.ts";
 import { studioScenes } from "./studio.ts";
@@ -64,6 +65,7 @@ export const visualScenes: Record<string, VisualScene> = {
   ...residentControlScenes,
   ...residentResultsScenes,
   ...residentAnswerScenes,
+  ...residentReviewScenes,
   ...accountScenes,
   ...dialogTopbarScenes,
   ...accessScenes,

@@ -7,6 +7,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   expose: vi.fn(),
+  invoke: vi.fn(),
   once: vi.fn(),
   remove: vi.fn(),
   send: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock("electron", () => ({
   contextBridge: { exposeInMainWorld: mocks.expose },
   webFrame: { getZoomFactor: mocks.zoom },
   ipcRenderer: {
+    invoke: mocks.invoke,
     once: mocks.once,
     removeListener: mocks.remove,
     send: mocks.send,
@@ -30,6 +32,12 @@ describe("preload connection", () => {
   it("satisfies the same closed surface checked by the Windows smoke, regardless of insertion order", async () => {
     await import("../src/preload/index");
     const bridge = Object.keys(mocks.expose.mock.calls[0][1]);
+    expect(bridge.sort()).toEqual([
+      "connect",
+      "platform",
+      "reviewTrust",
+      "viewport",
+    ]);
     expect(() =>
       assertRendererIsolation({ node: "undefined", bridge }),
     ).not.toThrow();
@@ -54,6 +62,35 @@ describe("preload connection", () => {
     expect(() =>
       assertRendererIsolation({ node: "function", bridge }),
     ).toThrow();
+  });
+  it("offers only the closed review operation and never returns private host data", async () => {
+    await import("../src/preload/index");
+    const api = mocks.expose.mock.calls[0][1] as {
+      reviewTrust: (...args: unknown[]) => Promise<string>;
+    };
+    const ticket = "a".repeat(32);
+    for (const args of [
+      [],
+      [null],
+      ["A".repeat(32)],
+      ["a".repeat(33)],
+      [ticket, 999],
+    ]) {
+      expect(await api.reviewTrust(...args)).toBe("unavailable");
+    }
+    expect(mocks.invoke).not.toHaveBeenCalled();
+    mocks.invoke.mockResolvedValueOnce({ pages: ["private text"] });
+    expect(await api.reviewTrust(ticket)).toBe("unavailable");
+    expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith(
+      "vantare:review-trust",
+      ticket,
+    );
+    mocks.invoke.mockResolvedValueOnce("submitted");
+    expect(await api.reviewTrust(ticket)).toBe("submitted");
+    mocks.invoke.mockResolvedValueOnce("unconfirmed");
+    expect(await api.reviewTrust(ticket)).toBe("unconfirmed");
+    mocks.invoke.mockRejectedValueOnce(new Error("IPC disconnected"));
+    expect(await api.reviewTrust(ticket)).toBe("interrupted");
   });
   it("reports the precise DIP client area without the invisible Windows frame or an IPC request", async () => {
     vi.stubGlobal("outerWidth", 1936);

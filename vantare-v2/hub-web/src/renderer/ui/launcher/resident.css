@@ -54,6 +54,66 @@
 .v-launcher-resident-body p {
   margin: 0;
 }
+.v-resident-review-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--line-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  overflow-wrap: anywhere;
+}
+.v-resident-review-chip {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  color: var(--text-1);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 18px;
+}
+.v-resident-review-chip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warn);
+}
+.v-resident-review-card > strong {
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 20px;
+}
+.v-resident-review-card > span:last-child:not(.v-resident-review-chip) {
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 18px;
+}
+.v-resident-review-note {
+  color: var(--text-3);
+  font-size: 12.5px;
+  line-height: 19px;
+}
+.v-resident-review-notice {
+  gap: 4px;
+  padding: 14px 16px;
+}
+.v-resident-review-notice > strong {
+  font-weight: 650;
+}
+.v-resident-review-notice > div {
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 19px;
+}
+.v-launcher-resident-body .v-resident-review-reason {
+  margin-top: -4px;
+}
 .v-launcher-resident-body .v-tooltip-trigger,
 .v-launcher-resident-body .v-tooltip-trigger > span,
 .v-launcher-resident-body .v-button {
@@ -64,6 +124,9 @@
   opacity: var(--disabled-opacity);
   color: var(--text-3);
   cursor: not-allowed;
+}
+.v-launcher-resident-body .v-resident-review-button[aria-disabled="true"] {
+  color: var(--text-on-accent);
 }
 
 .v-resident-live {

@@ -1,26 +1,35 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ResidentView } from "../../../contract/generated/contract";
 import { residentText as t } from "../../i18n/launcher-resident";
+import { residentReviewText } from "../../i18n/launcher-review";
 import type { ResidentAnswerController } from "../../screens/launcher/resident-answer";
 import {
   answerScope,
   sameAnswerScope,
 } from "../../screens/launcher/resident-answer-model";
+import type { ResidentReviewPanel } from "../../screens/launcher/resident-review";
 import { Button } from "../Button";
 import { Callout } from "../Data";
 import { Tooltip } from "../Layers";
 import { WindowDialog as Dialog } from "../WindowDialog";
+import { ResidentReview } from "./ResidentReview";
 import "./resident.css";
 export function ResidentInbox({
   view,
   answer,
+  review,
 }: {
   view?: ResidentView;
   answer?: ResidentAnswerController;
+  review?: ResidentReviewPanel;
 }) {
   const explanation = useId();
   const popup = useRef<HTMLDivElement>(null);
   const reopen = useRef<HTMLButtonElement>(null);
+  const reviewButton = useRef<HTMLButtonElement>(null);
+  const priorReview = useRef<
+    { identity: string; state: ResidentReviewPanel["state"] } | undefined
+  >(undefined);
   const [dismissed, setDismissed] = useState<string>();
   const rendered = answerScope(view);
   const [retained, setRetained] = useState<
@@ -50,7 +59,8 @@ export function ResidentInbox({
         sameAnswerScope(retained.scope, attempt.target) &&
         (!view?.execution ||
           view.execution.instance === attempt.target.instance));
-  const decision = view?.decision ?? (matches ? retained?.decision : null);
+  const decision =
+    review?.question ?? view?.decision ?? (matches ? retained?.decision : null);
   const phase = matches ? attempt?.phase : undefined;
   const status = phase
     ? phase.kind === "finished"
@@ -65,7 +75,8 @@ export function ResidentInbox({
         ? `${t.answerState.rejected} ${t.rejection[phase.reason]}`
         : t.answerState[phase.kind]
     : undefined;
-  const panelScope = rendered ?? (matches ? retained?.scope : undefined);
+  const panelScope =
+    review?.scope ?? rendered ?? (matches ? retained?.scope : undefined);
   const identity = panelScope
     ? `${panelScope.instance}:${panelScope.accountGeneration}:${panelScope.run}:${panelScope.decision}:${panelScope.revision}`
     : `${view?.execution?.instance ?? "legacy"}:${decision?.id ?? ""}`;
@@ -77,6 +88,32 @@ export function ResidentInbox({
       popup.current?.focus();
   }, [phase]);
   const open = !!decision && dismissed !== identity;
+  const reviewState = review?.state;
+  useLayoutEffect(() => {
+    const prior = priorReview.current;
+    priorReview.current = reviewState
+      ? { identity, state: reviewState }
+      : undefined;
+    if (
+      !prior ||
+      prior.identity !== identity ||
+      prior.state === reviewState ||
+      reviewState === undefined ||
+      reviewState === "question" ||
+      reviewState === "reviewing" ||
+      reviewState === "too-long"
+    )
+      return;
+    if (!open) reopen.current?.focus();
+    else if (
+      reviewState === "trusted" ||
+      reviewState === "declined" ||
+      reviewState === "unconfirmed"
+    )
+      popup.current?.focus();
+    else reviewButton.current?.focus();
+  }, [identity, reviewState, open]);
+  const liveReview = reviewState && residentReviewText.live[reviewState];
   // Keep the existing Callout live region mounted even when its visual summary
   // is clipped. This avoids a second, competing status region when closed.
   const announcement = (
@@ -86,7 +123,12 @@ export function ResidentInbox({
     >
       <Callout
         tone="warn"
-        title={status ?? (decision && !open ? t.pending : "")}
+        title={
+          liveReview ||
+          (reviewState === "reviewing"
+            ? ""
+            : (status ?? (decision && !open ? t.pending : "")))
+        }
         actions={
           decision && !open ? (
             <Button ref={reopen} onClick={() => setDismissed(undefined)}>
@@ -127,62 +169,73 @@ export function ResidentInbox({
               <Dialog.Close aria-label={t.close}>{t.closeSymbol}</Dialog.Close>
             </header>
             <div className="v-launcher-resident-body">
-              <Dialog.Description>
-                {t.question[decision.kind]}
-              </Dialog.Description>
-              <p id={explanation}>{answer ? t.answerHelp : t.readOnly}</p>
-              {status && <p id={`${explanation}-status`}>{status}</p>}
-              {view?.decision?.actions.map((action) => {
-                const reason =
-                  action.id === "trust" && answer
-                    ? t.trustUnavailable
-                    : answer
-                      ? t.answerUnavailable
-                      : t.readOnly;
-                const enabled = answer?.available(action.id) ?? false;
-                return (
-                  <Tooltip
-                    key={action.id}
-                    id={
-                      enabled
-                        ? undefined
-                        : `${explanation}-${action.id}-tooltip`
-                    }
-                    label={enabled ? action.label : reason}
-                  >
-                    <span>
-                      <Button
-                        disabled={!answer}
-                        focusableWhenDisabled={!enabled}
-                        aria-disabled={!enabled}
-                        aria-describedby={
+              {review ? (
+                <ResidentReview
+                  review={review}
+                  answer={answer}
+                  button={reviewButton}
+                  status={status}
+                />
+              ) : (
+                <>
+                  <Dialog.Description>
+                    {t.question[decision.kind]}
+                  </Dialog.Description>
+                  <p id={explanation}>{answer ? t.answerHelp : t.readOnly}</p>
+                  {status && <p id={`${explanation}-status`}>{status}</p>}
+                  {view?.decision?.actions.map((action) => {
+                    const reason =
+                      action.id === "trust" && answer
+                        ? t.trustUnavailable
+                        : answer
+                          ? t.answerUnavailable
+                          : t.readOnly;
+                    const enabled = answer?.available(action.id) ?? false;
+                    return (
+                      <Tooltip
+                        key={action.id}
+                        id={
                           enabled
                             ? undefined
-                            : [
-                                !answer
-                                  ? explanation
-                                  : phase && action.id !== "trust"
-                                    ? `${explanation}-status`
-                                    : `${explanation}-${action.id}`,
-                                `${explanation}-${action.id}-tooltip`,
-                              ].join(" ")
+                            : `${explanation}-${action.id}-tooltip`
                         }
-                        onClick={() => {
-                          if (enabled && rendered)
-                            void answer?.answer(action.id, rendered);
-                        }}
+                        label={enabled ? action.label : reason}
                       >
-                        {action.label}
-                      </Button>
-                      {answer &&
-                        !enabled &&
-                        (!phase || action.id === "trust") && (
-                          <p id={`${explanation}-${action.id}`}>{reason}</p>
-                        )}
-                    </span>
-                  </Tooltip>
-                );
-              })}
+                        <span>
+                          <Button
+                            disabled={!answer}
+                            focusableWhenDisabled={!enabled}
+                            aria-disabled={!enabled}
+                            aria-describedby={
+                              enabled
+                                ? undefined
+                                : [
+                                    !answer
+                                      ? explanation
+                                      : phase && action.id !== "trust"
+                                        ? `${explanation}-status`
+                                        : `${explanation}-${action.id}`,
+                                    `${explanation}-${action.id}-tooltip`,
+                                  ].join(" ")
+                            }
+                            onClick={() => {
+                              if (enabled && rendered)
+                                void answer?.answer(action.id, rendered);
+                            }}
+                          >
+                            {action.label}
+                          </Button>
+                          {answer &&
+                            !enabled &&
+                            (!phase || action.id === "trust") && (
+                              <p id={`${explanation}-${action.id}`}>{reason}</p>
+                            )}
+                        </span>
+                      </Tooltip>
+                    );
+                  })}
+                </>
+              )}
             </div>
           </Dialog.Popup>
         </Dialog.Portal>

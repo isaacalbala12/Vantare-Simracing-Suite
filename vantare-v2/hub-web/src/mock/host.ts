@@ -7,6 +7,7 @@ import {
   type HostToUi,
 } from "../contract/generated/contract";
 import { mockModules } from "../contract/generated/mocks";
+import type { LauncherReviewResult } from "../contract/launcher-review-bridge";
 import { isUiMessage } from "../contract/validation";
 import { analysisScene } from "./analysis-scenes";
 import type { MockContext } from "./context";
@@ -44,6 +45,9 @@ export function createMockHostWithTrustedReview(
     ) ??
     studioStateVisual.exec(sceneName) ??
     studioFieldVisual.exec(sceneName) ??
+    /^visual-(dark|light):(launcher-review-(?:question|reviewing|trusted|declined|changed|expired|unavailable|too-long|awaiting-confirmation))$/.exec(
+      sceneName,
+    ) ??
     /^visual-(dark|light):(launcher-notice-(?:completed|accepted|rejected|gap))$/.exec(
       sceneName,
     ) ??
@@ -132,18 +136,24 @@ export function createMockHostWithTrustedReview(
   };
   return Object.assign((value: unknown) => dispatch(value, false), {
     trusted: (value: unknown) => dispatch(value, true),
+    reviewTrust: async (ticket: string) =>
+      (await context.reviewTrust?.(ticket)) ?? ("unavailable" as const),
   });
 }
 export function createMockHost(
   sceneName?: string,
   emit?: (message: HostToUi) => void,
   analysisClock?: () => number,
-): (value: unknown) => HostToUi | null {
+): ((value: unknown) => HostToUi | null) & {
+  reviewTrust?: (ticket: string) => Promise<LauncherReviewResult>;
+} {
   const dispatch = createMockHostWithTrustedReview(
     sceneName,
     emit,
     analysisClock,
   );
-  return (value) => dispatch(value);
+  return Object.assign((value: unknown) => dispatch(value), {
+    reviewTrust: dispatch.reviewTrust,
+  });
 }
 export const mockReply = (value: unknown) => createMockHost()(value);

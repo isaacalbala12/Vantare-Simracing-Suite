@@ -40,26 +40,78 @@ jobs:
         run: bun scripts/renderer-production.ts
       - name: Verify settings field guard
         run: bun scripts/settings-field-guard.ts
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # El navegador depende de la versión de playwright-core del lock, no del SO
+          # de la máquina local: la clave se invalida al subir esa dependencia.
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('vantare-v2/hub-web/bun.lock') }}
       - name: Install Chromium and system dependencies
+        # El paso entero (descarga + apt) tiene un tope de 10 min. Antes cada intento
+        # mataba a los 180 s un `timeout` a bun mientras apt seguía trabajando y la
+        # tubería con tee no se cerraba hasta ~5 min después: el paso fallaba con un
+        # error que no era de red. Aquí no se mata ningún proceso a medias.
+        timeout-minutes: 10
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          PLAYWRIGHT_CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
         run: |
-          set -o pipefail
-          install_log="$(mktemp)"
-          trap 'rm -f "$install_log"' EXIT
+          set -euo pipefail
+
+          # apt con reintentos y timeouts propios: `install-deps` invoca apt-get por su
+          # cuenta y así hereda esta política sin tener que reescribir su comando.
+          sudo tee /etc/apt/apt.conf.d/99-vantare-ci-retries > /dev/null <<'APT_CONF'
+          Acquire::Retries "3";
+          Acquire::http::Timeout "60";
+          Acquire::https::Timeout "60";
+          APT_CONF
+
+          probe_chromium() {
+            # Arranque real del navegador instalado: es la única prueba de que las
+            # librerías del sistema bastan. Si falla, se instalan las dependencias.
+            bun -e '
+              const { chromium } = await import("playwright-core");
+              const browser = await chromium.launch({ headless: true });
+              console.log(`Chromium arranca (versión ${browser.version()}).`);
+              await browser.close();
+            '
+          }
+
+          install_chromium() {
+            echo "::group::Descargando Chromium (caché: ${PLAYWRIGHT_CACHE_HIT:-false})"
+            bun x playwright-core install chromium
+            echo "::endgroup::"
+
+            if [ "${PLAYWRIGHT_CACHE_HIT:-false}" = "true" ] && probe_chromium; then
+              echo "Caché caliente y Chromium arranca con las librerías del runner: no hace falta apt."
+              return 0
+            fi
+
+            # La caché del navegador no incluye los paquetes de apt: sin acierto, o con
+            # un arranque fallido, se instalan las dependencias del sistema.
+            echo "::group::Instalando dependencias del sistema para Chromium"
+            bun x playwright-core install-deps chromium
+            echo "::endgroup::"
+
+            probe_chromium
+          }
+
           for attempt in 1 2 3; do
-            echo "Chromium system dependencies: attempt $attempt/3"
-            if timeout --kill-after=10s 180s bun x playwright-core install --with-deps chromium 2>&1 | tee "$install_log"; then
+            echo "Chromium: intento $attempt/3"
+            if install_chromium; then
+              echo "Chromium listo en el intento $attempt."
               exit 0
             fi
-            if ! grep -Eiq 'Temporary failure resolving|Could not resolve|Could not connect|Failed to connect|Connection timed out|Connection reset by peer|Network is unreachable|EAI_AGAIN|ENOTFOUND|ECONNRESET|ETIMEDOUT' "$install_log"; then
-              echo "::error::Chromium installation failed without a recognized network error."
-              exit 1
-            fi
             if [ "$attempt" -lt 3 ]; then
-              sleep 5
+              echo "::warning::El intento $attempt de preparar Chromium falló; se reintenta en 10 s."
+              sleep 10
             fi
           done
-          echo "::warning::System dependencies omitted after three network failures; installing Chromium only. Browser tests remain required."
-          bun x playwright-core install chromium
+
+          echo "::error::Chromium no quedó operativo tras tres intentos; revisa el log de los intentos anteriores."
+          exit 1
       - run: bun run build
       - run: bun scripts/web-a11y.ts
       - run: bun scripts/settings-web.ts

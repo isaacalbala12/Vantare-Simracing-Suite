@@ -217,6 +217,9 @@ async function verify(
     !/[a-z]:[\\/]|\\\\|(^|\s)\/(?:[^\s]+\/)+/im.test(text),
     `path displayed: ${scene}`,
   );
+  // The editor was just audited in this layout. The focus exercise checks
+  // the ring and border directly without a second axe pass over the same form.
+  if (scene === "carrera-foco") return;
   const { violations } = await new AxeBuilder({ page })
     .include(".strategy-screen")
     .include('[role="menu"][aria-label="Archivo"]')

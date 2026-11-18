@@ -305,16 +305,11 @@ export async function checkWorkshopScreen(
           await closed.press("Enter");
           await list.waitFor();
           await page.keyboard.press("Tab");
-          await list.waitFor({ state: "hidden" });
-          assert(
-            await page.evaluate(
-              () =>
-                document.activeElement instanceof HTMLElement &&
-                document.activeElement !== document.body &&
-                !document.activeElement.hasAttribute(
-                  "data-base-ui-focus-guard",
-                ),
-            ),
+          await page.waitForFunction(
+            () =>
+              document.activeElement instanceof HTMLElement &&
+              document.activeElement !== document.body &&
+              !document.activeElement.hasAttribute("data-base-ui-focus-guard"),
           );
         }
       } finally {

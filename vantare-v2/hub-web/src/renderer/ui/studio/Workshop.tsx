@@ -18,9 +18,9 @@ import { useUi } from "../../app/UiState";
 import { Icon } from "../../assets/icons/Icon";
 import { homeText } from "../../i18n/home";
 import { workshopText as t } from "../../i18n/workshop";
-import { Button } from "../../ui/Button";
-import { previewAuthority } from "../../ui/studio/previewPhoto";
-import { usePreviewPhoto } from "../../ui/studio/usePreviewPhoto";
+import { Button } from "../Button";
+import { previewAuthority } from "./previewPhoto";
+import { usePreviewPhoto } from "./usePreviewPhoto";
 
 const widgetGroups: { title: string; kinds: WidgetKind[] }[] = [
   {
@@ -93,6 +93,9 @@ function Picker({
         value={current ?? null}
         modal={false}
         readOnly={blocked}
+        onOpenChange={(open, details) => {
+          if (open && blocked) details.cancel();
+        }}
         onValueChange={(value) => {
           if (!blocked && value !== null) onChange(value);
         }}
@@ -374,13 +377,9 @@ export function Workshop({
   }
 
   const rail = (
-    <aside
-      className="v-workshop-rail"
-      aria-label="Fotograma y escena"
-      onKeyDown={keyboard}
-    >
+    <aside className="v-workshop-rail" aria-label={t.rail} onKeyDown={keyboard}>
       <section>
-        <h2>{t.frame(1, 1).split(" ")[0]}</h2>
+        <h2>{t.frameTitle}</h2>
         <div className="v-workshop-number">
           <strong>{frames ? n : "–"}</strong>
           <span>{frames ? `de ${frames}` : t.noFrame}</span>
@@ -398,7 +397,7 @@ export function Workshop({
           </ol>
         )}
         <fieldset className="v-workshop-frame-actions">
-          <legend className="v-sr-only">Cambiar de fotograma</legend>
+          <legend className="v-sr-only">{t.frameControls}</legend>
           <Button
             type="button"
             size="sm"
@@ -435,7 +434,7 @@ export function Workshop({
         </fieldset>
         {why && <p id={note}>{why}</p>}
         <p>
-          <kbd>←</kbd> <kbd>→</kbd> {t.keyHelp}
+          <kbd>{t.leftKey}</kbd> <kbd>{t.rightKey}</kbd> {t.keyHelp}
         </p>
         <p>{t.frameHelp}</p>
       </section>

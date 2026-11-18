@@ -1,5 +1,10 @@
 export const workshopText = {
   title: "Taller",
+  rail: "Fotograma y escena",
+  frameControls: "Cambiar de fotograma",
+  frameTitle: "Fotograma",
+  leftKey: "←",
+  rightKey: "→",
   widget: "Widget",
   scene: "Escena",
   first: "Inicio",

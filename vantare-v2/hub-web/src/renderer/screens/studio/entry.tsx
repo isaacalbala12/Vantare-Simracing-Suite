@@ -6,10 +6,10 @@ import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { studioText as t } from "../../i18n/studio";
 import { workshopText } from "../../i18n/workshop";
 import { StudioFocus } from "../../ui/studio/StudioFocus";
+import { Workshop } from "../../ui/studio/Workshop";
 import { StudioProvider } from "./state";
-import { Workshop } from "./Workshop";
 import "../../ui/studio/studio.css";
-import "./workshop.css";
+import "../../ui/studio/workshop.css";
 
 export function canViewWorkshop(access: AccessView) {
   return access.verified && !access.blocked && access.tester;

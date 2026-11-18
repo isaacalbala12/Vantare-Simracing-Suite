@@ -411,7 +411,7 @@ fn the_reserve_forces_a_stop_the_plain_reach_would_not() {
 fn the_battery_reserve_forces_a_stop_too() {
     let mut input = manual(40, true);
     input.tyre_life_laps.value = 0.0;
-    input.ve_per_lap_percent.value = 2.4; // 41 laps of battery, 1.5 laps of reserve below
+    input.ve_per_lap_percent.value = 2.45; // 40 laps of battery, but 1.5 laps of reserve must remain
     input.virtual_energy_reserve["laps"]["value"] = json!(1.5);
     let result = plan_of(&input);
     assert_eq!(result.pit_stops.len().min(1), 1, "the reserve needs a stop");

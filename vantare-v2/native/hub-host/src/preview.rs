@@ -18,6 +18,12 @@ pub enum PreviewTarget {
     Catalog {
         widget: crate::studio::WidgetKind,
     },
+    Scene {
+        widget: crate::studio::WidgetKind,
+        #[serde(rename = "sceneId")]
+        scene_id: String,
+        frame: u32,
+    },
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -69,6 +75,12 @@ impl PreviewTarget {
     pub fn valid(&self) -> bool {
         match self {
             Self::Catalog { widget } => crate::studio::WidgetKind::CATALOG.contains(widget),
+            Self::Scene {
+                scene_id, frame, ..
+            } => {
+                crate::workshop::valid_scene_id(scene_id)
+                    && (*frame as usize) < crate::workshop::FRAME_LIMIT
+            }
             Self::Instance { id, base_revision } => {
                 !id.is_empty()
                     && id.len() <= crate::studio::ID_LIMIT

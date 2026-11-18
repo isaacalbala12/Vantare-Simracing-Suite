@@ -2,7 +2,9 @@ import {
   previewErrors,
   previewTransparentPng,
 } from "../../contract/generated/preview";
+import { studioFreeKinds } from "../../contract/generated/studio";
 import type { MockContext, MockHandler } from "../context";
+import { workshopCatalog } from "./workshop";
 export function create(context: MockContext): MockHandler {
   if (context.sceneName.startsWith("preview-")) {
     context.core.rights = "connected";
@@ -42,18 +44,33 @@ export function create(context: MockContext): MockHandler {
       );
       if (!source || source.locked)
         return { kind: "failure", id, error: { kind: "denied" } };
-    } else if (
-      !view?.catalog.some(
-        (item) =>
-          request.target.kind === "catalog" &&
-          item.kind === request.target.widget &&
-          item.allowed,
-      )
-    ) {
-      return { kind: "failure", id, error: { kind: "denied" } };
+    } else {
+      const { target } = request;
+      const allowed =
+        target.kind === "catalog"
+          ? view?.catalog.some(
+              (item) => item.kind === target.widget && item.allowed,
+            )
+          : view?.plan === "pro" ||
+            view?.plan === "founders" ||
+            ((view?.plan === "free" || view?.plan === "launch") &&
+              studioFreeKinds.some((kind) => kind === target.widget));
+      if (!allowed) return { kind: "failure", id, error: { kind: "denied" } };
     }
     if (context.sceneName === "preview-busy")
       return { kind: "failure", id, error: { kind: "busy" } };
+    if (request.target.kind === "scene") {
+      const target = request.target;
+      const scene = workshopCatalog.widgets
+        .find(({ kind }) => kind === target.widget)
+        ?.scenes.find(({ id }) => id === target.sceneId);
+      if (!scene || target.frame >= scene.frames)
+        return {
+          kind: "failure",
+          id,
+          error: { kind: "previewFailed", reason: "invalidInput" },
+        };
+    }
     const reason = previewErrors.find(
       (reason) => context.sceneName === `preview-${reason}`,
     );

@@ -49,13 +49,25 @@ pub(super) fn dispatch(
                 .account_generation
                 .clone()
                 .ok_or(HostError::CoreUnavailable)?;
+            let mut snapshot = None;
             let settings = match target {
                 PreviewTarget::Instance { id, base_revision } => {
                     session.studio.preview_settings(id, base_revision, access)?
                 }
-                PreviewTarget::Catalog { widget } => {
+                PreviewTarget::Catalog { widget } | PreviewTarget::Scene { widget, .. } => {
                     if !widget.info(access).allowed {
                         return Err(HostError::Denied);
+                    }
+                    if let PreviewTarget::Scene {
+                        scene_id, frame, ..
+                    } = target
+                    {
+                        snapshot = Some(
+                            session
+                                .workshop_scenes
+                                .get_or_init(crate::workshop::Scenes::runtime)
+                                .snapshot(*widget, scene_id, *frame)?,
+                        );
                     }
                     let defaults =
                         crate::widget_defaults::get(widget.id()).ok_or(HostError::Rejected)?;
@@ -65,6 +77,7 @@ pub(super) fn dispatch(
             session.preview_state.start(
                 id,
                 &settings,
+                snapshot,
                 *scale,
                 generation,
                 std::time::Instant::now(),

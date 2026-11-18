@@ -52,6 +52,18 @@ pub(crate) fn corpus() -> serde_json::Value {
         UiToHost::Request {
             id: 1,
             request: Request::PreviewRender {
+                target: PreviewTarget::Scene {
+                    widget: crate::studio::WidgetKind::Standings,
+                    scene_id: "standings-default".into(),
+                    frame: 0,
+                },
+                scene: PreviewScene::Demo,
+                scale: PreviewScale::One,
+            },
+        },
+        UiToHost::Request {
+            id: 1,
+            request: Request::PreviewRender {
                 target: PreviewTarget::Catalog {
                     widget: crate::studio::WidgetKind::Relative,
                 },

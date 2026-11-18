@@ -92,3 +92,12 @@ el port retirado con Rust 1.95.0. Su original exacto, con el hash anterior,
 se conserva como `legacy-evidence/rust-port-before-2263/README.md.txt`.
 Solo cambia el pin del documento activo y se añade la copia histórica:
 472 archivos verificados, sin cambiar corpus, goldens ni baselines.
+
+#2592 reescribe el texto `watchFor` de 27 escenas del Taller: 18 que repetían
+el genérico "Datos de demostración del Workshop React." y 9 que pedían
+controles inexistentes. Cada revisión conserva el pin previo y la base
+36ec706c1; la inversión byte a byte del `watchFor` reproduce ese pin, con datos,
+frames y snapshots intactos. El corpus generado del contrato se regeneró con
+`export-types`; no cambia ningún otro archivo. verify.py sigue exigiendo el hash
+exacto de las 472 entradas. El script de esta migración vive en
+`native/retirement/tools/pin_watch_for_2592.py`.

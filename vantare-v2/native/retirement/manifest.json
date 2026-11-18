@@ -1355,7 +1355,7 @@
     },
     "native/ui/fixtures/broadcast-tower-default.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-default.scene.json",
-      "sha256": "f52c8e56baf6063948de27cb43c012c2d3cf55909ba884d58d68ad0f8e479776",
+      "sha256": "f53c831c43f09cd0aa00abb062f6334a0dcbcf0ce45597806bd4dcb6096e93ae",
       "source_sha256": "a5c3eafbf4905a74b40b4ded643c64f78a002eb7f077ed136f31e0fe9dda909b",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1374,6 +1374,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "823b36b9d323d3903162faf2478efd35da80bc8b6e96d97ee9ec26cd77c95ce3",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "f52c8e56baf6063948de27cb43c012c2d3cf55909ba884d58d68ad0f8e479776",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -1403,7 +1411,7 @@
     },
     "native/ui/fixtures/broadcast-tower-fast-inversion.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-fast-inversion.scene.json",
-      "sha256": "1c8b6fbdd7033bfd8cce26650d8ec2698953075332e855daaf431e4dd7ad8fde",
+      "sha256": "7ac938fc90480a6f0fe39496eca015ae26f11375b9f6df50e32ea3c79483ac6e",
       "source_sha256": "89e4877a94a5bb71e3db6a9b980f4387f8f071f919fbbeeeb6a038704a3e0a8f",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1422,6 +1430,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "2acb31671dcaffe55b1580a5a2c99f623cbc9c8e02edbf2fc0f4acc5f4c726fe",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "1c8b6fbdd7033bfd8cce26650d8ec2698953075332e855daaf431e4dd7ad8fde",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -1499,7 +1515,7 @@
     },
     "native/ui/fixtures/car-damage-numbers-default.scene.json": {
       "source": "native/ui/fixtures/car-damage-numbers-default.scene.json",
-      "sha256": "7d68ace5af530075d7618984fd793683711d32c6222368cd923fb5a9fa193603",
+      "sha256": "3d5977bca271ef36923e167ecbf089da6393b178843a5a18440177c7a9bea32d",
       "source_sha256": "2eff91ced8461bb0ee734271bdc486b61bc1822dc3e43393b453c8823532ad17",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1518,6 +1534,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "c68f7fe7780ed2e259f43be727e28019d8928883c4f9b735f700d5b10f6c3631",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "7d68ace5af530075d7618984fd793683711d32c6222368cd923fb5a9fa193603",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -1547,7 +1571,7 @@
     },
     "native/ui/fixtures/car-damage-visual-default.scene.json": {
       "source": "native/ui/fixtures/car-damage-visual-default.scene.json",
-      "sha256": "6bf7459d0e1a2cadb6954f384d856225d0e6aa5994d8654db38dd0336a7afc88",
+      "sha256": "ddcf82c7df9c848420f80c728ba4c40835b4d93f428b36685c4114b4f525c1cc",
       "source_sha256": "793efe85e2b60aa9bc305366dbba8c7c2d98c142fb447720d01940051f56f9ef",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1566,6 +1590,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "9c89e0160187123b7e53a5ac63417606878226046802f39293a1e7c674bd3d3c",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "6bf7459d0e1a2cadb6954f384d856225d0e6aa5994d8654db38dd0336a7afc88",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -1619,7 +1651,7 @@
     },
     "native/ui/fixtures/delta-default.scene.json": {
       "source": "native/ui/fixtures/delta-default.scene.json",
-      "sha256": "cbfdbb9a629eeeeec0ef821aee91d0aa9f1aacc6ee10844d5fd9431560518432",
+      "sha256": "ce516b50c39c8bed17f80243905ba0bbc195dd0c37fdbc115e7e33e958e3efd8",
       "source_sha256": "581eb78af0715e373f79ceb29073278c70abb3e6011a296df6936a24e0fa1f69",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1638,6 +1670,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "90e079178d141bf7877f1cd6756aab52fe0670185ff6145a593eb3bcd1e28920",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "cbfdbb9a629eeeeec0ef821aee91d0aa9f1aacc6ee10844d5fd9431560518432",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -1667,7 +1707,7 @@
     },
     "native/ui/fixtures/delta-trace-default.scene.json": {
       "source": "native/ui/fixtures/delta-trace-default.scene.json",
-      "sha256": "c107a51a2987b168994ae17afa2a0e88b6029c9fc5438c337e32fdc81a7d4017",
+      "sha256": "c4ba1a4e5ff9ab21701a00bb760f4c31231f04045cdb18c81d69709f2973e0c1",
       "source_sha256": "e30ecd22e0a8910caa172325451cc23bf87d46b740012a1f58a27ad649d42fe3",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1686,6 +1726,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "9dfdec3181323758d0a302a1b3f56b822bc6e7fcf53de956d9ce9321154179bf",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "c107a51a2987b168994ae17afa2a0e88b6029c9fc5438c337e32fdc81a7d4017",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -1811,7 +1859,7 @@
     },
     "native/ui/fixtures/fastest-lap-alert.scene.json": {
       "source": "native/ui/fixtures/fastest-lap-alert.scene.json",
-      "sha256": "8fdb8699fc07034f10fd951d05fb9fc7a99983d70145aa12ad00feca6de3a0c1",
+      "sha256": "f9a3d805d91d858c18a96923c09221a282be4b0472847124b6359e1aef7cdab0",
       "source_sha256": "0438a1744ed6f6572e0421b73e3d1bc01c6778ad60d71aefb8965fd5e5269516",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1830,12 +1878,20 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "96eb081ef99f69a36ade832cbbecd52a8f6dbd77cec5728e7fe6b2475392415a",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "8fdb8699fc07034f10fd951d05fb9fc7a99983d70145aa12ad00feca6de3a0c1",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
     "native/ui/fixtures/fastest-lap-default.scene.json": {
       "source": "native/ui/fixtures/fastest-lap-default.scene.json",
-      "sha256": "939e9ae48255dd169604d1a2142f318235ab4581ced8fb2f7e2786a81313a61a",
+      "sha256": "776213805db8f9c8f2fd01c60cd2453a12a4fb0a99b285b9b8b1c960e885f821",
       "source_sha256": "d1f38541cd6bc6e98129cbc74128f22ab5c9c52f847dcd5e7499441a03e45065",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1854,6 +1910,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "e1e881d8a6e357eca03de2caeea20f44d66910aab4f183b98e4247701a69af8d",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "939e9ae48255dd169604d1a2142f318235ab4581ced8fb2f7e2786a81313a61a",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -1883,7 +1947,7 @@
     },
     "native/ui/fixtures/fuel-strategy-default.scene.json": {
       "source": "native/ui/fixtures/fuel-strategy-default.scene.json",
-      "sha256": "ec5d6c72f7025d62ddf1fc0eea648cc4a0700cc60418ac7232ee42d543e181ed",
+      "sha256": "0b50cef34f646bea92abe60864f24f34268369cd5d76ee63617430e5347919d5",
       "source_sha256": "f02bf017486d8db556bcf415e7299f5add8837fc45894f5a530a33f217ae94de",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1902,6 +1966,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "3f047344e343c20a5c8aeb7bc70881bdd79ccad14154c59f4cf4955c36a8bffe",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "ec5d6c72f7025d62ddf1fc0eea648cc4a0700cc60418ac7232ee42d543e181ed",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -1979,7 +2051,7 @@
     },
     "native/ui/fixtures/head-to-head-default.scene.json": {
       "source": "native/ui/fixtures/head-to-head-default.scene.json",
-      "sha256": "36975b2c369eab6a3ed9df3cce266011816e2b59a9a9a45605a254742f28133f",
+      "sha256": "249083e9783be9661d9cf01385eeb1dfa41af61bd33ad07a088fa69f53a3f134",
       "source_sha256": "cd3000af9053fc6a639e3e7a7585f5de18309503f9467ce8bdeae0d0c6321374",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1998,6 +2070,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "cd137dec75cada2c854af7deaf6d31174fdac7f78dff3255f6c24759d28a6931",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "36975b2c369eab6a3ed9df3cce266011816e2b59a9a9a45605a254742f28133f",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -2051,7 +2131,7 @@
     },
     "native/ui/fixtures/input-telemetry-default.scene.json": {
       "source": "native/ui/fixtures/input-telemetry-default.scene.json",
-      "sha256": "447d6d7c76f8501f67c57d3a8117cb8fb5c2a769a27f16ac8f3463ea1323949c",
+      "sha256": "f74a80597e940ffe3d0be4fc34218481a7a5181ae8dd285d5511ba5440006096",
       "source_sha256": "48bd40c2a7791ef4f053245954897514fb235ca1f69e2a674b904b73da87dae4",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2070,6 +2150,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "e6a3ab7d6798234be80507931c021c35cf90fb6edc2d4e2c737034ed891e2687",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "447d6d7c76f8501f67c57d3a8117cb8fb5c2a769a27f16ac8f3463ea1323949c",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -2151,7 +2239,7 @@
     },
     "native/ui/fixtures/multiclass-relative-default.scene.json": {
       "source": "native/ui/fixtures/multiclass-relative-default.scene.json",
-      "sha256": "81ce90d277e6d3f84b736f52da629d1a6af20f00a472d57fa3e4b67d21a7abd8",
+      "sha256": "bce5dffb07bd4c813dd3d0218b91bf4630c2c23007dc418d66185f7938bdccff",
       "source_sha256": "91e93791c8c93f3a45143012daec80360557fba1839cd8a2b134e97bebb2aa92",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2170,6 +2258,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "fae40ec1773406ee87c6024d2b586370186a0ccc4f75ada5a40a379d21283d7c",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "81ce90d277e6d3f84b736f52da629d1a6af20f00a472d57fa3e4b67d21a7abd8",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -2223,7 +2319,7 @@
     },
     "native/ui/fixtures/pedals-default.scene.json": {
       "source": "native/ui/fixtures/pedals-default.scene.json",
-      "sha256": "6d6a29e5d430faa017f42ab28557d03eeed792f777d20dbbd5b6acdec0977de9",
+      "sha256": "944aa97847277d076dcaa03dd4a1860102a75d4cb904f988224c2adbbf70845f",
       "source_sha256": "4b59a22da9c3d44a0ebf535fa16eb9c5d0d5ac511b8616bb0019bbf478a49edb",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2242,6 +2338,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "8fc67e0290217a88e06fad8bb98139c29474bb7af6c534230671a6019e6e68ff",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "6d6a29e5d430faa017f42ab28557d03eeed792f777d20dbbd5b6acdec0977de9",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -2271,7 +2375,7 @@
     },
     "native/ui/fixtures/pedals-telemetry-default.scene.json": {
       "source": "native/ui/fixtures/pedals-telemetry-default.scene.json",
-      "sha256": "1690fa0eca12295166031e0efdd2f2cf88d1f690e4467271dfabba3178d62f36",
+      "sha256": "289ea37170c5b10a9ad5aa91975b438bf2e08f566e48c26ff29214b12769ff0b",
       "source_sha256": "3257c45da832b99da67a29d5da1fd28e1582d555e2d4e48e97d4007c1af4ea8d",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2290,6 +2394,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "9f118cdd6c353f1fe42770691a89bb6bf9a62a703c21216519dddd7b87e93f82",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "1690fa0eca12295166031e0efdd2f2cf88d1f690e4467271dfabba3178d62f36",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -2343,7 +2455,7 @@
     },
     "native/ui/fixtures/racing-flags-default.scene.json": {
       "source": "native/ui/fixtures/racing-flags-default.scene.json",
-      "sha256": "2b1868c2d172adfff121fa47372704db2df4468a19c39f4bb892763f34e0909c",
+      "sha256": "299c092ea34953d6a6e9fd22a30c4121c8c6fcd3cc47fd426c237340ef673934",
       "source_sha256": "3e88d31661d495990be3dff1d222ec55e21abd5590cb35d6a6ef49add0b3a5f8",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2362,6 +2474,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "e23ba9f6b7a54ae089d6feeb7bf46ab7d1485e6fa48efe19ab692c58f5da9fc4",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "2b1868c2d172adfff121fa47372704db2df4468a19c39f4bb892763f34e0909c",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -2415,7 +2535,7 @@
     },
     "native/ui/fixtures/radar-default.scene.json": {
       "source": "native/ui/fixtures/radar-default.scene.json",
-      "sha256": "524a0531a7db75cbcf63557faaf0d67743667271bd855c43efbc5b91ed8fb910",
+      "sha256": "3a6b1157a83286547f3511c4b9dea5f16ffe3bacc21e9f5629d2f9c064327433",
       "source_sha256": "3346efa5645abb829e6cbe6a794d8e82bfe1cc5b2693149bceac62cfd4027a89",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2434,6 +2554,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "06ebed8bea1dd2d1c245d7e083c7b04a9a929bcd1d8dffb312c4d7ff8287f5d4",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "524a0531a7db75cbcf63557faaf0d67743667271bd855c43efbc5b91ed8fb910",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -2487,7 +2615,7 @@
     },
     "native/ui/fixtures/relative-default.scene.json": {
       "source": "native/ui/fixtures/relative-default.scene.json",
-      "sha256": "adbadc4fce22715dfc4d39504a74d8f1621c56046e8f867b837fa06c0a921b2d",
+      "sha256": "9b9fc2fc443ffc1636d11ad1a76485b3d11e5d9f076c16cefc66d90a9bae4da4",
       "source_sha256": "5177147616ae91eb1feb0bf276cd032d1106d321d03adafc08526dbe6f412a75",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2506,6 +2634,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "256b3f4ed4e07328e2e558e32179f0c6cb0916f75d0d4c7b99f2dd5323877ac3",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "adbadc4fce22715dfc4d39504a74d8f1621c56046e8f867b837fa06c0a921b2d",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -2607,7 +2743,7 @@
     },
     "native/ui/fixtures/relative-functional-sequence.scene.json": {
       "source": "native/ui/fixtures/relative-functional-sequence.scene.json",
-      "sha256": "14b8e2e94e898aef52604d00d2777afed81046064b987159ca907f79c976c4c2",
+      "sha256": "2bf24705214e2028727d84e5283fc202e50eed9af9f37b50a5056d45566394b0",
       "source_sha256": "09171d0ba9b4e8318bee45d3876d2615c01a510783ec554ddf45b4bf924a279d",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2626,6 +2762,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "b9b76b0c78c67f3beeed888f52479c14fc686b7b5ab931d9d0c4c5a9e781b183",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "14b8e2e94e898aef52604d00d2777afed81046064b987159ca907f79c976c4c2",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -2751,7 +2895,7 @@
     },
     "native/ui/fixtures/standings-default.scene.json": {
       "source": "native/ui/fixtures/standings-default.scene.json",
-      "sha256": "11a0939ff838830e5c2e99ed00165f712850ffc691e3bf233e28fb6390fa72b6",
+      "sha256": "03a2110c223d212ce6f21924c675e0ee2478ce60c7189b2945c4aec5302cc16e",
       "source_sha256": "fc2d85dcbf19781fe3511bc62df23ffe874e132530f0175a0f6296d56fd7ade6",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2770,6 +2914,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "1cb148b01ab6643732ae976e89b86d086d3f3305fbee33e806c83123b2c946cd",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "11a0939ff838830e5c2e99ed00165f712850ffc691e3bf233e28fb6390fa72b6",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -2799,7 +2951,7 @@
     },
     "native/ui/fixtures/standings-functional-combined.scene.json": {
       "source": "native/ui/fixtures/standings-functional-combined.scene.json",
-      "sha256": "19304f7f9f41552c70f476d46f90e2b7c274178e9397af2b2d9229b3fa35ea11",
+      "sha256": "e45dae13af6b634cafe744dfc7a014349fecf9a5cbcb53afd66a13287ebd2dea",
       "source_sha256": "93b27a596fe92403bf44be2a900be10edab90f78e720b969d1df1e7ecd5f59ac",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2818,12 +2970,20 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "2099c03813e1952b4afaab383c37993271c15be88860ca2f7f4703eaee1220ce",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "19304f7f9f41552c70f476d46f90e2b7c274178e9397af2b2d9229b3fa35ea11",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
     "native/ui/fixtures/standings-functional-personal-best.scene.json": {
       "source": "native/ui/fixtures/standings-functional-personal-best.scene.json",
-      "sha256": "39924a90d32a19c07f0a882821711375806e00c2956452d332fca2a0203d086c",
+      "sha256": "69c58f8aeb9b4a57cd7b47a77c97ed01c77f279469610fc300d362f114d0b3cb",
       "source_sha256": "86635acff7451934fe793a6ae76142f7574cc103f5cc396bc7c8904beddf52ed",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2842,12 +3002,20 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "00a48120eea31445e58f012a9ebf33133e718ddc11570e435c07f76556084b1e",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "39924a90d32a19c07f0a882821711375806e00c2956452d332fca2a0203d086c",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
     "native/ui/fixtures/standings-functional-pit.scene.json": {
       "source": "native/ui/fixtures/standings-functional-pit.scene.json",
-      "sha256": "ee37553954cea015f40b7b7952e6b63b7b93a5c0b264597b7c3905375fa10933",
+      "sha256": "872d15a3b631dbf00a922cda10f03e38500d336bd1f7c6c3d864710ffeaf3b38",
       "source_sha256": "1074b7a0572fa4bf563a9e4d5988c0dba199ebc86a4cb0578c678cfe1758f740",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2866,12 +3034,20 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "10a487197eb374e51383425413274639e65f6adc14eef11ff1ebc24b5490f686",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "ee37553954cea015f40b7b7952e6b63b7b93a5c0b264597b7c3905375fa10933",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
     "native/ui/fixtures/standings-functional-position.scene.json": {
       "source": "native/ui/fixtures/standings-functional-position.scene.json",
-      "sha256": "febc5b0f25f0ba76842f77f22463ab34822b8716404a943b0774fe2afdac0669",
+      "sha256": "25621ae71c5dbebbdd6e2cf3f05b3ba4a6483361e6449ed2970d73683d012dcb",
       "source_sha256": "6baa681603b7fb4e7ed1c334886f89555ddc1009b94d91da3d3750e71c835181",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2890,12 +3066,20 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "2e6c026f52aeb296ba9b5aa0f0cad54f7d7fedcbbbf8f0ad686e5cad3f9bec21",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "febc5b0f25f0ba76842f77f22463ab34822b8716404a943b0774fe2afdac0669",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
     "native/ui/fixtures/standings-functional-session-best.scene.json": {
       "source": "native/ui/fixtures/standings-functional-session-best.scene.json",
-      "sha256": "a4926266fa5f0a9bfddbe87dd8fa61b9b4e0ab6018a65f20fc38816836a48167",
+      "sha256": "06f8623f0253a2738863b0aad5a859a142f92fdee2fb0f0035d91c904dc29bd2",
       "source_sha256": "4f23be3dd1768706577901c7ab419c5a44248e1937bd3cd13b747a9d8470df4a",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2914,12 +3098,20 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "eb00c7f03e5b0497e2f078b9721ed184bb6dc82f0dfff1cfc6261bea9306d8d3",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "a4926266fa5f0a9bfddbe87dd8fa61b9b4e0ab6018a65f20fc38816836a48167",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
     "native/ui/fixtures/standings-functional-window.scene.json": {
       "source": "native/ui/fixtures/standings-functional-window.scene.json",
-      "sha256": "4e247c0787378dcc7620461a0a116df7bdd291749e46294527bd3dd22c18b0ba",
+      "sha256": "a9e8b11e16545121bb889238491a600db31eba9a2961824edbc1e22f2ff9f097",
       "source_sha256": "188b96432ce39d0105a0cfbbc2101259427bb7c99c74104d7200060f9fb8759f",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -2938,6 +3130,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "17b55f2d93ad692f52fbacb98a08401fb2aec31fddf6eb54ee573fdbb80a28e7",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "4e247c0787378dcc7620461a0a116df7bdd291749e46294527bd3dd22c18b0ba",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -3203,7 +3403,7 @@
     },
     "native/ui/fixtures/track-map-default.scene.json": {
       "source": "native/ui/fixtures/track-map-default.scene.json",
-      "sha256": "adbdf050689eab39c1b4030f1c0c6e12d210ca8a86f3ad40497982aa3196a80e",
+      "sha256": "30a69c049c07ab8d4a494e420934fa13b82c73306d2474c415e019190ac03341",
       "source_sha256": "65660cb27d5feef6044901d11e009735577d0267d5c3cf43ac67b2b81a1084ae",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -3222,6 +3422,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "8383268f563ef094740c42b1221726a32fa508909fb3e2470210b6866cda456b",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "adbdf050689eab39c1b4030f1c0c6e12d210ca8a86f3ad40497982aa3196a80e",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },
@@ -3251,7 +3459,7 @@
     },
     "native/ui/fixtures/track-weather-default.scene.json": {
       "source": "native/ui/fixtures/track-weather-default.scene.json",
-      "sha256": "6b779b5d6e85f057597af0954a58c6acb26ef7901e50e277a63e8d60973dc70c",
+      "sha256": "c934d109ca0d7a67ee378a8972fb9f82b8c84804636df4194e3e637f1de61cb4",
       "source_sha256": "beb40857bca985757d2f637fb6e0410ddbd0f484057098a0a09b2ca3991ac34a",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -3270,6 +3478,14 @@
           "base_commit": "7e92e1a9e52d57db17263234ec62efc5774794cb",
           "previous_sha256": "6ae5c1608ee74d2aeaf63847a34bdd597d10f1d50ceff6062ac928bec601d4c8",
           "reason": "DTO v10 to v11 fixture migration: label and seven unavailable timing fields only. Snapshot equality and inverse byte reconstruction preserve prior data."
+        },
+        {
+          "issues": [
+            2592
+          ],
+          "base_commit": "36ec706c15c7fdf01892711fa07a2ac8be3f7280",
+          "previous_sha256": "6b779b5d6e85f057597af0954a58c6acb26ef7901e50e277a63e8d60973dc70c",
+          "reason": "Reescritura de watchFor (texto del Taller); datos, frames y snapshots intactos; la comparación inversa byte a byte reproduce el pin previo"
         }
       ]
     },

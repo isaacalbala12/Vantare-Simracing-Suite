@@ -367,7 +367,7 @@ it("shows the first-photo state and gives a loose photo just the one frame", asy
   expect(button("Siguiente").getAttribute("aria-disabled")).toBe("true");
 });
 
-it("shows an empty widget catalog entry without attempting a photo", async () => {
+it("skips photos for a widget without scenes and requests one on returning", async () => {
   respond = ({ method }) =>
     method === "workshop.catalog"
       ? Promise.resolve({
@@ -385,6 +385,39 @@ it("shows an empty widget catalog entry without attempting a photo", async () =>
     await screen.findByText("Mapa del circuito no tiene escenas de ejemplo"),
   ).toBeTruthy();
   expect(photoRequests()).toHaveLength(before);
+  await choose(user, /^Widget/, /^Standings/);
+  await screen.findByRole("img", { name: imageName });
+  expect(photoRequests()).toHaveLength(before + 1);
+});
+
+it("shows the account access notice without requesting a photo", async () => {
+  core = { ...core, accountGeneration: null };
+  await enter();
+  expect(await screen.findByText("Sin acceso a las fotos")).toBeTruthy();
+  expect(
+    within(screen.getByRole("alert")).getByText(
+      "Tu cuenta no puede hacer fotos en el Taller",
+    ),
+  ).toBeTruthy();
+  expect(photoRequests()).toHaveLength(0);
+});
+
+it("stops showing a busy preview if the connection drops during catalogue opening", async () => {
+  const catalog = held();
+  respond = ({ method }) =>
+    method === "workshop.catalog" ? catalog.promise : undefined;
+  await enter();
+  const figure = screen.getByRole("figure");
+  expect(figure.getAttribute("aria-busy")).toBe("true");
+  await act(async () =>
+    notify({ kind: "failure", id: 0, error: { kind: "coreUnavailable" } }),
+  );
+  await screen.findByText("No se pueden hacer fotos ahora");
+  expect(figure.hasAttribute("aria-busy")).toBe(false);
+  expect(
+    screen.queryByRole("combobox", { name: /Abriendo Taller/ }),
+  ).toBeNull();
+  expect(photoRequests()).toHaveLength(0);
 });
 
 it.each(["rights", "connection", "account"] as const)(
@@ -398,30 +431,49 @@ it.each(["rights", "connection", "account"] as const)(
           ? old.promise
           : fresh.promise
         : undefined;
-    await enter();
+    const { ui } = await enter();
     await waitFor(() => expect(photoRequests()).toHaveLength(1));
     const status = screen.getByRole("status");
     expect(status.textContent).toBe("");
-    if (reason === "rights") {
-      await emit({ ...core, rights: "unavailable" });
-      await screen.findByText("No se pueden hacer fotos ahora");
-      expect(
-        screen.queryByText("Tu cuenta no puede hacer fotos en el Taller"),
-      ).toBeNull();
-      await emit(core);
-    } else if (reason === "connection") {
-      await act(async () =>
-        notify({ kind: "failure", id: 0, error: { kind: "coreUnavailable" } }),
-      );
-      await screen.findByText("No se pueden hacer fotos ahora");
-      expect(
-        screen.queryByText("Tu cuenta no puede hacer fotos en el Taller"),
-      ).toBeNull();
-      await act(async () => notify(hello));
-    } else {
-      await emit({ ...core, accountGeneration: "b".repeat(64) });
+    const planWarnings: string[] = [];
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.textContent?.includes("no está incluido en tu plan"))
+            planWarnings.push(node.textContent);
+        }
+      }
+    });
+    observer.observe(ui.container, { childList: true, subtree: true });
+    try {
+      if (reason === "rights") {
+        await emit({ ...core, rights: "unavailable" });
+        await screen.findByText("No se pueden hacer fotos ahora");
+        expect(
+          screen.queryByText("Tu cuenta no puede hacer fotos en el Taller"),
+        ).toBeNull();
+        await emit(core);
+      } else if (reason === "connection") {
+        await act(async () =>
+          notify({
+            kind: "failure",
+            id: 0,
+            error: { kind: "coreUnavailable" },
+          }),
+        );
+        await screen.findByText("No se pueden hacer fotos ahora");
+        expect(
+          screen.queryByText("Tu cuenta no puede hacer fotos en el Taller"),
+        ).toBeNull();
+        await act(async () => notify(hello));
+      } else {
+        await emit({ ...core, accountGeneration: "b".repeat(64) });
+      }
+      await screen.findByText("Haciendo la primera foto…");
+      expect(planWarnings).toEqual([]);
+    } finally {
+      observer.disconnect();
     }
-    await screen.findByText("Haciendo la primera foto…");
     expect(photoRequests()).toHaveLength(1);
     const before = decode.mock.calls.length;
     await act(async () => old.resolve(png));

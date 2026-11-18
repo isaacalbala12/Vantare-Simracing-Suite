@@ -210,7 +210,7 @@ export function Workshop({
   const disconnected = !client || !!issue || core.rights !== "connected";
   const permitted =
     !disconnected && previewAuthority(core, core.accountGeneration);
-  const opening = !catalog && !catalogError;
+  const opening = !disconnected && !catalog && !catalogError;
 
   useEffect(() => {
     if (core.live) setManual(true);
@@ -342,6 +342,7 @@ export function Workshop({
   let detail: string | undefined;
   let action: ReactNode;
   let alert = false;
+  let messageIcon: "clock" | "alert" | "lock" | undefined;
 
   if (core.live || manual) {
     message = t.live;
@@ -364,6 +365,7 @@ export function Workshop({
   } else if (!permitted) {
     if (!disconnected) {
       message = t.noPhotoRights;
+      messageIcon = "lock";
       detail = t.noPhotoRightsDetails;
     }
   } else if (catalogError) {
@@ -378,6 +380,7 @@ export function Workshop({
     switch (photo.status) {
       case "busy":
         message = t.busy;
+        messageIcon = "clock";
         detail = t.busyDetails;
         action = retry;
         break;
@@ -385,11 +388,13 @@ export function Workshop({
       case "captureFailed":
       case "gpuUnavailable":
         message = t.failedFrame(n);
+        messageIcon = "alert";
         detail = photo.status === "timeout" ? t.timeout : t.failedDetails;
         action = retry;
         break;
       case "denied":
         message = t.denied(widgetName);
+        messageIcon = "lock";
         detail = t.deniedDetails;
         action = <Button onClick={account}>{t.account}</Button>;
         break;
@@ -616,6 +621,7 @@ export function Workshop({
           <figure
             ref={figure}
             className="v-workshop-photo"
+            data-capture-error={messageIcon === "alert" || undefined}
             tabIndex={-1}
             aria-busy={pending || opening || undefined}
           >
@@ -657,6 +663,14 @@ export function Workshop({
                   className="v-workshop-message"
                   role={alert ? "alert" : undefined}
                 >
+                  {messageIcon && (
+                    <span
+                      className="v-workshop-message-icon"
+                      data-icon={messageIcon}
+                    >
+                      <Icon name={messageIcon} />
+                    </span>
+                  )}
                   <h2>{message}</h2>
                   {detail && <p>{detail}</p>}
                   {action}

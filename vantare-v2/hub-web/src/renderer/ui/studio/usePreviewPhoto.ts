@@ -66,6 +66,7 @@ export function usePreviewPhoto(
   const scene = source?.kind === "scene" ? source : undefined;
   const item = source?.kind === "scene" ? undefined : source;
   const isScene = !!scene;
+  const isInstance = !!item;
   const { client, issue } = useHost();
   const cache = useQueryClient();
   const execute = useOptionalStudio()?.execute;
@@ -140,10 +141,10 @@ export function usePreviewPhoto(
       accountChanged.current = true;
     if (last && last.id !== id) accountChanged.current = false;
     if (!allowed || !id || accountChanged.current) {
-      if (isScene && last) last.key = "";
+      if (!isInstance && last) last.key = "";
       serial.current++;
       desired.current = undefined;
-      setPhoto({ status: "denied", key });
+      setPhoto({ status: "denied", key: isScene ? "" : key });
       return;
     }
     previous.current = {
@@ -258,6 +259,7 @@ export function usePreviewPhoto(
     client,
     core.accountGeneration,
     id,
+    isInstance,
     isScene,
     regeneration,
     key,
@@ -273,7 +275,8 @@ export function usePreviewPhoto(
           status:
             !allowed ||
             accountChanged.current ||
-            (previous.current &&
+            (!isScene &&
+              previous.current &&
               previous.current.account !== core.accountGeneration)
               ? ("denied" as const)
               : ("preparing" as const),

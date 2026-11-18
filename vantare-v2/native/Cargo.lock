@@ -6607,6 +6607,7 @@ dependencies = [
  "vantare-ipc",
  "vantare-launcher",
  "vantare-services",
+ "vantare-strategy",
  "windows-sys 0.61.2",
 ]
 

@@ -473,6 +473,7 @@ export function Workshop({
           aria-label={t.title}
           onKeyDown={keyboard}
         >
+          <h1 className="v-sr-only">{t.title}</h1>
           <div className="v-workshop-pickers">
             <Picker
               label={t.widget}

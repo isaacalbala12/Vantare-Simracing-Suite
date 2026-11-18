@@ -1,4 +1,4 @@
-# PROPUESTA (NO aplicada) · .github/workflows/qa-kit-artifacts.yml
+# .github/workflows/qa-kit-artifacts.yml
 # Objetivo: construir en GitHub (gratis, windows-latest) los binarios del kit de la tanda del PC con el MISMO SHA
 # congelado y publicarlos como artefacto con hashes, sin compilar en el servidor.
 # Disparo: push a una rama `qa-kit/<sha8>` que apunta a un commit de nightly que YA contiene este workflow
@@ -78,19 +78,44 @@ jobs:
       - name: Compilar GPUI parity-capture, núcleo paint-stats, services y launcher (Release)
         env:
           CARGO_TARGET_DIR: ${{ env.TARGET_MAIN }}
+          # Un push no admite inputs de workflow_dispatch. La variable es una entrada pública opcional.
+          QA_LICENSE_INPUT: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/heads/qa-kit/') && vars.qa_license_public_key || '' }}
         run: |
+          Remove-Item Env:VANTARE_LICENSE_PUBLIC_KEYS -ErrorAction SilentlyContinue
+          $coreFeatures = 'paint-stats'
+          if ($env:QA_LICENSE_INPUT) {
+            if ($env:GITHUB_EVENT_NAME -cne 'push' -or -not $env:GITHUB_REF.StartsWith('refs/heads/qa-kit/', [StringComparison]::Ordinal)) {
+              throw 'La clave pública QA solo se admite en push a qa-kit/**'
+            }
+            if ($env:QA_LICENSE_INPUT -cnotmatch '\Aqa-[0-9a-f]{8}:[A-Za-z0-9_-]{43}\z') {
+              throw 'La entrada debe ser una sola clave pública que produzca vantare-qa-license'
+            }
+            $coreFeatures += ',qa-license'
+          }
+          $out = Join-Path $env:RUNNER_TEMP 'qa-kit/bin'
+          New-Item -ItemType Directory -Force $out | Out-Null
           $steps = @(
             @{ package='vantare-ui'; bin='vantare-overlays'; features='parity-capture' },
-            @{ package='vantare-runtime'; bin='vantare-core'; features='paint-stats' },
+            @{ package='vantare-runtime'; bin='vantare-core'; features=$coreFeatures },
             @{ package='vantare-services'; bin='vantare-services'; features='' },
             @{ package='vantare-runtime'; bin='vantare'; features='' }
           )
           foreach ($s in $steps) {
             $cargoArgs = @('build','--manifest-path','vantare-v2/native/Cargo.toml','--locked','--release','-p',$s.package,'--bin',$s.bin)
             if ($s.features) { $cargoArgs += @('--features',$s.features) }
-            cargo @cargoArgs
-            if ($LASTEXITCODE) { throw "Build $($s.bin) falló" }
+            try {
+              if ($s.bin -eq 'vantare-core' -and $coreFeatures -eq 'paint-stats,qa-license') {
+                $env:VANTARE_LICENSE_PUBLIC_KEYS = $env:QA_LICENSE_INPUT
+              }
+              cargo @cargoArgs
+              if ($LASTEXITCODE) { throw "Build $($s.bin) falló" }
+            } finally {
+              Remove-Item Env:VANTARE_LICENSE_PUBLIC_KEYS -ErrorAction SilentlyContinue
+            }
+            # El cargo test posterior puede reconstruir los binarios con otras features.
+            Copy-Item (Join-Path $env:CARGO_TARGET_DIR "release/$($s.bin).exe") $out
           }
+          "QA_KIT_CORE_FEATURES=$coreFeatures" >> $env:GITHUB_ENV
       - name: Arnés de lifecycle (compilado, sin ejecutar)
         env:
           CARGO_TARGET_DIR: ${{ env.TARGET_MAIN }}
@@ -102,16 +127,20 @@ jobs:
           $out = Join-Path $env:RUNNER_TEMP 'qa-kit'
           New-Item -ItemType Directory -Force "$out/bin" | Out-Null
           Copy-Item (Join-Path $env:TARGET_RUNE 'release/vantare-overlays-rune.exe') "$out/bin/vantare-overlays-rune.exe"
-          foreach ($n in 'vantare-overlays','vantare-core','vantare-services','vantare') {
-            Copy-Item (Join-Path $env:TARGET_MAIN "release/$n.exe") "$out/bin/$n.exe"
-          }
           $lifecycle = Get-ChildItem (Join-Path $env:TARGET_MAIN 'release/deps') -Filter 'lifecycle-*.exe' |
             Sort-Object LastWriteTime -Descending | Select-Object -First 1
           Copy-Item $lifecycle.FullName "$out/bin/lifecycle.exe"
           $rows = Get-ChildItem "$out/bin" -File | Sort-Object Name | ForEach-Object {
             [ordered]@{ file=$_.Name; size=$_.Length; sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
           }
-          [ordered]@{ source_sha=$env:GITHUB_SHA; run_id=$env:GITHUB_RUN_ID; profile='release opt=3 debug=0 lto=false codegen-units=16'; files=$rows } |
+          [ordered]@{
+            source_sha=$env:GITHUB_SHA
+            run_id=$env:GITHUB_RUN_ID
+            profile='release opt=3 debug=0 lto=false codegen-units=16'
+            core_features=@($env:QA_KIT_CORE_FEATURES.Split(','))
+            license_public_keys_configured=($env:QA_KIT_CORE_FEATURES -ceq 'paint-stats,qa-license')
+            files=$rows
+          } |
             ConvertTo-Json -Depth 5 | Set-Content "$out/binarios.json" -Encoding utf8
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

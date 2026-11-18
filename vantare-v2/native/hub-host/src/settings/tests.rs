@@ -685,3 +685,114 @@ fn a_conflict_retry_keeps_the_future_fields_of_the_winning_writer() {
     assert_eq!(saved["general"]["launcher"], false);
     assert_eq!(saved["general"]["updates"], false);
 }
+
+#[test]
+fn future_residue_is_saved_sorted_with_exact_bytes() {
+    let root = Root::new();
+    let path = root.0.join(store::FILE);
+    let mut doc = serde_json::to_string(&store::Document::default()).unwrap();
+    doc.pop();
+    doc.push_str(r#","futureRoot":{"zeta":1,"alpha":{"y":[{"d":1,"c":2}],"b":null}}}"#);
+    fs::write(&path, doc).unwrap();
+    let mut settings = root.settings();
+    let revision = settings.view().revision;
+    settings.update(SettingsPatch::Zoom(125), &revision).unwrap();
+    let expected = r#"{
+  "version": 2,
+  "general": {
+    "onboarding_completed": true,
+    "density": "balanced",
+    "minimized": false,
+    "updates": true,
+    "launcher": true,
+    "toasts": true,
+    "grabacion": true,
+    "analisisBeta": false
+  },
+  "appearance": {
+    "palette": "vantare",
+    "scheme": "dark",
+    "contrast": 100,
+    "glassOpacity": 80,
+    "interfaceFont": "inter",
+    "monoFont": "cascadia",
+    "reducedMotion": false
+  },
+  "zoom": 125,
+  "futureRoot": {
+    "alpha": {
+      "b": null,
+      "y": [
+        {
+          "c": 2,
+          "d": 1
+        }
+      ]
+    },
+    "zeta": 1
+  }
+}"#;
+    assert_eq!(fs::read_to_string(&path).unwrap(), expected);
+}
+
+#[test]
+fn a_startup_member_in_general_is_kept_as_unknown_and_never_read() {
+    let root = Root::new();
+    let path = root.0.join(store::FILE);
+    let mut doc = serde_json::to_value(store::Document::default()).unwrap();
+    doc["general"]["startup"] = true.into();
+    fs::write(&path, serde_json::to_vec(&doc).unwrap()).unwrap();
+    let mut settings = root.settings();
+    let view = settings.view();
+    assert!(!view.protected && !view.warning);
+    assert!(!view.general.startup);
+    settings.update(SettingsPatch::Zoom(125), &view.revision).unwrap();
+    let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(saved["general"]["startup"], true);
+}
+
+#[test]
+fn v1_files_with_unknown_fields_stay_strict_and_are_not_carried_into_v2() {
+    let root = Root::new();
+    fs::write(
+        root.0.join("general.json"),
+        br#"{"density":"compact","futureField":1}"#,
+    )
+    .unwrap();
+    let view = root.settings().view();
+    assert!(view.warning);
+    assert_eq!(view.general.density, Density::Balanced);
+    if let Ok(bytes) = fs::read(root.0.join(store::FILE)) {
+        assert!(!String::from_utf8(bytes).unwrap().contains("futureField"));
+    }
+}
+
+#[test]
+fn a_winner_that_changes_or_removes_the_residue_replaces_the_loaded_one() {
+    let root = Root::new();
+    let path = root.0.join(store::FILE);
+    let mut loaded = serde_json::to_value(store::Document::default()).unwrap();
+    loaded["futureA"] = 1.into();
+    loaded["futureB"] = 1.into();
+    loaded["general"]["futureG"] = 1.into();
+    fs::write(&path, serde_json::to_vec(&loaded).unwrap()).unwrap();
+    let mut settings = root.settings();
+    let stale = settings.view().revision;
+    let mut winner = loaded.clone();
+    winner["futureA"] = serde_json::json!({"changed": true});
+    winner.as_object_mut().unwrap().remove("futureB");
+    winner["general"].as_object_mut().unwrap().remove("futureG");
+    winner["general"]["launcher"] = false.into();
+    fs::write(&path, serde_json::to_vec(&winner).unwrap()).unwrap();
+    assert!(matches!(
+        settings.update(SettingsPatch::Updates(false), &stale),
+        Err(SaveError::Conflict(_))
+    ));
+    settings.retry().unwrap();
+    let saved: serde_json::Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    assert_eq!(saved["futureA"], serde_json::json!({"changed": true}));
+    assert!(saved.get("futureB").is_none());
+    assert!(saved["general"].get("futureG").is_none());
+    assert_eq!(saved["general"]["updates"], false);
+    assert_eq!(saved["general"]["launcher"], false);
+}

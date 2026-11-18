@@ -233,7 +233,9 @@ reescriben al guardar tras los conocidos. Así un usuario puede volver a un cana
 anterior, cuyo build no conoce un campo nuevo (`grabacion`, `analisisBeta`), sin
 entrar en modo protegido ni perder ese ajuste. Un campo conocido con tipo erróneo y
 una `version` mayor que la soportada siguen protegiéndose; los parches del cable
-siguen siendo estrictos y el TS generado no incluye los desconocidos.
+siguen siendo estrictos y el TS generado no incluye los desconocidos. El residuo
+se guarda ordenado recursivamente (`docs/json-order.md`). El espejo `appearance.json`
+(`StoredAppearance`), `layout` y la migración v1 siguen siendo estrictos.
 
 
 ## Evidencia del endurecimiento

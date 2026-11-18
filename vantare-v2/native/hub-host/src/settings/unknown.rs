@@ -3,6 +3,9 @@
 //! Un build de un canal anterior no debe rechazar un `hub-settings.json` que trae
 //! campos de una versión más nueva: se apartan al leer, no cuentan para la lógica
 //! y se reinyectan al guardar. Viven solo aquí, nunca en los tipos del cable.
+//! El residuo se guarda ordenado recursivamente (`docs/json-order.md`), con o sin
+//! `preserve_order`. `general.startup` es `serde(skip)`: no es clave conocida, así
+//! que un `startup` del fichero se conserva como desconocido y se reescribe.
 use super::model::{AppearanceSettings, Preferences};
 use super::store::{Document, Legacy};
 use serde::Serialize;
@@ -52,9 +55,26 @@ fn drain(object: &mut Fields, known: &[String]) -> Fields {
         .filter(|key| !known.contains(key))
         .cloned()
         .collect();
-    unknown
-        .into_iter()
-        .filter_map(|key| object.remove_entry(&key))
+    let mut fields = Value::Object(
+        unknown
+            .into_iter()
+            .filter_map(|key| object.remove_entry(&key))
+            .collect(),
+    );
+    fields.sort_all_objects();
+    match fields {
+        Value::Object(fields) => fields,
+        _ => Fields::new(),
+    }
+}
+
+/// Defensa al escribir: si una clave del residuo coincidiera con una conocida,
+/// gana la conocida y no se duplica.
+fn without(fields: &Fields, known: &[String]) -> Fields {
+    fields
+        .iter()
+        .filter(|(key, _)| !known.contains(key))
+        .map(|(key, value)| (key.clone(), value.clone()))
         .collect()
 }
 
@@ -85,18 +105,64 @@ fn no_legacy(items: &&[Legacy]) -> bool {
 
 pub(super) fn encode(document: &Document) -> Result<Vec<u8>, serde_json::Error> {
     let unknown = &document.unknown;
+    let root = without(&unknown.root, &ROOT_KEYS.map(String::from));
+    let general = without(&unknown.general, &known_keys(&Preferences::default()));
+    let appearance = without(&unknown.appearance, &known_keys(&AppearanceSettings::default()));
     serde_json::to_vec_pretty(&Encoded {
         version: document.version,
         general: Merged {
             known: &document.general,
-            extra: &unknown.general,
+            extra: &general,
         },
         appearance: Merged {
             known: &document.appearance,
-            extra: &unknown.appearance,
+            extra: &appearance,
         },
         zoom: document.zoom,
         migration_pending: &document.migration_pending,
-        extra: &unknown.root,
+        extra: &root,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn root_keys_match_the_serialized_document_fields() {
+        let document = Document {
+            migration_pending: vec![Legacy::Zoom],
+            ..Document::default()
+        };
+        let Value::Object(object) = serde_json::to_value(&document).unwrap() else {
+            panic!("document is an object");
+        };
+        let mut serialized: Vec<_> = object.keys().map(String::as_str).collect();
+        let mut listed = ROOT_KEYS.to_vec();
+        serialized.sort_unstable();
+        listed.sort_unstable();
+        assert_eq!(serialized, listed);
+    }
+
+    #[test]
+    fn a_residue_key_that_collides_with_a_known_one_loses_without_duplicating() {
+        let mut document = Document::default();
+        document.general.updates = false;
+        let colliding = [
+            (&mut document.unknown.root, "version"),
+            (&mut document.unknown.general, "updates"),
+            (&mut document.unknown.appearance, "contrast"),
+        ];
+        for (fields, key) in colliding {
+            fields.insert(key.into(), Value::from("stale"));
+            fields.insert("future".into(), Value::from(1));
+        }
+        let text = String::from_utf8(encode(&document).unwrap()).unwrap();
+        for key in ["version", "updates", "contrast"] {
+            assert_eq!(text.matches(&format!("\"{key}\"")).count(), 1, "{key}");
+        }
+        assert!(!text.contains("stale"));
+        assert_eq!(text.matches("\"future\"").count(), 3);
+        assert!(text.contains("\"updates\": false"));
+    }
 }

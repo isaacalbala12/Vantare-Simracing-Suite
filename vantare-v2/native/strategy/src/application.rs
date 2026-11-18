@@ -120,12 +120,10 @@ pub fn calculate_detailed(
     source_status: SourceStatus,
     cancel: &AtomicBool,
 ) -> Result<Calculation, String> {
-    let (outcome, route) = calculate_with_route(prepared, source_status, cancel)?;
-    Ok(Calculation {
-        outcome,
-        route,
-        fallback: Fallback::NotApplicable,
-    })
+    if source_status != SourceStatus::Open {
+        return Err("source_not_open".into());
+    }
+    calculate_inner(prepared, cancel, &|| {}, &|| {})
 }
 
 pub fn calculate_with_route(
@@ -133,10 +131,8 @@ pub fn calculate_with_route(
     source_status: SourceStatus,
     cancel: &AtomicBool,
 ) -> Result<(SolverOutcome, CalculationRoute), String> {
-    if source_status != SourceStatus::Open {
-        return Err("source_not_open".into());
-    }
-    calculate_inner(prepared, cancel, &|| {}, &|| {})
+    calculate_detailed(prepared, source_status, cancel)
+        .map(|calculation| (calculation.outcome, calculation.route))
 }
 
 /// `before_greedy` runs right before the greedy fallback starts and
@@ -146,16 +142,27 @@ fn calculate_inner(
     cancel: &AtomicBool,
     before_greedy: &dyn Fn(),
     after_greedy: &dyn Fn(),
-) -> Result<(SolverOutcome, CalculationRoute), String> {
+) -> Result<Calculation, String> {
     let input = &prepared.input;
     let mut outcome = solver::solve_v2_cancellable(input, cancel)?;
+    let scalar = |outcome, fallback| Calculation {
+        outcome,
+        route: CalculationRoute::Scalar,
+        fallback,
+    };
     // Only a search that ran out of budget without any plan gets the fallback:
     // a plan or a proven "no solution" is returned exactly as the solver gave it.
-    let exhausted = outcome.certificate.status == solver::OptimalityStatus::NotProven
-        && !outcome.result.feasible
-        && !solver::runs_extended_search(input);
-    if !exhausted {
-        return Ok((outcome, CalculationRoute::Scalar));
+    let without_plan = outcome.certificate.status == solver::OptimalityStatus::NotProven
+        && !outcome.result.feasible;
+    if !without_plan {
+        return Ok(scalar(outcome, Fallback::NotApplicable));
+    }
+    if solver::runs_extended_search(input) {
+        // The extended search already ran; the greedy plan only knows the scalar model.
+        return Ok(scalar(
+            outcome,
+            Fallback::Refused(solver::GreedyRefusal::NotScalar),
+        ));
     }
     before_greedy();
     if cancel.load(Ordering::Relaxed) {
@@ -168,16 +175,21 @@ fn calculate_inner(
             if cancel.load(Ordering::Relaxed) {
                 return Err("cancelled".into());
             }
-            Ok((plan, CalculationRoute::Greedy))
+            Ok(Calculation {
+                outcome: plan,
+                route: CalculationRoute::Greedy,
+                fallback: Fallback::Applied,
+            })
         }
         Err(refusal) => {
-            // No plan, and the cause is kept next to the scalar search's own reason.
+            // No plan. The typed cause is `Fallback::Refused`; the text stays next
+            // to the scalar search's own reason for what already reads it.
             let cause = format!("greedy_plan_unavailable: {}", refusal.code());
             outcome.certificate.reason = Some(match outcome.certificate.reason.take() {
                 Some(reason) => format!("{reason}; {cause}"),
                 None => cause,
             });
-            Ok((outcome, CalculationRoute::Scalar))
+            Ok(scalar(outcome, Fallback::Refused(refusal)))
         }
     }
 }

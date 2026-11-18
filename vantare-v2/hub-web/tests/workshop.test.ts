@@ -144,6 +144,8 @@ it("rejects captions outside the contract", () => {
     Array.from({ length: 13 }, (_, frame) => `Fotograma ${frame}`),
     ["a", 1, "c"],
     ["a", 2, null],
+    ["a", "   ", "c"],
+    ["a", "", "c"],
     ["a", "b", "línea\n"],
     ["a", "b", "nulo\0"],
     ["a", "b", "tabulador\t"],

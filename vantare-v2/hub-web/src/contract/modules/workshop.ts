@@ -31,7 +31,9 @@ function captions(value: unknown, frames: number): boolean {
     (value.length === 0 || value.length === frames) &&
     value.every(
       (caption) =>
-        text(caption, workshopCaptionLimit) && !caption.includes("\t"),
+        text(caption, workshopCaptionLimit) &&
+        caption.trim() !== "" &&
+        !caption.includes("\t"),
     )
   );
 }

@@ -1,3 +1,23 @@
+use vantare_runtime::rights::verifier::Verifier;
+use vantare_services::Error;
+
+#[test]
+fn registry_reserves_qa_ids_for_opt_in_builds() {
+    // Integration tests link the runtime as a normal library, without cfg(test).
+    let key = "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo";
+    let production = format!("production:{key}");
+    assert!(Verifier::public_keys(&production).is_ok());
+    for id in ["qa-a1b2c3d4", "QA-a1b2c3d4", "Qa-a1b2c3d4"] {
+        let registry = format!("{production},{id}:{key}");
+        let result = Verifier::public_keys(&registry);
+        if cfg!(feature = "qa-license") {
+            assert!(result.is_ok(), "{id}");
+        } else {
+            assert!(matches!(result, Err(Error::Unconfigured)), "{id}");
+        }
+    }
+}
+
 use std::process::Command;
 
 #[test]
@@ -40,12 +60,12 @@ fn qa_license_binary_requires_opt_in() {
     );
 }
 
-#[cfg(windows)]
+#[cfg(all(windows, feature = "qa-license"))]
 mod cli {
     include!("../src/bin/vantare-qa-license/cli.rs");
 }
 
-#[cfg(windows)]
+#[cfg(all(windows, feature = "qa-license"))]
 mod windows {
     use super::cli;
     use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};

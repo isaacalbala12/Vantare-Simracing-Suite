@@ -31,6 +31,30 @@ foreach($mode in @('direct','override')){
     Reject-QaDistribution {Assert-PublicInventory $EvidenceDirectory $bad} 'QA license binary in public inventory.'
 }
 
+. (Join-Path $PSScriptRoot 'no-qa.ps1')
+$tree=Join-Path $EvidenceDirectory ('scanner-'+[guid]::NewGuid().ToString('N'))
+[IO.Directory]::CreateDirectory($tree)|Out-Null
+$markerError='QA executable in distribution payload.'
+$probe=Join-Path $tree 'probe.exe'
+[IO.File]::WriteAllText($probe,('x'*65532)+$qa+'other-data')
+Reject-QaDistribution {Assert-NativeDistributionTree $tree} $markerError
+[IO.File]::Delete($probe)
+[IO.File]::WriteAllText((Join-Path $tree 'VANTARE-QA-LICENSE.bin'),'clean')
+Reject-QaDistribution {Assert-NativeDistributionTree $tree} $markerError
+$archive=Join-Path $EvidenceDirectory ('scanner-'+[guid]::NewGuid().ToString('N')+'.zip')
+foreach($name in @('bin/probe.exe','nested/VANTARE-QA-LICENSE.bin')){
+    $zip=[IO.Compression.ZipFile]::Open($archive,[IO.Compression.ZipArchiveMode]::Create)
+    try {
+        $writer=[IO.StreamWriter]::new($zip.CreateEntry($name).Open())
+        try {
+            if($name -ceq 'bin/probe.exe'){$writer.Write(('x'*65532)+$qa+'other-data')}
+            else{$writer.Write('clean')}
+        }finally{$writer.Dispose()}
+    }finally{$zip.Dispose()}
+    Reject-QaDistribution {Assert-NativeDistributionArchive $archive} $markerError
+    [IO.File]::Delete($archive)
+}
+
 # Approve a synthetic public fingerprint so that only the reserved ID can reject it.
 $policy=Join-Path $EvidenceDirectory ('qa-license-policy-'+[guid]::NewGuid().ToString('N'))
 [IO.Directory]::CreateDirectory($policy)|Out-Null

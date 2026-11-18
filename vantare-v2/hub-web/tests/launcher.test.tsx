@@ -128,28 +128,33 @@ describe("launcher contract", () => {
   });
 });
 describe("launcher profile list", () => {
-  it("shows the exact origin only on imported hero and profile cards", () => {
+  it("shows the full origin in the hero and the visible compact origin on the imported card", () => {
     const view = structuredClone(fixture);
     Reflect.set(view.profiles[0], "imported", true);
     Reflect.set(view.profiles[1], "imported", false);
     mount(view);
-    const label = "Importado · origen no verificado";
-    expect(
-      within(
-        screen.getByRole("region", { name: `Creador de Contenido, ${label}` }),
-      ).getByText(label),
-    ).toBeTruthy();
-    const imported = screen.getByRole("button", {
-      name: /Creador de Contenido, .*Importado · origen no verificado/,
+    const full = "Importado · origen no verificado";
+    const short = "Importado";
+    const hero = screen.getByRole("region", {
+      name: `Creador de Contenido, ${full}`,
     });
-    expect(within(imported).getByText(label)).toBeTruthy();
+    expect(within(hero).getByText(full)).toBeTruthy();
+    const imported = screen.getByRole("button", {
+      name: /Creador de Contenido, .*Importado/,
+    });
+    expect(within(imported).getByText(short)).toBeTruthy();
+    expect(within(imported).queryByText(full)).toBeNull();
+    const compact = within(imported).getByText(short);
+    expect(compact.getAttribute("aria-label")).toBe(full);
+    expect(compact.getAttribute("title")).toBe(full);
     expect(
-      within(screen.getByRole("button", { name: /^Pro, / })).queryByText(label),
+      within(screen.getByRole("button", { name: /^Pro, / })).queryByText(short),
     ).toBeNull();
-    expect(screen.getAllByText(label)).toHaveLength(2);
+    expect(screen.getAllByText(full)).toHaveLength(1);
     cleanup();
     mount();
-    expect(screen.queryByText(label)).toBeNull();
+    expect(screen.queryByText(short)).toBeNull();
+    expect(screen.queryByText(full)).toBeNull();
   });
   it("shows native profiles and disables launch when applications are missing", () => {
     const { onLaunch, onSelect } = mount();

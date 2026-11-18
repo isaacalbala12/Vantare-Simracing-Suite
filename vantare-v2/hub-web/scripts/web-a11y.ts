@@ -14,7 +14,10 @@ import { checkCommandPalette } from "./check-command-palette.ts";
 import { checkDialogSafety } from "./check-dialog-safety.ts";
 import { checkHomeDensity } from "./check-home-density";
 import { checkHomePhotos } from "./check-home-photos";
-import { checkLauncherDensity } from "./check-launcher-density.ts";
+import {
+  checkLauncherDensity,
+  checkLauncherOrigin,
+} from "./check-launcher-density.ts";
 import { checkLightContrast } from "./check-light-contrast.ts";
 import { checkNativeAccessLayer } from "./check-native-access-layer.ts";
 import { checkNotificationFocus } from "./check-notification-focus.ts";
@@ -268,6 +271,9 @@ try {
   );
   await timed("checkResidentResults", () =>
     checkResidentResults(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkLauncherOrigin", () =>
+    checkLauncherOrigin(page, server.resolvedUrls?.local[0] ?? "", evidence),
   );
   const { checkRoadmapDensity } = await import("./check-roadmap-density.ts");
   await timed("checkRoadmapDensity", () =>

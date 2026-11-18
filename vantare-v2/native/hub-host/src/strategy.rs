@@ -183,7 +183,7 @@ impl State {
             return Ok(());
         };
         let doc = Document::parse(&bytes).map_err(|_| HostError::StrategyImportFailed)?;
-        validate_projection(&doc)?;
+        validate_projection(&doc, HostError::StrategyInvalidText)?;
         match files::save(
             &self.root.join(PRIMARY),
             &bytes,
@@ -211,7 +211,7 @@ impl State {
             |bytes| {
                 revision = hash(bytes);
                 let doc = parse_primary(bytes)?;
-                if let Err(error) = validate_projection(&doc) {
+                if let Err(error) = validate_projection(&doc, HostError::Protected) {
                     rejected = Some(error);
                     return Err(files::Error::Unsupported(
                         "strategy projection limits".into(),
@@ -433,7 +433,7 @@ impl State {
     }
 
     fn set_draft(&mut self, doc: Document) -> Result<StrategyView, HostError> {
-        validate_projection(&doc)?;
+        validate_projection(&doc, HostError::StrategyInvalidText)?;
         self.revision = hash(doc.bytes());
         self.status = document_state(&doc);
         self.doc = Some(doc);
@@ -483,14 +483,14 @@ fn parse_primary(bytes: &[u8]) -> Result<Document, files::Error> {
     }
     Document::parse(bytes).map_err(files::Error::InvalidInput)
 }
-fn validate_projection(doc: &Document) -> Result<(), HostError> {
+fn validate_projection(doc: &Document, collection_error: HostError) -> Result<(), HostError> {
     let events = array(&doc.value()["events"]);
     if events.len() > EVENT_LIMIT
         || events
             .iter()
             .any(|event| array(&event["strategies"]).len() > VARIANT_LIMIT)
     {
-        return Err(HostError::Protected);
+        return Err(collection_error);
     }
     for event in events {
         let event_ok = event["id"].as_str().is_some_and(valid_id)

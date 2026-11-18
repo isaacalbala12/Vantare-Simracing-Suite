@@ -123,7 +123,8 @@ export function create(context: MockContext): MockHandler {
 
     if (request.method === "strategy.create") {
       const { fields } = request;
-      if (current.events.length === 32) return failure({ kind: "protected" });
+      if (current.events.length >= 32)
+        return failure({ kind: "strategyInvalidText" });
       if (
         !validForm(fields, true) ||
         [request.basePaceSeconds, request.fuelPerLapLiters].some(

@@ -5,7 +5,8 @@ use std::time::Instant;
 
 use serde_json::{Value, json};
 use vantare_strategy::application::{
-    CalculationRoute, SourceStatus, calculate_with_route, prepare_manual,
+    Calculation, CalculationRoute, Fallback, SourceStatus, calculate_detailed,
+    calculate_with_route, prepare_manual,
 };
 use vantare_strategy::solver::{
     GreedyRefusal, Input, OptimalityStatus, PitStop, ResultV2, SolverOutcome, Window,
@@ -693,4 +694,94 @@ fn a_coarsened_grid_is_not_scalar_for_the_greedy_fallback() {
     );
     let (_, route) = run(input);
     assert_eq!(route, CalculationRoute::Scalar);
+}
+
+// The fallback status is typed: consumers read it instead of the reason text.
+fn detailed(input: Input) -> Calculation {
+    let prepared = prepare_manual(input).expect("valid input");
+    calculate_detailed(&prepared, SourceStatus::Open, &AtomicBool::new(false)).expect("outcome")
+}
+
+/// A race the scalar search gives up on at once (one candidate), so the
+/// fallback is what decides the result.
+fn exhausted(laps: u32) -> Input {
+    let mut input = manual(laps, true);
+    input.budget.max_candidates = 1;
+    input
+}
+
+#[test]
+fn no_fallback_is_needed_when_the_search_gives_a_plan_or_a_proof() {
+    // A plan, a partial plan and a proven "no solution".
+    let mut impossible = manual(5, false);
+    impossible.fuel_capacity_liters.value = 1.0;
+    for (name, input) in [
+        ("plan", manual(20, false)),
+        ("partial plan", manual(40, true)),
+        ("no solution", impossible),
+    ] {
+        let calculation = detailed(input);
+        assert_eq!(calculation.fallback, Fallback::NotApplicable, "{name}");
+        assert_eq!(calculation.route, CalculationRoute::Scalar, "{name}");
+    }
+}
+
+#[test]
+fn the_applied_fallback_is_reported() {
+    let calculation = detailed(manual(240, true));
+    assert_eq!(calculation.fallback, Fallback::Applied);
+    assert_eq!(calculation.route, CalculationRoute::Greedy);
+    assert!(calculation.outcome.result.feasible);
+}
+
+#[test]
+fn every_reachable_refusal_is_reported_with_its_variant() {
+    // More stops than allowed.
+    let mut input = exhausted(240);
+    input.event_rules.max_pit_stops = Some(3);
+    assert_eq!(
+        detailed(input).fallback,
+        Fallback::Refused(GreedyRefusal::MaxStops)
+    );
+    // A minimum the race is too short for.
+    let mut input = exhausted(5);
+    input.event_rules.min_pit_stops = Some(10);
+    assert_eq!(
+        detailed(input).fallback,
+        Fallback::Refused(GreedyRefusal::MinStops)
+    );
+    // A reserve the tank cannot hold on top of a lap.
+    let mut input = exhausted(240);
+    input.fuel_capacity_liters.value = 20.0;
+    input.fuel_reserve["laps"]["value"] = json!(10.5);
+    assert_eq!(
+        detailed(input).fallback,
+        Fallback::Refused(GreedyRefusal::ResourceTooSmall)
+    );
+}
+
+#[test]
+fn a_fine_grid_reports_not_scalar_and_keeps_the_scalar_route() {
+    let mut input = manual(240, true);
+    input.discretization.fuel_liters = 0.1; // coarsened by the budget: the extended route
+    let calculation = detailed(input);
+    assert_eq!(calculation.route, CalculationRoute::Scalar);
+    assert_eq!(
+        calculation.fallback,
+        Fallback::Refused(GreedyRefusal::NotScalar)
+    );
+    assert!(!calculation.outcome.result.feasible);
+}
+
+#[test]
+fn the_text_reason_stays_next_to_the_typed_cause() {
+    let mut input = exhausted(240);
+    input.event_rules.max_pit_stops = Some(3);
+    let calculation = detailed(input);
+    let reason = calculation.outcome.certificate.reason.expect("a reason");
+    assert!(
+        reason.contains("greedy_plan_unavailable: max_pit_stops"),
+        "{reason}"
+    );
+    assert_eq!(GreedyRefusal::MaxStops.code(), "max_pit_stops");
 }

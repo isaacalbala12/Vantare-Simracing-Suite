@@ -87,12 +87,45 @@ pub enum CalculationRoute {
     Greedy,
 }
 
+/// What happened to the greedy fallback in one calculation. Typed on purpose:
+/// consumers map it to their own closed reasons instead of parsing text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Fallback {
+    /// The search gave a plan or a proven answer: no fallback was needed.
+    NotApplicable,
+    /// The search ran out of budget without a plan and the greedy plan was returned.
+    Applied,
+    /// The search ran out of budget without a plan and no greedy plan was possible.
+    Refused(solver::GreedyRefusal),
+}
+
+/// A manual calculation with how it was produced.
+#[derive(Clone, Debug)]
+pub struct Calculation {
+    pub outcome: SolverOutcome,
+    pub route: CalculationRoute,
+    pub fallback: Fallback,
+}
+
 pub fn calculate(
     prepared: &PreparedCalculation,
     source_status: SourceStatus,
     cancel: &AtomicBool,
 ) -> Result<SolverOutcome, String> {
     calculate_with_route(prepared, source_status, cancel).map(|(outcome, _)| outcome)
+}
+
+pub fn calculate_detailed(
+    prepared: &PreparedCalculation,
+    source_status: SourceStatus,
+    cancel: &AtomicBool,
+) -> Result<Calculation, String> {
+    let (outcome, route) = calculate_with_route(prepared, source_status, cancel)?;
+    Ok(Calculation {
+        outcome,
+        route,
+        fallback: Fallback::NotApplicable,
+    })
 }
 
 pub fn calculate_with_route(

@@ -1870,12 +1870,20 @@ fn losing_verification_consumes_the_ticket() {
     pick_request(&mut session, INTERNAL, StrategyFileMode::Open);
     session.current.access.verified = false;
     assert_eq!(
-        picked(&mut session, INTERNAL, Some(&data.join("carreras-2026.json"))),
+        picked(
+            &mut session,
+            INTERNAL,
+            Some(&data.join("carreras-2026.json"))
+        ),
         denied
     );
     session.current.access.verified = true;
     assert_eq!(
-        picked(&mut session, INTERNAL, Some(&data.join("carreras-2026.json"))),
+        picked(
+            &mut session,
+            INTERNAL,
+            Some(&data.join("carreras-2026.json"))
+        ),
         denied,
         "the ticket did not survive the interruption"
     );

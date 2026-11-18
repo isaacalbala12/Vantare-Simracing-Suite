@@ -704,6 +704,7 @@ fn number(value: f64) -> Result<Number, StrategyPlanError> {
 
 /// A plan of the search with no account of a fallback (a recalculation of an
 /// edited schedule, or a plan the search itself returned).
+#[cfg(test)]
 pub(super) fn project(
     input: &Input,
     outcome: &SolverOutcome,

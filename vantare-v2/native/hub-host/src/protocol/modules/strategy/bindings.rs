@@ -52,16 +52,8 @@ pub(crate) fn typescript() -> String {
         "strategyPickCooldownMs",
         STRATEGY_PICK_COOLDOWN_MS
     );
-    crate::protocol::bindings::constants!(
-        &mut text,
-        "strategyPickPathMax",
-        STRATEGY_PICK_PATH_MAX
-    );
-    crate::protocol::bindings::constants!(
-        &mut text,
-        "strategyFileNameMax",
-        STRATEGY_FILE_NAME_MAX
-    );
+    crate::protocol::bindings::constants!(&mut text, "strategyPickPathMax", STRATEGY_PICK_PATH_MAX);
+    crate::protocol::bindings::constants!(&mut text, "strategyFileNameMax", STRATEGY_FILE_NAME_MAX);
     crate::protocol::bindings::constants!(
         &mut text,
         "strategyLimits",
@@ -542,7 +534,6 @@ fn reason_samples(dirty: &StrategyView) -> Vec<HostToUi> {
             StrategyPlanState::Partial,
             result(None, true, StrategyReason::FineGridNoFallback, false),
         ),
-
         view(
             StrategyPlanState::Calculated,
             result(

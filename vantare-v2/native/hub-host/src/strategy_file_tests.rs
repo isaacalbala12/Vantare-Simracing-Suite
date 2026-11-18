@@ -835,7 +835,7 @@ fn the_name_is_one_short_segment_without_separators_or_controls() {
     for name in ["a.json", "carreras 2026 (final).json", "ñandú.json"] {
         assert!(valid_file_name(name), "{name}");
     }
-    // the same table is in hub-web/tests/strategy-file-contract.test.ts
+    // the same table is in the contract test of the web side (strategy-file-contract)
     for name in [
         "x".repeat(256),
         "ñ".repeat(128),

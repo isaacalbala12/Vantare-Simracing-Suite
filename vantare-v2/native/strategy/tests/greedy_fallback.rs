@@ -649,20 +649,34 @@ fn every_generated_plan_passes_the_independent_verifier() {
     assert!(refusals > 50, "{refusals} refusals");
 }
 
-// The boundary of the reach with reserve: 20 L serve 8 laps once two laps of
-// reserve must remain (10 laps without it).
+// The boundary of the reach with reserve, derived from the data with whole
+// numbers only (a tank, a consumption and a reserve that a float holds exactly),
+// so no rounding margin decides it: a race of `boundary` laps ends with exactly
+// the reserve in the tank and needs no stop; one lap more needs one.
 #[test]
 fn the_race_that_just_fits_the_reserve_needs_no_stop_and_one_lap_more_does() {
+    let (capacity, per_lap, reserve_laps): (u32, u32, u32) = (16, 2, 2);
+    let boundary = (capacity - per_lap * reserve_laps) / per_lap;
+    assert_eq!(boundary, 6, "the derivation itself: (16 - 2 * 2) / 2");
+    assert_eq!(
+        (capacity - per_lap * reserve_laps) % per_lap,
+        0,
+        "an exact boundary: the reserve is left whole, not approximately"
+    );
     let tank = |laps| {
         let mut input = plain(laps);
-        input.fuel_capacity_liters.value = 20.0;
-        input.fuel_reserve["laps"]["value"] = json!(2.0);
+        input.fuel_capacity_liters.value = f64::from(capacity);
+        input.fuel_per_lap_liters.value = f64::from(per_lap);
+        input.fuel_reserve["laps"]["value"] = json!(f64::from(reserve_laps));
         input
     };
-    let fits = plan_of(&tank(8));
-    assert!(fits.pit_stops.is_empty(), "8 laps fit with the reserve");
-    let over = plan_of(&tank(9));
-    assert_eq!(over.pit_stops.len(), 1, "9 laps do not");
+    let fits = plan_of(&tank(boundary));
+    assert!(
+        fits.pit_stops.is_empty(),
+        "{boundary} laps fit with the reserve"
+    );
+    let over = plan_of(&tank(boundary + 1));
+    assert_eq!(over.pit_stops.len(), 1, "{} laps do not", boundary + 1);
 }
 
 // The cause of a refusal is kept in the certificate reason, next to the scalar one.

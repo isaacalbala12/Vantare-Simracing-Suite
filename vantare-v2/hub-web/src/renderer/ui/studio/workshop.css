@@ -207,6 +207,46 @@
   justify-content: space-between;
   gap: 12px;
 }
+.v-workshop-caption {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 86px;
+  padding: 12px 18px 13px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  overflow-wrap: anywhere;
+}
+.v-workshop-caption[data-empty="true"] {
+  visibility: hidden;
+}
+.v-workshop-caption > span {
+  color: var(--accent-bright);
+  font: 700 12px var(--font-display);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.v-workshop-caption p {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+@media (max-height: 800px) {
+  .v-workshop-caption {
+    min-height: 74px;
+    padding: 8px 14px 9px;
+  }
+  .v-workshop-caption > span {
+    font-size: 11px;
+  }
+  .v-workshop-caption p {
+    font-size: 13px;
+  }
+}
 .v-workshop-rail {
   display: flex;
   flex-direction: column;

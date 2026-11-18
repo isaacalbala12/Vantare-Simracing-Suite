@@ -31,6 +31,8 @@ export const workshopText = {
   photo: "Foto del pintor",
   previousPhoto: "Foto anterior",
   frame: (n: number, total: number) => `Fotograma ${n} de ${total}`,
+  ready: (n: number, total: number, caption?: string) =>
+    `Fotograma ${n} de ${total} listo.${caption ? ` ${caption}` : ""}`,
   count: (n: number, one: string, plural: string) =>
     `${n} ${n === 1 ? one : plural}`,
   photoAlt: (widget: string, label: string, n: number, total: number) =>

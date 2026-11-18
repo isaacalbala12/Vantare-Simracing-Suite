@@ -261,6 +261,8 @@ export function Workshop({
   );
   const n = frame + 1;
   const frames = scene?.frames ?? 0;
+  const captions = scene?.captions ?? [];
+  const caption = frame < captions.length ? captions[frame] : undefined;
   const pending =
     !!scene && permitted && !manual && photo.status === "preparing";
   const loose = scene?.frameMs === null;
@@ -678,8 +680,22 @@ export function Workshop({
               )}
             </div>
           </figure>
+          {scene && (
+            <div
+              className="v-workshop-caption"
+              data-empty={caption === undefined || undefined}
+              aria-hidden={caption === undefined || undefined}
+            >
+              {caption !== undefined && (
+                <>
+                  <span>{t.frame(n, frames)}</span>
+                  <p>{caption}</p>
+                </>
+              )}
+            </div>
+          )}
           <span role="status" className="v-sr-only">
-            {ready ? `${t.frame(n, frames)} listo.` : ""}
+            {ready ? t.ready(n, frames, caption) : ""}
           </span>
         </section>
       </SectionPanel>

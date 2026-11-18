@@ -110,6 +110,20 @@ function recalculated(editing: Editing, computeId: number): StrategyPlanView {
   return { ...plan, computeId, edit };
 }
 
+// What the solver answers when no plan has the schedule: no metrics, no timeline.
+function noSolution(
+  plan: StrategyPlanView,
+  computeId: number,
+): StrategyPlanView {
+  const result = structuredClone(plan.result);
+  if (result) {
+    result.certificate = "no_solution";
+    result.metrics = null;
+    result.timeline = null;
+  }
+  return { ...plan, state: "calculated", computeId, result };
+}
+
 function validNumber(value: string, minimum: number): boolean {
   return (
     value.trim() !== "" &&
@@ -143,9 +157,11 @@ export function create(context: MockContext): MockHandler {
     context.core.access.verified = true;
     context.core.accountGeneration = "a".repeat(64);
   }
+  // the two recalculation scenes (QA) start from a ready document
+  const opening = scenario.startsWith("recalc") ? "ready" : scenario;
   let saved = sample(
-    ["ready", "recovered", "protected", "importedLegacy"].includes(scenario)
-      ? scenario
+    ["ready", "recovered", "protected", "importedLegacy"].includes(opening)
+      ? opening
       : "empty",
   );
   let current = structuredClone(saved);
@@ -247,11 +263,20 @@ export function create(context: MockContext): MockHandler {
       request.method === "strategy.resetEdit"
     ) {
       // another or an old plan, or none: the caller restarts from this view
-      if (request.computeId !== current.plan.computeId || !editing)
+      if (request.computeId !== current.plan.computeId)
         return failure({
           kind: "strategyConflict",
           current: structuredClone(current),
         });
+      // the host answers a recalculation of a plan with no schedule `rejected`,
+      // and the other three with the current view
+      if (!editing)
+        return request.method === "strategy.recalculate"
+          ? failure({ kind: "rejected" })
+          : failure({
+              kind: "strategyConflict",
+              current: structuredClone(current),
+            });
       if (request.method === "strategy.resetEdit") {
         recalculating = undefined;
         editing.laps =
@@ -302,7 +327,6 @@ export function create(context: MockContext): MockHandler {
       if (pending || recalculating !== undefined)
         return failure({ kind: "busy" });
       if (editing?.pending) return failure({ kind: "strategyEditPending" });
-      editing = undefined;
       if (
         request.eventId !== current.activeEventId ||
         request.strategyId !== current.activeStrategyId
@@ -317,6 +341,7 @@ export function create(context: MockContext): MockHandler {
           validNumber(inputs.basePaceSeconds, Number.MIN_VALUE) &&
           validNumber(inputs.fuelPerLapLiters, Number.MIN_VALUE),
       };
+      editing = undefined; // accepted: the old schedule goes with the old plan
       current.plan = { ...noPlan, state: "calculating", computeId: pending.id };
     } else if (
       request.method === "strategy.cancel" &&
@@ -338,13 +363,24 @@ export function create(context: MockContext): MockHandler {
       recalculating !== undefined &&
       editing
     ) {
-      const done = recalculated(editing, recalculating);
+      const finished = recalculating;
       recalculating = undefined;
-      editing.base = done;
-      editing.shown = done;
-      editing.pending = false;
-      editing.error = null;
-      current.plan = editedPlan(editing, done.computeId);
+      if (scenario === "recalcError") {
+        // QA: the solver did not keep the schedule; the edit stays pending
+        editing.error = "scheduleNotPreserved";
+      } else if (scenario === "recalcNoSolution") {
+        // QA: no plan for this schedule; the plan it started from stays the base
+        editing.shown = noSolution(editing.base, finished);
+        editing.pending = false;
+        editing.error = null;
+      } else {
+        const done = recalculated(editing, finished);
+        editing.base = done;
+        editing.shown = done;
+        editing.pending = false;
+        editing.error = null;
+      }
+      current.plan = editedPlan(editing, finished);
     } else if (request.method === "strategy.view" && pending) {
       const { id, valid, fields } = pending;
       pending = undefined;

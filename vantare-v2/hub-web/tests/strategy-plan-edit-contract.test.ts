@@ -302,7 +302,7 @@ it("answers like the host when the plan has no edit: recalculate is rejected, th
       revision: value.revision,
       form: {
         ...compute.form,
-        inputs: { ...compute.form.inputs, basePaceSeconds: "" },
+        inputs: { ...compute.form?.inputs, basePaceSeconds: "" },
       },
     }),
   );

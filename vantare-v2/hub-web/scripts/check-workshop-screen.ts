@@ -303,7 +303,10 @@ async function show(page: Page, shot: string) {
     );
   }
   if (shot === "pie-largo") {
-    await page.getByRole("button", { name: "Inicio", exact: true }).click();
+    await page
+      .locator(".v-workshop-rail")
+      .getByRole("button", { name: "Inicio", exact: true })
+      .click();
     await frame(page, 1).waitFor();
     assert((await caption.textContent())?.includes(longCaption));
   }

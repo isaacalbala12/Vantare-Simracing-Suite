@@ -1,6 +1,5 @@
 #![allow(clippy::unwrap_used)]
 use super::*;
-use serde_json::json;
 use std::{
     fs,
     time::{Duration, UNIX_EPOCH},

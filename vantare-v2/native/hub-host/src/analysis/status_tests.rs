@@ -337,3 +337,46 @@ fn opened_handle_remains_authoritative_after_atomic_path_replacement() {
     assert_eq!(status.started_at_ms, 42);
     assert!(read(&owned.0, &BTreeMap::new()).is_none());
 }
+#[cfg(windows)]
+#[test]
+fn recording_without_a_writer_reads_as_stopped_without_a_cause() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let root = fs::canonicalize(std::env::temp_dir())
+        .unwrap()
+        .join(vantare_services::random_id().unwrap());
+    std::fs::create_dir(&root).unwrap();
+    let database = root.join("series-123-456.duckdb");
+    let mut status = core();
+    status["cause"] = json!("writer caído");
+    std::fs::write(
+        root.join("recording-status.json"),
+        serde_json::to_vec(&status).unwrap(),
+    )
+    .unwrap();
+    let paths = BTreeMap::default();
+    // Archivo inexistente: duda, se conserva lo que dice el Core.
+    assert!(writer_alive(&database));
+    assert_eq!(
+        read(&root, &paths).unwrap().state,
+        AnalysisRecordingState::Recording
+    );
+    // Writer vivo (apertura exclusiva): sigue «recording».
+    std::fs::write(&database, []).unwrap();
+    let writer = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .share_mode(0)
+        .open(&database)
+        .unwrap();
+    assert!(writer_alive(&database));
+    let live = read(&root, &paths).unwrap();
+    assert_eq!(live.state, AnalysisRecordingState::Recording);
+    assert_eq!(live.cause, Some(AnalysisRecordingCause::WriterDown));
+    // Corte del Core: el archivo queda libre y se muestra como parada.
+    drop(writer);
+    assert!(!writer_alive(&database));
+    let dead = read(&root, &paths).unwrap();
+    assert_eq!(dead.state, AnalysisRecordingState::Stopped);
+    assert_eq!(dead.cause, None);
+    std::fs::remove_dir_all(root).unwrap();
+}

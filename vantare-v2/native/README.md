@@ -469,8 +469,8 @@ Windows de CI. El Core real reproduce un circuito y coche sintéticos con dos
 vueltas de 91 y 89 s. El puente del host abre la grabación con el helper real
 de DuckDB. Para regenerar el corpus, ejecuta
 `python native/hub-host/testdata/analysis/generate.py`.
-Tras el corte por PID, el test comprueba el bloqueo por estado obsoleto y
-aparta el JSON temporal para comprobar la lectura de la sesión sin sellar.
+Con el writer vivo, el host mantiene la grabación bloqueada; tras el corte por
+PID la lee sin sellar y `analysis.status` la muestra como parada.
 
 `rust-toolchain.toml` fija 1.99.1 (estable adoptada para conservar la caché; VANTA-142).
 `.github/workflows/branch-channel-gates.yml` valida el producto en

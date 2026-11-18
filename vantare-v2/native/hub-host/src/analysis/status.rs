@@ -145,6 +145,25 @@ fn cause(s: &str) -> AnalysisRecordingCause {
         _ => Unknown,
     }
 }
+/// ¿Tiene un writer abierta esta grabación? Apertura exclusiva de solo lectura,
+/// sin efectos: solo una apertura correcta prueba que no. Cualquier duda (en uso,
+/// sin permiso, otro sistema) cuenta como viva para no abrir una grabación en
+/// escritura.
+pub fn writer_alive(path: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        match fs::OpenOptions::new().read(true).share_mode(0).open(path) {
+            Ok(_) => false,
+            Err(_) => true,
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        true
+    }
+}
 fn project(
     v: &Value,
     root: &Path,
@@ -153,10 +172,20 @@ fn project(
     if v.get("schema")?.as_str()? != "vantare.recording-status.v1" {
         return None;
     }
-    let state = serde_json::from_value(v.get("state")?.clone()).ok()?;
+    let mut state = serde_json::from_value(v.get("state")?.clone()).ok()?;
     let file = text(v.get("file")?).ok()?;
     if file.is_some_and(|name| !recording_name(name)) {
         return None;
+    }
+    // Tras un corte del Core el JSON sigue diciendo «recording». Sin writer, el
+    // host lo muestra como parada (sin causa inventada).
+    let dead = state == AnalysisRecordingState::Recording
+        && file.is_some_and(|name| {
+            let path = root.join(name);
+            path.is_file() && !writer_alive(&path)
+        });
+    if dead {
+        state = AnalysisRecordingState::Stopped;
     }
     let row_id = file.and_then(|name| {
         paths
@@ -198,7 +227,7 @@ fn project(
     }
     Some(AnalysisRecordingStatus {
         state,
-        cause: text(v.get("cause")?).ok()?.map(cause),
+        cause: if dead { None } else { text(v.get("cause")?).ok()?.map(cause) },
         row_id,
         started_at_ms: safe(v.get("startedAtMs")?)?,
         durable_watermark: decimal(v.get("durableWatermark")?).ok()?,

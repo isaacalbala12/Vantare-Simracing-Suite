@@ -89,7 +89,7 @@ fn wait_for_database_release(root: &Path) -> io::Result<()> {
     Ok(())
 }
 
-fn record(fixture: &Fixture, image: &Path, interrupted: bool) {
+fn record(fixture: &Fixture, image: &Path, helper: &Path, interrupted: bool) {
     let root = fixture.0.join("hub/recordings");
     fs::create_dir_all(&root).unwrap();
     let corpus = fixture.0.join("two-laps.tar.gz");
@@ -128,6 +128,7 @@ fn record(fixture: &Fixture, image: &Path, interrupted: bool) {
         log,
     };
 
+    let mut checked_live = interrupted;
     let deadline = Instant::now() + PROCESS_TIMEOUT;
     loop {
         assert!(
@@ -146,6 +147,10 @@ fn record(fixture: &Fixture, image: &Path, interrupted: bool) {
         let Some(car) = photo.state.player_car() else {
             continue;
         };
+        if !checked_live && car.laps.current() == Some(&1) {
+            checked_live = true;
+            verify_live_writer(fixture, helper.to_owned());
+        }
         if interrupted {
             // Una vuelta cerrada y varias fotos de la segunda. El Core publica
             // estas fotos después de entregar las series y los eventos al writer.
@@ -201,23 +206,34 @@ fn request(session: &mut Session, request: &Request) -> Reply {
     }
 }
 
-fn verify_stale_status(root: &Path, session: &mut Session, id: &str) {
-    // Bloqueo de producto documentado: tras kill el último estado sigue
-    // diciendo «recording». El puente confunde ese dato con un lock vivo.
-    let Reply::AnalysisStatus {
-        status: Some(status),
-    } = request(session, &Request::AnalysisStatus {})
+fn session_for(fixture: &Fixture, helper: PathBuf) -> Session {
+    let mut session = fixture.session();
+    session.current.access.verified = true;
+    session.current.access.analysis = true;
+    session.current.rights = crate::protocol::LinkState::Connected;
+    session.analysis_state.helper_for_test(helper);
+    session
+}
+
+/// Con el writer del propio Core aún vivo, la grabación sigue bloqueada y
+/// marcada «Grabando ahora»; no se relaja el caso real.
+fn verify_live_writer(fixture: &Fixture, helper: PathBuf) {
+    let mut session = session_for(fixture, helper);
+    let Reply::AnalysisCatalog { recordings, .. } =
+        request(&mut session, &Request::AnalysisCatalog {})
     else {
-        panic!("faltó el último recording-status.json del Core");
+        panic!("faltó el catálogo en vivo");
     };
-    assert_eq!(status.state, AnalysisRecordingState::Recording);
-    assert_eq!(status.row_id.as_deref(), Some(id));
+    let [row] = recordings.as_slice() else {
+        panic!("se esperaba la grabación en curso, recibido {recordings:?}");
+    };
+    assert!(row.recording, "{row:?}");
     for command in [
-        Request::AnalysisInspect { id: id.to_owned() },
-        Request::AnalysisOpen { id: id.to_owned() },
+        Request::AnalysisInspect { id: row.id.clone() },
+        Request::AnalysisOpen { id: row.id.clone() },
     ] {
         assert_eq!(
-            exchange(session, &command),
+            exchange(&mut session, &command),
             HostToUi::Failure {
                 id: 1,
                 error: HostError::AnalysisLocked
@@ -225,13 +241,29 @@ fn verify_stale_status(root: &Path, session: &mut Session, id: &str) {
             "{command:?}"
         );
     }
-    // Conservar el archivo original dentro de la carpeta temporal. Así se
-    // verifica la lectura del DB real una vez aislada la causa del bloqueo.
-    let status_path = root.join("hub/recordings/recording-status.json");
-    fs::rename(&status_path, status_path.with_extension("after-kill.json")).unwrap();
-    println!(
-        "Host rechazó inspect/open por estado obsoleto (AnalysisLocked); lectura tras apartar ese estado temporal"
-    );
+    let Reply::AnalysisStatus {
+        status: Some(status),
+    } = request(&mut session, &Request::AnalysisStatus {})
+    else {
+        panic!("faltó recording-status.json en vivo");
+    };
+    assert_eq!(status.state, AnalysisRecordingState::Recording);
+    println!("Host mantuvo bloqueada la grabación con el writer vivo (Grabando ahora)");
+}
+
+/// Tras el corte el JSON del Core sigue en «recording», pero ningún writer
+/// retiene el archivo: el host lo muestra como parada, sin causa inventada.
+fn verify_cut_status(session: &mut Session, id: &str) {
+    let Reply::AnalysisStatus {
+        status: Some(status),
+    } = request(session, &Request::AnalysisStatus {})
+    else {
+        panic!("faltó el último recording-status.json del Core");
+    };
+    assert_eq!(status.state, AnalysisRecordingState::Stopped);
+    assert_eq!(status.cause, None);
+    assert_eq!(status.row_id.as_deref(), Some(id));
+    println!("Host mostró el corte como parada (stopped, sin causa)");
 }
 
 fn verify_comparison(session: &mut Session, token: &str, laps: &[AnalysisLap]) {
@@ -272,11 +304,7 @@ fn verify_comparison(session: &mut Session, token: &str, laps: &[AnalysisLap]) {
 }
 
 fn verify(fixture: &Fixture, helper: PathBuf, interrupted: bool) {
-    let mut session = fixture.session();
-    session.current.access.verified = true;
-    session.current.access.analysis = true;
-    session.current.rights = crate::protocol::LinkState::Connected;
-    session.analysis_state.helper_for_test(helper);
+    let mut session = session_for(fixture, helper);
 
     let Reply::AnalysisCatalog { recordings, .. } =
         request(&mut session, &Request::AnalysisCatalog {})
@@ -288,9 +316,12 @@ fn verify(fixture: &Fixture, helper: PathBuf, interrupted: bool) {
     };
     let id = row.id.clone();
     assert!(row.size_bytes > 0);
-    assert_eq!(row.recording, interrupted);
+    assert!(
+        !row.recording,
+        "sin writer no se marca como grabando: {row:?}"
+    );
     if interrupted {
-        verify_stale_status(&fixture.0, &mut session, &id);
+        verify_cut_status(&mut session, &id);
     }
     let Reply::AnalysisInspect {
         state,
@@ -402,7 +433,7 @@ fn check_recording(interrupted: bool) {
         "ejecuta native/scripts/e2e-analisis.ps1"
     );
     let fixture = Fixture::new();
-    record(&fixture, &core, interrupted);
+    record(&fixture, &core, &helper, interrupted);
     verify(&fixture, helper, interrupted);
 }
 

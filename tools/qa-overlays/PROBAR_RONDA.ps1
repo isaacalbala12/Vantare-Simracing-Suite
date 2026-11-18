@@ -5,7 +5,9 @@ $env:VANTARE_SIN_GRAFICOS='1'
 $base=Join-Path ([IO.Path]::GetTempPath()) ('vantare-round-test-'+[guid]::NewGuid().ToString('N'))
 $null=New-Item -ItemType Directory -Path $base
 $root=Join-Path $base 'kit';$output=Join-Path $base 'evidence'
-$script:PythonExe=Join-Path $base 'python.exe';Set-Content $script:PythonExe 'FAKE NEVER EXECUTE'
+$pythonCandidates=@(Get-Command python.exe -CommandType Application -All|ForEach-Object Source|Where-Object {$_ -notlike '*\WindowsApps\*'})
+$script:PythonExe=$pythonCandidates|Where-Object {(Get-TandaPythonVersion $_) -ge [version]'3.11'}|Select-Object -First 1
+if(-not $script:PythonExe){throw 'No Python 3.11+ interpreter for the fake run'}
 $script:fakeProfile=Join-Path $base 'profile';$null=New-Item -ItemType Directory -Path $script:fakeProfile
 Set-Content (Join-Path $script:fakeProfile 'settings.json') 'original'
 function Get-TandaProfileRoots {@($script:fakeProfile)}

@@ -343,9 +343,12 @@ servidor comprueba el guard Rune (6) y simula los cuatro escenarios sin
 ejecutar el arnés, registrar el sampler ni consultar Machine. GPU, capturas
 reales y ciclo de vida interactivo se verifican en la cita.
 
-TANDA exige -PythonExe con ruta absoluta al Python del PC; cada invocación
-lleva -I, también análisis/diff y ensayos. No se busca ni ejecuta python por
-PATH. Para el ensayo servidor usar C:/Program Files/Python313/python.exe.
+TANDA exige -PythonExe con ruta absoluta al Python del PC, versión 3.11 o
+superior (hashlib.file_digest); cada invocación lleva -I, también
+análisis/diff y ensayos. No se busca ni ejecuta python por PATH. Para el
+ensayo servidor usar C:/Program Files/Python313/python.exe. El preflight de
+privados responde siempre con QA_PRIVATE_PREFLIGHT_OK o el mensaje fijo
+QA_PRIVATE_PREFLIGHT_FAILED y salida distinta de 0, sin traceback ni rutas.
 Capturas/lifecycle/host/núcleo trabajan con token Limited. El coordinador
 preautoriza una tarea Highest por ronda, con acción fija SAMPLER_TANDA.ps1;
 solo ejecuta MUESTREAR/PresentMon, nunca Python ni ventanas. Al abortar se

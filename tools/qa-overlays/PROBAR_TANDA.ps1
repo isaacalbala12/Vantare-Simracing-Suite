@@ -10,7 +10,9 @@ if(-not ('TandaIdle' -as [type])){Add-Type -TypeDefinition $embedded.Groups[1].V
 $sandbox=Join-Path ([IO.Path]::GetTempPath()) ('vantare-tanda-test-'+[guid]::NewGuid().ToString('N'))
 $null=New-Item -ItemType Directory -Path $sandbox
 $root=Join-Path $sandbox 'kit'
-$script:PythonExe=Join-Path $sandbox 'python.exe';Set-Content $script:PythonExe 'FAKE NEVER EXECUTE'
+$pythonCandidates=@(Get-Command python.exe -CommandType Application -All|ForEach-Object Source|Where-Object {$_ -notlike '*\WindowsApps\*'})
+$script:PythonExe=$pythonCandidates|Where-Object {(Get-TandaPythonVersion $_) -ge [version]'3.11'}|Select-Object -First 1
+if(-not $script:PythonExe){throw 'No Python 3.11+ interpreter for the fake run'}
 foreach($dir in @('bin','inputs/case')){$null=New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force}
 foreach($name in @('vantare-overlays-rune.exe','vantare-overlays.exe','vantare-core.exe','vantare-services.exe','vantare.exe','lifecycle-harness.exe','lifecycle-rune-tests.exe','PresentMon-2.6.0-x64.exe')){
  Set-Content (Join-Path $root "bin/$name") 'FAKE NEVER EXECUTE' -Encoding utf8

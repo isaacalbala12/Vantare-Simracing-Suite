@@ -59,12 +59,20 @@ function Write-TandaEvidenceHashes([string]$Output){
  Write-TandaJson $files $temp
  [IO.File]::Move($temp,$final)
 }
+function Get-TandaPythonVersion([string]$Path){
+ try {$text=[string](& $Path -I -c "import sys;print('%d.%d'%sys.version_info[:2])" 2>$null)} catch {return $null}
+ if($LASTEXITCODE -ne 0 -or $text -notmatch '^\s*(\d+)\.(\d+)\s*$'){return $null}
+ [version]::new([int]$Matches[1],[int]$Matches[2])
+}
+function Assert-TandaPythonVersion($Version){
+ if(-not $Version -or $Version -lt [version]'3.11'){throw 'PythonExe debe ser Python 3.11 o superior; no se ejecuta python'}
+}
 function Assert-TandaPython([string]$Path,[switch]$SyntaxOnly){
  if(-not [IO.Path]::IsPathFullyQualified($Path) -or $Path -notmatch '^[A-Za-z]:[/\\][A-Za-z0-9_ .\\/()-]+\.exe$'){throw 'PythonExe debe ser ruta absoluta a python.exe, sin código de shell'}
- if(-not $SyntaxOnly){
-  if(-not(Test-Path -LiteralPath $Path -PathType Leaf)){throw 'Falta PythonExe absoluto; no instalar en el PC'}
-  if((Get-Item -LiteralPath $Path).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'PythonExe no puede ser enlace'}
- }
+ if($SyntaxOnly){return}
+ if(-not(Test-Path -LiteralPath $Path -PathType Leaf)){throw 'Falta PythonExe absoluto; no instalar en el PC'}
+ if((Get-Item -LiteralPath $Path).Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'PythonExe no puede ser enlace'}
+ Assert-TandaPythonVersion (Get-TandaPythonVersion $Path)
 }
 function Invoke-TandaPython([string[]]$Arguments,[string]$Log,[int]$Timeout=120){
  Assert-TandaPython $PythonExe

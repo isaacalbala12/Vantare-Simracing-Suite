@@ -1,8 +1,10 @@
 """A synthetic seed exercises the leak guard without reading any real key."""
 import base64
+import contextlib
 import gzip
 import hashlib
 import io
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -10,6 +12,7 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
+import preflight_privado
 from preflight_privado import CHUNK, PrivateMaterial, read_key, scan, signatures, verify_kit_zip
 
 
@@ -123,3 +126,81 @@ class PrivateMaterialTests(unittest.TestCase):
         log.write_bytes(b" " * (CHUNK - 8) + base64.urlsafe_b64encode(self.seed).rstrip(b"="))
         with self.assertRaises(PrivateMaterial):
             scan(log, self.patterns)
+
+
+class ConsoleContractTests(unittest.TestCase):
+    """The console only ever shows the verdict: no traceback, path or key bytes."""
+    def setUp(self):
+        self.seed = bytes(range(32, 64))
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+        key_root = self.root / "custodia" / "qa-license"
+        key_root.mkdir(parents=True)
+        self.key_path = key_root / "qa-license.key"
+        self.key_path.write_bytes(b"qa-a1b2c3d4" + self.seed)
+        self.tree = self.root / "kit"
+        self.tree.mkdir()
+        (self.tree / "datos.json").write_text('{"value":1}', encoding="utf8")
+        patcher = patch("preflight_privado.KEY_ROOT", key_root)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def build_zip(self, path, contents="fake executable"):
+        with zipfile.ZipFile(path, "w") as output:
+            output.writestr("bin/vantare-qa-license.exe", contents)
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def run_cli(self, zip_path, zip_hash):
+        stdout, stderr = io.StringIO(), io.StringIO()
+        arguments = ["preflight_privado.py", "--private-key", str(self.key_path),
+                     "--kit-zip", str(zip_path), "--kit-zip-sha256", zip_hash, str(self.tree)]
+        with patch.object(sys, "argv", arguments), contextlib.redirect_stdout(stdout), \
+                contextlib.redirect_stderr(stderr):
+            code = preflight_privado.main()
+        return code, stdout.getvalue(), stderr.getvalue()
+
+    def assert_failed_closed(self, code, stdout, stderr):
+        self.assertEqual(code, 1)
+        self.assertEqual(stderr.strip(), "QA_PRIVATE_PREFLIGHT_FAILED")
+        self.assertNotIn("QA_PRIVATE_PREFLIGHT_OK", stdout)
+        self.assertNotIn("Traceback", stderr)
+        self.assertNotIn(str(self.root), stderr)
+
+    def test_console_passes_with_the_approved_zip_and_tree(self):
+        archive = self.root / "kit.zip"
+        expected = self.build_zip(archive)
+        code, stdout, stderr = self.run_cli(archive, expected)
+        self.assertEqual(code, 0)
+        self.assertIn("QA_PRIVATE_PREFLIGHT_OK", stdout)
+        self.assertEqual(stderr, "")
+
+    def test_console_fails_closed_without_a_usable_expected_hash(self):
+        archive = self.root / "kit.zip"
+        self.build_zip(archive)
+        for value in ("", "0" * 64):
+            with self.subTest(expected=value[:8]):
+                self.assert_failed_closed(*self.run_cli(archive, value))
+
+    def test_console_fails_closed_when_the_zip_is_replaced(self):
+        archive = self.root / "kit.zip"
+        expected = self.build_zip(archive)
+        self.build_zip(archive, "another executable")
+        self.assert_failed_closed(*self.run_cli(archive, expected))
+
+    def test_missing_file_digest_on_old_python_reports_the_fixed_message(self):
+        archive = self.root / "kit.zip"
+        expected = self.build_zip(archive)
+        error = AttributeError("module 'hashlib' has no attribute 'file_digest'")
+        with patch("hashlib.file_digest", side_effect=error):
+            code, stdout, stderr = self.run_cli(archive, expected)
+        self.assert_failed_closed(code, stdout, stderr)
+        self.assertNotIn("AttributeError", stderr)
+
+    def test_unexpected_error_during_the_scan_reports_the_fixed_message(self):
+        archive = self.root / "kit.zip"
+        expected = self.build_zip(archive)
+        with patch.object(preflight_privado, "signatures", side_effect=AttributeError("boom")):
+            code, stdout, stderr = self.run_cli(archive, expected)
+        self.assert_failed_closed(code, stdout, stderr)
+        self.assertNotIn("boom", stderr)

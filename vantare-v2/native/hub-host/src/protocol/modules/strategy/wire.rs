@@ -54,6 +54,38 @@ pub enum Request {
         #[serde(rename = "computeId")]
         compute_id: u32,
     },
+    /// Moves the boundary after stint `index` (0-based) to `lap`.
+    #[serde(rename = "strategy.moveBoundary")]
+    StrategyMoveBoundary {
+        revision: String,
+        #[serde(rename = "computeId")]
+        compute_id: u32,
+        index: u32,
+        lap: u32,
+    },
+    /// Moves stop `index` (0-based) one lap earlier (-1) or later (1).
+    #[serde(rename = "strategy.moveStop")]
+    StrategyMoveStop {
+        revision: String,
+        #[serde(rename = "computeId")]
+        compute_id: u32,
+        index: u32,
+        delta: i8,
+    },
+    /// Recalculates with the edited schedule as a constraint (new `computeId`).
+    #[serde(rename = "strategy.recalculate")]
+    StrategyRecalculate {
+        revision: String,
+        #[serde(rename = "computeId")]
+        compute_id: u32,
+    },
+    /// Discards the edit and returns to the last feasible plan.
+    #[serde(rename = "strategy.resetEdit")]
+    StrategyResetEdit {
+        revision: String,
+        #[serde(rename = "computeId")]
+        compute_id: u32,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -95,12 +127,30 @@ pub enum Reply {
     StrategyCancel {
         value: crate::strategy::StrategyView,
     },
+    #[serde(rename = "strategy.moveBoundary")]
+    StrategyMoveBoundary {
+        value: crate::strategy::StrategyView,
+    },
+    #[serde(rename = "strategy.moveStop")]
+    StrategyMoveStop {
+        value: crate::strategy::StrategyView,
+    },
+    #[serde(rename = "strategy.recalculate")]
+    StrategyRecalculate {
+        value: crate::strategy::StrategyView,
+    },
+    #[serde(rename = "strategy.resetEdit")]
+    StrategyResetEdit {
+        value: crate::strategy::StrategyView,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(tag = "kind", rename_all = "camelCase", deny_unknown_fields)]
 pub enum HostError {
     StrategyDirty,
+    /// A new calculation was refused while an edited schedule is pending.
+    StrategyEditPending,
     StrategyImportFailed,
     StrategyInvalidText,
     StrategyConflict {

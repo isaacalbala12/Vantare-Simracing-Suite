@@ -66,6 +66,34 @@ pub(super) fn dispatch(
             Request::StrategyCancel { compute_id } => strategy
                 .cancel_calculation(*compute_id)
                 .map(|value| Reply::StrategyCancel { value }),
+            Request::StrategyMoveBoundary {
+                revision,
+                compute_id,
+                index,
+                lap,
+            } => strategy
+                .move_boundary(revision, *compute_id, *index, *lap)
+                .map(|value| Reply::StrategyMoveBoundary { value }),
+            Request::StrategyMoveStop {
+                revision,
+                compute_id,
+                index,
+                delta,
+            } => strategy
+                .move_stop(revision, *compute_id, *index, *delta)
+                .map(|value| Reply::StrategyMoveStop { value }),
+            Request::StrategyRecalculate {
+                revision,
+                compute_id,
+            } => strategy
+                .recalculate(revision, *compute_id)
+                .map(|value| Reply::StrategyRecalculate { value }),
+            Request::StrategyResetEdit {
+                revision,
+                compute_id,
+            } => strategy
+                .reset_edit(revision, *compute_id)
+                .map(|value| Reply::StrategyResetEdit { value }),
             _ => Err(HostError::Rejected),
         }
     } else {

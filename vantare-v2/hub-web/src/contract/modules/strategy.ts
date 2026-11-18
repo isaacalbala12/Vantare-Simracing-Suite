@@ -1,6 +1,7 @@
 import {
   type StrategyFields,
   type StrategySolverFields,
+  strategyEditErrors,
   strategyFields,
   strategyLimits,
   strategyMethods,
@@ -56,7 +57,7 @@ function event(value: unknown): boolean {
     value.strategies.every(variant)
   );
 }
-function count(value: unknown): boolean {
+function count(value: unknown): value is number {
   return integer(value) && value >= 0 && value <= 0xffffffff;
 }
 function number(value: unknown): boolean {
@@ -142,26 +143,100 @@ function result(value: unknown): boolean {
     (value.timeline === null || timeline(value.timeline))
   );
 }
+// The edited schedule: contiguous stints from lap 1, one stop between each two,
+// every stop on the last lap of its stint and inside its own range.
+function edit(value: unknown): boolean {
+  if (
+    !record(value) ||
+    !exact(value, ["stints", "stops", "canReset", "error"]) ||
+    typeof value.canReset !== "boolean" ||
+    !(value.error === null || oneOf(value.error, strategyEditErrors)) ||
+    !Array.isArray(value.stints) ||
+    value.stints.length < 1 ||
+    value.stints.length > strategyLimits.pits + 1 ||
+    !Array.isArray(value.stops) ||
+    value.stops.length !== value.stints.length - 1
+  )
+    return false;
+  const { stints, stops } = value;
+  let next = 1;
+  for (const stint of stints) {
+    if (
+      !record(stint) ||
+      !exact(stint, ["fromLap", "toLap"]) ||
+      !count(stint.fromLap) ||
+      !count(stint.toLap) ||
+      stint.fromLap !== next ||
+      stint.toLap < stint.fromLap
+    )
+      return false;
+    next = stint.toLap + 1;
+  }
+  return stops.every(
+    (stop, index) =>
+      record(stop) &&
+      exact(stop, ["lap", "minLap", "maxLap", "fuelLiters", "vePercent"]) &&
+      count(stop.lap) &&
+      count(stop.minLap) &&
+      count(stop.maxLap) &&
+      stop.lap === stints[index].toLap &&
+      stop.minLap <= stop.lap &&
+      stop.lap <= stop.maxLap &&
+      number(stop.fuelLiters) &&
+      number(stop.vePercent),
+  );
+}
 function plan(value: unknown): boolean {
   if (
     !record(value) ||
-    !exact(value, ["state", "computeId", "result", "error", "errorField"])
+    !exact(value, [
+      "state",
+      "computeId",
+      "result",
+      "error",
+      "errorField",
+      "edit",
+    ])
   )
     return false;
   const noError = value.error === null && value.errorField === null;
   switch (value.state) {
     case "uncalculated":
     case "pendingChanges":
-      return value.computeId === null && value.result === null && noError;
+      return (
+        value.computeId === null &&
+        value.result === null &&
+        value.edit === null &&
+        noError
+      );
     case "calculating":
-      return computeId(value.computeId) && value.result === null && noError;
+      // A first calculation has neither result nor edit; a recalculation keeps both.
+      return (
+        computeId(value.computeId) &&
+        noError &&
+        ((value.result === null && value.edit === null) ||
+          (result(value.result) && edit(value.edit)))
+      );
     case "partial":
     case "calculated":
-      return computeId(value.computeId) && result(value.result) && noError;
+      return (
+        computeId(value.computeId) &&
+        result(value.result) &&
+        (value.edit === null || edit(value.edit)) &&
+        noError
+      );
+    case "edited":
+      return (
+        computeId(value.computeId) &&
+        result(value.result) &&
+        edit(value.edit) &&
+        noError
+      );
     case "error":
       return (
         computeId(value.computeId) &&
         value.result === null &&
+        value.edit === null &&
         oneOf(value.error, ["invalidInput", "failed"]) &&
         (value.errorField === null ||
           (value.error === "invalidInput" &&
@@ -299,6 +374,29 @@ export function isRequest(value: Record<string, unknown>): boolean {
       return (
         exact(value, ["method", "computeId"]) && computeId(value.computeId)
       );
+    case "strategy.moveBoundary":
+      return (
+        exact(value, ["method", "revision", "computeId", "index", "lap"]) &&
+        revision(value.revision) &&
+        computeId(value.computeId) &&
+        count(value.index) &&
+        count(value.lap)
+      );
+    case "strategy.moveStop":
+      return (
+        exact(value, ["method", "revision", "computeId", "index", "delta"]) &&
+        revision(value.revision) &&
+        computeId(value.computeId) &&
+        count(value.index) &&
+        (value.delta === -1 || value.delta === 1)
+      );
+    case "strategy.recalculate":
+    case "strategy.resetEdit":
+      return (
+        exact(value, ["method", "revision", "computeId"]) &&
+        revision(value.revision) &&
+        computeId(value.computeId)
+      );
     case "strategy.save":
     case "strategy.discard":
       return exact(value, ["method", "revision"]) && revision(value.revision);
@@ -317,6 +415,7 @@ export function isError(value: Record<string, unknown>): boolean {
   if (
     oneOf(value.kind, [
       "strategyDirty",
+      "strategyEditPending",
       "strategyImportFailed",
       "strategyInvalidText",
     ])

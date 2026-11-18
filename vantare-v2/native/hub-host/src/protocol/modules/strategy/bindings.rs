@@ -2,8 +2,9 @@ use crate::protocol::bindings::{declare, sample_response};
 use crate::protocol::{HostError, HostToUi, Reply, Request, UiToHost};
 use crate::strategy::{
     ID_LIMIT, STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate,
-    StrategyComputeForm, StrategyEventSummary, StrategyField, StrategyFields, StrategyMetrics,
-    StrategyPit, StrategyPitService, StrategyPlanError, StrategyPlanState, StrategyPlanView,
+    StrategyComputeForm, StrategyEditError, StrategyEditStop, StrategyEditView,
+    StrategyEventSummary, StrategyField, StrategyFields, StrategyMetrics, StrategyPit,
+    StrategyPitService, StrategyPlanError, StrategyPlanState, StrategyPlanView,
     StrategyServiceSteps, StrategySolverFields, StrategyState, StrategyStint, StrategyTimeline,
     StrategyVariant, StrategyView, TEXT_LIMIT,
 };
@@ -30,12 +31,25 @@ pub(crate) fn typescript() -> String {
     declare::<StrategyStint>(&mut text);
     declare::<StrategyPit>(&mut text);
     declare::<StrategyPitService>(&mut text);
+    declare::<StrategyEditView>(&mut text);
+    declare::<StrategyEditStop>(&mut text);
+    declare::<StrategyEditError>(&mut text);
     crate::protocol::bindings::constants!(
         &mut text,
         "strategyLimits",
         json!({"id":ID_LIMIT,"text":TEXT_LIMIT,"pits":STRATEGY_PIT_LIMIT})
     );
     crate::protocol::bindings::constants!(&mut text, "strategyFields", StrategyField::ALL);
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "strategyEditErrors",
+        [
+            StrategyEditError::InvalidSchedule,
+            StrategyEditError::EventRulesConflict,
+            StrategyEditError::ScheduleNotPreserved,
+            StrategyEditError::Failed
+        ]
+    );
     crate::protocol::bindings::constants!(
         &mut text,
         "strategyStates",
@@ -134,6 +148,7 @@ pub(crate) fn corpus() -> serde_json::Value {
                 current: Box::new(ready),
             },
             HostError::StrategyDirty,
+            HostError::StrategyEditPending,
             HostError::StrategyImportFailed,
             HostError::StrategyInvalidText,
         ]
@@ -141,6 +156,7 @@ pub(crate) fn corpus() -> serde_json::Value {
     );
     let fields = sample_fields();
     host.extend(calculation_samples(&dirty));
+    host.extend(edit_samples(&dirty));
     let ui = [
         Request::StrategyOpen {},
         Request::StrategyView {},
@@ -171,6 +187,26 @@ pub(crate) fn corpus() -> serde_json::Value {
             }),
         },
         Request::StrategyCancel { compute_id: 7 },
+        Request::StrategyMoveBoundary {
+            revision: "b".repeat(64),
+            compute_id: 7,
+            index: 1,
+            lap: 3,
+        },
+        Request::StrategyMoveStop {
+            revision: "b".repeat(64),
+            compute_id: 7,
+            index: 0,
+            delta: -1,
+        },
+        Request::StrategyRecalculate {
+            revision: "b".repeat(64),
+            compute_id: 7,
+        },
+        Request::StrategyResetEdit {
+            revision: "b".repeat(64),
+            compute_id: 7,
+        },
         Request::StrategySave {
             revision: "b".repeat(64),
         },
@@ -279,6 +315,27 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                 result: Some(Box::new(completed.clone())),
                 error: None,
                 error_field: None,
+                edit: Some(StrategyEditView {
+                    stints: vec![
+                        StrategyStint {
+                            from_lap: 1,
+                            to_lap: 2,
+                        },
+                        StrategyStint {
+                            from_lap: 3,
+                            to_lap: 3,
+                        },
+                    ],
+                    stops: vec![StrategyEditStop {
+                        lap: 2,
+                        min_lap: 1,
+                        max_lap: 2,
+                        fuel_liters: 3.into(),
+                        ve_percent: 5.into(),
+                    }],
+                    can_reset: false,
+                    error: None,
+                }),
             }),
         }),
         sample_response(Reply::StrategyView {
@@ -294,6 +351,7 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                 })),
                 error: None,
                 error_field: None,
+                edit: None,
             }),
         }),
         sample_response(Reply::StrategyView {
@@ -303,6 +361,7 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                 result: None,
                 error: Some(StrategyPlanError::InvalidInput),
                 error_field: Some(StrategyField::RaceLaps),
+                edit: None,
             }),
         }),
         sample_response(Reply::StrategyView {
@@ -312,6 +371,7 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                 result: None,
                 error: Some(StrategyPlanError::InvalidInput),
                 error_field: None,
+                edit: None,
             }),
         }),
         sample_response(Reply::StrategyConfirm {
@@ -322,6 +382,110 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
         }),
         sample_response(Reply::StrategyCancel {
             value: dirty.clone(),
+        }),
+    ]
+}
+
+/// A three-stint plan whose boundaries moved (`edited`), the same plan while it
+/// recalculates (`calculating`), a recalculation that failed, and the infeasible answer.
+#[allow(clippy::too_many_lines)] // One flat list of wire samples.
+fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
+    let pit = |lap, fuel: i64| StrategyPit {
+        lap,
+        fuel_liters: fuel.into(),
+        ve_percent: 5.into(),
+        change_tyres: true,
+        service: StrategyPitService::Parallel,
+    };
+    let result = |feasible: bool| StrategyCalculationView {
+        certificate: Some(if feasible {
+            StrategyCertificate::Proven
+        } else {
+            StrategyCertificate::NoSolution
+        }),
+        steps: StrategyServiceSteps {
+            fuel_liters: Some(1.into()),
+            ve_percent: Some(1.into()),
+        },
+        degraded: false,
+        metrics: feasible.then(|| StrategyMetrics {
+            total_seconds: 301.into(),
+            laps: 9,
+            pit_count: 2,
+            fuel_reserve_real_laps: Some(10.into()),
+            fuel_reserve_required_laps: 1.into(),
+        }),
+        timeline: feasible.then(|| StrategyTimeline {
+            pilot: "Pilot".into(),
+            base_pace_seconds: 90.into(),
+            fuel_start_liters: 30.into(),
+            fuel_finish_liters: 24.into(),
+            ve_start_percent: 100.into(),
+            ve_finish_percent: 85.into(),
+            stints: [(1, 3), (4, 6), (7, 9)]
+                .map(|(from_lap, to_lap)| StrategyStint { from_lap, to_lap })
+                .to_vec(),
+            pits: vec![pit(3, 12), pit(6, 13)],
+        }),
+    };
+    let edit = |error| StrategyEditView {
+        stints: [(1, 2), (3, 6), (7, 9)]
+            .map(|(from_lap, to_lap)| StrategyStint { from_lap, to_lap })
+            .to_vec(),
+        stops: vec![
+            StrategyEditStop {
+                lap: 2,
+                min_lap: 1,
+                max_lap: 5,
+                fuel_liters: 12.into(),
+                ve_percent: 5.into(),
+            },
+            StrategyEditStop {
+                lap: 6,
+                min_lap: 3,
+                max_lap: 8,
+                fuel_liters: 13.into(),
+                ve_percent: 5.into(),
+            },
+        ],
+        can_reset: true,
+        error,
+    };
+    let plan = |state, compute_id, feasible, error| StrategyPlanView {
+        state,
+        compute_id: Some(compute_id),
+        result: Some(Box::new(result(feasible))),
+        error: None,
+        error_field: None,
+        edit: Some(edit(error)),
+    };
+    let with_plan = |plan| StrategyView {
+        plan,
+        ..dirty.clone()
+    };
+    vec![
+        sample_response(Reply::StrategyMoveBoundary {
+            value: with_plan(plan(StrategyPlanState::Edited, 7, true, None)),
+        }),
+        sample_response(Reply::StrategyMoveStop {
+            value: with_plan(plan(StrategyPlanState::Edited, 7, true, None)),
+        }),
+        sample_response(Reply::StrategyRecalculate {
+            value: with_plan(plan(StrategyPlanState::Calculating, 8, true, None)),
+        }),
+        sample_response(Reply::StrategyView {
+            value: with_plan(plan(
+                StrategyPlanState::Edited,
+                8,
+                true,
+                Some(StrategyEditError::ScheduleNotPreserved),
+            )),
+        }),
+        sample_response(Reply::StrategyView {
+            value: with_plan(plan(StrategyPlanState::Calculated, 8, false, None)),
+        }),
+        sample_response(Reply::StrategyResetEdit {
+            value: with_plan(plan(StrategyPlanState::Calculated, 7, true, None)),
         }),
     ]
 }

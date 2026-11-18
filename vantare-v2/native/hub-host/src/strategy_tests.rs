@@ -668,7 +668,11 @@ fn a_switching_account_cancels_compute_and_keeps_its_prepared_document_private()
             ready.send(()).unwrap();
             wait.recv().unwrap();
             assert!(cancel.load(Ordering::Relaxed));
-            Ok((Document::empty(NOW).unwrap(), StrategyPlanView::default()))
+            Ok((
+                Document::empty(NOW).unwrap(),
+                StrategyPlanView::default(),
+                None,
+            ))
         })
         .unwrap();
     started.recv().unwrap();
@@ -705,7 +709,11 @@ fn a_licence_refresh_on_the_same_account_keeps_the_draft_and_the_running_calcula
             ready.send(()).unwrap();
             wait.recv().unwrap();
             assert!(!cancel.load(Ordering::Relaxed), "the refresh cancelled it");
-            Ok((Document::empty(NOW).unwrap(), StrategyPlanView::default()))
+            Ok((
+                Document::empty(NOW).unwrap(),
+                StrategyPlanView::default(),
+                None,
+            ))
         })
         .unwrap();
     started.recv().unwrap();

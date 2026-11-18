@@ -10,6 +10,13 @@ import type { Page } from "playwright-core";
  * - «PERFILES» is the only scrollable zone and never paints over the footer;
  * - the «hay más» cue is on exactly while the profile list has something left
  *   to scroll and turns off at the end.
+ *
+ * #2645 compacts the navigation and footer rows to 36 px only at window
+ * heights of 767 px or less, so that «PERFILES» shows one whole profile at
+ * 1280×720. Two more rules pin that:
+ * - below the threshold (1280×800, 1440×900) the rows keep their 40 px height;
+ * - at 1280×720 at least one profile is whole between the «PERFILES» title and
+ *   «Contraer barra», with no clipping ancestor left to shave it.
  */
 export async function checkSidebarProfiles(page: Page, base: string) {
   const viewport = page.viewportSize();
@@ -56,7 +63,8 @@ export async function checkSidebarProfiles(page: Page, base: string) {
           const list = document.querySelector<HTMLElement>(
             ".v-sidebar-profile-list",
           );
-          if (!sidebar || !footer || !section || !list)
+          const title = section?.querySelector<HTMLElement>(".v-nav-heading");
+          if (!sidebar || !footer || !section || !list || !title)
             throw new Error("Sidebar profiles missing");
           /** Height of `node` that survives every clipping ancestor. */
           const visibleHeight = (node: HTMLElement) => {
@@ -103,10 +111,19 @@ export async function checkSidebarProfiles(page: Page, base: string) {
           const rows = [
             ...document.querySelectorAll<HTMLElement>(".v-sidebar-profile"),
           ];
+          const footerRows = [
+            ...document.querySelectorAll<HTMLElement>(
+              ".v-sidebar-expanded-footer .v-sidebar-footer-row",
+            ),
+          ];
+          const palette = document.querySelector<HTMLElement>(
+            ".v-sidebar-expanded-footer .v-sidebar-palette",
+          );
           return {
             sidebar: box(sidebar),
             footer: box(footer),
             section: box(section),
+            title: box(title),
             list: {
               ...box(list),
               clientHeight: list.clientHeight,
@@ -123,6 +140,11 @@ export async function checkSidebarProfiles(page: Page, base: string) {
               ...box(node),
               visible: Math.round(visibleHeight(node) * 10) / 10,
             })),
+            footerRows: footerRows.map((node) => ({
+              label: node.textContent?.replace(/\s+/g, " ").trim() ?? "",
+              ...box(node),
+            })),
+            palette: palette ? box(palette) : null,
             scrollers: [...sidebar.querySelectorAll<HTMLElement>("*")]
               .filter(scrolls)
               .map((node) => (node.getAttribute("class") ?? "").slice(0, 40)),
@@ -191,10 +213,54 @@ export async function checkSidebarProfiles(page: Page, base: string) {
         first.list.bottom <= first.footer.top + 0.5,
         `${at}: the profile list reaches into the footer (${first.list.bottom} > ${first.footer.top})`,
       );
+      // (a2) #2645: the compact rows belong to `max-height: 767px` only, so the
+      // sizes above the threshold must keep the 40 px rows of the expanded bar.
+      if (height > 767) {
+        assert.ok(
+          first.footerRows.length >= 2,
+          `Positive control: footer rows (Contraer barra, Ajustes) at ${at}`,
+        );
+        for (const item of first.nav)
+          assert.equal(
+            item.height,
+            40,
+            `${at}: navigation entry «${item.label}» must keep the 40 px row above 767 px (${item.height} px)`,
+          );
+        for (const row of first.footerRows)
+          assert.equal(
+            row.height,
+            40,
+            `${at}: footer row «${row.label}» must keep the 40 px row above 767 px (${row.height} px)`,
+          );
+        assert.equal(
+          first.palette?.height,
+          40,
+          `${at}: the themes selector must keep its 40 px row above 767 px (${first.palette?.height} px)`,
+        );
+      }
+
       const rowHeight = first.rows[0]?.height ?? 0;
-      // One whole profile must be visible at rest whenever there is room for it.
-      // Below that (1280×720 today, see the sidebar compacting issue) the lane
-      // is shorter than a row and no row can be complete.
+      // #2645: «PERFILES» must show at least one whole profile at every size,
+      // 1280×720 included: the row between the «PERFILES» title and «Contraer
+      // barra», with no clipping ancestor shaving it.
+      const wholeRows = first.rows.filter(
+        (row) => Math.abs(row.visible - row.height) <= 0.5,
+      );
+      assert.ok(
+        wholeRows.length >= 1,
+        `${at}: «PERFILES» must show at least one whole profile (${wholeRows.length} of ${first.rows.length}; list ${first.list.clientHeight} px, row ${rowHeight} px)`,
+      );
+      for (const row of wholeRows) {
+        assert.ok(
+          row.top >= first.title.bottom - 0.5,
+          `${at}: the whole profile «${row.label}» starts above the «PERFILES» title`,
+        );
+        assert.ok(
+          row.bottom <= first.footer.top + 0.5,
+          `${at}: the whole profile «${row.label}» runs into the footer`,
+        );
+      }
+      // Whenever the lane has room for a row, the first profile is whole.
       const wholeRowsFit = first.list.clientHeight >= rowHeight - 0.5;
       if (wholeRowsFit)
         assert.equal(

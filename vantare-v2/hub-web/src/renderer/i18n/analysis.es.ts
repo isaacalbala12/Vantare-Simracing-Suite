@@ -14,7 +14,8 @@ export const analysisText = {
   intro: "Tus sesiones grabadas en este PC. Abre una para ver sus vueltas.",
   track: "Circuito sin identificar",
   car: "Coche sin identificar",
-  moreSessions: (count: number) => `+${count} sesiones`,
+  moreSessions: (count: number) =>
+    `+${count} ${count === 1 ? "sesión" : "sesiones"}`,
   moreSessionsHelp: (count: number) =>
     count === 1
       ? "1 sesión más en esta grabación"

@@ -44,7 +44,7 @@ export async function checkAnalysisSessions(
           );
         }
         const real = page.getByRole("button", {
-          name: /Spa.*Porsche.*GT3.*\+1 sesiones/,
+          name: /Spa.*Porsche.*GT3.*\+1 sesión$/,
         });
         await real.waitFor();
         const legacy = page

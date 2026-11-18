@@ -185,6 +185,12 @@ export function AnalysisLaps({
   const summary = summarizeLaps(opened?.laps ?? []);
   const latest = opened?.sessions[0];
   const grouped = (opened?.sessions.length ?? 0) > 1;
+  const sharedIdentity = opened?.sessions.every(
+    (session) =>
+      session.trackName === latest?.trackName &&
+      session.vehicle === latest?.vehicle &&
+      session.className === latest?.className,
+  );
   const back = () => controller?.load();
   const metrics: [string, ReactNode, string][] = [
     [
@@ -330,9 +336,13 @@ export function AnalysisLaps({
                                 title={[
                                   sessionType(session) ??
                                     t.sessionNumber(session.index + 1),
-                                  session.trackName,
-                                  session.vehicle,
-                                  session.className,
+                                  ...(sharedIdentity
+                                    ? []
+                                    : [
+                                        session.trackName,
+                                        session.vehicle,
+                                        session.className,
+                                      ]),
                                 ]
                                   .filter(Boolean)
                                   .join(" · ")}

@@ -7,6 +7,7 @@ import { create } from "../src/mock/modules/analysis";
 import type { AnalysisSnapshot } from "../src/renderer/app/AnalysisController";
 import { lapTime, summarizeLaps } from "../src/renderer/app/analysis-laps";
 import { offline } from "../src/renderer/app/Host";
+import { analysisText } from "../src/renderer/i18n/analysis.es";
 import { AnalysisCatalog } from "../src/renderer/ui/analysis/Analysis";
 import { AnalysisLaps } from "../src/renderer/ui/analysis/RecordingDetail";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
@@ -79,10 +80,10 @@ it("shows the latest session's identity and official best with accessible contex
     />,
   );
   const row = screen.getByRole("button", {
-    name: /Spa.*Porsche.*GT3.*\+1 sesiones/,
+    name: /Spa.*Porsche.*GT3.*\+1 sesión$/,
   });
   expect(row.getAttribute("aria-description")).toContain("1 sesión más");
-  expect(within(row).getByText("+1 sesiones").getAttribute("title")).toContain(
+  expect(within(row).getByText("+1 sesión").getAttribute("title")).toContain(
     "1 sesión más",
   );
   const cell = screen.getByRole("cell", { name: "1:52.225" });
@@ -92,6 +93,13 @@ it("shows the latest session's identity and official best with accessible contex
   expect(screen.queryByText("Monza")).toBeNull();
   expect(screen.queryByText("1:51.625")).toBeNull();
 });
+
+it.each([
+  [1, "+1 sesión"],
+  [2, "+2 sesiones"],
+])("inflects the additional session count %s", (count, label) =>
+  expect(analysisText.moreSessions(count)).toBe(label),
+);
 
 it("falls back to the approximate recording time when the latest session has no official best", () => {
   const { state, inspection } = recording();
@@ -190,6 +198,12 @@ it("groups crossings by the reply indices and omits the approximate note for off
   expect(screen.getAllByText(/Warm-up/).length).toBeGreaterThan(0);
   const groups = [...table.tBodies];
   expect(groups).toHaveLength(3);
+  expect(groups[0].querySelector('th[scope="rowgroup"]')?.textContent).toBe(
+    "Warm-up · Interrumpida",
+  );
+  expect(groups[1].querySelector('th[scope="rowgroup"]')?.textContent).toBe(
+    "Clasificación · Posición al cerrar la sesión: 3",
+  );
   expect(within(groups[0]).getByText("Vuelta 4")).toBeTruthy();
   expect(within(groups[0]).getByText(/Interrumpida/)).toBeTruthy();
   expect(within(groups[1]).getByText("1:51.625")).toBeTruthy();
@@ -201,4 +215,25 @@ it("groups crossings by the reply indices and omits the approximate note for off
   expect(table.caption?.textContent).not.toContain(
     "Tiempos aproximados, no oficiales.",
   );
+});
+
+it("keeps session identities in the groups when the circuit differs", () => {
+  const { state, opened } = recording();
+  opened.sessions[1].trackName = "Monza";
+  render(
+    <TooltipProvider>
+      <AnalysisLaps
+        state={state}
+        enabled
+        updates={handler}
+        clock={clock}
+        timeZone={timeZone}
+      />
+    </TooltipProvider>,
+  );
+  const headers = screen
+    .getByRole("table")
+    .querySelectorAll('th[scope="rowgroup"]');
+  expect(headers[0]?.textContent).toContain("Spa · Porsche 911 GT3 R · GT3");
+  expect(headers[1]?.textContent).toContain("Monza · Porsche 911 GT3 R · GT3");
 });

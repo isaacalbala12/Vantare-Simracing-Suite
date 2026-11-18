@@ -83,6 +83,8 @@ jobs:
         run: |
           Remove-Item Env:VANTARE_LICENSE_PUBLIC_KEYS -ErrorAction SilentlyContinue
           $coreFeatures = 'paint-stats'
+          $keyId = ''
+          $registryHash = ''
           if ($env:QA_LICENSE_INPUT) {
             if ($env:GITHUB_EVENT_NAME -cne 'push' -or -not $env:GITHUB_REF.StartsWith('refs/heads/qa-kit/', [StringComparison]::Ordinal)) {
               throw 'La clave pública QA solo se admite en push a qa-kit/**'
@@ -90,6 +92,15 @@ jobs:
             if ($env:QA_LICENSE_INPUT -cnotmatch '\Aqa-[0-9a-f]{8}:[A-Za-z0-9_-]{43}\z') {
               throw 'La entrada debe ser una sola clave pública que produzca vantare-qa-license'
             }
+            $keyId, $encodedKey = $env:QA_LICENSE_INPUT.Split(':', 2)
+            $publicBytes = [Convert]::FromBase64String($encodedKey.Replace('-', '+').Replace('_', '/') + '=')
+            $canonicalKey = [Convert]::ToBase64String($publicBytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+            $publicDigest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($publicBytes)).ToLowerInvariant()
+            if ($publicBytes.Length -ne 32 -or $encodedKey -cne $canonicalKey -or $keyId -cne ('qa-' + $publicDigest.Substring(0,8))) {
+              throw 'El key_id QA no corresponde a la entrada pública'
+            }
+            $registryHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData(
+              [Text.Encoding]::ASCII.GetBytes($env:QA_LICENSE_INPUT))).ToLowerInvariant()
             $coreFeatures += ',qa-license'
           }
           $out = Join-Path $env:RUNNER_TEMP 'qa-kit/bin'
@@ -100,11 +111,12 @@ jobs:
             @{ package='vantare-services'; bin='vantare-services'; features='' },
             @{ package='vantare-runtime'; bin='vantare'; features='' }
           )
+          $steps += @{ package='vantare-runtime'; bin='vantare-qa-license'; features='qa-license' }
           foreach ($s in $steps) {
             $cargoArgs = @('build','--manifest-path','vantare-v2/native/Cargo.toml','--locked','--release','-p',$s.package,'--bin',$s.bin)
             if ($s.features) { $cargoArgs += @('--features',$s.features) }
             try {
-              if ($s.bin -eq 'vantare-core' -and $coreFeatures -eq 'paint-stats,qa-license') {
+              if ($keyId -and $s.bin -in @('vantare-core','vantare-qa-license')) {
                 $env:VANTARE_LICENSE_PUBLIC_KEYS = $env:QA_LICENSE_INPUT
               }
               cargo @cargoArgs
@@ -113,9 +125,17 @@ jobs:
               Remove-Item Env:VANTARE_LICENSE_PUBLIC_KEYS -ErrorAction SilentlyContinue
             }
             # El cargo test posterior puede reconstruir los binarios con otras features.
-            Copy-Item (Join-Path $env:CARGO_TARGET_DIR "release/$($s.bin).exe") $out
+            $destination = $out
+            if ($s.bin -eq 'vantare-qa-license' -and -not $keyId) {
+              # Separate bootstrap artifact for the native keygen; never in a visual kit.
+              $destination = Join-Path $env:RUNNER_TEMP 'qa-license-bootstrap'
+              New-Item -ItemType Directory -Force $destination | Out-Null
+            }
+            Copy-Item (Join-Path $env:CARGO_TARGET_DIR "release/$($s.bin).exe") $destination
           }
           "QA_KIT_CORE_FEATURES=$coreFeatures" >> $env:GITHUB_ENV
+          "QA_KIT_KEY_ID=$keyId" >> $env:GITHUB_ENV
+          "QA_KIT_REGISTRY_SHA256=$registryHash" >> $env:GITHUB_ENV
       - name: Arnés de lifecycle (compilado, sin ejecutar)
         env:
           CARGO_TARGET_DIR: ${{ env.TARGET_MAIN }}
@@ -133,15 +153,42 @@ jobs:
           $rows = Get-ChildItem "$out/bin" -File | Sort-Object Name | ForEach-Object {
             [ordered]@{ file=$_.Name; size=$_.Length; sha256=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
           }
+          $measurement = $env:QA_KIT_CORE_FEATURES -ceq 'paint-stats,qa-license'
+          $cli = @($rows | Where-Object file -ceq 'vantare-qa-license.exe')
+          if ($cli.Count -ne [int]$measurement -or [bool]$env:QA_KIT_KEY_ID -ne $measurement -or
+              [bool]$env:QA_KIT_REGISTRY_SHA256 -ne $measurement) {
+            throw 'Inventario o procedencia de licencia no corresponde al modo del kit'
+          }
           [ordered]@{
             source_sha=$env:GITHUB_SHA
             run_id=$env:GITHUB_RUN_ID
             profile='release opt=3 debug=0 lto=false codegen-units=16'
             core_features=@($env:QA_KIT_CORE_FEATURES.Split(','))
-            license_public_keys_configured=($env:QA_KIT_CORE_FEATURES -ceq 'paint-stats,qa-license')
+            license_public_keys_configured=$measurement
+            license_key_id=if ($measurement) { $env:QA_KIT_KEY_ID } else { $null }
+            license_registry_sha256=if ($measurement) { $env:QA_KIT_REGISTRY_SHA256 } else { $null }
+            qa_license_cli_sha256=if ($measurement) { $cli[0].sha256 } else { $null }
             files=$rows
           } |
             ConvertTo-Json -Depth 5 | Set-Content "$out/binarios.json" -Encoding utf8
+      - name: Recibo del CLI de arranque
+        if: env.QA_KIT_CORE_FEATURES == 'paint-stats'
+        run: |
+          $bootstrap = Join-Path $env:RUNNER_TEMP 'qa-license-bootstrap'
+          $cli = Join-Path $bootstrap 'vantare-qa-license.exe'
+          [ordered]@{
+            source_sha=$env:GITHUB_SHA
+            run_id=$env:GITHUB_RUN_ID
+            sha256=(Get-FileHash -LiteralPath $cli -Algorithm SHA256).Hash.ToLowerInvariant()
+            features=@('qa-license')
+          } | ConvertTo-Json | Set-Content (Join-Path $bootstrap 'cli.json') -Encoding utf8
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: env.QA_KIT_CORE_FEATURES == 'paint-stats'
+        with:
+          name: qa-license-bootstrap-${{ github.sha }}
+          path: ${{ runner.temp }}/qa-license-bootstrap
+          if-no-files-found: error
+          retention-days: 5
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: qa-kit-${{ github.sha }}

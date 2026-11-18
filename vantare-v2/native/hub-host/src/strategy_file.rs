@@ -2,9 +2,9 @@
 //! process and travels only main → host: the renderer asks for a dialog with a
 //! mode and a revision and gets back the name of the file, never its path.
 use super::{
-    OPTIONS, PRIMARY, State, StrategyState, StrategyView, document_state, hash, parse_primary,
-    validate_projection,
+    OPTIONS, PRIMARY, State, StrategyState, StrategyView, document_state,
     files::{self, Mode},
+    hash, parse_primary, validate_projection,
 };
 use crate::protocol::HostError;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -128,7 +128,22 @@ fn device_name(name: &std::ffi::OsStr) -> bool {
         || stem
             .strip_prefix("COM")
             .or_else(|| stem.strip_prefix("LPT"))
-            .is_some_and(|number| matches!(number, "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"))
+            .is_some_and(|number| {
+                // Windows 11 also reserves the superscript digits
+                let mut digits = number.chars();
+                matches!(
+                    (digits.next(), digits.next()),
+                    (Some('1'..='9' | '\u{b9}' | '\u{b2}' | '\u{b3}'), None)
+                )
+            })
+}
+
+/// The copy of a damaged document lives in the data directory with this
+/// extension; opening or writing it would lose the only copy.
+fn quarantine_name(name: &std::ffi::OsStr) -> bool {
+    name.to_string_lossy()
+        .to_ascii_lowercase()
+        .ends_with(".invalid")
 }
 
 /// What `files` refuses to read or write, as the host reports it.
@@ -152,6 +167,7 @@ fn checked_path(path: &str) -> Result<PathBuf, HostError> {
         || !crate::launcher::apps::unambiguous_path(chosen)
         || file_of(chosen).is_none()
         || environment_file(chosen)
+        || chosen.file_name().is_some_and(quarantine_name)
         || chosen
             .components()
             .any(|part| matches!(part, Component::Normal(name) if device_name(name)))
@@ -179,7 +195,9 @@ fn comparable(path: &Path) -> String {
     let text = path.to_string_lossy();
     let text = text.strip_prefix(r"\\?\").unwrap_or(&text);
     if cfg!(windows) {
-        text.replace('/', "\\").trim_end_matches('\\').to_lowercase()
+        text.replace('/', "\\")
+            .trim_end_matches('\\')
+            .to_lowercase()
     } else {
         text.to_string()
     }
@@ -190,10 +208,18 @@ pub(super) fn same_file(a: &Path, b: &Path) -> bool {
     a == b || comparable(&normalized(a)) == comparable(&normalized(b))
 }
 
-/// The file is where the user chose it: no link or junction on the way.
+/// The file is where the user chose it: no link, junction, `subst` drive or short
+/// name on the way. Reading and writing use this one check; a file that does not
+/// exist yet is judged by its folder.
 fn direct(path: &Path) -> bool {
-    std::fs::canonicalize(path)
-        .is_ok_and(|real| comparable(&real) == comparable(&path.components().collect::<PathBuf>()))
+    let real = match std::fs::canonicalize(path) {
+        Ok(real) => real,
+        Err(_) => match (path.parent().map(std::fs::canonicalize), path.file_name()) {
+            (Some(Ok(folder)), Some(name)) => folder.join(name),
+            _ => return false,
+        },
+    };
+    comparable(&real) == comparable(&path.components().collect::<PathBuf>())
 }
 
 /// One read of a chosen file, never more than the document limit plus one byte.
@@ -277,7 +303,11 @@ impl State {
                 }
             }
         }
-        if self.ticket.as_ref().is_some_and(|ticket| now < ticket.expires) {
+        if self
+            .ticket
+            .as_ref()
+            .is_some_and(|ticket| now < ticket.expires)
+        {
             return Err(HostError::Busy);
         }
         self.ticket = Some(Ticket {
@@ -297,7 +327,10 @@ impl State {
         now: Instant,
     ) -> Result<StrategyView, HostError> {
         if !INTERNAL_IDS.contains(&selection.id)
-            || self.ticket.as_ref().is_none_or(|ticket| ticket.id != selection.id)
+            || self
+                .ticket
+                .as_ref()
+                .is_none_or(|ticket| ticket.id != selection.id)
         {
             return Err(HostError::Denied);
         }
@@ -355,9 +388,7 @@ impl State {
         let mut rejected = None;
         let (doc, observed, status, revision) = match read {
             Read::Missing => (None, None, StrategyState::Empty, hash(b"")),
-            Read::TooLarge | Read::Unavailable => {
-                (None, None, StrategyState::Protected, hash(b""))
-            }
+            Read::TooLarge | Read::Unavailable => (None, None, StrategyState::Protected, hash(b"")),
             Read::Bytes(bytes) => {
                 let revision = hash(&bytes);
                 match parse_primary(&bytes) {
@@ -391,9 +422,10 @@ impl State {
 
     /// The copy of a damaged document, in the data directory.
     fn keep_copy(&self, bytes: &[u8]) -> bool {
-        let archive = self
-            .root
-            .join(format!("strategy-invalid-{}.json.invalid", &hash(bytes)[..16]));
+        let archive = self.root.join(format!(
+            "strategy-invalid-{}.json.invalid",
+            &hash(bytes)[..16]
+        ));
         let limit = u64::try_from(MAX_BYTES).unwrap_or(u64::MAX);
         match files::read_optional(&archive, limit) {
             Ok(Some(existing)) => existing == bytes,
@@ -404,6 +436,17 @@ impl State {
 
     fn save_as_file(&mut self, path: PathBuf) -> Result<StrategyView, HostError> {
         if same_file(&path, &self.path) {
+            // A real «Guardar»: a clean document also compares with the file
+            // it observed, so a change made elsewhere is a conflict, not a silent
+            // success.
+            if !self.dirty() {
+                let limit = u64::try_from(MAX_BYTES).unwrap_or(u64::MAX);
+                if files::read_optional(&self.path, limit).ok().flatten() != self.observed {
+                    let mut current = self.fresh();
+                    current.read_current()?;
+                    return Err(current.conflict());
+                }
+            }
             let revision = self.revision.clone();
             return self.save(&revision);
         }
@@ -412,13 +455,35 @@ impl State {
         if same_file(&path, &self.root.join(PRIMARY)) {
             return Err(HostError::StrategyTargetExists);
         }
-        if !path.parent().is_some_and(Path::is_dir) {
+        // the folder must be the one the user chose, as when the file is read
+        // again: a link, junction or `subst` drive would leave a document that
+        // cannot be opened
+        if !direct(&path) || !path.parent().is_some_and(Path::is_dir) {
             return Err(HostError::StrategyFileUnavailable);
         }
-        let bytes = self.doc.as_ref().ok_or(HostError::Rejected)?.bytes().to_vec();
-        match files::save(&path, &bytes, Mode::Observed(None), &OPTIONS) {
+        let bytes = self
+            .doc
+            .as_ref()
+            .ok_or(HostError::Rejected)?
+            .bytes()
+            .to_vec();
+        // `files::save` takes `<target>.lock` and leaves it behind; in a folder of
+        // the user's that lock is only removed when it was this write that made it
+        let lock = {
+            let mut name = path.clone().into_os_string();
+            name.push(".lock");
+            PathBuf::from(name)
+        };
+        let lock_existed = lock.exists();
+        let saved = files::save(&path, &bytes, Mode::Observed(None), &OPTIONS);
+        if !lock_existed {
+            let _ = std::fs::remove_file(&lock);
+        }
+        match saved {
             Ok(()) => {}
-            Err(error) if error.kind().is_conflict() => return Err(HostError::StrategyTargetExists),
+            Err(error) if error.kind().is_conflict() => {
+                return Err(HostError::StrategyTargetExists);
+            }
             Err(files::Error::Busy) => return Err(HostError::Busy),
             Err(files::Error::TooLarge { .. }) => return Err(HostError::StrategyFileTooLarge),
             Err(_) => return Err(HostError::StrategyFileUnavailable),

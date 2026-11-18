@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -16,7 +17,64 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from native_gate_scope import classify_paths  # noqa: E402
 
 
+# Only these production functions may terminate a process. Keep the path
+# restriction so a new script cannot opt in by reusing a function name.
+QA_OWNED_FUNCTIONS = {
+    'TANDA.ps1': {'invoke-tandaprocess', 'close-tandaowned', 'get-tandaliveclock', 'read-tandapolicy'},
+    'LICENCIA_TANDA.ps1': {'invoke-tandalicensecli'},
+}
+QA_KILL_COMMAND = re.compile(
+    r'(?<![\w.-])(?:taskkill|stop-process|pkill|killall|kill|spps|terminateprocess)(?![\w-])',
+    re.IGNORECASE,
+)
+QA_HANDLE_OPERATION = re.compile(r"""\.\s*['"]?(?:kill|killpg|terminate)['"]?\s*\(""", re.IGNORECASE)
+# Audited QA scripts put top-level function headers and closing braces at
+# column zero. Stop at a closing brace, never extend into script-level code.
+PS_FUNCTION = re.compile(r'^function\s+([\w-]+)[^\n]*\{[^\n]*\n.*?^\}[ \t]*$', re.M | re.S | re.I)
+
+
+def qa_process_violations(path: Path, relative: str) -> list[str]:
+    code = path.read_text(encoding='utf-8-sig').replace('`', '')
+    errors = []
+    approved = QA_OWNED_FUNCTIONS.get(relative, set())
+    approved_ranges = [match.span() for match in PS_FUNCTION.finditer(code) if match[1].casefold() in approved]
+    if QA_KILL_COMMAND.search(code):
+        errors.append('comando de terminación prohibido')
+    for match in QA_HANDLE_OPERATION.finditer(code):
+        if not any(start <= match.start() < end for start, end in approved_ranges):
+            line = code.count('\n', 0, match.start()) + 1
+            errors.append(f'terminación fuera de una función permitida, línea {line}')
+    return errors
+
 class ClassifyPathsTest(unittest.TestCase):
+    def test_qa_process_guard_rejects_injected_termination(self) -> None:
+        samples = (
+            ('taskkill /IM node.exe', 'comando de terminación prohibido'),
+            ('Stop-Process -Name node', 'comando de terminación prohibido'),
+            ('pkill node', 'comando de terminación prohibido'),
+            ('killall node', 'comando de terminación prohibido'),
+            ('(Get-Process explorer).Ki`ll($true)', 'terminación fuera de una función permitida'),
+            ("(Get-Process explorer).'Terminate'()", 'terminación fuera de una función permitida'),
+        )
+        with tempfile.TemporaryDirectory() as folder:
+            script = Path(folder) / 'TANDA.ps1'
+            for command, error in samples:
+                with self.subTest(command=command):
+                    script.write_text(
+                        'function Close-TandaOwned($owned){\n $owned.Kill($true)\n}\n' + command,
+                        encoding='utf-8',
+                    )
+                    self.assertTrue(any(error in problem for problem in qa_process_violations(script, script.name)))
+            script.write_text('Get-Process -Name node', encoding='utf-8')
+            self.assertEqual(qa_process_violations(script, script.name), [])
+
+    def test_qa_overlays_terminates_only_in_allowed_functions(self) -> None:
+        directory = Path(__file__).resolve().parents[2] / 'tools/qa-overlays'
+        self.assertTrue(directory.is_dir())
+        for path in sorted(directory.rglob('*')):
+            if path.suffix.casefold() in {'.ps1', '.psm1', '.cmd', '.bat', '.sh', '.py', '.js', '.rs', '.cs'}:
+                relative = path.relative_to(directory).as_posix()
+                self.assertEqual(qa_process_violations(path, relative), [], relative)
     def test_qa_license_paths_enter_the_native_gate(self) -> None:
         for relative in (
             "Cargo.toml",

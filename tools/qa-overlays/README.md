@@ -274,6 +274,14 @@ catálogo conservan sus ajustes y sus omisiones originales documentadas.
 
 ### Revisión de seguridad de #2525
 
+Solo se pueden terminar procesos que el propio script lanzó y guardó por
+objeto `Process` o PID. Está prohibido terminar por nombre, incluidos
+`taskkill /IM`, `Stop-Process -Name`, `pkill`, `killall` y tuberías de
+`Get-Process` hacia terminación. Si hay un juego o una instancia ajena de
+Vantare, abortar y avisar sin tocar sus procesos. Se permite consultar por
+nombre para detectar esa situación. El gate estático rechaza comandos de
+terminación y solo admite llamadas de cierre en las funciones permitidas.
+
 #### Medición con credencial QA
 
 El controlador prepara cada binding en un perfil QA nuevo, fuera del árbol de

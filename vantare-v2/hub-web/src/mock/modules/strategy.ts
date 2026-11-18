@@ -41,6 +41,15 @@ function withoutInputs(): StrategyView {
   return structuredClone(value) as StrategyView;
 }
 
+// QA: stored inputs that read as an input but do not validate. The form shows
+// them, so the user can correct them, and the event does not count as having inputs.
+function withInvalidInputs(): StrategyView {
+  const view = sample("ready");
+  view.events = view.events.map((event) => ({ ...event, hasInputs: false }));
+  if (view.form) view.form.inputs.raceLaps = "0";
+  return view;
+}
+
 const noInputs: StrategySolverFields = {
   basePaceSeconds: "",
   fuelPerLapLiters: "",
@@ -62,10 +71,44 @@ const noInputs: StrategySolverFields = {
 const formKey = (event: string, variant: string) => `${event}/${variant}`;
 
 // The host trims every text it writes.
-function trimmed(fields: StrategyFields): StrategyFields {
+function trimmed<T extends object>(value: T): T {
   return Object.fromEntries(
-    Object.entries(fields).map(([key, value]) => [key, value.trim()]),
-  ) as unknown as StrategyFields;
+    Object.entries(value).map(([key, text]) => [key, String(text).trim()]),
+  ) as unknown as T;
+}
+
+// A number as the document writes it (a whole number keeps «.0») and as the
+// solver input prints it (plain): the host reads each entry from its own source.
+function spell(value: string): string {
+  const number = Number(value.trim());
+  return Number.isInteger(number) ? `${number}.0` : String(number);
+}
+const plain = (value: string) => String(Number(value.trim()));
+
+// The fields as the host reads them back after writing: trimmed, the numbers
+// spelled by the document, and the defaults `new_event` gives an empty name or mode.
+function hostFields(fields: StrategyFields): StrategyFields {
+  const text = trimmed(fields);
+  return {
+    ...text,
+    durationMinutes: plain(text.durationMinutes),
+    fuelCapacityLiters: spell(text.fuelCapacityLiters),
+    pitTransitSeconds: spell(text.pitTransitSeconds),
+    variantName: text.variantName || "Base",
+    variantMode: text.variantMode || "dry",
+  };
+}
+
+// The inputs as the host reads them back from the stored solver input: plain
+// numbers, except the reserve laps, which the event keeps as the document writes them.
+function hostInputs(inputs: StrategySolverFields): StrategySolverFields {
+  const text = trimmed(inputs);
+  const numbers = Object.fromEntries(
+    Object.entries(text)
+      .filter(([key]) => key !== "serviceMode")
+      .map(([key, value]) => [key, plain(value)]),
+  );
+  return { ...text, ...numbers, reserveLaps: spell(text.reserveLaps) };
 }
 
 const noPlan: StrategyPlanView = {
@@ -253,6 +296,7 @@ export function create(context: MockContext): MockHandler {
     "target",
     "pick",
     "noInputs",
+    "invalidInputs",
     "planned",
   ].some((prefix) => scenario.startsWith(prefix))
     ? "ready"
@@ -260,13 +304,15 @@ export function create(context: MockContext): MockHandler {
   let saved =
     scenario === "noInputs"
       ? withoutInputs()
-      : sample(
-          ["ready", "recovered", "protected", "importedLegacy"].includes(
-            opening,
-          )
-            ? opening
-            : "empty",
-        );
+      : scenario === "invalidInputs"
+        ? withInvalidInputs()
+        : sample(
+            ["ready", "recovered", "protected", "importedLegacy"].includes(
+              opening,
+            )
+              ? opening
+              : "empty",
+          );
   let current = structuredClone(saved);
   // The entries of each variant written in this session (create, confirm and a
   // calculation), as the host keeps them in the document; the others are the
@@ -296,7 +342,15 @@ export function create(context: MockContext): MockHandler {
       track: event.track,
       variantName: variant.name,
     };
-    if (!event.hasInputs) base.inputs = { ...noInputs };
+    // Only the first variant of an event that has inputs stores them; the others
+    // show empty inputs but for the pace and consumption, which belong to the event.
+    const stored = event.hasInputs && event.strategies[0]?.id === variant.id;
+    if (!stored)
+      base.inputs = {
+        ...noInputs,
+        basePaceSeconds: base.inputs.basePaceSeconds,
+        fuelPerLapLiters: base.inputs.fuelPerLapLiters,
+      };
     return base;
   }
   function activeForm(view: StrategyView): Form | null {
@@ -710,8 +764,8 @@ export function create(context: MockContext): MockHandler {
         // a calculation confirms its inputs, whatever it finds (the host keeps no plan)
         if (current.activeEventId && current.activeStrategyId)
           forms[formKey(current.activeEventId, current.activeStrategyId)] = {
-            fields: trimmed(fields),
-            inputs: { ...inputs },
+            fields: hostFields(fields),
+            inputs: hostInputs(inputs),
           };
         const events = current.events.map((event) =>
           event.id !== current.activeEventId
@@ -741,8 +795,6 @@ export function create(context: MockContext): MockHandler {
     }
     if (request.method === "strategy.create") {
       const { fields, inputs } = request;
-      if (current.events.length >= 32)
-        return failure({ kind: "strategyInvalidText" });
       if (
         !validForm(fields, true) ||
         [request.basePaceSeconds, request.fuelPerLapLiters].some(
@@ -758,6 +810,9 @@ export function create(context: MockContext): MockHandler {
             fields.variantMode.trim() !== "dry"))
       )
         return failure({ kind: "rejected" });
+      // the limit of events is the last check, as in the host
+      if (current.events.length >= 32)
+        return failure({ kind: "strategyInvalidText" });
       let number = 1;
       while (
         current.events.some((event) => event.id === `native-event-${number}`)
@@ -775,13 +830,17 @@ export function create(context: MockContext): MockHandler {
         hasInputs: inputs !== null,
       };
       forms[formKey(event.id, "variant-1")] = {
-        fields: trimmed(fields),
+        fields: hostFields(fields),
         inputs: inputs
-          ? { ...inputs }
+          ? hostInputs(inputs)
           : {
               ...noInputs,
-              basePaceSeconds: request.basePaceSeconds?.trim() ?? "",
-              fuelPerLapLiters: request.fuelPerLapLiters?.trim() ?? "",
+              basePaceSeconds: request.basePaceSeconds?.trim()
+                ? spell(request.basePaceSeconds)
+                : "",
+              fuelPerLapLiters: request.fuelPerLapLiters?.trim()
+                ? spell(request.fuelPerLapLiters)
+                : "",
             },
       };
       edit({
@@ -816,7 +875,7 @@ export function create(context: MockContext): MockHandler {
         updated.track = fields.track.trim();
         updated.strategies[variant].name = fields.variantName.trim();
         forms[formKey(updated.id, updated.strategies[variant].id)] = {
-          fields: trimmed(fields),
+          fields: hostFields(fields),
           inputs: formOf(event, event.strategies[variant]).inputs,
         };
         edit({ events });

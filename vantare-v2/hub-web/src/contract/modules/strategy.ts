@@ -97,8 +97,8 @@ function event(value: unknown): boolean {
     value.drivers <= 0xffffffff &&
     Array.isArray(value.strategies) &&
     value.strategies.every(variant) &&
-    // some variant keeps valid confirmed inputs: a plan can be calculated; it
-    // is not a plan (the document keeps none)
+    // some variant keeps plain stored inputs that are valid for the solver; it
+    // is not a plan (the document keeps none) nor a promise that compute takes them
     typeof value.hasInputs === "boolean"
   );
 }

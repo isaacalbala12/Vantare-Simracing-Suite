@@ -3,10 +3,12 @@ export type StrategyState = "ready" | "empty" | "recovered" | "protected" | "imp
 export type StrategyVariant = { id: string, name: string, };
 export type StrategyEventSummary = { id: string, name: string, class: string, track: string, drivers: number, strategies: Array<StrategyVariant>, 
 /**
- * `true` when some variant of the event keeps valid, confirmed calculation
- * inputs in the document (the draft included), so a plan can be calculated
- * from them. It does NOT say that a plan exists: the document keeps no plan,
- * only the inputs (a plan saved with the document is a later contract).
+ * `true` when some variant of the event keeps plain (scalar) calculation
+ * inputs in the document, the draft included, that are valid for the solver.
+ * It does NOT say that a plan exists (the document keeps none, only the
+ * inputs; a saved plan is a later contract) nor that `strategy.compute` will
+ * take them as they are: it refuses, for example, an event of another source
+ * or one with rules. Inputs with extended dimensions do not count.
  */
 hasInputs: boolean, };
 export type StrategyView = { revision: string, state: StrategyState, events: Array<StrategyEventSummary>, activeEventId: string | null, activeStrategyId: string | null, dirty: boolean, plan: StrategyPlanView, 
@@ -20,9 +22,12 @@ file: StrategyFile | null,
  * them: the 13 `fields` and the 15 `inputs`, the same strings
  * `strategy.compute` takes. `null` without an active event and variant, or
  * when a stored text is over the text limit or has a control character (it is
- * never cut or emptied). Without confirmed calculation inputs (`hasInputs`
- * false) `inputs` are empty strings, apart from the pace and consumption the
- * event may hold. Numbers are spelled as the document stores them (`82.0`).
+ * never cut or emptied). The `inputs` are those stored for this variant, even
+ * when they do not validate; when it stores none they are empty strings, apart
+ * from the pace and consumption the event may hold. Each number is spelled by
+ * its source: the stored inputs as plain numbers (`82`, `0.5`), the entries
+ * the event keeps (tank, pit loss, reserve laps, and the pace and consumption
+ * without stored inputs) as the document writes a number (`82.0`).
  */
 form: StrategyComputeForm | null, };
 export type StrategyFields = { name: string, durationMinutes: string, fuelCapacityLiters: string, pitTransitSeconds: string, track: string, class: string, variantName: string, variantNote: string, variantMode: string, startAt: string, team: string, driverName: string, driverInitials: string, };

@@ -2262,6 +2262,11 @@
         "method": "strategy.discard",
         "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
+    },
+    {
+      "id": 2147483648,
+      "kind": "pickedStrategyFile",
+      "path": null
     }
   ]
 }

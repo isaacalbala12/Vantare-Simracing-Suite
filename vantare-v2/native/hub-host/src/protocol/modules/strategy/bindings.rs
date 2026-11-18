@@ -197,72 +197,79 @@ pub(crate) fn corpus() -> serde_json::Value {
             ..ready_sample()
         },
     }));
-    let ui = [
-        Request::StrategyOpen {},
-        Request::StrategyView {},
-        Request::StrategySelect {
-            event_id: "event-1".into(),
-            strategy_id: "variant-2".into(),
-            revision: "a".repeat(64),
-        },
-        Request::StrategyCreate {
-            revision: "a".repeat(64),
-            fields: Box::new(fields.clone()),
-            base_pace_seconds: Some("90.472".into()),
-            fuel_per_lap_liters: Some("1.83".into()),
-        },
-        Request::StrategyConfirm {
-            event_id: "event-1".into(),
-            strategy_id: "variant-1".into(),
-            revision: "b".repeat(64),
-            fields: Box::new(fields.clone()),
-        },
-        Request::StrategyCompute {
-            event_id: "event-1".into(),
-            strategy_id: "variant-1".into(),
-            revision: "a".repeat(64),
-            form: Box::new(StrategyComputeForm {
-                fields,
-                inputs: solver_sample(),
-            }),
-        },
-        Request::StrategyCancel { compute_id: 7 },
-        Request::StrategyMoveBoundary {
-            revision: "b".repeat(64),
-            compute_id: 7,
-            index: 1,
-            lap: 3,
-        },
-        Request::StrategyMoveStop {
-            revision: "b".repeat(64),
-            compute_id: 7,
-            index: 0,
-            delta: -1,
-        },
-        Request::StrategyRecalculate {
-            revision: "b".repeat(64),
-            compute_id: 7,
-        },
-        Request::StrategyResetEdit {
-            revision: "b".repeat(64),
-            compute_id: 7,
-        },
-        Request::StrategyPickFile {
-            mode: StrategyFileMode::Open,
-            revision: "a".repeat(64),
-        },
-        Request::StrategyPickFile {
-            mode: StrategyFileMode::SaveAs,
-            revision: "b".repeat(64),
-        },
-        Request::StrategySave {
-            revision: "b".repeat(64),
-        },
-        Request::StrategyDiscard {
-            revision: "b".repeat(64),
-        },
-    ]
-    .map(|request| UiToHost::Request { id: 1, request });
+    let mut ui = Vec::from(
+        [
+            Request::StrategyOpen {},
+            Request::StrategyView {},
+            Request::StrategySelect {
+                event_id: "event-1".into(),
+                strategy_id: "variant-2".into(),
+                revision: "a".repeat(64),
+            },
+            Request::StrategyCreate {
+                revision: "a".repeat(64),
+                fields: Box::new(fields.clone()),
+                base_pace_seconds: Some("90.472".into()),
+                fuel_per_lap_liters: Some("1.83".into()),
+            },
+            Request::StrategyConfirm {
+                event_id: "event-1".into(),
+                strategy_id: "variant-1".into(),
+                revision: "b".repeat(64),
+                fields: Box::new(fields.clone()),
+            },
+            Request::StrategyCompute {
+                event_id: "event-1".into(),
+                strategy_id: "variant-1".into(),
+                revision: "a".repeat(64),
+                form: Box::new(StrategyComputeForm {
+                    fields,
+                    inputs: solver_sample(),
+                }),
+            },
+            Request::StrategyCancel { compute_id: 7 },
+            Request::StrategyMoveBoundary {
+                revision: "b".repeat(64),
+                compute_id: 7,
+                index: 1,
+                lap: 3,
+            },
+            Request::StrategyMoveStop {
+                revision: "b".repeat(64),
+                compute_id: 7,
+                index: 0,
+                delta: -1,
+            },
+            Request::StrategyRecalculate {
+                revision: "b".repeat(64),
+                compute_id: 7,
+            },
+            Request::StrategyResetEdit {
+                revision: "b".repeat(64),
+                compute_id: 7,
+            },
+            Request::StrategyPickFile {
+                mode: StrategyFileMode::Open,
+                revision: "a".repeat(64),
+            },
+            Request::StrategyPickFile {
+                mode: StrategyFileMode::SaveAs,
+                revision: "b".repeat(64),
+            },
+            Request::StrategySave {
+                revision: "b".repeat(64),
+            },
+            Request::StrategyDiscard {
+                revision: "b".repeat(64),
+            },
+        ]
+        .map(|request| UiToHost::Request { id: 1, request }),
+    );
+    // the trusted answer of the main process (never sent by the renderer)
+    ui.push(UiToHost::PickedStrategyFile(StrategyFileSelection {
+        id: 0x8000_0000,
+        path: None,
+    }));
     json!({"host":host,"ui":ui})
 }
 

@@ -12,6 +12,7 @@ import { isError, isReply, isRequest } from "../src/contract/modules/strategy";
 import { isUiMessage } from "../src/contract/validation";
 import { isRendererMessage } from "../src/main/security";
 import { createMockHost } from "../src/mock/host";
+import { requestOf, requests } from "./strategy-corpus";
 
 // biome-ignore lint/suspicious/noExplicitAny: loose probing of the wire shape
 type Json = any;
@@ -26,7 +27,7 @@ const pick = (mode: string) => ({
 describe("the picker request", () => {
   it("is a mode and a revision, in the corpus and nothing looser", () => {
     expect([...strategyFileModes]).toEqual(["open", "saveAs"]);
-    const sent = corpus.ui.map((message) => message.request);
+    const sent = requests;
     for (const mode of strategyFileModes) {
       const sample = sent.find(
         (request) =>
@@ -307,8 +308,7 @@ describe("the mock host", () => {
       eventId: view.activeEventId,
       strategyId: view.activeStrategyId,
       revision: view.revision,
-      fields: corpus.ui.find((m) => m.request.method === "strategy.confirm")
-        ?.request.fields,
+      fields: (requestOf("strategy.confirm") as Json).fields,
     }).result.value;
     expect(draft.dirty).toBe(true);
     const done = send({ ...pick("saveAs"), revision: draft.revision });
@@ -324,9 +324,7 @@ describe("the mock host", () => {
       kind: "failure",
       error: { kind: "strategyConflict" },
     });
-    const confirm = corpus.ui.find(
-      (m) => m.request.method === "strategy.confirm",
-    )?.request as Json;
+    const confirm = requestOf("strategy.confirm") as Json;
     const draft = send({
       ...confirm,
       eventId: view.activeEventId,
@@ -340,9 +338,7 @@ describe("the mock host", () => {
     const saved = send({ method: "strategy.save", revision: draft.revision })
       .result.value;
     // a calculation in flight and an edit pending
-    const compute = corpus.ui.find(
-      (m) => m.request.method === "strategy.compute",
-    )?.request as Json;
+    const compute = requestOf("strategy.compute") as Json;
     const running = send({
       ...compute,
       eventId: saved.activeEventId,
@@ -467,9 +463,7 @@ describe("the mock host", () => {
     }
   });
   it("has a scene for every reason", () => {
-    const compute = corpus.ui.find(
-      (m) => m.request.method === "strategy.compute",
-    )?.request as Json;
+    const compute = requestOf("strategy.compute") as Json;
     for (const [reason, state, certificate] of reasonScenes) {
       const scene = `strategy-reason${reason[0].toUpperCase()}${reason.slice(1)}`;
       const { send, view } = session(scene);

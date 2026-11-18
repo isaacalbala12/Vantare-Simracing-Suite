@@ -128,7 +128,7 @@ fn record(fixture: &Fixture, image: &Path, helper: &Path, interrupted: bool) {
         log,
     };
 
-    let mut checked_live = interrupted;
+    let mut checked_live = false;
     let deadline = Instant::now() + PROCESS_TIMEOUT;
     loop {
         assert!(

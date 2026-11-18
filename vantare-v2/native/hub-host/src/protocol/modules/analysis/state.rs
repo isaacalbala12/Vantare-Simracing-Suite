@@ -149,7 +149,11 @@ impl State {
         // Un corte del Core deja el JSON en «recording»: solo vale una grabación
         // que un writer tenga realmente abierta.
         let file = value["file"].as_str()?;
-        crate::analysis::status::writer_alive(&self.root.join(file)).then(|| file.to_owned())
+        // Un `file` con ruta o `..` no se sondea (nada fuera del directorio): se
+        // trata como dudoso, es decir, vivo; luego solo coincide con un nombre real.
+        (!crate::analysis::status::plain_name(file)
+            || crate::analysis::status::writer_alive(&self.root.join(file)))
+        .then(|| file.to_owned())
     }
     pub fn start(
         &mut self,

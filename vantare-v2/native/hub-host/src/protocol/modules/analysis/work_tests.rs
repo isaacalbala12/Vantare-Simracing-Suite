@@ -126,9 +126,23 @@ fn recording_status_is_host_only_and_blocks_open_and_inspect() {
     // el archivo: deja de tratarse como viva.
     drop(live);
     #[cfg(windows)]
-    assert!(!state.catalog().unwrap()[0].recording);
+    {
+        // Recién creado y libre aún cuenta como vivo (margen de publicación).
+        assert!(state.catalog().unwrap()[0].recording);
+        crate::analysis::status::backdate(&root.join("private.duckdb"));
+        assert!(!state.catalog().unwrap()[0].recording);
+    }
     std::fs::write(root.join("recording-status.json"), b"broken").unwrap();
     assert!(!state.catalog().unwrap()[0].recording);
+    // Un `file` con ruta o `..` jamás se sondea ni se casa con una grabación.
+    for file in ["../private.duckdb", "sub/private.duckdb", r"C:\private.duckdb"] {
+        std::fs::write(
+            root.join("recording-status.json"),
+            serde_json::to_vec(&serde_json::json!({"state":"recording","file":file})).unwrap(),
+        )
+        .unwrap();
+        assert!(!state.catalog().unwrap()[0].recording, "{file}");
+    }
     drop(state);
     std::fs::remove_dir_all(root).unwrap();
 }

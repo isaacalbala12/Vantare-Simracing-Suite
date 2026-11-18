@@ -360,8 +360,15 @@ fn recording_without_a_writer_reads_as_stopped_without_a_cause() {
         read(&root, &paths).unwrap().state,
         AnalysisRecordingState::Recording
     );
-    // Writer vivo (apertura exclusiva): sigue «recording».
+    // Recién publicado y aún sin writer: dentro del margen se trata como vivo.
     std::fs::write(&database, []).unwrap();
+    assert!(writer_alive(&database));
+    assert_eq!(
+        read(&root, &paths).unwrap().state,
+        AnalysisRecordingState::Recording
+    );
+    backdate(&database);
+    // Writer vivo (apertura exclusiva): sigue «recording».
     let writer = std::fs::OpenOptions::new()
         .read(true)
         .write(true)
@@ -379,4 +386,21 @@ fn recording_without_a_writer_reads_as_stopped_without_a_cause() {
     assert_eq!(dead.state, AnalysisRecordingState::Stopped);
     assert_eq!(dead.cause, None);
     std::fs::remove_dir_all(root).unwrap();
+}
+#[test]
+fn only_plain_names_are_probed() {
+    for name in ["series-1-2.duckdb", "a.duckdb"] {
+        assert!(plain_name(name), "{name}");
+    }
+    for name in [
+        "",
+        "..",
+        "../x.duckdb",
+        "sub/x.duckdb",
+        r"sub\x.duckdb",
+        r"C:\x.duckdb",
+        "/x.duckdb",
+    ] {
+        assert!(!plain_name(name), "{name}");
+    }
 }

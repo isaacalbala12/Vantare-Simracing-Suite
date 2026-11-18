@@ -14,9 +14,8 @@ permissions:
   contents: read
 jobs:
   web:
-    # Medido (VANTA-138): web-a11y.ts ronda ~12-13 min en CI y el job entero ~16;
-    # 25 deja margen sin esconder un cuelgue, cada espera del script tiene plazo propio.
-    timeout-minutes: 25
+    # Nightly 8-11 min, peor visto 12,4 (PR); 20 deja margen y corta un cuelgue.
+    timeout-minutes: 20
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     runs-on: ubuntu-latest

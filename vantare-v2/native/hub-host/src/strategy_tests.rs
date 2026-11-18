@@ -394,15 +394,18 @@ fn a_recovered_document_can_be_saved_and_a_future_document_cannot() {
 fn out_of_range_text_does_not_disappear_or_trigger_quarantine() {
     let root = Root::new();
     let mut state = root.state();
-    let valid = document("2.1.0");
+    let valid = String::from_utf8(document("2.1.0")).unwrap();
     let long_name = "é".repeat(257);
-    let long = String::from_utf8(valid)
-        .unwrap()
-        .replace("Practice", &long_name);
-    fs::write(root.primary(), &long).unwrap();
-    assert_eq!(state.open(), Err(HostError::StrategyInvalidText));
-    assert_eq!(fs::read(root.primary()).unwrap(), long.as_bytes());
-    assert!(!root.0.join("strategy-v2.json.invalid").exists());
+    for invalid in [
+        valid.replace("Practice", &long_name),
+        valid.replace("event-1", &"e".repeat(257)),
+        valid.replace("variant-1", &"v".repeat(257)),
+    ] {
+        fs::write(root.primary(), &invalid).unwrap();
+        assert_eq!(state.open(), Err(HostError::StrategyInvalidText));
+        assert_eq!(fs::read(root.primary()).unwrap(), invalid.as_bytes());
+        assert!(!root.0.join("strategy-v2.json.invalid").exists());
+    }
     fs::remove_file(root.primary()).unwrap();
     let empty = state.open().unwrap();
     assert_eq!(

@@ -493,13 +493,14 @@ fn validate_projection(doc: &Document) -> Result<(), HostError> {
         return Err(HostError::Protected);
     }
     for event in events {
-        if ["name", "cls", "track"]
-            .iter()
-            .any(|key| !projectable_text(&event[*key]))
-            || array(&event["strategies"])
+        let event_ok = event["id"].as_str().is_some_and(valid_id)
+            && ["name", "cls", "track"]
                 .iter()
-                .any(|variant| !projectable_text(&variant["name"]))
-        {
+                .all(|key| projectable_text(&event[*key]));
+        let variants_ok = array(&event["strategies"]).iter().all(|variant| {
+            variant["id"].as_str().is_some_and(valid_id) && projectable_text(&variant["name"])
+        });
+        if !event_ok || !variants_ok {
             return Err(HostError::StrategyInvalidText);
         }
     }

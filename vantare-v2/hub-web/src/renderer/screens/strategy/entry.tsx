@@ -1,4 +1,6 @@
+import { StrategyEntry } from "../../qa/strategy-entry";
 import { Upcoming } from "../upcoming/Upcoming";
+
 export default function Screen() {
-  return <Upcoming module="strategy" />;
+  return <StrategyEntry fallback={<Upcoming module="strategy" />} />;
 }

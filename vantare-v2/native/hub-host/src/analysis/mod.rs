@@ -175,7 +175,18 @@ impl Reader {
         Self::open_with_timeout(exe, db, cancel, Duration::from_secs(30))
     }
     fn open_with_timeout(exe: &Path, db: &Path, cancel: Cancel, timeout: Duration) -> Result<Self> {
-        let deadline = Instant::now() + timeout;
+        Self::open_until(exe, db, cancel, Instant::now() + timeout, timeout)
+    }
+    fn open_until(
+        exe: &Path,
+        db: &Path,
+        cancel: Cancel,
+        deadline: Instant,
+        timeout: Duration,
+    ) -> Result<Self> {
+        if Instant::now() >= deadline {
+            return Err(error(ErrorCode::Deadline, "Plazo de storage agotado"));
+        }
         let original = stamp(db)?;
         if cancel.load(Ordering::Acquire) {
             return Err(error(ErrorCode::Cancelled, "Lectura cancelada"));
@@ -311,7 +322,9 @@ impl Reader {
         Ok(())
     }
     pub fn summaries(&mut self) -> Result<Summary> {
-        let deadline = Instant::now() + self.timeout;
+        self.summaries_until(Instant::now() + self.timeout)
+    }
+    fn summaries_until(&mut self, deadline: Instant) -> Result<Summary> {
         let result = (|| {
             self.unchanged(deadline)?;
             let frame = self.request(&json!(["summaries"]), deadline)?;

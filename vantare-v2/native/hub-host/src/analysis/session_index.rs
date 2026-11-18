@@ -48,13 +48,28 @@ impl SessionIndex {
         let mut results = Vec::with_capacity(paths.len());
         for path in paths {
             check(&cancel, deadline)?;
-            let original = stamp(&path)?;
             let name = path
                 .file_name()
                 .and_then(|name| name.to_str())
                 .filter(|name| !name.contains(['/', '\\', ':']))
                 .ok_or_else(|| invalid("Nombre de grabación inválido"))?
                 .to_owned();
+            let original = match stamp(&path) {
+                Ok(original) => original,
+                Err(failure) if failure.code == ErrorCode::Io => {
+                    super::regular_directory(dir)?;
+                    results.push(RecordingSessions {
+                        file_name: name,
+                        size: 0,
+                        modified: SystemTime::UNIX_EPOCH,
+                        sessions: Vec::new(),
+                        readable: false,
+                        locked: false,
+                    });
+                    continue;
+                }
+                Err(failure) => return Err(failure),
+            };
             if same_directory
                 && let Some(cached) = self.cache.get(&name)
                 && cached.size == original.len
@@ -96,10 +111,11 @@ impl SessionIndex {
             })();
             if let Err(failure) = read {
                 match failure.code {
-                    ErrorCode::Cancelled | ErrorCode::Deadline | ErrorCode::Io => {
+                    ErrorCode::Cancelled | ErrorCode::Deadline => {
                         return Err(failure);
                     }
                     ErrorCode::Locked => row.locked = true,
+                    ErrorCode::Io => super::regular_directory(dir)?,
                     _ => {}
                 }
             }

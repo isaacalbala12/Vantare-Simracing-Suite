@@ -588,6 +588,7 @@ mod real {
             attempted,
             total,
             laps,
+            sessions,
             ..
         } = first
         else {
@@ -596,6 +597,11 @@ mod real {
         assert_eq!(
             (watermark.as_str(), attempted.as_str(), total.as_str()),
             ("2", "2", "1")
+        );
+        assert_eq!(sessions.as_slice(), &[]);
+        assert_eq!(
+            (laps[0].session, laps[0].lap_time_ms, &laps[0].sectors_ms),
+            (None, None, &None)
         );
         assert_eq!(
             (laps[0].index, laps[0].car, laps[0].lap_time_approx_ms),

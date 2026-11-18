@@ -476,6 +476,9 @@ pub struct AnalysisLap {
     pub gap: bool,
     pub samples: u32,
     pub lap_time_approx_ms: Option<u32>,
+    pub session: Option<u32>,
+    pub lap_time_ms: Option<u32>,
+    pub sectors_ms: Option<Vec<u32>>,
     pub speed: AnalysisSignal,
     pub throttle: AnalysisSignal,
     pub brake: AnalysisSignal,
@@ -505,4 +508,45 @@ fn storage_helper_path() -> Result<PathBuf, HostError> {
         return Err(HostError::AnalysisUnreadable);
     }
     Ok(helper)
+}
+
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AnalysisSessionKind {
+    Practice,
+    Qualifying,
+    Race,
+    Other,
+    Unknown,
+}
+
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AnalysisSessionEndReason {
+    SessionChanged,
+    CoreStopped,
+}
+
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AnalysisSessionSummary {
+    pub index: u32,
+    pub kind: AnalysisSessionKind,
+    pub kind_text: Option<String>,
+    pub track_name: Option<String>,
+    pub vehicle: Option<String>,
+    pub class_name: Option<String>,
+    #[cfg_attr(any(test, feature = "bindings"), ts(type = "number"))]
+    pub started_at_ms: u64,
+    #[cfg_attr(any(test, feature = "bindings"), ts(type = "number | null"))]
+    pub ended_at_ms: Option<u64>,
+    pub sealed: bool,
+    pub end_reason: Option<AnalysisSessionEndReason>,
+    pub position_at_close: Option<u32>,
+    pub class_position_at_close: Option<u32>,
+    pub laps_completed: Option<u32>,
+    pub best_lap_ms: Option<u32>,
 }

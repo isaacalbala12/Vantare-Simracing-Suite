@@ -1,11 +1,16 @@
 import {
   analysisDeltaUnavailable,
+  analysisLapKeys,
+  analysisMax,
   analysisPointsMax,
   analysisPruneMax,
   analysisPruneReasons,
   analysisPruneResults,
   analysisRecordingCauses,
   analysisRecordingStates,
+  analysisSessionEndReasons,
+  analysisSessionKeys,
+  analysisSessionKinds,
 } from "./generated/analysis";
 import { exact, integer, oneOf, record } from "./validation-common";
 export function token(v: unknown): boolean {
@@ -49,25 +54,61 @@ function signal(v: unknown): boolean {
     [v.min, v.mean, v.max].every(nullable)
   );
 }
-export function lap(v: unknown): boolean {
+const nullableInteger = (v: unknown) => v === null || integer(v);
+const encoder = new TextEncoder();
+const sessionKeys = [...analysisSessionKeys];
+const lapKeys = [...analysisLapKeys];
+const nullableText = (v: unknown) =>
+  v === null ||
+  (typeof v === "string" &&
+    v.length > 0 &&
+    v.length <= 256 &&
+    encoder.encode(v).length <= 256);
+
+export function sessions(v: unknown): v is unknown[] {
+  return (
+    Array.isArray(v) &&
+    v.length <= analysisMax &&
+    v.every(
+      (row, index) =>
+        record(row) &&
+        exact(row, sessionKeys) &&
+        row.index === index &&
+        oneOf(row.kind, analysisSessionKinds) &&
+        [row.kindText, row.trackName, row.vehicle, row.className].every(
+          nullableText,
+        ) &&
+        safe(row.startedAtMs) &&
+        (row.endedAtMs === null || safe(row.endedAtMs)) &&
+        typeof row.sealed === "boolean" &&
+        (row.endReason === null ||
+          oneOf(row.endReason, analysisSessionEndReasons)) &&
+        [
+          row.positionAtClose,
+          row.classPositionAtClose,
+          row.lapsCompleted,
+          row.bestLapMs,
+        ].every(nullableInteger),
+    )
+  );
+}
+
+export function lap(v: unknown, sessionCount: number): boolean {
   return (
     record(v) &&
-    exact(v, [
-      "index",
-      "lap",
-      "car",
-      "sealed",
-      "gap",
-      "samples",
-      "lapTimeApproxMs",
-      "speed",
-      "throttle",
-      "brake",
-    ]) &&
+    exact(v, lapKeys) &&
     [v.index, v.lap, v.car, v.samples].every(integer) &&
     typeof v.sealed === "boolean" &&
     typeof v.gap === "boolean" &&
-    (v.lapTimeApproxMs === null || integer(v.lapTimeApproxMs)) &&
+    nullableInteger(v.lapTimeApproxMs) &&
+    (v.session === null
+      ? v.lapTimeMs === null && v.sectorsMs === null
+      : integer(v.session) && v.session < sessionCount) &&
+    nullableInteger(v.lapTimeMs) &&
+    (v.sectorsMs === null ||
+      (Array.isArray(v.sectorsMs) &&
+        v.sectorsMs.length <= 16 &&
+        v.sectorsMs.every(integer))) &&
     [v.speed, v.throttle, v.brake].every(signal)
   );
 }

@@ -150,6 +150,15 @@ describe("analysis contract", () => {
     if (opened?.kind !== "response" || opened.result.method !== "analysis.open")
       throw new Error("open");
     expect(opened.result.laps.length).toBeGreaterThan(0);
+    expect(opened.result.sessions.map((row) => row.sealed)).toEqual([
+      false,
+      true,
+    ]);
+    expect(opened.result.laps[0]).toMatchObject({
+      session: 1,
+      lapTimeMs: 112425,
+      sectorsMs: [35000, 40000, 37425],
+    });
     const session = opened.result.session;
     expect(send({ method: "analysis.cancel" })).toMatchObject({
       kind: "response",
@@ -346,4 +355,73 @@ it("mock status preserves catalog ids and supports missing status", () => {
       error: { kind: "denied" },
     });
   }
+});
+
+it("rejects incomplete session metadata, invalid indices and oversized sectors", () => {
+  const message = corpus.host.find(
+    (v) =>
+      v.kind === "response" &&
+      v.result?.method === "analysis.open" &&
+      "sessions" in v.result &&
+      Array.isArray(v.result.sessions) &&
+      v.result.sessions.length > 0,
+  );
+  expect(message).toBeDefined();
+  const reply = JSON.parse(JSON.stringify(message)).result;
+  expect(isReply(reply)).toBe(true);
+  const session = reply.sessions[0];
+  const lap = reply.laps[0];
+  for (const bad of [
+    { ...reply, sessions: undefined },
+    { ...reply, sessions: Array(257).fill(session) },
+    { ...reply, sessions: [{ ...session, epoch: "42" }] },
+    { ...reply, sessions: [{ ...session, kind: "warmup" }] },
+    { ...reply, sessions: [{ ...session, endReason: "unexpected" }] },
+    { ...reply, sessions: [{ ...session, trackName: "é".repeat(129) }] },
+    { ...reply, sessions: [{ ...session, startedAtMs: 2 ** 53 }] },
+    { ...reply, laps: [{ ...lap, session: reply.sessions.length }] },
+    { ...reply, laps: [{ ...lap, sectorsMs: Array(17).fill(1) }] },
+    { ...reply, laps: [{ ...lap, sectorsMs: [1.5] }] },
+    { ...reply, laps: [{ ...lap, lapTimeMs: undefined }] },
+  ])
+    expect(isReply(bad)).toBe(false);
+});
+
+it("serves legacy recordings with the approximate time and nullable metadata", () => {
+  const core = structuredClone(offline);
+  Object.assign(core.access, {
+    verified: true,
+    blocked: false,
+    analysis: true,
+  });
+  core.rights = "connected";
+  const mock = create({ core, sceneName: "analysis-v1" } as MockContext);
+  mock({ kind: "request", id: 1, request: { method: "analysis.catalog" } });
+  const id = "a".repeat(64);
+  const inspected = mock({
+    kind: "request",
+    id: 2,
+    request: { method: "analysis.inspect", id },
+  });
+  const opened = mock({
+    kind: "request",
+    id: 3,
+    request: { method: "analysis.open", id },
+  });
+  expect(isHostMessage(inspected)).toBe(true);
+  expect(isHostMessage(opened)).toBe(true);
+  expect(inspected).toMatchObject({ result: { sessions: [] } });
+  expect(opened).toMatchObject({
+    result: {
+      sessions: [],
+      laps: expect.arrayContaining([
+        expect.objectContaining({
+          lapTimeApproxMs: 112400,
+          lapTimeMs: null,
+          session: null,
+          sectorsMs: null,
+        }),
+      ]),
+    },
+  });
 });

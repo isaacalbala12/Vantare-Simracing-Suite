@@ -1,4 +1,7 @@
-use crate::analysis::catalog::{AnalysisLap, AnalysisRow, AnalysisSignal, AnalysisState};
+use crate::analysis::catalog::{
+    AnalysisLap, AnalysisRow, AnalysisSessionEndReason, AnalysisSessionKind,
+    AnalysisSessionSummary, AnalysisSignal, AnalysisState,
+};
 use crate::analysis::projection::{
     AnalysisGaps, AnalysisPoint, AnalysisRange, AnalysisSeries, DeltaUnavailable,
 };
@@ -24,6 +27,10 @@ pub(crate) fn typescript() -> String {
     declare::<AnalysisState>(&mut text);
     declare::<AnalysisSignal>(&mut text);
     declare::<AnalysisLap>(&mut text);
+    declare::<AnalysisSessionKind>(&mut text);
+    declare::<AnalysisSessionEndReason>(&mut text);
+    declare::<AnalysisSessionSummary>(&mut text);
+    session_constants(&mut text);
     declare::<AnalysisPoint>(&mut text);
     declare::<AnalysisSeries>(&mut text);
     declare::<AnalysisRange>(&mut text);
@@ -78,6 +85,74 @@ pub(crate) fn typescript() -> String {
     status_constants(&mut text);
     text
 }
+fn session_constants(text: &mut String) {
+    constants!(
+        text,
+        "analysisSessionKinds",
+        [
+            AnalysisSessionKind::Practice,
+            AnalysisSessionKind::Qualifying,
+            AnalysisSessionKind::Race,
+            AnalysisSessionKind::Other,
+            AnalysisSessionKind::Unknown,
+        ]
+    );
+    constants!(
+        text,
+        "analysisSessionEndReasons",
+        [
+            AnalysisSessionEndReason::SessionChanged,
+            AnalysisSessionEndReason::CoreStopped,
+        ]
+    );
+    let corpus = corpus();
+    let reply = |method| {
+        corpus["host"]
+            .as_array()
+            .expect("analysis corpus replies")
+            .iter()
+            .map(|frame| &frame["result"])
+            .find(|reply| reply["method"] == method)
+            .expect("analysis reply sample")
+    };
+    let open = reply("analysis.open");
+    let inspect = reply("analysis.inspect");
+    constants!(text, "analysisOpenKeys", keys(open));
+    constants!(text, "analysisInspectKeys", keys(inspect));
+    constants!(text, "analysisSessionKeys", keys(&open["sessions"][0]));
+    constants!(text, "analysisLapKeys", keys(&open["laps"][0]));
+}
+
+fn keys(value: &serde_json::Value) -> Vec<&str> {
+    let mut keys: Vec<_> = value
+        .as_object()
+        .expect("analysis reply object")
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    keys
+}
+
+fn session_sample() -> AnalysisSessionSummary {
+    AnalysisSessionSummary {
+        index: 0,
+        kind: AnalysisSessionKind::Race,
+        kind_text: None,
+        track_name: Some("Spa".into()),
+        vehicle: Some("Porsche".into()),
+        class_name: Some("GT3".into()),
+        started_at_ms: 1_700_000_000_000,
+        ended_at_ms: Some(1_700_000_120_000),
+        sealed: true,
+        end_reason: Some(AnalysisSessionEndReason::SessionChanged),
+        position_at_close: Some(3),
+        class_position_at_close: Some(2),
+        laps_completed: Some(1),
+        best_lap_ms: Some(111_625),
+    }
+}
+
 pub(crate) fn corpus() -> serde_json::Value {
     let signal = AnalysisSignal {
         reliable: 7,
@@ -112,10 +187,14 @@ pub(crate) fn corpus() -> serde_json::Value {
                 gap: false,
                 samples: 13,
                 lap_time_approx_ms: Some(111_600),
+                session: Some(0),
+                lap_time_ms: Some(111_625),
+                sectors_ms: Some(vec![35_000, 40_000, 36_625]),
                 speed: signal.clone(),
                 throttle: signal.clone(),
                 brake: signal,
             }],
+            sessions: vec![session_sample()],
         },
         Reply::AnalysisClose {},
         Reply::AnalysisCancel { cancelled: false },
@@ -130,25 +209,9 @@ pub(crate) fn corpus() -> serde_json::Value {
         attempted: "0".into(),
         total: "0".into(),
         laps: vec![],
+        sessions: vec![],
     }));
-    for state in [
-        AnalysisState::Complete,
-        AnalysisState::Unconfirmed,
-        AnalysisState::Locked,
-        AnalysisState::Incompatible,
-        AnalysisState::Unreadable,
-    ] {
-        host.push(sample_response(Reply::AnalysisInspect {
-            state,
-            laps: 1,
-            best_lap_approx_ms: Some(111_600),
-        }));
-    }
-    host.push(sample_response(Reply::AnalysisInspect {
-        state: AnalysisState::Complete,
-        laps: 0,
-        best_lap_approx_ms: None,
-    }));
+    inspect_corpus(&mut host);
     for error in [
         HostError::AnalysisIncomparable,
         HostError::AnalysisNotFound,
@@ -169,6 +232,33 @@ pub(crate) fn corpus() -> serde_json::Value {
         status: Some(status_sample()),
     }));
     serde_json::json!({"host": host, "ui": requests()})
+}
+
+fn inspect_corpus(host: &mut Vec<HostToUi>) {
+    for state in [
+        AnalysisState::Complete,
+        AnalysisState::Unconfirmed,
+        AnalysisState::Locked,
+        AnalysisState::Incompatible,
+        AnalysisState::Unreadable,
+    ] {
+        host.push(sample_response(Reply::AnalysisInspect {
+            state: state.clone(),
+            laps: 1,
+            best_lap_approx_ms: Some(111_600),
+            sessions: if state == AnalysisState::Complete {
+                vec![session_sample()]
+            } else {
+                vec![]
+            },
+        }));
+    }
+    host.push(sample_response(Reply::AnalysisInspect {
+        state: AnalysisState::Complete,
+        laps: 0,
+        best_lap_approx_ms: None,
+        sessions: vec![],
+    }));
 }
 
 fn requests() -> Vec<UiToHost> {

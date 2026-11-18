@@ -42,6 +42,7 @@ pub enum Reply {
         #[serde(rename = "bestLapApproxMs", skip_serializing_if = "Option::is_none")]
         #[cfg_attr(any(test, feature = "bindings"), ts(optional = nullable))]
         best_lap_approx_ms: Option<u32>,
+        sessions: Vec<crate::analysis::catalog::AnalysisSessionSummary>,
     },
     #[serde(rename = "analysis.open")]
     AnalysisOpen {
@@ -51,6 +52,7 @@ pub enum Reply {
         attempted: String,
         total: String,
         laps: Vec<crate::analysis::catalog::AnalysisLap>,
+        sessions: Vec<crate::analysis::catalog::AnalysisSessionSummary>,
     },
     #[serde(rename = "analysis.compare")]
     AnalysisCompare {

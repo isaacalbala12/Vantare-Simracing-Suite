@@ -1,5 +1,7 @@
 //! One session-owned worker, bounded channels, and no bridge-thread Reader ownership.
 use super::{AnalysisLap, AnalysisSignal, AnalysisState, map_catalog_error, map_error};
+#[path = "metadata.rs"]
+mod metadata;
 use crate::{
     analysis::{Cancel, Reader, Stamp, Summary, stamp},
     protocol::{HostError, Reply},
@@ -191,7 +193,7 @@ fn execute(
             // A temporary Reader uses this inspect job's cancellation flag, never the session's.
             let result = read(helper, path, *created, job);
             let reply = match result {
-                Ok((_, summary)) => Reply::AnalysisInspect {
+                Ok((_, summary, sessions)) => Reply::AnalysisInspect {
                     state: if summary.finished {
                         AnalysisState::Complete
                     } else {
@@ -199,12 +201,14 @@ fn execute(
                     },
                     laps: u32::try_from(summary.total).map_err(|_| HostError::AnalysisTooLarge)?,
                     best_lap_approx_ms: summary.laps.iter().filter_map(approx_ms).min(),
+                    sessions: metadata::project_sessions(sessions)?,
                 },
                 Err(HostError::AnalysisLocked) => inspect_state(AnalysisState::Locked),
                 Err(HostError::AnalysisIncompatible) => inspect_state(AnalysisState::Incompatible),
                 Err(HostError::AnalysisUnreadable) => inspect_state(AnalysisState::Unreadable),
                 Err(error) => return Err(error),
             };
+            check_job(job, Instant::now())?;
             // Locks are transient even when the DB stamp has not changed.
             if !matches!(
                 reply,
@@ -225,53 +229,79 @@ fn execute(
             path,
             token,
             created,
-        } => {
-            *reader = None;
-            let (opened, summary) = read(helper, path, *created, job)?;
-            let laps = summary
-                .laps
-                .iter()
-                .enumerate()
-                .map(|(index, lap)| {
-                    Ok(AnalysisLap {
-                        index: u32::try_from(index).map_err(|_| HostError::AnalysisTooLarge)?,
-                        lap: lap.lap,
-                        car: lap.car,
-                        sealed: lap.sealed,
-                        gap: lap.gap,
-                        samples: lap.samples,
-                        lap_time_approx_ms: approx_ms(lap),
-                        speed: signal(&lap.speed),
-                        throttle: signal(&lap.throttle),
-                        brake: signal(&lap.brake),
-                    })
-                })
-                .collect::<Result<Vec<_>, HostError>>()?;
-            *reader = Some((opened, job.cancel.clone()));
-            Ok(Reply::AnalysisOpen {
-                session: token.clone(),
-                watermark: summary.watermark.to_string(),
-                finished: summary.finished,
-                attempted: summary.attempted.to_string(),
-                total: summary.total.to_string(),
-                laps,
-            })
-        }
+        } => open_reply(helper, path, token, *created, job, reader),
     }
 }
+
+fn open_reply(
+    helper: &std::path::Path,
+    path: &std::path::Path,
+    token: &str,
+    created: SystemTime,
+    job: &Job,
+    reader: &mut Option<(Reader, Cancel)>,
+) -> Result<Reply, HostError> {
+    *reader = None;
+    let (mut opened, summary, sessions) = read(helper, path, created, job)?;
+    let official = metadata::official_times(helper, &mut opened, &summary.laps, &sessions, job)?;
+    let indices = metadata::session_indices(&sessions)?;
+    let laps = summary
+        .laps
+        .iter()
+        .enumerate()
+        .map(|(index, lap)| {
+            let session = indices.get(&(lap.epoch, lap.session)).copied();
+            let official = official.get(&(lap.epoch, lap.session, lap.car, lap.lap));
+            Ok(AnalysisLap {
+                index: u32::try_from(index).map_err(|_| HostError::AnalysisTooLarge)?,
+                lap: lap.lap,
+                car: lap.car,
+                sealed: lap.sealed,
+                gap: lap.gap,
+                samples: lap.samples,
+                lap_time_approx_ms: approx_ms(lap),
+                session,
+                lap_time_ms: official.and_then(|lap| lap.official_ms),
+                sectors_ms: official.and_then(|lap| lap.sector_ms.clone()),
+                speed: signal(&lap.speed),
+                throttle: signal(&lap.throttle),
+                brake: signal(&lap.brake),
+            })
+        })
+        .collect::<Result<Vec<_>, HostError>>()?;
+    let reply = Reply::AnalysisOpen {
+        session: token.to_owned(),
+        watermark: summary.watermark.to_string(),
+        finished: summary.finished,
+        attempted: summary.attempted.to_string(),
+        total: summary.total.to_string(),
+        laps,
+        sessions: metadata::project_sessions(sessions)?,
+    };
+    check_job(job, Instant::now())?;
+    *reader = Some((opened, job.cancel.clone()));
+    Ok(reply)
+}
+
 fn read(
     helper: &std::path::Path,
     path: &std::path::Path,
     created: SystemTime,
     job: &Job,
-) -> Result<(Reader, Summary), HostError> {
+) -> Result<(Reader, Summary, Vec<crate::analysis::SessionSummary>), HostError> {
     let paths = crate::analysis::recordings(path.parent().ok_or(HostError::AnalysisChanged)?)
         .map_err(|error| map_catalog_error(error.code))?;
     if !paths.contains(&path.to_path_buf()) {
         return Err(HostError::AnalysisChanged);
     }
     let result = (|| {
-        let mut reader = Reader::open(helper, path, job.cancel.clone())?;
+        let mut reader = Reader::open_until(
+            helper,
+            path,
+            job.cancel.clone(),
+            job.deadline,
+            Duration::from_secs(30),
+        )?;
         #[cfg(test)]
         if let Some(pause) = &job.pause {
             let _ = pause.ready.send(reader.child.id());
@@ -283,8 +313,9 @@ fn read(
                 "Recording replaced before opening",
             ));
         }
-        let summary = reader.summaries()?;
-        Ok::<_, crate::analysis::Error>((reader, summary))
+        let summary = reader.summaries_until(job.deadline)?;
+        let sessions = reader.sessions_until(job.deadline)?;
+        Ok::<_, crate::analysis::Error>((reader, summary, sessions))
     })();
     result.map_err(|error| {
         eprintln!("host-analysis: {:?}: {}", error.code, error.diagnostic);
@@ -296,6 +327,7 @@ fn inspect_state(state: AnalysisState) -> Reply {
         state,
         laps: 0,
         best_lap_approx_ms: None,
+        sessions: Vec::new(),
     }
 }
 #[allow(

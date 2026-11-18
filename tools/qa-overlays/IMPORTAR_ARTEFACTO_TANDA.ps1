@@ -1,5 +1,5 @@
 # Importa un solo artefacto de un run push ya completado. Solo operaciones de archivo.
-function Import-TandaArtifact([string]$Source,[string]$Output,[long]$RunId,[string]$SourceSha){
+function Import-TandaArtifact([string]$Source,[string]$Output,[long]$RunId,[string]$SourceSha,[ValidateSet('Visual','Medicion')][string]$Mode='Visual'){
  $repo='isaacalbala12/Vantare-Simracing-Suite'
  if($RunId -le 0 -or $SourceSha -cnotmatch '\A[0-9a-f]{40}\z'){throw 'Run ID y SHA congelado inválidos'}
  if((git -C $Source rev-parse HEAD) -cne $SourceSha -or (git -C $Source status --porcelain)){throw 'El worktree de fixtures debe estar limpio y en el SHA congelado'}
@@ -24,6 +24,17 @@ function Import-TandaArtifact([string]$Source,[string]$Output,[long]$RunId,[stri
  if($metadata.source_sha -cne $SourceSha -or [string]$metadata.run_id -cne [string]$RunId -or $metadata.profile -cne $profile){
   throw 'Recibo de CI contradice SHA, run o perfil'
  }
+ $configured=$metadata['license_public_keys_configured']
+ $coreFeatures=$metadata['core_features']
+ if($configured -isnot [bool] -or $coreFeatures -isnot [array]){
+  throw 'CI_LICENSE_MODE: el recibo debe declarar licencia booleana y features en una lista'
+ }
+ $isMeasurement=$Mode -ceq 'Medicion'
+ $expectedCount=if($isMeasurement){2}else{1}
+ if($configured -ne $isMeasurement -or $coreFeatures.Count -ne $expectedCount -or
+    $coreFeatures[0] -cne 'paint-stats' -or ($isMeasurement -and $coreFeatures[1] -cne 'qa-license')){
+  throw 'CI_LICENSE_MODE: licencia/features no corresponden al modo de tanda'
+ }
  $expected=@('vantare-overlays-rune.exe','vantare-overlays.exe','vantare-core.exe','vantare-services.exe','vantare.exe','lifecycle.exe')
  $bin=Join-Path $download 'bin'
  $seen=@{}
@@ -35,9 +46,10 @@ function Import-TandaArtifact([string]$Source,[string]$Output,[long]$RunId,[stri
   if($image.PSIsContainer -or ($image.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
      $image.Length -le 0 -or $image.Length -ne $row.size -or
      (Get-FileHash -LiteralPath $image.FullName -Algorithm SHA256).Hash -ine $row.sha256){throw "Binario no coincide con el recibo: $file"}
-  $features=switch($file){'vantare-overlays.exe'{'parity-capture'} 'vantare-core.exe'{'paint-stats'} default{''}}
+  $features=switch($file){'vantare-overlays.exe'{'parity-capture'} 'vantare-core.exe'{$coreFeatures -join ','} default{''}}
   @{name=[IO.Path]::GetFileNameWithoutExtension($file);file=$file;size=$image.Length;sha256=$row.sha256;
-    source_sha=$SourceSha;profile=$profile;run_id=$RunId;origin='GitHub Actions';features=$features;license_public_keys_configured=$false}
+    source_sha=$SourceSha;profile=$profile;run_id=$RunId;origin='GitHub Actions';features=$features;
+    license_public_keys_configured=($file -ceq 'vantare-core.exe' -and $configured)}
  })
  if($seen.Count -ne $expected.Count -or @(Get-ChildItem -LiteralPath $bin -Force).Count -ne $expected.Count){throw 'Inventario de binarios de CI distinto del contrato'}
  # Publicar solo después de verificar los seis ejecutables, incluidos los que quedan fuera de la tanda.

@@ -629,6 +629,9 @@ function Invoke-TandaShutdown([string]$Root,[string]$Output){
  Write-TandaJson $result (Join-Path $Output 'apagado.json')
 }
 if($SoloFunciones){return}
+if(-not $SoloVisual -and $Modo -in @('Servidor','Trabajador','Apagar')){
+ throw 'BLOCKED_MEASUREMENT_AUTHORIZATION: falta el preflight de autorización de L3; usar el kit visual para la cita'
+}
 switch($Modo){
  'Validar' {if(-not $SoloVisual){Assert-TandaMachineRegistry};$null=Assert-TandaInputs $Kit; 'PASS: entradas/rutas/hashes/TSV'}
  'Ensayo' {if(-not $Salida){throw 'Falta -Salida nueva'};Invoke-TandaDryRun $Kit $Salida}

@@ -463,6 +463,15 @@ cargo test --workspace --offline -j 2
 44 coches y con el corpus de 47 y comprueba, con un `Subscriber` de `ipc`, que
 llegan fotos con revisión creciente y el número de coches de la captura.
 
+`pwsh -NoProfile -File native/scripts/e2e-analisis.ps1` (desde `vantare-v2/`)
+ejecuta en la cola los dos casos de Análisis que también corren en la suite
+Windows de CI. El Core real reproduce un circuito y coche sintéticos con dos
+vueltas de 91 y 89 s. El puente del host abre la grabación con el helper real
+de DuckDB. Para regenerar el corpus, ejecuta
+`python native/hub-host/testdata/analysis/generate.py`.
+Con el writer vivo, el host mantiene la grabación bloqueada; tras el corte por
+PID la lee sin sellar y `analysis.status` la muestra como parada.
+
 `rust-toolchain.toml` fija 1.99.1 (estable adoptada para conservar la caché; VANTA-142).
 `.github/workflows/branch-channel-gates.yml` valida el producto en
 `windows-latest`; `quality.yml` comprueba retirada y tooling. La versión anterior

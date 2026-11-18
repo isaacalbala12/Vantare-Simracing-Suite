@@ -7,6 +7,7 @@ param(
     [string]$TargetDirectory = $env:VANTARE_SLOT_TARGET,
     [string[]]$Packages = @(),
     [switch]$NoTestsPass,
+    [string]$TestName,
     [switch]$PublicTargetsOnly,
     [switch]$ListOnly
 )
@@ -78,8 +79,13 @@ try {
         $storage[0].features.default[0] -cne 'bundled-duckdb') { throw 'El default de storage cambió: revisar gates.ps1 antes de desactivar bundled-duckdb.' }
     # Preserve the selected lifecycle scope when adding executable prerequisites.
     $lifecyclePackages = $Packages
+    # Analysis uses both the real Core and its real Storage helper. Stage both
+    # in the same test build/archive without adding a Cargo dependency.
+    if ($Gate -in @('test', 'completa', 'archive') -and $Packages.Count -and
+        'vantare-hub-host' -cin $Packages -and 'vantare-storage' -cnotin $Packages) {
+        $Packages += 'vantare-storage'
+    }
     # Storage's process tests launch the actual Core executable, not its rlib.
-    # Include that package in the same test build and archive target.
     if ($Gate -in @('test', 'completa', 'archive') -and
         'vantare-storage' -cin $Packages -and 'vantare-runtime' -cnotin $Packages) {
         $Packages += 'vantare-runtime'
@@ -118,6 +124,10 @@ try {
         'captura' { @('clippy', '-p', 'vantare-installer', '--all-targets', '--features', 'parity-capture') }
         'prueba' { @('build', '--workspace', '--exclude', 'vantare-admin', '--bins', '--profile', 'prueba') }
     }
+    if ($TestName) {
+        if ($Gate -ne 'test') { throw '-TestName solo se aplica al gate test.' }
+        $arguments += @('--success-output', 'immediate', '-E', "test($TestName)")
+    }
     if ($NoTestsPass) {
         if ($Gate -ne 'test') { throw 'NoTestsPass solo se aplica al gate test.' }
         $arguments += '--no-tests=pass'
@@ -131,7 +141,7 @@ try {
     # test build to preserve the executable prerequisite without a second feature graph.
     if ($Gate -in @('test', 'completa', 'archive') -and $Packages.Count -and
         'vantare-storage' -cnotin $Packages -and
-        ('vantare-hub' -cin $Packages -or 'vantare-hub-host' -cin $Packages)) {
+        'vantare-hub' -cin $Packages) {
         $arguments += @('-p', 'vantare-storage')
     }
     # Jobs de compilación: CARGO_BUILD_JOBS de la máquina o 2 (#1465). En nextest

@@ -145,6 +145,54 @@ fn cause(s: &str) -> AnalysisRecordingCause {
         _ => Unknown,
     }
 }
+/// Margen tras crear el archivo: el helper lo publica (`hard_link`, `storage`
+/// `create_database`) y solo después lo abre en escritura y avisa «ready», mientras
+/// el Core ya escribió «recording». Dentro de ese margen no se afirma nada.
+const PUBLISH_GRACE: std::time::Duration = std::time::Duration::from_secs(5);
+/// ¿Tiene un writer abierta esta grabación? Apertura exclusiva de solo lectura,
+/// sin efectos: solo una apertura correcta de un archivo ya asentado prueba que
+/// no. Cualquier duda (en uso, sin permiso, recién creado, otro sistema) cuenta
+/// como viva para no abrir una grabación en escritura.
+pub fn writer_alive(path: &Path) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        let settled = fs::metadata(path)
+            .and_then(|metadata| metadata.created())
+            .ok()
+            .and_then(|created| std::time::SystemTime::now().duration_since(created).ok())
+            .is_some_and(|age| age >= PUBLISH_GRACE);
+        !settled
+            || fs::OpenOptions::new()
+                .read(true)
+                .share_mode(0)
+                .open(path)
+                .is_err()
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (path, PUBLISH_GRACE);
+        true
+    }
+}
+/// Solo tests: hace «asentado» un archivo recién creado.
+#[cfg(all(test, windows))]
+#[allow(clippy::unwrap_used)]
+pub fn backdate(path: &Path) {
+    use std::os::windows::fs::FileTimesExt;
+    let old = std::time::SystemTime::now() - PUBLISH_GRACE * 2;
+    fs::OpenOptions::new()
+        .write(true)
+        .open(path)
+        .unwrap()
+        .set_times(fs::FileTimes::new().set_created(old))
+        .unwrap();
+}
+/// Nombre de archivo de grabación sin ruta: lo que escribe el Core en `file`.
+pub fn plain_name(file: &str) -> bool {
+    let mut parts = Path::new(file).components();
+    matches!(parts.next(), Some(std::path::Component::Normal(_))) && parts.next().is_none()
+}
 fn project(
     v: &Value,
     root: &Path,
@@ -153,10 +201,20 @@ fn project(
     if v.get("schema")?.as_str()? != "vantare.recording-status.v1" {
         return None;
     }
-    let state = serde_json::from_value(v.get("state")?.clone()).ok()?;
+    let mut state = serde_json::from_value(v.get("state")?.clone()).ok()?;
     let file = text(v.get("file")?).ok()?;
     if file.is_some_and(|name| !recording_name(name)) {
         return None;
+    }
+    // Tras un corte del Core el JSON sigue diciendo «recording». Sin writer, el
+    // host lo muestra como parada (sin causa inventada).
+    let dead = state == AnalysisRecordingState::Recording
+        && file.is_some_and(|name| {
+            let path = root.join(name);
+            path.is_file() && !writer_alive(&path)
+        });
+    if dead {
+        state = AnalysisRecordingState::Stopped;
     }
     let row_id = file.and_then(|name| {
         paths
@@ -198,7 +256,11 @@ fn project(
     }
     Some(AnalysisRecordingStatus {
         state,
-        cause: text(v.get("cause")?).ok()?.map(cause),
+        cause: if dead {
+            None
+        } else {
+            text(v.get("cause")?).ok()?.map(cause)
+        },
         row_id,
         started_at_ms: safe(v.get("startedAtMs")?)?,
         durable_watermark: decimal(v.get("durableWatermark")?).ok()?,

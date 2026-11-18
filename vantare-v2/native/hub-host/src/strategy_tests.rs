@@ -95,7 +95,14 @@ fn selection_changes_only_the_two_spans_in_both_supported_schemas() {
         );
         assert!(!selected.dirty);
         let wire = serde_json::to_string(&selected).unwrap();
-        for private in ["PRIVATE", "strategy-v2.json", "contractVersion", "1.2300"] {
+        // the name of the file is public now (`file`); its folder is not
+        assert!(wire.contains(r#""file":{"name":"strategy-v2.json"}"#), "{wire}");
+        for private in [
+            "PRIVATE",
+            "contractVersion",
+            "1.2300",
+            root.0.to_str().unwrap(),
+        ] {
             assert!(!wire.contains(private), "{wire}");
         }
     }
@@ -200,7 +207,7 @@ fn two_hubs_compare_observed_bytes_and_only_explicit_retry_changes_the_winner() 
     assert_eq!(fs::read(root.primary()).unwrap(), bytes);
     let wire = serde_json::to_string(&conflict).unwrap();
     assert!(!wire.contains("PRIVATE"));
-    assert!(!wire.contains("strategy-v2.json"));
+    assert!(!wire.contains(root.0.to_str().unwrap()));
     assert_eq!(
         b.select("event-1", "variant-2", &winner.revision)
             .unwrap()

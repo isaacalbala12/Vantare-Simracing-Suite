@@ -113,6 +113,7 @@ pub enum UiToHost {
     ReviewContentRequest(crate::launcher_resident::ReviewContentRequest),
     ReviewDecision(crate::launcher_resident::ReviewDecision),
     PickedExecutable(crate::launcher::apps::ExecutableSelection),
+    PickedStrategyFile(crate::strategy::StrategyFileSelection),
     Hello { version: u32 },
     Request { id: u32, request: Request },
     Subscribe { topic: Topic },

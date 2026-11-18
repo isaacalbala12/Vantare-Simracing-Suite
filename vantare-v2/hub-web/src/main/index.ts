@@ -34,7 +34,7 @@ import { calendarExportSession } from "./calendar-export";
 import { calendarExportQa } from "./calendar-export-qa";
 import { externalPages } from "./external-pages";
 import { createHost } from "./host";
-import { executablePicker } from "./launcher-picker";
+import { executablePicker, internalIds } from "./launcher-picker";
 import { launcherReview } from "./launcher-review";
 import { notificationDelivery } from "./notification-delivery";
 import { observeOperationNoticeSafely } from "./operation-notices";
@@ -52,6 +52,7 @@ import {
   requireDataDirectory,
   webPreferences,
 } from "./security";
+import { strategyFilePicker } from "./strategy-file-picker";
 import { HOST_BACKGROUND_ID } from "./transport-ids";
 import { bindWindowControls } from "./window-controls";
 
@@ -238,6 +239,31 @@ async function start() {
       request: { method: "window.close" },
     });
   });
+  const pickerIds = internalIds();
+  const pickStrategyFile = strategyFilePicker(
+    async (mode) => {
+      if (!window || window.isDestroyed())
+        throw new Error("Window unavailable");
+      const filters = [{ name: "JSON", extensions: ["json"] }];
+      if (mode === "open") {
+        const picked = await dialog.showOpenDialog(window, {
+          title: "Abrir otro archivo de estrategia",
+          properties: ["openFile"],
+          filters,
+        });
+        return picked.canceled ? undefined : picked.filePaths[0];
+      }
+      const picked = await dialog.showSaveDialog(window, {
+        title: "Guardar estrategia como",
+        defaultPath: "estrategia.json",
+        filters,
+      });
+      return picked.canceled ? undefined : picked.filePath;
+    },
+    (message) => host.send(message),
+    Date.now,
+    pickerIds,
+  );
   const pickExecutable = executablePicker(
     async () => {
       if (!window || window.isDestroyed())
@@ -250,6 +276,8 @@ async function start() {
       return picked.canceled ? undefined : picked.filePaths[0];
     },
     (message) => host.send(message),
+    Date.now,
+    pickerIds,
   );
   function trustedFrame(event: IpcMainEvent | Electron.IpcMainInvokeEvent) {
     const frame = event.senderFrame;
@@ -302,6 +330,7 @@ async function start() {
       const observed = calendarNotices.observe(message);
       if (!observed) return;
       message = observed;
+      if (pickStrategyFile.receive(message)) return;
       if (pickExecutable.receive(message)) return;
       message = reportExport.observe(message);
       message = calendarExport.observe(message);
@@ -346,6 +375,7 @@ async function start() {
       review.invalidate();
       unsubscribe();
       pickExecutable.cancel();
+      pickStrategyFile.cancel();
       port1.close();
       copies.clear();
       reportExport.close();
@@ -374,6 +404,19 @@ async function start() {
             id: data.id,
             error: { kind: "busy" },
           });
+        return;
+      }
+      if (
+        data.kind === "request" &&
+        data.request.method === "strategy.pickFile"
+      ) {
+        pickStrategyFile.request(
+          data.id,
+          data.request.mode,
+          data.request.revision,
+          (message) => port1.postMessage(message),
+          () => portAlive,
+        );
         return;
       }
       if (

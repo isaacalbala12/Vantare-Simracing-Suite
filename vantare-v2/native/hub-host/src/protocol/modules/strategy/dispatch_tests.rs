@@ -443,6 +443,7 @@ fn bounded_strategy_timeline_and_edit_fit_even_with_a_full_document_view() {
                 ve_percent: Some(amount.clone()),
             },
             degraded: true,
+            reason: None,
             metrics: Some(StrategyMetrics {
                 total_seconds: amount.clone(),
                 laps: u32::MAX,
@@ -1574,4 +1575,308 @@ fn a_new_calculation_replaces_the_editable_plan_and_cancel_does_not_revive_it() 
         failure(&mut session, &stop(&view, 0, 1)),
         HostError::StrategyConflict { .. }
     ));
+}
+
+// ---- E4a: the main-process picker channel
+
+fn read_one(pipe: Pipe) -> HostToUi {
+    let mut reader = frame::Reader::default();
+    let mut pipe = Pipe::new(pipe.into_inner());
+    loop {
+        if let Some(message) = reader.next(&mut pipe).unwrap() {
+            return message;
+        }
+    }
+}
+fn pick_request(
+    session: &mut Session,
+    id: u32,
+    mode: crate::strategy::StrategyFileMode,
+) -> HostToUi {
+    let revision = session.strategy.view().revision;
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(&mut pipe, id, &Request::StrategyPickFile { mode, revision })
+        .unwrap();
+    read_one(pipe)
+}
+fn picked(session: &mut Session, id: u32, path: Option<&std::path::Path>) -> HostToUi {
+    let mut pipe = Pipe::new(Vec::new());
+    // what `Session::receive` does with `UiToHost::PickedStrategyFile`
+    super::strategy::picked(
+        session,
+        &mut pipe,
+        &crate::strategy::StrategyFileSelection {
+            id,
+            path: path.map(|path| path.to_str().unwrap().to_owned()),
+        },
+    )
+    .unwrap();
+    read_one(pipe)
+}
+const INTERNAL: u32 = 0x8000_0000;
+
+fn strategy_session(fixture: &Fixture) -> (Session, std::path::PathBuf) {
+    use vantare_strategy::document::{Document, new_event};
+    let mut session = fixture.session();
+    let data = fixture.0.join("hub");
+    std::fs::create_dir_all(&data).unwrap();
+    let mut doc = Document::empty("2026-11-18T00:00:00Z").unwrap();
+    doc.append_event(&new_event("event-1", "Practice", 90, 90.0, 18.0))
+        .unwrap();
+    std::fs::write(data.join("strategy-v2.json"), doc.bytes()).unwrap();
+    let mut other = Document::empty("2026-11-18T00:00:00Z").unwrap();
+    other
+        .append_event(&new_event("event-9", "Sprint", 30, 90.0, 18.0))
+        .unwrap();
+    std::fs::write(data.join("carreras-2026.json"), other.bytes()).unwrap();
+    session.current.access.verified = true;
+    session.current.account_generation = Some("a".repeat(64));
+    assert!(matches!(
+        request(&mut session, &Request::StrategyOpen {}),
+        HostToUi::Response { .. }
+    ));
+    (session, data)
+}
+
+#[test]
+fn the_picker_acknowledges_the_request_and_the_trusted_answer_opens_the_file() {
+    use crate::strategy::StrategyFileMode;
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    let current = session.strategy.view();
+    // the host recognises the request before the main process opens anything
+    assert_eq!(
+        pick_request(&mut session, INTERNAL, StrategyFileMode::Open),
+        HostToUi::Response {
+            id: INTERNAL,
+            result: Reply::StrategyPickFile {
+                value: current.clone()
+            }
+        }
+    );
+    assert_eq!(session.strategy.view(), current, "nothing happened yet");
+    // the final answer carries the request's own id
+    let answer = picked(
+        &mut session,
+        INTERNAL,
+        Some(&data.join("carreras-2026.json")),
+    );
+    let HostToUi::Response {
+        id,
+        result: Reply::StrategyPickFile { value },
+    } = &answer
+    else {
+        panic!("the file opened: {answer:?}");
+    };
+    assert_eq!(*id, INTERNAL);
+    assert_eq!(value.events[0].id, "event-9");
+    assert_eq!(value.file.as_ref().unwrap().name, "carreras-2026.json");
+    // no path anywhere on the wire
+    let wire = serde_json::to_string(&answer).unwrap();
+    assert!(!wire.contains("hub"), "{wire}");
+    assert!(!wire.contains(fixture.0.to_str().unwrap()), "{wire}");
+}
+
+#[test]
+fn an_answer_nobody_asked_for_is_denied_and_touches_nothing() {
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    let before = session.strategy.view();
+    for id in [INTERNAL, 9] {
+        assert_eq!(
+            picked(&mut session, id, Some(&data.join("carreras-2026.json"))),
+            HostToUi::Failure {
+                id,
+                error: HostError::Denied
+            }
+        );
+    }
+    assert_eq!(session.strategy.view(), before);
+    // a saveAs target is never created either
+    let target = data.join("planted.json");
+    assert_eq!(
+        picked(&mut session, INTERNAL, Some(&target)),
+        HostToUi::Failure {
+            id: INTERNAL,
+            error: HostError::Denied
+        }
+    );
+    assert!(!target.exists());
+}
+
+#[test]
+fn the_renderer_cannot_choose_the_file_through_a_normal_request() {
+    // `strategy.pickFile` carries a mode and a revision, nothing else: a path in
+    // the request does not even parse.
+    let revision = "a".repeat(64);
+    for sent in [
+        format!(
+            r#"{{"method":"strategy.pickFile","mode":"open","revision":"{revision}","path":"C:/x.json"}}"#
+        ),
+        format!(
+            r#"{{"method":"strategy.pickFile","mode":"open","revision":"{revision}","file":"x.json"}}"#
+        ),
+        format!(r#"{{"method":"strategy.pickFile","mode":"delete","revision":"{revision}"}}"#),
+    ] {
+        assert!(serde_json::from_str::<Request>(&sent).is_err(), "{sent}");
+    }
+    assert!(
+        serde_json::from_str::<Request>(&format!(
+            r#"{{"method":"strategy.pickFile","mode":"saveAs","revision":"{revision}"}}"#
+        ))
+        .is_ok()
+    );
+}
+
+#[test]
+fn a_late_answer_for_a_previous_account_is_denied() {
+    use crate::strategy::StrategyFileMode;
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    pick_request(&mut session, INTERNAL, StrategyFileMode::Open);
+    session.current.account_generation = Some("b".repeat(64));
+    let denied = HostToUi::Failure {
+        id: INTERNAL,
+        error: HostError::Denied,
+    };
+    assert_eq!(
+        picked(
+            &mut session,
+            INTERNAL,
+            Some(&data.join("carreras-2026.json"))
+        ),
+        denied
+    );
+    // the ticket died with the account: the same account again finds none
+    session.current.account_generation = Some("a".repeat(64));
+    assert_eq!(
+        picked(
+            &mut session,
+            INTERNAL,
+            Some(&data.join("carreras-2026.json"))
+        ),
+        denied
+    );
+}
+
+#[test]
+fn the_pick_request_needs_the_same_access_as_every_strategy_request() {
+    use crate::strategy::StrategyFileMode;
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    let denied = HostToUi::Failure {
+        id: INTERNAL,
+        error: HostError::Denied,
+    };
+    session.current.access.blocked = true;
+    assert_eq!(
+        pick_request(&mut session, INTERNAL, StrategyFileMode::Open),
+        denied
+    );
+    session.current.access.blocked = false;
+    // a blocked session answers a late file with Denied, and the file stays closed
+    pick_request(&mut session, INTERNAL, StrategyFileMode::Open);
+    session.current.access.blocked = true;
+    assert_eq!(
+        picked(
+            &mut session,
+            INTERNAL,
+            Some(&data.join("carreras-2026.json"))
+        ),
+        denied
+    );
+    session.current.access.blocked = false;
+    assert_eq!(
+        session.strategy.view().file.unwrap().name,
+        "strategy-v2.json"
+    );
+}
+
+#[test]
+fn a_cancelled_dialog_answers_with_the_unchanged_view() {
+    use crate::strategy::StrategyFileMode;
+    let fixture = Fixture::new();
+    let (mut session, _) = strategy_session(&fixture);
+    let before = session.strategy.view();
+    pick_request(&mut session, INTERNAL, StrategyFileMode::SaveAs);
+    assert_eq!(
+        picked(&mut session, INTERNAL, None),
+        HostToUi::Response {
+            id: INTERNAL,
+            result: Reply::StrategyPickFile { value: before }
+        }
+    );
+}
+
+#[test]
+fn a_save_as_over_a_file_the_host_did_not_observe_is_a_typed_failure() {
+    use crate::strategy::StrategyFileMode;
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    let theirs = std::fs::read(data.join("carreras-2026.json")).unwrap();
+    pick_request(&mut session, INTERNAL, StrategyFileMode::SaveAs);
+    assert_eq!(
+        picked(
+            &mut session,
+            INTERNAL,
+            Some(&data.join("carreras-2026.json"))
+        ),
+        HostToUi::Failure {
+            id: INTERNAL,
+            error: HostError::StrategyTargetExists
+        }
+    );
+    assert_eq!(
+        std::fs::read(data.join("carreras-2026.json")).unwrap(),
+        theirs
+    );
+}
+
+#[test]
+fn the_renderer_range_of_ids_cannot_hold_a_ticket() {
+    use crate::strategy::StrategyFileMode;
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    let before = session.strategy.view();
+    for id in [9, 0x7fff_ffff, u32::MAX] {
+        assert_eq!(
+            pick_request(&mut session, id, StrategyFileMode::Open),
+            HostToUi::Failure {
+                id,
+                error: HostError::Denied
+            }
+        );
+        assert_eq!(
+            picked(&mut session, id, Some(&data.join("carreras-2026.json"))),
+            HostToUi::Failure {
+                id,
+                error: HostError::Denied
+            }
+        );
+    }
+    assert_eq!(session.strategy.view(), before);
+}
+
+#[test]
+fn losing_verification_consumes_the_ticket() {
+    use crate::strategy::StrategyFileMode;
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    let denied = HostToUi::Failure {
+        id: INTERNAL,
+        error: HostError::Denied,
+    };
+    pick_request(&mut session, INTERNAL, StrategyFileMode::Open);
+    session.current.access.verified = false;
+    assert_eq!(
+        picked(&mut session, INTERNAL, Some(&data.join("carreras-2026.json"))),
+        denied
+    );
+    session.current.access.verified = true;
+    assert_eq!(
+        picked(&mut session, INTERNAL, Some(&data.join("carreras-2026.json"))),
+        denied,
+        "the ticket did not survive the interruption"
+    );
 }

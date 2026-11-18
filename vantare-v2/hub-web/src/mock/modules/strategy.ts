@@ -1,12 +1,20 @@
-import type { HostError } from "../../contract/generated/contract";
+import type {
+  HostError,
+  HostToUi,
+  UiToHost,
+} from "../../contract/generated/contract";
 import corpus from "../../contract/generated/corpus/strategy.json";
 import type {
   StrategyEditError,
   StrategyFields,
   StrategyPlanView,
+  StrategyReason,
   StrategyView,
 } from "../../contract/generated/strategy";
+import { strategyReasons } from "../../contract/generated/strategy";
 import type { MockContext, MockHandler } from "../context";
+
+type PickMode = "open" | "saveAs";
 
 function sample(state: string): StrategyView {
   const value = corpus.host.find(
@@ -34,6 +42,15 @@ function calculation(state: "calculated" | "error"): StrategyPlanView {
       item.result.value.plan.state === state,
   )?.result?.value.plan;
   if (!plan) throw Error("Missing strategy calculation fixture");
+  return structuredClone(plan) as StrategyPlanView;
+}
+
+// The plan of the reason scenes (QA): the first sample of the corpus with that reason.
+function reasonPlan(reason: StrategyReason): StrategyPlanView {
+  const plan = corpus.host.find(
+    (item) => item.result?.value?.plan?.result?.reason === reason,
+  )?.result?.value.plan;
+  if (!plan) throw Error("Missing strategy reason fixture");
   return structuredClone(plan) as StrategyPlanView;
 }
 
@@ -118,6 +135,7 @@ function noSolution(
   const result = structuredClone(plan.result);
   if (result) {
     result.certificate = "no_solution";
+    result.reason = "constraintsUnsatisfiable";
     result.metrics = null;
     result.timeline = null;
   }
@@ -157,8 +175,12 @@ export function create(context: MockContext): MockHandler {
     context.core.access.verified = true;
     context.core.accountGeneration = "a".repeat(64);
   }
-  // the two recalculation scenes (QA) start from a ready document
-  const opening = scenario.startsWith("recalc") ? "ready" : scenario;
+  // the recalculation, reason, file and error scenes (QA) start from a ready document
+  const opening = ["recalc", "reason", "file", "target", "pick"].some(
+    (prefix) => scenario.startsWith(prefix),
+  )
+    ? "ready"
+    : scenario;
   let saved = sample(
     ["ready", "recovered", "protected", "importedLegacy"].includes(opening)
       ? opening
@@ -174,6 +196,136 @@ export function create(context: MockContext): MockHandler {
   let editing: Editing | undefined;
   let recalculating: number | undefined;
   let generation = context.core.accountGeneration;
+  // «Abrir otro archivo…» / «Guardar como…»: one ticket at a time, as in the host
+  const primaryFile = "strategy-v2.json";
+  const existingFiles = new Set([primaryFile, "carreras-2026.json"]);
+  let ticket: { id: number; mode: PickMode; revision: string } | undefined;
+  // the reason scenes (QA): the calculation ends with this reason
+  const reason = strategyReasons.find(
+    (value) => scenario === `reason${value[0].toUpperCase()}${value.slice(1)}`,
+  );
+
+  function otherDocument(name: string): StrategyView {
+    // QA: the chosen file is a damaged one (recovered) or one of a future version
+    const damaged =
+      scenario === "pickRecovered"
+        ? "recovered"
+        : scenario === "pickProtected"
+          ? "protected"
+          : undefined;
+    const view = structuredClone(sample(damaged ?? "ready"));
+    if (damaged) {
+      view.revision = (0x1000 + ++sequence).toString(16).padStart(64, "0");
+      view.file = { name };
+      return view;
+    }
+    view.events = [
+      {
+        id: "event-9",
+        name: "Sprint",
+        class: "GT3",
+        track: "Spa",
+        drivers: 1,
+        strategies: [{ id: "variant-1", name: "Base" }],
+      },
+    ];
+    view.activeEventId = "event-9";
+    view.activeStrategyId = "variant-1";
+    view.revision = (0x1000 + ++sequence).toString(16).padStart(64, "0");
+    view.file = { name };
+    return view;
+  }
+
+  // what the host checks when it records the ticket (and again when it answers)
+  function pickError(mode: PickMode, revision: string): HostError | undefined {
+    if (mode === "saveAs" && current.state === "protected")
+      return { kind: "protected" };
+    if (revision !== current.revision)
+      return { kind: "strategyConflict", current: structuredClone(current) };
+    if (mode === "open") {
+      if (pending || recalculating !== undefined) return { kind: "busy" };
+      if (current.dirty) return { kind: "strategyDirty" };
+      if (editing?.pending) return { kind: "strategyEditPending" };
+    } else if (current.events.length === 0 && !current.dirty)
+      return { kind: "rejected" };
+    return undefined;
+  }
+
+  // the final answer; `name` is the last segment of what the main process chose
+  function finishPick(
+    id: number,
+    mode: PickMode,
+    name: string | null,
+  ): HostToUi {
+    const fail = (error: HostError): HostToUi => ({
+      kind: "failure",
+      id,
+      error,
+    });
+    const respond = (): HostToUi => ({
+      kind: "response",
+      id,
+      result: { method: "strategy.pickFile", value: structuredClone(current) },
+    });
+    if (name === null) return respond();
+    const sceneError = (
+      {
+        fileUnavailable: { kind: "strategyFileUnavailable" },
+        fileTooLarge: { kind: "strategyFileTooLarge" },
+        pickExpired: { kind: "strategyPickExpired" },
+      } as Record<string, HostError>
+    )[scenario];
+    if (sceneError) return fail(sceneError);
+    if (scenario === "targetExists" && mode === "saveAs")
+      return fail({ kind: "strategyTargetExists" });
+    const error = pickError(mode, current.revision);
+    if (error) return fail(error);
+    if (mode === "open") {
+      pending = undefined;
+      editing = undefined;
+      recalculating = undefined;
+      saved = otherDocument(name);
+      current = structuredClone(saved);
+      return respond();
+    }
+    if (name !== current.file?.name) {
+      // never over a file nobody observed, nor the primary one from another document
+      if (existingFiles.has(name))
+        return fail({ kind: "strategyTargetExists" });
+      existingFiles.add(name);
+      current.file = { name };
+    }
+    current.dirty = false;
+    saved = structuredClone({ ...current, plan: noPlan });
+    return respond();
+  }
+
+  function answerPick(
+    message: Extract<UiToHost, { kind: "pickedStrategyFile" }>,
+  ): HostToUi {
+    const held = ticket;
+    const denied = (): HostToUi => ({
+      kind: "failure",
+      id: message.id,
+      error: { kind: "denied" },
+    });
+    if (!held || held.id !== message.id) return denied();
+    ticket = undefined;
+    if (
+      !(context.core.access.verified && !context.core.access.blocked) ||
+      generation !== context.core.accountGeneration
+    )
+      return denied();
+    if (message.path === null) return finishPick(message.id, held.mode, null);
+    if (held.revision !== current.revision)
+      return {
+        kind: "failure",
+        id: message.id,
+        error: { kind: "strategyConflict", current: structuredClone(current) },
+      };
+    const name = message.path.split(/[\\/]/).pop() ?? "";
+    return finishPick(message.id, held.mode, name || null);
+  }
 
   function edit(changes: Partial<StrategyView>) {
     pending = undefined;
@@ -193,6 +345,7 @@ export function create(context: MockContext): MockHandler {
   }
 
   return (message) => {
+    if (message.kind === "pickedStrategyFile") return answerPick(message);
     if (message.kind !== "request") return undefined;
     const { id, request } = message;
     if (
@@ -208,6 +361,7 @@ export function create(context: MockContext): MockHandler {
       request.method !== "strategy.recalculate" &&
       request.method !== "strategy.resetEdit" &&
       request.method !== "strategy.save" &&
+      request.method !== "strategy.pickFile" &&
       request.method !== "strategy.discard"
     )
       return undefined;
@@ -237,6 +391,26 @@ export function create(context: MockContext): MockHandler {
       opened = true;
     }
     if (!opened) return failure({ kind: "denied" });
+    if (request.method === "strategy.pickFile") {
+      const error = pickError(request.mode, request.revision);
+      if (error) return failure(error);
+      // played without the main process: the dialog answers at once
+      if (id < 0x80000000)
+        return finishPick(
+          id,
+          request.mode,
+          request.mode === "open"
+            ? "carreras-2026.json"
+            : "copia-estrategia.json",
+        );
+      if (ticket) return failure({ kind: "busy" });
+      ticket = { id, mode: request.mode, revision: request.revision };
+      return {
+        kind: "response",
+        id,
+        result: { method: request.method, value: structuredClone(current) },
+      };
+    }
     if ("revision" in request) {
       if (
         (request.method === "strategy.create" ||
@@ -403,7 +577,9 @@ export function create(context: MockContext): MockHandler {
         edit({ events });
       }
       current.plan = {
-        ...calculation(valid ? "calculated" : "error"),
+        ...(valid && reason
+          ? reasonPlan(reason)
+          : calculation(valid ? "calculated" : "error")),
         computeId: id,
       };
       editing = valid ? startEditing(current.plan) : undefined;

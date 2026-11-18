@@ -2,6 +2,7 @@ import { isPickedExecutable } from "./apps-validation";
 import type { HostToUi, UiToHost } from "./generated/contract";
 import { demoNameMax, palettes, schemes, topics } from "./generated/contract";
 import { validators } from "./generated/validators";
+import { isPickedStrategyFile } from "./modules/strategy";
 import { isZoom } from "./settings-validation";
 import { exact, integer, oneOf, record } from "./validation-common";
 
@@ -27,6 +28,8 @@ export function isUiMessage(value: unknown): value is UiToHost {
       );
     case "pickedExecutable":
       return isPickedExecutable(value);
+    case "pickedStrategyFile":
+      return isPickedStrategyFile(value);
     case "hello":
       return exact(value, ["kind", "version"]) && integer(value.version);
     case "ready":

@@ -258,6 +258,7 @@ impl Session {
             UiToHost::PickedExecutable(selection) => {
                 crate::launcher::apps::picked_executable(&mut self.app_picker, pipe, selection)?;
             }
+            UiToHost::PickedStrategyFile(selection) => strategy::picked(self, pipe, selection)?,
             UiToHost::ReviewContentRequest(request) => self.review_content(pipe, request)?,
             UiToHost::ReviewDecision(decision) => self.review_decision(pipe, decision)?,
             UiToHost::Request { id, request } => self.request(pipe, *id, request)?,

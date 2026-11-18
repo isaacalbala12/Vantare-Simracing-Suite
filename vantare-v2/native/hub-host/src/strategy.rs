@@ -20,8 +20,17 @@ pub use editing::{StrategyEditError, StrategyEditStop, StrategyEditView};
 pub use calculation::{
     STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyComputeForm,
     StrategyField, StrategyMetrics, StrategyPit, StrategyPitService, StrategyPlanError,
-    StrategyPlanState, StrategyPlanView, StrategyServiceSteps, StrategySolverFields, StrategyStint,
-    StrategyTimeline,
+    StrategyPlanState, StrategyPlanView, StrategyReason, StrategyServiceSteps,
+    StrategySolverFields, StrategyStint, StrategyTimeline,
+};
+#[path = "strategy_file.rs"]
+mod file;
+#[cfg(test)]
+use file::valid_file_name;
+use file::Ticket;
+pub use file::{
+    STRATEGY_FILE_NAME_MAX, STRATEGY_PICK_COOLDOWN_MS, STRATEGY_PICK_LIFETIME_SECONDS,
+    STRATEGY_PICK_PATH_MAX, StrategyFile, StrategyFileMode, StrategyFileSelection,
 };
 
 const PRIMARY: &str = "strategy-v2.json";
@@ -79,6 +88,9 @@ pub struct StrategyView {
     pub active_strategy_id: Option<String>,
     pub dirty: bool,
     pub plan: StrategyPlanView,
+    /// The file the document lives in: its name, never its path. `null` before
+    /// the session opens.
+    pub file: Option<StrategyFile>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -143,6 +155,10 @@ impl StrategyFields {
 
 pub(crate) struct State {
     root: PathBuf,
+    /// The file the document lives in: the primary file until the user opens or
+    /// saves another one.
+    path: PathBuf,
+    ticket: Option<Ticket>,
     generation: Option<String>,
     opened: bool,
     doc: Option<Document>,
@@ -154,7 +170,9 @@ pub(crate) struct State {
 impl State {
     pub(crate) fn new(root: PathBuf) -> Self {
         Self {
+            path: root.join(PRIMARY),
             root,
+            ticket: None,
             generation: None,
             opened: false,
             doc: None,
@@ -171,6 +189,8 @@ impl State {
     /// discards them.
     pub(crate) fn observe(&mut self, generation: Option<&str>, allowed: bool) -> bool {
         if !allowed || (generation.is_none() && self.generation.is_some()) {
+            // Whoever cannot be served cannot hold a dialog ticket either.
+            self.ticket = None;
             return false;
         }
         if self.generation.as_deref() != generation {
@@ -183,6 +203,8 @@ impl State {
     /// account really changed.
     pub(crate) fn retire(&mut self) {
         self.calculation.invalidate(false);
+        self.ticket = None;
+        self.path = self.root.join(PRIMARY);
         self.doc = None;
         self.observed = None;
         self.opened = false;
@@ -190,10 +212,13 @@ impl State {
         self.revision = hash(b"");
     }
     pub(crate) fn open(&mut self) -> Result<StrategyView, HostError> {
-        let path = self.root.join(PRIMARY);
+        let path = self.path.clone();
         self.require_clean()?;
         match std::fs::symlink_metadata(&path) {
-            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+            Err(error)
+                if error.kind() == io::ErrorKind::NotFound
+                    && file::same_file(&path, &self.root.join(PRIMARY)) =>
+            {
                 let mut current = Self::new(self.root.clone());
                 current.import()?;
                 self.replace_document(current);
@@ -201,7 +226,7 @@ impl State {
             _ => {
                 self.calculation.invalidate(false);
                 self.opened = true;
-                self.read_primary()?;
+                self.read_current()?;
             }
         }
         Ok(self.view())
@@ -227,16 +252,22 @@ impl State {
                 self.status = StrategyState::ImportedLegacy;
                 Ok(())
             }
-            Err(error) if error.kind().is_conflict() => self.read_primary(),
+            Err(error) if error.kind().is_conflict() => self.read_current(),
             Err(files::Error::Busy) => Err(HostError::Busy),
             Err(_) => Err(HostError::Io),
         }
     }
-    fn read_primary(&mut self) -> Result<(), HostError> {
+    fn is_primary(&self) -> bool {
+        file::same_file(&self.path, &self.root.join(PRIMARY))
+    }
+    fn read_current(&mut self) -> Result<(), HostError> {
+        if !self.is_primary() {
+            return self.read_custom();
+        }
         let mut revision = hash(b"");
         let mut rejected = None;
         let opened = Doc::open_or_quarantine(
-            &self.root.join(PRIMARY),
+            &self.path,
             &OPTIONS,
             |bytes| {
                 revision = hash(bytes);
@@ -299,6 +330,7 @@ impl State {
             active_strategy_id,
             dirty: self.dirty(),
             plan: self.calculation.view().clone(),
+            file: self.file(),
         }
     }
     pub(crate) fn select(
@@ -316,7 +348,7 @@ impl State {
         if let Err(error) = self.write(&next) {
             if error.kind().is_conflict() {
                 self.calculation.invalidate(false);
-                self.read_primary()?;
+                self.read_current()?;
                 return Err(self.conflict());
             }
             return Err(write_error(&error));
@@ -388,8 +420,8 @@ impl State {
             let draft = self.doc.as_ref().ok_or(HostError::Rejected)?;
             if let Err(error) = self.write(draft) {
                 if error.kind().is_conflict() {
-                    let mut current = Self::new(self.root.clone());
-                    current.read_primary()?;
+                    let mut current = self.fresh();
+                    current.read_current()?;
                     return Err(current.conflict());
                 }
                 return Err(write_error(&error));
@@ -401,8 +433,8 @@ impl State {
 
     pub(crate) fn discard(&mut self, revision: &str) -> Result<StrategyView, HostError> {
         self.require_revision(revision)?;
-        let mut current = Self::new(self.root.clone());
-        current.read_primary()?;
+        let mut current = self.fresh();
+        current.read_current()?;
         self.replace_document(current);
         Ok(self.view())
     }
@@ -410,6 +442,7 @@ impl State {
     fn replace_document(&mut self, mut current: Self) {
         self.calculation.invalidate(false);
         current.calculation = std::mem::take(&mut self.calculation);
+        current.ticket = self.ticket.take();
         current.opened = true;
         current.generation.clone_from(&self.generation);
         *self = current;
@@ -607,7 +640,7 @@ impl State {
 
     fn write(&self, doc: &Document) -> Result<(), files::Error> {
         files::save(
-            &self.root.join(PRIMARY),
+            &self.path,
             doc.bytes(),
             Mode::Observed(self.observed.as_deref()),
             &OPTIONS,
@@ -761,3 +794,6 @@ fn project_event(value: &Value) -> Option<StrategyEventSummary> {
 #[cfg(test)]
 #[path = "strategy_tests.rs"]
 mod tests;
+#[cfg(test)]
+#[path = "strategy_file_tests.rs"]
+mod file_tests;

@@ -10,13 +10,25 @@ export function nextPickerRequestId(current: number) {
   return current >= HOST_BACKGROUND_ID - 1 ? 0x80000000 : current + 1;
 }
 
+/** One sequence of internal request ids for every picker of a window. */
+export function internalIds() {
+  let sequence = 0x80000000;
+  return {
+    next() {
+      const id = sequence;
+      sequence = nextPickerRequestId(sequence);
+      return id;
+    },
+  };
+}
+
 /** The host must acknowledge a pending request before main opens a dialog. */
 export function executablePicker(
   open: () => Promise<string | undefined>,
   sendHost: (message: UiToHost) => void,
   now: () => number = Date.now,
+  ids = internalIds(),
 ) {
-  let internalSequence = 0x80000000;
   let nextDialog = 0;
   let pending:
     | {
@@ -80,8 +92,7 @@ export function executablePicker(
           reply({ kind: "failure", id, error: { kind: "busy" } });
         return;
       }
-      const internalId = internalSequence;
-      internalSequence = nextPickerRequestId(internalSequence);
+      const internalId = ids.next();
       pending = {
         id: internalId,
         rendererId: id,

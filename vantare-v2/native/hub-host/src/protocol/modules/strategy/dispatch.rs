@@ -4,6 +4,37 @@ pub(super) fn allowed(session: &Session) -> bool {
     session.current.access.verified && !session.current.access.blocked && session.closing.is_none()
 }
 
+/// The trusted answer of the main process to a ticket. Without access, or for
+/// another account, it is denied; without a ticket it is ignored the same way.
+pub(super) fn picked(
+    session: &mut Session,
+    pipe: &mut Pipe,
+    selection: &crate::strategy::StrategyFileSelection,
+) -> io::Result<()> {
+    let allowed = allowed(session);
+    let strategy = &mut session.strategy;
+    let allowed = strategy.observe(session.current.account_generation.as_deref(), allowed);
+    strategy.poll_calculation();
+    let result = if allowed {
+        strategy.picked_file(selection, std::time::Instant::now())
+    } else {
+        // Whoever cannot be served cannot hold a ticket either.
+        strategy.drop_ticket();
+        Err(HostError::Denied)
+    };
+    let message = match result {
+        Ok(value) => HostToUi::Response {
+            id: selection.id,
+            result: Reply::StrategyPickFile { value },
+        },
+        Err(error) => HostToUi::Failure {
+            id: selection.id,
+            error,
+        },
+    };
+    frame::write(pipe, &message)
+}
+
 pub(super) fn dispatch(
     session: &mut Session,
     pipe: &mut Pipe,
@@ -94,6 +125,9 @@ pub(super) fn dispatch(
             } => strategy
                 .reset_edit(revision, *compute_id)
                 .map(|value| Reply::StrategyResetEdit { value }),
+            Request::StrategyPickFile { mode, revision } => strategy
+                .pick_file(id, *mode, revision, std::time::Instant::now())
+                .map(|value| Reply::StrategyPickFile { value }),
             _ => Err(HostError::Rejected),
         }
     } else {

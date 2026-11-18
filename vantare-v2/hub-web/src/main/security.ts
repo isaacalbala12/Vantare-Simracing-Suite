@@ -116,6 +116,7 @@ export function isRendererMessage(value: unknown): value is Exclude<
       | "hello"
       | "ready"
       | "pickedExecutable"
+      | "pickedStrategyFile"
       | "reviewContentRequest"
       | "reviewDecision";
   }

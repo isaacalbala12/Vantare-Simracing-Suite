@@ -72,7 +72,11 @@ pub fn recalculate_edited_plan_detailed(
         return Err("too_many_required_pit_windows".into());
     }
 
-    let (outcome, fallback) = solve_with_fallback(&constrained, cancel)?;
+    let (outcome, fallback) = solve_with_fallback(&constrained, cancel, &|| {}, &|| {})?;
+    // This guard is for the scalar solver. A greedy plan cannot trip it: the edited stops
+    // are fixed (min = max = their count, one exact window each), so a plan with that many
+    // stops has every stop on a window lap, and the greedy plan refuses (`MaxStops`) as
+    // soon as it needs one more.
     if outcome.result.feasible
         && (outcome.result.stints != edited.stints
             || outcome
@@ -91,10 +95,16 @@ pub fn recalculate_edited_plan_detailed(
 /// The scalar search first. Only when it ends without any plan (`not_proven`, no
 /// feasible plan) the greedy plan is tried on the same constrained input; it keeps
 /// the fixed stops and windows or refuses with its typed cause, and the result is
-/// never `proven`. A plan or a proven "no solution" is returned untouched.
+/// never `proven`. A plan, a partial plan or a proven "no solution" is returned
+/// untouched. When the greedy plan refuses, the outcome is still the scalar one, which
+/// had no plan to begin with, with the cause appended to `certificate.reason` (the
+/// typed cause is the returned `Fallback`; no consumer reads the text).
+/// `before` and `after` run around the greedy plan; tests place a cancellation there.
 fn solve_with_fallback(
     constrained: &Input,
     cancel: &AtomicBool,
+    before: &dyn Fn(),
+    after: &dyn Fn(),
 ) -> Result<(SolverOutcome, Fallback), String> {
     let mut outcome = solver::solve_v2_cancellable(constrained, cancel)?;
     let without_plan = outcome.certificate.status == solver::OptimalityStatus::NotProven
@@ -105,10 +115,12 @@ fn solve_with_fallback(
     if solver::runs_extended_search(constrained) {
         return Ok((outcome, Fallback::Refused(solver::GreedyRefusal::NotScalar)));
     }
+    before();
     if cancel.load(Ordering::Relaxed) {
         return Err("cancelled".into());
     }
     let greedy = solver::solve_greedy_fallback(constrained);
+    after();
     if cancel.load(Ordering::Relaxed) {
         return Err("cancelled".into());
     }
@@ -282,7 +294,7 @@ mod tests {
     // energy and an exact calendar; the greedy fallback must keep that calendar.
     #[test]
     fn fuji_with_virtual_energy_recalculates_the_edited_schedule_with_the_fallback() {
-        for (index, delta) in [(None, 0), (Some(0), -1), (Some(3), -1)] {
+        for (index, delta) in [(None, 0), (Some(0), -1), (Some(3), -1), (Some(4), -1)] {
             let edited = witness(index, delta);
             let (outcome, fallback) =
                 recalculate_edited_plan_detailed(&manual(236), &edited, &AtomicBool::new(false))
@@ -307,12 +319,14 @@ mod tests {
         }
     }
 
-    // On the 1 % grid a second 43-lap stint is impossible after a first one of 43:
-    // the battery left (0.41 %) plus the largest whole-step top-up is 99.41 %, short
-    // of the 99.59 % it needs. The scalar model has the same limit, so this edit has
-    // no plan; the answer is the typed cause, not a plan that breaks the calendar.
+    // Moving the second stop by +1 gives stints 43-43-41-43-42-24. On the 1 % grid a
+    // second 43-lap stint is impossible after a first one of 43: the battery left (0.41 %)
+    // plus the largest whole-step top-up is 99.41 %, short of the 99.59 % it needs. The
+    // scalar model has the same limit, so this edit has no plan. The greedy plan would
+    // need one more stop than the edit allows, so it refuses with `MaxStops` instead of
+    // returning a plan that breaks the calendar.
     #[test]
-    fn an_edit_the_service_grid_cannot_serve_has_no_plan_and_a_typed_cause() {
+    fn an_edit_that_needs_an_extra_stop_is_refused_with_max_stops() {
         let (outcome, fallback) = recalculate_edited_plan_detailed(
             &manual(236),
             &witness(Some(1), 1),
@@ -370,5 +384,179 @@ mod tests {
             serde_json::to_value(&outcome).expect("json"),
             serde_json::to_value(&expected).expect("json")
         );
+    }
+
+    /// The constrained input `recalculate_edited_plan` builds, for comparisons.
+    fn constrained(input: &Input, edited: &EditedPlan) -> Input {
+        let mut constrained = input.clone();
+        constrained.event_rules.min_pit_stops = Some(edited.pit_stop_laps.len());
+        constrained.event_rules.max_pit_stops = Some(edited.pit_stop_laps.len());
+        for &lap in &edited.pit_stop_laps {
+            constrained.event_rules.required_windows.push(Window {
+                from_lap: lap,
+                to_lap: lap,
+            });
+        }
+        constrained
+    }
+
+    // A proven "no solution" of the scalar search is not "fixed" by the greedy plan: the
+    // calendar has a 100-lap stint and a 44-lap tank, so there is none, and the search
+    // (no virtual energy, a real budget) proves it.
+    #[test]
+    fn a_proven_no_solution_stays_identical() {
+        let mut input = manual(236);
+        input.ve_capacity_percent.value = 0.0;
+        input.ve_per_lap_percent.value = 0.0;
+        let edited = EditedPlan {
+            stints: vec![100, 136],
+            pit_stop_laps: vec![100],
+        };
+        let expected =
+            solver::solve_v2_cancellable(&constrained(&input, &edited), &AtomicBool::new(false))
+                .expect("scalar result");
+        assert_eq!(
+            expected.certificate.status,
+            solver::OptimalityStatus::NoSolution,
+            "the precondition: the scalar search proves it"
+        );
+        let (outcome, fallback) =
+            recalculate_edited_plan_detailed(&input, &edited, &AtomicBool::new(false))
+                .expect("recalculate");
+        assert_eq!(fallback, Fallback::NotApplicable);
+        assert_eq!(
+            serde_json::to_value(&outcome).expect("json"),
+            serde_json::to_value(&expected).expect("json")
+        );
+    }
+
+    // A partial scalar result (`not_proven`, but with a plan) is not replaced either.
+    // The budget is found by scanning (deterministic, no clock involved).
+    #[test]
+    fn a_partial_scalar_plan_stays_identical() {
+        let mut input = manual(40);
+        input.ve_capacity_percent.value = 0.0;
+        input.ve_per_lap_percent.value = 0.0;
+        let edited = EditedPlan {
+            stints: vec![10, 10, 10, 10],
+            pit_stop_laps: vec![10, 20, 30],
+        };
+        let scalar_with = |candidates: usize| {
+            let mut budget = input.clone();
+            budget.budget.max_candidates = candidates;
+            let scalar = solver::solve_v2_cancellable(
+                &constrained(&budget, &edited),
+                &AtomicBool::new(false),
+            )
+            .expect("scalar result");
+            (budget, scalar)
+        };
+        // The plan of this calendar is found at the very end of the search, so the
+        // partial answers sit just below the budget that completes it: double the
+        // budget until the search completes, then scan downwards.
+        let mut complete = 50_usize;
+        while scalar_with(complete).1.certificate.status == solver::OptimalityStatus::NotProven {
+            complete *= 2;
+            assert!(complete < 10_000_000, "the scalar search never completes");
+        }
+        let found = (1..complete).rev().take(5_000).find_map(|candidates| {
+            let (budget, scalar) = scalar_with(candidates);
+            (scalar.certificate.status == solver::OptimalityStatus::NotProven
+                && scalar.result.feasible)
+                .then_some((budget, scalar))
+        });
+        let (budget, expected) = found.expect("a budget that ends partial with a plan");
+        let (outcome, fallback) =
+            recalculate_edited_plan_detailed(&budget, &edited, &AtomicBool::new(false))
+                .expect("recalculate");
+        assert_eq!(fallback, Fallback::NotApplicable);
+        assert_eq!(
+            serde_json::to_value(&outcome).expect("json"),
+            serde_json::to_value(&expected).expect("json")
+        );
+    }
+
+    // The guard on the edited schedule cannot be tripped by a greedy plan (the edited
+    // stops are fixed, so any plan with that many stops is on the window laps): for many
+    // generated calendars the recalculation never errors, and any plan is exactly the
+    // edited one.
+    #[test]
+    fn no_generated_calendar_makes_the_schedule_guard_fail() {
+        let mut state = 0x2648_u64;
+        let mut next = |bound: u64| {
+            state = state
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (state >> 33) % bound
+        };
+        let (mut plans, mut refused) = (0, 0);
+        for _ in 0..120 {
+            let mut input = manual(60);
+            input.ve_capacity_percent.value = 0.0;
+            input.ve_per_lap_percent.value = 0.0;
+            input.budget.max_candidates = 20_000;
+            let cuts = 1 + next(3);
+            let mut stops: Vec<u32> = (0..cuts)
+                .map(|_| u32::try_from(1 + next(59)).expect("lap"))
+                .collect();
+            stops.sort_unstable();
+            stops.dedup();
+            let mut stints = vec![];
+            let mut last = 0;
+            for &stop in &stops {
+                stints.push(stop - last);
+                last = stop;
+            }
+            stints.push(60 - last);
+            let edited = EditedPlan {
+                stints,
+                pit_stop_laps: stops,
+            };
+            let (outcome, _) =
+                recalculate_edited_plan_detailed(&input, &edited, &AtomicBool::new(false))
+                    .expect("never the schedule guard, never an error");
+            if outcome.result.feasible {
+                plans += 1;
+                assert_eq!(outcome.result.stints, edited.stints);
+            } else {
+                refused += 1;
+            }
+        }
+        assert!(
+            plans > 10 && refused > 10,
+            "{plans} plans, {refused} without"
+        );
+    }
+
+    // The two cancellation checks around the greedy plan are each protected.
+    fn without_plan_input() -> (Input, EditedPlan) {
+        let mut input = manual(236);
+        input.budget.max_candidates = 1; // the scalar search ends at once, without a plan
+        (input, witness(None, 0))
+    }
+
+    #[test]
+    fn a_cancellation_before_the_greedy_plan_stops_it_from_running() {
+        let (input, edited) = without_plan_input();
+        let cancel = AtomicBool::new(false);
+        let ran = AtomicBool::new(false);
+        let result = solve_with_fallback(
+            &constrained(&input, &edited),
+            &cancel,
+            &|| cancel.store(true, Ordering::Relaxed),
+            &|| ran.store(true, Ordering::Relaxed),
+        );
+        assert!(!ran.load(Ordering::Relaxed), "the greedy plan must not run");
+        assert_eq!(result.expect_err("cancelled"), "cancelled");
+    }
+
+    #[test]
+    fn a_cancellation_while_the_greedy_plan_runs_publishes_no_plan() {
+        let (input, edited) = without_plan_input();
+        let cancel = AtomicBool::new(false);
+        let result = solve_with_fallback(&constrained(&input, &edited), &cancel, &|| {}, &|| {
+            cancel.store(true, Ordering::Relaxed);
+        });
+        assert_eq!(result.expect_err("cancelled"), "cancelled");
     }
 }

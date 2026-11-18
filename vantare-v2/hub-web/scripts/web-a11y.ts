@@ -34,6 +34,7 @@ import { checkResidentResults } from "./check-resident-results.ts";
 import { checkResidentReview } from "./check-resident-review.ts";
 import { checkMainScreens } from "./check-screens-a11y.ts";
 import { checkSidebarProfiles } from "./check-sidebar-profiles.ts";
+import { checkStrategyScreen } from "./check-strategy-screen";
 import { checkStudioCanvas } from "./check-studio-canvas.ts";
 import { checkStudioCatalogDrop } from "./check-studio-catalog-drop.ts";
 import { checkStudioCatalogPhotos } from "./check-studio-catalog-photos";
@@ -241,6 +242,13 @@ try {
   );
   await timed("checkHomePhotos", () =>
     checkHomePhotos(page, server.resolvedUrls?.local[0] ?? ""),
+  );
+  await timed("checkStrategyScreen", () =>
+    checkStrategyScreen(
+      page,
+      server.resolvedUrls?.local[0] ?? "",
+      resolve(evidence, "strategy"),
+    ),
   );
   await timed("checkWorkshopScreen", () =>
     checkWorkshopScreen(page, server.resolvedUrls?.local[0] ?? ""),

@@ -192,12 +192,16 @@ async function show(page: Page, shot: string) {
   await choose(page, /^Escena/, /Batalla cercana · conducción/);
   await frame(page, 1).waitFor();
   const caption = page.locator(".v-workshop-caption");
+  const announced = page.locator('.v-workshop [role="status"]');
+  assert.equal(await announced.count(), 1);
+  assert.equal(await caption.getAttribute("role"), null);
+  assert.equal(await caption.getAttribute("aria-live"), null);
   const firstCaption =
     shot === "pie-largo" ? longCaption : (battleCaptions[0] ?? "");
   assert.equal(await caption.getAttribute("aria-hidden"), null);
   assert((await caption.textContent())?.includes(firstCaption));
   assert.equal(
-    await page.getByRole("status").textContent(),
+    await announced.textContent(),
     `Fotograma 1 de 4 listo. ${firstCaption}`,
   );
   if (shot === "pie-largo") {
@@ -222,7 +226,7 @@ async function show(page: Page, shot: string) {
     height,
   );
   assert.equal(
-    await page.getByRole("status").textContent(),
+    await announced.textContent(),
     `Fotograma 2 de 4 listo. ${battleCaptions[1] ?? ""}`,
   );
   if (shot === "sin-pie") {
@@ -237,7 +241,7 @@ async function show(page: Page, shot: string) {
     assert.equal(await caption.getAttribute("data-empty"), "true");
     assert.equal(await caption.textContent(), "");
     assert.equal(
-      await page.getByRole("status").textContent(),
+      await announced.textContent(),
       "Fotograma 1 de 1 listo.",
     );
     return;

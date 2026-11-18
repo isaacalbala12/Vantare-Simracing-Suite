@@ -16,7 +16,7 @@ contextBridge.exposeInMainWorld("vantare", {
         await ipcRenderer.invoke(launcherReviewChannel, ticket),
       );
     } catch {
-      // The invoke may have been interrupted after Main sent the decision.
+      // Only a reply from Main can confirm that the decision was sent.
       return "interrupted";
     }
   },

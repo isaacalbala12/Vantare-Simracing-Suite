@@ -785,3 +785,28 @@ fn the_text_reason_stays_next_to_the_typed_cause() {
     );
     assert_eq!(GreedyRefusal::MaxStops.code(), "max_pit_stops");
 }
+
+// An input with a populated extra dimension runs on the extended route, which
+// the greedy plan does not model. This one repeats the scalar model exactly (the
+// service grid the Fuji fixture already carries), so the extended search ends
+// with the same budget exhaustion and no plan, independently of the clock.
+#[test]
+fn an_extra_dimension_without_a_plan_reports_not_scalar() {
+    let mut input = manual(240, true);
+    input.extra.insert(
+        "serviceDiscretization".into(),
+        json!({"fuelLiters": 1, "vePercent": 1}),
+    );
+    assert!(runs_extended_search(&input));
+    // The precondition: the search really ends here without a plan.
+    let search = solve_v2_cancellable(&input, &AtomicBool::new(false)).expect("extended search");
+    assert_eq!(search.certificate.status, OptimalityStatus::NotProven);
+    assert!(!search.result.feasible, "the extended search found a plan");
+    let calculation = detailed(input);
+    assert_eq!(calculation.route, CalculationRoute::Scalar);
+    assert_eq!(
+        calculation.fallback,
+        Fallback::Refused(GreedyRefusal::NotScalar)
+    );
+    assert!(!calculation.outcome.result.feasible);
+}

@@ -1,4 +1,5 @@
-//! Pure port of the frozen Hub model: uniform thinning and contiguous-time interpolation.
+//! Pure port of the frozen Hub model: uniform thinning and contiguous-time
+//! interpolation. El delta A−B se aparta a propósito del modelo: ver `delta`.
 use super::{Lap, Sample};
 use crate::protocol::HostError;
 use serde::{Deserialize, Serialize};
@@ -93,32 +94,103 @@ fn channel(samples: &[Option<Sample>], value: fn(Sample) -> Option<f64>) -> Vec<
     }
     points
 }
+/// Tramo monótono de B: dentro de un tramo la distancia no baja. Un descenso
+/// estricto abre otro tramo, es decir, la serie de distancias se reinició.
+#[derive(Clone, Copy)]
+struct Pass {
+    start: usize,
+    end: usize,
+}
+fn passes(points: &[Point]) -> Vec<Pass> {
+    let mut passes: Vec<Pass> = Vec::new();
+    for (index, point) in points.iter().enumerate() {
+        match passes.last_mut() {
+            Some(pass) if point.distance >= points[pass.end].distance => pass.end = index,
+            _ => passes.push(Pass { start: index, end: index }),
+        }
+    }
+    passes
+}
+/// Tramos de B ordenados por su distancia inicial y, para cada prefijo de ese
+/// orden, la mayor distancia que alcanza. Así se localiza el primer tramo que
+/// cubre una distancia sin recorrer la serie en cada punto de A.
+struct Reference {
+    order: Vec<usize>,
+    reach: Vec<f64>,
+}
+fn reference(points: &[Point], passes: &[Pass]) -> Reference {
+    let mut order: Vec<usize> = (0..passes.len()).collect();
+    order.sort_by(|&first, &second| {
+        points[passes[first].start]
+            .distance
+            .total_cmp(&points[passes[second].start].distance)
+            .then(passes[first].start.cmp(&passes[second].start))
+    });
+    let mut reach = Vec::with_capacity(order.len());
+    let mut furthest = f64::NEG_INFINITY;
+    for &index in &order {
+        furthest = furthest.max(points[passes[index].end].distance);
+        reach.push(furthest);
+    }
+    Reference { order, reach }
+}
+/// Intervalo de B que contiene `distance`, con la fracción ya calculada.
+fn interpolate<'a>(
+    points: &'a [Point],
+    passes: &[Pass],
+    reference: &Reference,
+    distance: f64,
+) -> Option<(&'a Point, &'a Point, f64)> {
+    let position = reference.reach.partition_point(|&reach| reach < distance);
+    let pass = passes[*reference.order.get(position)?];
+    if points[pass.start].distance > distance {
+        return None;
+    }
+    let run = &points[pass.start..=pass.end];
+    let after = run.partition_point(|point| point.distance <= distance);
+    let index = after.saturating_sub(1).min(run.len().checked_sub(2)?);
+    let (left, right) = (&run[index], &run[index + 1]);
+    if left.segment != right.segment
+        || right.distance <= left.distance
+        || !(left.distance..=right.distance).contains(&distance)
+    {
+        return None;
+    }
+    Some((
+        left,
+        right,
+        (distance - left.distance) / (right.distance - left.distance),
+    ))
+}
+/// A − B a igual distancia; interpola solo entre tiempos fiables contiguos de B.
+///
+/// Rompe a propósito la paridad con el modelo congelado del Hub GPUI
+/// (`native/hub/src/analysis/model.rs`): allí el cursor sobre B solo avanzaba,
+/// así que un retroceso de la distancia de A —o un reinicio de la de B— perdía
+/// los deltas posteriores. Aquí cada punto de A busca su intervalo por
+/// distancia, no por orden de llegada, con coste O(m log n).
+///
+/// B se parte en tramos donde la distancia no baja. Si se reinicia, cada
+/// distancia se interpola en el primer tramo que la cubre (por distancia
+/// inicial), así que nunca se mezclan dos pasadas en un mismo intervalo y no se
+/// extrapola fuera del tramo elegido.
 fn delta(a: &[Option<Sample>], b: &[Option<Sample>]) -> Vec<Point> {
     let mut result = Vec::new();
     let elapsed_b = channel(b, |s| s.elapsed);
-    let mut cursor = 0;
+    let passes = passes(&elapsed_b);
+    let reference = reference(&elapsed_b, &passes);
     for point in channel(a, |s| s.elapsed) {
-        while cursor + 2 < elapsed_b.len() && elapsed_b[cursor + 1].distance <= point.distance {
-            cursor += 1;
-        }
-        let Some(left) = elapsed_b.get(cursor) else {
-            break;
+        let Some((left, right, fraction)) =
+            interpolate(&elapsed_b, &passes, &reference, point.distance)
+        else {
+            continue;
         };
-        let Some(right) = elapsed_b.get(cursor + 1) else {
-            break;
-        };
-        if left.segment == right.segment
-            && right.distance > left.distance
-            && (left.distance..=right.distance).contains(&point.distance)
-        {
-            let fraction = (point.distance - left.distance) / (right.distance - left.distance);
-            let reference = left.value + fraction * (right.value - left.value);
-            result.push(Point {
-                value: point.value - reference,
-                segment: point.segment * (b.len() as u64 + 1) + left.segment,
-                ..point
-            });
-        }
+        let reference_elapsed = left.value + fraction * (right.value - left.value);
+        result.push(Point {
+            value: point.value - reference_elapsed,
+            segment: point.segment * (b.len() as u64 + 1) + left.segment,
+            ..point
+        });
     }
     result
 }

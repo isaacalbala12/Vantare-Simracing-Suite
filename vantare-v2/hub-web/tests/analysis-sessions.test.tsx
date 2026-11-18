@@ -9,6 +9,7 @@ import { lapTime, summarizeLaps } from "../src/renderer/app/analysis-laps";
 import { offline } from "../src/renderer/app/Host";
 import { analysisText } from "../src/renderer/i18n/analysis.es";
 import { AnalysisCatalog } from "../src/renderer/ui/analysis/Analysis";
+import { Comparison } from "../src/renderer/ui/analysis/Comparison";
 import { AnalysisLaps } from "../src/renderer/ui/analysis/RecordingDetail";
 import { TooltipProvider } from "../src/renderer/ui/Layers";
 
@@ -277,5 +278,72 @@ it.each([-1, 2])(
     const group = table.tBodies[table.tBodies.length - 1];
     expect(within(group).getByText("Vuelta 9")).toBeTruthy();
     expect(group.querySelector('th[scope="rowgroup"]')).toBeNull();
+  },
+);
+
+it("keeps the legacy caption when the recording has no timed laps", () => {
+  const { state, opened } = recording("analysis-v1");
+  for (const lap of opened.laps) lap.lapTimeApproxMs = null;
+  renderLaps(state);
+  const table = screen.getByRole("table") as HTMLTableElement;
+  expect(table.caption?.textContent).toContain(analysisText.approximate);
+});
+
+it("uses the latest date for identity and preserves original session indices for laps", () => {
+  const { state, inspection, opened } = recording();
+  for (const sessions of [inspection.sessions, opened.sessions]) {
+    sessions[1].trackName = "Monza";
+    sessions.reverse();
+  }
+  for (const lap of opened.laps) {
+    if (lap.session !== null) lap.session = 1 - lap.session;
+  }
+  const { unmount } = renderCatalog(state);
+  expect(
+    screen.getByRole("button", { name: /Spa.*Porsche.*GT3/ }),
+  ).toBeTruthy();
+  unmount();
+  renderLaps(state);
+  expect(screen.getByRole("heading", { name: /Spa · Porsche/ })).toBeTruthy();
+  const table = screen.getByRole("table") as HTMLTableElement;
+  const [recent, older] = table.tBodies;
+  expect(recent.textContent).toContain("Carrera");
+  expect(within(recent).getByText("Vuelta 4")).toBeTruthy();
+  expect(older.textContent).toContain("Clasificación");
+  expect(within(older).getByText("Vuelta 1")).toBeTruthy();
+});
+
+it("keeps the original order for sessions starting at the same instant", () => {
+  const { state, opened } = recording();
+  opened.sessions[1].startedAtMs = opened.sessions[0].startedAtMs;
+  renderLaps(state);
+  const table = screen.getByRole("table") as HTMLTableElement;
+  expect(within(table.tBodies[0]).getByText("Vuelta 4")).toBeTruthy();
+  expect(within(table.tBodies[1]).getByText("Vuelta 1")).toBeTruthy();
+});
+
+it.each([
+  [false, /Spa.*Warm-up \(A\) \/ Clasificación \(B\)/],
+  [true, /Spa.*Warm-up \(A\) \/ Monza.*Clasificación \(B\)/],
+] as const)(
+  "names both sessions in a comparison across sessions (different circuit: %s)",
+  (different, header) => {
+    const { state, opened } = recording();
+    opened.sessions[0].kind = "other";
+    opened.sessions[0].kindText = "Warm-up";
+    if (different) opened.sessions[1].trackName = "Monza";
+    state.pair = { a: 3, b: 1 };
+    render(
+      <TooltipProvider>
+        <Comparison
+          state={state}
+          enabled
+          updates={handler}
+          clock={clock}
+          timeZone={timeZone}
+        />
+      </TooltipProvider>,
+    );
+    expect(screen.getByText(header)).toBeTruthy();
   },
 );

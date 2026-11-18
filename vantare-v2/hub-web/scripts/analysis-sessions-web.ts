@@ -6,6 +6,7 @@ import AxeBuilder from "@axe-core/playwright";
 import { chromium, type Locator, type Page } from "playwright-core";
 import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
 import { analysisText as t } from "../src/renderer/i18n/analysis.es.ts";
+import { comparisonText } from "../src/renderer/i18n/comparison.es.ts";
 import { writeAnalysisSheet } from "./analysis-sheet.ts";
 import { webQaPreview } from "./web-qa.ts";
 
@@ -42,14 +43,16 @@ export async function checkAnalysisSessions(
   const figures = [];
   for (const width of [1280, 900])
     for (const theme of ["dark", "light"])
-      for (const scene of ["catalog", "sessions", "legacy"]) {
+      for (const scene of ["catalog", "sessions", "legacy", "cross-session"]) {
         const name = `${scene}-${theme}-${width}`;
         console.log(name);
         await page.setViewportSize({
           width,
           height: scene === "catalog" ? 980 : 1400,
         });
-        await page.goto(`${base}?escena=analysis-qa-sessions`);
+        await page.goto(
+          `${base}?escena=analysis-qa-sessions${scene === "cross-session" ? "-cross" : ""}`,
+        );
         await page
           .getByRole("tab", { name: t.recordings, exact: true })
           .waitFor();
@@ -89,7 +92,21 @@ export async function checkAnalysisSessions(
           await (scene === "legacy" ? legacy : real).click();
           const table = page.locator(".v-an-laps");
           await table.waitFor();
-          if (scene === "sessions") {
+          if (scene === "cross-session") {
+            await table
+              .getByRole("button", { name: comparisonText.select("a", 1) })
+              .click();
+            await table
+              .getByRole("button", { name: comparisonText.select("b", 2) })
+              .click();
+            await page
+              .getByRole("tab", { name: comparisonText.tab, exact: true })
+              .click();
+            await page
+              .getByText(/Spa.*Warm-up \(A\) \/ Clasificación \(B\)/)
+              .waitFor();
+            await page.locator(".v-an-trace").first().waitFor();
+          } else if (scene === "sessions") {
             await page
               .getByRole("heading", { name: "Spa · Porsche 911 GT3 R · GT3" })
               .waitFor();
@@ -127,7 +144,12 @@ export async function checkAnalysisSessions(
         results.push({ name, violations: report.violations });
         assert.deepEqual(report.violations, [], name);
         if (reference) {
-          const ref = scene === "catalog" ? "01-explorador" : "02-grabacion";
+          const ref =
+            scene === "cross-session"
+              ? "03-comparar"
+              : scene === "catalog"
+                ? "01-explorador"
+                : "02-grabacion";
           const refName = `${ref}-reference-${width}.png`;
           try {
             await access(resolve(output, refName));
@@ -157,7 +179,7 @@ export async function checkAnalysisSessions(
   if (reference)
     await writeAnalysisSheet(
       output,
-      `<!doctype html><html lang="es"><meta charset="utf-8"><title>P1f · sesiones</title><style>body{font:16px system-ui;margin:24px}section>div{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0}img{width:100%}section{margin-block:40px}</style><h1>P1f frente a las maquetas 01 y 02</h1>${figures.join("")}</html>`,
+      `<!doctype html><html lang="es"><meta charset="utf-8"><title>P1f · sesiones</title><style>body{font:16px system-ui;margin:24px}section>div{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0}img{width:100%}section{margin-block:40px}</style><h1>P1f frente a las maquetas 01, 02 y 03</h1>${figures.join("")}</html>`,
     );
 }
 

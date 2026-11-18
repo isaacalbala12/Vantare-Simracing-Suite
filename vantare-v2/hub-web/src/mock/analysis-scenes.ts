@@ -17,7 +17,9 @@ export function analysisScene(context: MockContext, clock = Date.now) {
   if (context.settingsData)
     context.settingsData.general.grabacion = !name.startsWith("disabled");
   const mock = create({ ...context, sceneName: "analysis-v1" });
-  const sessionsMock = name === "sessions" ? create(context) : undefined;
+  const crossSessions = name === "sessions-cross";
+  const sessionsMock =
+    name === "sessions" || crossSessions ? create(context) : undefined;
   let useSessionsMock = false;
   const compare = comparisonScene(context, mock);
   let pendingOpen: Extract<UiToHost, { kind: "request" }>["id"] | undefined;
@@ -163,6 +165,7 @@ export function analysisScene(context: MockContext, clock = Date.now) {
             bestLapMs: 112225,
           });
           Object.assign(laps[0], { lapTimeMs: null, sectorsMs: null });
+          if (crossSessions) laps[0].session = 0;
         }
         return answer;
       }

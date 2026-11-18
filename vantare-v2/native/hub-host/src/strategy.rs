@@ -70,7 +70,7 @@ pub(crate) struct State {
     generation: Option<String>,
     opened: bool,
     doc: Option<Document>,
-    state: StrategyState,
+    status: StrategyState,
     revision: String,
 }
 impl State {
@@ -80,7 +80,7 @@ impl State {
             generation: None,
             opened: false,
             doc: None,
-            state: StrategyState::Empty,
+            status: StrategyState::Empty,
             revision: hash(b""),
         }
     }
@@ -88,7 +88,7 @@ impl State {
         if !allowed || self.generation.as_deref() != generation {
             self.doc = None;
             self.opened = false;
-            self.state = StrategyState::Empty;
+            self.status = StrategyState::Empty;
             self.revision = hash(b"");
             self.generation = generation.map(str::to_owned);
         }
@@ -105,9 +105,9 @@ impl State {
     fn import(&mut self) {
         self.doc = None;
         self.revision = hash(b"");
-        self.state = StrategyState::Protected;
+        self.status = StrategyState::Protected;
         match import_last_draft(&self.root) {
-            Ok(None) => self.state = StrategyState::Empty,
+            Ok(None) => self.status = StrategyState::Empty,
             Ok(Some(bytes)) => {
                 let Ok(doc) = Document::parse(&bytes) else {
                     return;
@@ -121,7 +121,7 @@ impl State {
                     Ok(()) => {
                         self.revision = hash(&bytes);
                         self.doc = Some(doc);
-                        self.state = StrategyState::ImportedLegacy;
+                        self.status = StrategyState::ImportedLegacy;
                     }
                     Err(error) if error.kind().is_conflict() => self.read_primary(),
                     Err(_) => {}
@@ -142,7 +142,7 @@ impl State {
             || None,
         );
         self.revision = revision;
-        self.state = match (
+        self.status = match (
             &opened.value,
             opened.warning.is_some(),
             opened.observed.is_some(),
@@ -177,7 +177,7 @@ impl State {
         });
         StrategyView {
             revision: self.revision.clone(),
-            state: self.state,
+            state: self.status,
             events,
             active_event_id,
             active_strategy_id,
@@ -193,7 +193,7 @@ impl State {
         if !self.opened {
             return Err(HostError::Denied);
         }
-        if self.state == StrategyState::Protected {
+        if self.status == StrategyState::Protected {
             return Err(HostError::Protected);
         }
         if !valid_id(event_id) || !valid_id(strategy_id) || !valid_revision(revision) {
@@ -225,7 +225,7 @@ impl State {
         ) {
             Ok(()) => {
                 self.revision = hash(next.bytes());
-                self.state = document_state(&next);
+                self.status = document_state(&next);
                 self.doc = Some(next);
                 Ok(self.view())
             }

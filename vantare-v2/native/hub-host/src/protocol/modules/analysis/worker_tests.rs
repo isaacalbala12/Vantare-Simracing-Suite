@@ -2,7 +2,7 @@
 use super::*;
 use std::cell::Cell;
 use std::io::{BufRead, BufReader, Write};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 fn fixture(
     ids: &[(u64, u64, u32)],
     chunks: u32,
@@ -104,13 +104,25 @@ fn fixture_with_metadata(
         }
     }
     write_metadata(writer.stdin.as_mut().unwrap(), &mut output, commands);
+    finish_writer(
+        &mut writer,
+        &mut output,
+        ids.len() * usize::try_from(chunks).unwrap(),
+    );
+    let cancel = Arc::new(AtomicBool::new(false));
+    let mut reader = Reader::open(&helper, &db, cancel.clone()).unwrap();
+    reader.summaries().unwrap();
+    (root, Some((reader, cancel)))
+}
+
+fn finish_writer(writer: &mut Child, output: &mut impl BufRead, attempted: usize) {
     writeln!(
         writer.stdin.as_mut().unwrap(),
         "{}",
-        serde_json::json!(["finish", ids.len() * usize::try_from(chunks).unwrap()])
+        serde_json::json!(["finish", attempted])
     )
     .unwrap();
-    line.clear();
+    let mut line = String::new();
     output.read_line(&mut line).unwrap();
     assert_eq!(
         serde_json::from_str::<serde_json::Value>(&line).unwrap()[0],
@@ -118,11 +130,8 @@ fn fixture_with_metadata(
     );
     drop(writer.stdin.take());
     assert!(writer.wait().unwrap().success());
-    let cancel = Arc::new(AtomicBool::new(false));
-    let mut reader = Reader::open(&helper, &db, cancel.clone()).unwrap();
-    reader.summaries().unwrap();
-    (root, Some((reader, cancel)))
 }
+
 fn write_metadata(
     input: &mut impl Write,
     output: &mut impl BufRead,

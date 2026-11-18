@@ -1,7 +1,7 @@
 # Gates con DuckDB oficial, sin desactivar defaults ajenos a storage.
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'captura', 'test', 'telemetria', 'completa', 'archive', 'lifecycle', 'prueba', 'distribution')][string]$Gate,
+    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'captura', 'test', 'telemetria', 'completa', 'archive', 'lifecycle', 'prueba', 'distribution', 'qa-license')][string]$Gate,
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
     [string]$BuildConfig,
     [string]$TargetDirectory = $env:VANTARE_SLOT_TARGET,
@@ -17,6 +17,19 @@ if ($PublicTargetsOnly -and $Gate -ne 'check') { throw 'PublicTargetsOnly solo s
 if (-not (Test-VantareTargetPath $TargetDirectory)) { throw 'Ejecuta gates.ps1 mediante scripts/compilar.ps1 (target absoluto en el volumen configurado).' }
 if ($Gate -eq 'distribution') {
     & (Join-Path $PSScriptRoot 'scripts/check-qa-distribution.ps1') -TargetDirectory ([IO.Path]::GetFullPath($TargetDirectory))
+    return
+}
+if ($Gate -eq 'qa-license') {
+    $previousGraphicsGuard = $env:VANTARE_SIN_GRAFICOS
+    Push-Location $PSScriptRoot
+    try {
+        $env:VANTARE_SIN_GRAFICOS = '1'
+        & cargo test --manifest-path Cargo.toml --locked -p vantare-runtime --features qa-license --bin vantare-qa-license --test qa_license --target-dir $TargetDirectory
+        if ($LASTEXITCODE) { throw "Tests CLI/rights QA fallaron (código $LASTEXITCODE)." }
+    } finally {
+        $env:VANTARE_SIN_GRAFICOS = $previousGraphicsGuard
+        Pop-Location
+    }
     return
 }
 if ($Gate -eq 'prueba' -and -not $BuildConfig) { throw 'Prueba exige -BuildConfig con la configuración pública real.' }

@@ -17,6 +17,21 @@ from native_gate_scope import classify_paths  # noqa: E402
 
 
 class ClassifyPathsTest(unittest.TestCase):
+    def test_qa_license_paths_enter_the_native_gate(self) -> None:
+        for relative in (
+            "Cargo.toml",
+            "src/rights/verifier.rs",
+            "src/bin/vantare-qa-license/main.rs",
+            "src/bin/vantare-qa-license/cli.rs",
+            "tests/qa_license.rs",
+        ):
+            path = f"vantare-v2/native/runtime/{relative}"
+            with self.subTest(path=path):
+                scope = classify_paths([path])
+                self.assertTrue(scope.native)
+                self.assertTrue(scope.telemetria)
+                self.assertIn(path, scope.native_paths)
+
     def test_rune_workspace_is_isolated_but_shared_crates_still_run_native(self):
         paths = ['vantare-v2/native/overlays-rune/Cargo.toml',
                  'vantare-v2/native/overlays-rune/Cargo.lock',

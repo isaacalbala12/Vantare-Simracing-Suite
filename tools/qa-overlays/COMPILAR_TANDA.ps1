@@ -1,11 +1,11 @@
 # Compilación reproducible por UN slot de la cola; jamás ejecuta overlays.
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Output,[switch]$DentroDelSlot,[switch]$SoloNucleo,[string]$BaseArtifacts='',[long]$CiRunId=0,[string]$SourceSha='')
+param([Parameter(Mandatory)][string]$Source,[Parameter(Mandatory)][string]$Output,[switch]$DentroDelSlot,[switch]$SoloNucleo,[string]$BaseArtifacts='',[long]$CiRunId=0,[string]$SourceSha='',[ValidateSet('Visual','Medicion')][string]$ModoArtefacto='Visual')
 $ErrorActionPreference='Stop'
-if($PSBoundParameters.ContainsKey('CiRunId') -or $PSBoundParameters.ContainsKey('SourceSha')){
+if($PSBoundParameters.ContainsKey('CiRunId') -or $PSBoundParameters.ContainsKey('SourceSha') -or $PSBoundParameters.ContainsKey('ModoArtefacto')){
  if($DentroDelSlot -or $SoloNucleo -or $BaseArtifacts){throw 'La importación CI es incompatible con la compilación local'}
  . (Join-Path $PSScriptRoot 'IMPORTAR_ARTEFACTO_TANDA.ps1')
- Import-TandaArtifact $Source $Output $CiRunId $SourceSha
+ Import-TandaArtifact $Source $Output $CiRunId $SourceSha -Mode $ModoArtefacto
  return
 }
 $sha='fb2e2e520be96b59066e2a69c3899cf9842a0752'

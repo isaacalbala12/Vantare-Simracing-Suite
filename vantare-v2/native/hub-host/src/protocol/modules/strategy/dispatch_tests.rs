@@ -173,6 +173,63 @@ fn strategy_bounds_event_and_variant_projections_before_opening() {
     }
 }
 
+#[test]
+fn strategy_form_at_its_limits_still_fits_the_frame_with_the_largest_collection() {
+    use crate::strategy::TEXT_LIMIT;
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let data = fixture.0.join("hub");
+    std::fs::create_dir_all(&data).unwrap();
+    let path = data.join("strategy-v2.json");
+    session.current.access.verified = true;
+    // every text of the form at the limit, made of the characters JSON escapes
+    let name = "\"".repeat(TEXT_LIMIT);
+    let mut value: serde_json::Value =
+        serde_json::from_slice(&large_strategy_document(32, 16)).unwrap();
+    let event = &mut value["events"][0];
+    event["team"] = vantare_strategy::document::manual(name.clone().into());
+    event["strategies"][0]["note"] = vantare_strategy::document::manual(name.clone().into());
+    event["drivers"][0]["name"] = vantare_strategy::document::manual(name.clone().into());
+    event["drivers"][0]["ini"] = vantare_strategy::document::manual(name.clone().into());
+    std::fs::write(&path, serde_json::to_vec(&value).unwrap()).unwrap();
+    let response = request(&mut session, &Request::StrategyOpen {});
+    assert!(serde_json::to_vec(&response).unwrap().len() < frame::LIMIT - 64 * 1024);
+    let HostToUi::Response {
+        result: Reply::StrategyOpen { value },
+        ..
+    } = response
+    else {
+        panic!("open the largest collection");
+    };
+    let form = value.form.expect("a form at the limit of each text");
+    for text in [
+        &form.fields.name,
+        &form.fields.class,
+        &form.fields.track,
+        &form.fields.team,
+        &form.fields.variant_note,
+        &form.fields.driver_name,
+        &form.fields.driver_initials,
+    ] {
+        assert_eq!(text.len(), TEXT_LIMIT);
+    }
+    // a conflict carries the view once more and still fits
+    let stale = Request::StrategySelect {
+        event_id: "x".into(),
+        strategy_id: "y".into(),
+        revision: "0".repeat(64),
+    };
+    let conflict = request(&mut session, &stale);
+    assert!(matches!(
+        conflict,
+        HostToUi::Failure {
+            error: HostError::StrategyConflict { .. },
+            ..
+        }
+    ));
+    assert!(serde_json::to_vec(&conflict).unwrap().len() < frame::LIMIT);
+}
+
 fn open_strategy(session: &mut Session) -> crate::strategy::StrategyView {
     session.current.access.verified = true;
     let HostToUi::Response {
@@ -206,6 +263,7 @@ fn create_strategy(
             }),
             base_pace_seconds: None,
             fuel_per_lap_liters: None,
+            inputs: None,
         },
     )
     else {

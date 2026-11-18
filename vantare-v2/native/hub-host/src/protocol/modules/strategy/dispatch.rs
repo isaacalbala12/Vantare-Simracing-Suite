@@ -63,12 +63,14 @@ pub(super) fn dispatch(
                 fields,
                 base_pace_seconds,
                 fuel_per_lap_liters,
+                inputs,
             } => strategy
                 .create(
                     revision,
                     fields,
                     base_pace_seconds.as_deref(),
                     fuel_per_lap_liters.as_deref(),
+                    inputs.as_deref(),
                     &chrono::Utc::now().to_rfc3339(),
                 )
                 .map(|value| Reply::StrategyCreate { value }),

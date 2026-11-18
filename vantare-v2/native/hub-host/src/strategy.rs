@@ -67,7 +67,7 @@ pub struct StrategyVariant {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
-#[serde(deny_unknown_fields)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct StrategyEventSummary {
     pub id: String,
     pub name: String,
@@ -75,6 +75,11 @@ pub struct StrategyEventSummary {
     pub track: String,
     pub drivers: u32,
     pub strategies: Vec<StrategyVariant>,
+    /// `true` when some variant of the event keeps valid, confirmed calculation
+    /// inputs in the document (the draft included), so a plan can be calculated
+    /// from them. It does NOT say that a plan exists: the document keeps no plan,
+    /// only the inputs (a plan saved with the document is a later contract).
+    pub has_inputs: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -91,6 +96,13 @@ pub struct StrategyView {
     /// The file the document lives in: its name, never its path. `null` before
     /// the session opens.
     pub file: Option<StrategyFile>,
+    /// The entries of the active variant as the document (or its draft) holds
+    /// them: the 13 `fields` and the 15 `inputs`, the same strings
+    /// `strategy.compute` takes. `null` without an active event and variant, or
+    /// when a stored text is over the text limit or has a control character (it is
+    /// never cut or emptied). Without confirmed calculation inputs `inputs` are empty
+    /// strings, apart from the pace and consumption the event may hold.
+    pub form: Option<Box<StrategyComputeForm>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -331,6 +343,7 @@ impl State {
             dirty: self.dirty(),
             plan: self.calculation.view().clone(),
             file: self.file(),
+            form: None,
         }
     }
     pub(crate) fn select(
@@ -370,6 +383,7 @@ impl State {
         fields: &StrategyFields,
         pace: Option<&str>,
         consumption: Option<&str>,
+        _inputs: Option<&StrategySolverFields>,
         now: &str,
     ) -> Result<StrategyView, HostError> {
         self.require_clean()?;
@@ -789,6 +803,7 @@ fn project_event(value: &Value) -> Option<StrategyEventSummary> {
                 })
             })
             .collect(),
+        has_inputs: false,
     })
 }
 #[cfg(test)]
@@ -797,3 +812,6 @@ mod tests;
 #[cfg(test)]
 #[path = "strategy_file_tests.rs"]
 mod file_tests;
+#[cfg(test)]
+#[path = "strategy_data_tests.rs"]
+mod data_tests;

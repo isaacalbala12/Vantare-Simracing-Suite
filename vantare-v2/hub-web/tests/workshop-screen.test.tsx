@@ -42,7 +42,10 @@ const battle = "Batalla cercana · conducción";
 const imageName = /^Foto de Standings, escena /;
 let cache: QueryClient;
 let core: CoreStatus;
-let notify: (message: HostToUi) => void;
+const listeners = new Set<(message: HostToUi) => void>();
+function notify(message: HostToUi) {
+  for (const listener of listeners) listener(message);
+}
 let requests: Request[];
 let respond: ((request: Request) => Promise<Reply> | undefined) | undefined;
 const decode = vi.fn<() => Promise<void>>();
@@ -149,8 +152,8 @@ beforeEach(() => {
   const mock = createMockHost("preview-image");
   const client = {
     listen(fn: typeof notify) {
-      notify = fn;
-      return () => {};
+      listeners.add(fn);
+      return () => listeners.delete(fn);
     },
     subscribe: () => () => {},
     start() {
@@ -176,6 +179,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   cache.clear();
+  listeners.clear();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });

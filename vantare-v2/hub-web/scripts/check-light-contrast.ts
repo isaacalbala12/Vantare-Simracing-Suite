@@ -14,6 +14,63 @@ export const contrastScenes = [
   "ajustes-aplicacion",
 ] as const;
 
+async function checkControlBorders(page: Page, base: string) {
+  const cases = [
+    {
+      scene: "launcher-base",
+      buttons: [
+        [/Nuevo perfil$/, "rgb(122, 112, 115)", "rgba(255, 255, 255, 0.1)"],
+        [/^Aplicaciones$/, "rgb(122, 112, 115)", "rgba(255, 255, 255, 0.1)"],
+        [/^Editar perfil$/, "rgb(96, 86, 88)", "rgba(255, 255, 255, 0.1)"],
+        [
+          /^Reintentar fallidos$/,
+          "rgb(96, 86, 88)",
+          "rgba(255, 255, 255, 0.1)",
+        ],
+        [
+          /^Repetir los mismos pasos$/,
+          "rgb(96, 86, 88)",
+          "rgba(255, 255, 255, 0.1)",
+        ],
+      ],
+    },
+    {
+      scene: "studio-estado-protegido-error",
+      buttons: [
+        [/^Volver a cargar$/, "rgb(122, 112, 115)", "rgba(255, 255, 255, 0.1)"],
+      ],
+    },
+    {
+      scene: "ajustes-aplicacion",
+      buttons: [
+        [/^Enviar prueba$/, "rgb(122, 112, 115)", "rgba(255, 255, 255, 0.15)"],
+        [/^Copiar informe$/, "rgb(122, 112, 115)", "rgba(255, 255, 255, 0.15)"],
+      ],
+    },
+  ] as const;
+
+  for (const { scene, buttons } of cases) {
+    const adapter = visualScenes[scene];
+    for (const scheme of ["light", "dark"] as const) {
+      await page.goto(`${base}?escena=visual-${scheme}:${adapter.mock}`);
+      await adapter.prepare(page);
+      for (const [name, light, dark] of buttons) {
+        const button = page
+          .getByRole("button", { name })
+          .and(page.locator(".v-button--neutral"));
+        const actual = await button.evaluate(
+          (node) => getComputedStyle(node).borderTopColor,
+        );
+        assert.equal(
+          actual,
+          scheme === "light" ? light : dark,
+          `${scene}/${scheme}/${name}`,
+        );
+      }
+    }
+  }
+}
+
 export async function checkLightContrast(
   parent: Page,
   base: string,
@@ -39,6 +96,7 @@ export async function checkLightContrast(
         incomplete: report.incomplete,
       });
     }
+    await checkControlBorders(page, base);
   } finally {
     await page.close();
     await writeFile(

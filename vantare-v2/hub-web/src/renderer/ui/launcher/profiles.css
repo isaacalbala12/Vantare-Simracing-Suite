@@ -49,9 +49,6 @@
   min-height: 318px;
   box-sizing: border-box;
 }
-[data-scheme="light"] .v-launcher-hero .v-button--neutral {
-  border-color: var(--text-3);
-}
 .v-launcher-hero::before {
   content: "";
   position: absolute;
@@ -526,6 +523,14 @@ button.v-launcher-app-tile {
   font-size: 14px;
   font-weight: 500;
   border-radius: 8px;
+}
+[data-scheme="light"]
+  :is(.v-launcher-page, .v-profile-editor, .v-launcher-rail)
+  .v-button--neutral {
+  border-color: var(--control-edge);
+}
+[data-scheme="light"] .v-launcher-hero .v-button--neutral {
+  border-color: var(--text-3);
 }
 .v-launcher-rail .v-button--ghost,
 .v-launcher-profile--new {

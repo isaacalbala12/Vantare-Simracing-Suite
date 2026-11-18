@@ -262,6 +262,9 @@
   background: var(--surface-2);
   border-color: var(--edge);
 }
+[data-scheme="light"] .v-studio-state-actions .v-button--neutral {
+  border-color: var(--control-edge);
+}
 .v-studio-state-actions .v-button--neutral:hover:not(:disabled) {
   background: var(--surface-3);
 }

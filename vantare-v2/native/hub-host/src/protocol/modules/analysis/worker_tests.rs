@@ -431,7 +431,7 @@ fn real_v1_bridge_has_empty_sessions_in_inspect_and_open() {
     assert_eq!(sessions.as_slice(), &[]);
     assert_eq!(laps.len(), 1);
     let lap = &laps[0];
-    assert!(lap.lap_time_approx_ms.is_some());
+    assert_eq!(lap.lap_time_approx_ms, Some(10));
     assert_eq!(
         (lap.session, lap.lap_time_ms, lap.sectors_ms.as_ref()),
         (None, None, None)

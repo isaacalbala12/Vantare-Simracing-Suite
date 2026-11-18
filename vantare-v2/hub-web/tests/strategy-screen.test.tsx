@@ -398,7 +398,12 @@ it("confirms the complete fields of the active variant and uses the returned vie
   const request = mount("ready");
   await openRace();
   click("Editar piloto");
-  fill({ "Nombre de la carrera": "Copa Fuji", Depósito: "82,50" });
+  fill({
+    "Nombre de la carrera": "Copa Fuji",
+    Depósito: "82,50",
+    "Vueltas que vas a dar": "120",
+    "Ritmo por vuelta": "91,5",
+  });
   click("Confirmar datos");
   await screen.findByRole("heading", { name: "Copa Fuji" });
   expect(
@@ -423,8 +428,16 @@ it("confirms the complete fields of the active variant and uses the returned vie
       variantMode: "dry",
       variantNote: "",
     },
+    inputs: {
+      raceLaps: "120",
+      basePaceSeconds: "91.5",
+      fuelPerLapLiters: "1.83",
+      serviceMode: "parallel",
+    },
   });
   expect(screen.getByText("82,5 L · 1,83 L/v")).toBeTruthy();
+  expect(screen.getByText("90 min · 120 vueltas")).toBeTruthy();
+  expect(screen.getByText("1:31,500 por vuelta")).toBeTruthy();
   expect(screen.getByRole("status").textContent).toBe("Datos confirmados.");
   expect(screen.getByText("Sin guardar")).toBeTruthy();
 });
@@ -466,15 +479,11 @@ it("edits every confirmable value and offers no control for team or variant mode
 });
 
 it("sends the saved variant mode untouched and shows a generic error when the host rejects it", async () => {
-  const request = mount(
-    "ready",
-    (r) => (r.method === "strategy.confirm" ? { kind: "rejected" } : undefined),
-    false,
-    (view) => {
-      if (view.form) view.form.fields.variantMode = "wet";
-      return view;
-    },
-  );
+  // The mock applies the host rule: with inputs, any mode other than dry is rejected.
+  const request = mount("ready", undefined, false, (view) => {
+    if (view.form) view.form.fields.variantMode = "wet";
+    return view;
+  });
   await openRace();
   click("Editar carrera");
   fill({ "Nombre de la carrera": "Copa Fuji" });

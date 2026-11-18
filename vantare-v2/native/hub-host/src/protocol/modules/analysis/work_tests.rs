@@ -118,6 +118,21 @@ fn recording_status_is_host_only_and_blocks_open_and_inspect() {
     drop(state);
     std::fs::remove_dir_all(root).unwrap();
 }
+fn decoded_session_text(text: &str) -> String {
+    let session: crate::analysis::SessionSummary = serde_json::from_value(serde_json::json!({
+        "epoch": 1, "session": 1, "kind": "qualifying",
+        "kindText": text, "trackName": text, "vehicle": text, "className": text,
+        "startedAtMs": 0, "endedAtMs": null, "simElapsedS": null,
+        "finalPosition": null, "finalClassPosition": null, "lapsCompleted": null,
+        "bestLapMs": null, "endReason": null, "sealed": false
+    }))
+    .unwrap();
+    assert_eq!(session.kind_text, session.track_name);
+    assert_eq!(session.vehicle, session.track_name);
+    assert_eq!(session.class_name, session.track_name);
+    session.track_name
+}
+
 #[test]
 fn full_catalog_and_open_with_256_sessions_and_laps_fit_the_frame() {
     use crate::protocol::HostToUi;
@@ -151,40 +166,43 @@ fn full_catalog_and_open_with_256_sessions_and_laps_fit_the_frame() {
         throttle: signal.clone(),
         brake: signal,
     };
-    // Backslashes double their byte length on the JSON wire.
-    let text = "\\".repeat(256);
-    let sessions: Vec<_> = (0..256)
-        .map(|index| AnalysisSessionSummary {
-            index,
-            kind: AnalysisSessionKind::Qualifying,
-            kind_text: Some(text.clone()),
-            track_name: Some(text.clone()),
-            vehicle: Some(text.clone()),
-            class_name: Some(text.clone()),
-            started_at_ms: (1 << 53) - 1,
-            ended_at_ms: Some((1 << 53) - 1),
-            sealed: true,
-            end_reason: Some(AnalysisSessionEndReason::SessionChanged),
-            position_at_close: Some(u32::MAX),
-            class_position_at_close: Some(u32::MAX),
-            laps_completed: Some(u32::MAX),
-            best_lap_ms: Some(u32::MAX),
-        })
-        .collect();
+    // Control bytes expand up to sixfold before the Reader substitutes them.
+    let control = decoded_session_text(&"\u{0001}".repeat(256));
+    assert_eq!(control, "?".repeat(256));
+    let open = |text: &str| Reply::AnalysisOpen {
+        session: "f".repeat(64),
+        watermark: u64::MAX.to_string(),
+        attempted: u64::MAX.to_string(),
+        total: u64::MAX.to_string(),
+        finished: true,
+        laps: vec![lap.clone(); 256],
+        sessions: (0..256)
+            .map(|index| AnalysisSessionSummary {
+                index,
+                kind: AnalysisSessionKind::Qualifying,
+                kind_text: Some(text.to_owned()),
+                track_name: Some(text.to_owned()),
+                vehicle: Some(text.to_owned()),
+                class_name: Some(text.to_owned()),
+                started_at_ms: (1 << 53) - 1,
+                ended_at_ms: Some((1 << 53) - 1),
+                sealed: true,
+                end_reason: Some(AnalysisSessionEndReason::SessionChanged),
+                position_at_close: Some(u32::MAX),
+                class_position_at_close: Some(u32::MAX),
+                laps_completed: Some(u32::MAX),
+                best_lap_ms: Some(u32::MAX),
+            })
+            .collect(),
+    };
     for result in [
         Reply::AnalysisCatalog {
             recordings: vec![row; 256],
             max: 256,
         },
-        Reply::AnalysisOpen {
-            session: "f".repeat(64),
-            watermark: u64::MAX.to_string(),
-            attempted: u64::MAX.to_string(),
-            total: u64::MAX.to_string(),
-            finished: true,
-            laps: vec![lap; 256],
-            sessions,
-        },
+        open(&control),
+        // Quotes and backslashes still expand to two bytes each.
+        open(&"\"".repeat(256)),
     ] {
         assert!(
             serde_json::to_vec(&HostToUi::Response {

@@ -144,7 +144,12 @@ fn bounded_text<'de, D: serde::Deserializer<'de>>(
     if text.len() > 256 {
         return Err(serde::de::Error::custom("Texto de sesión fuera de límites"));
     }
-    Ok(text)
+    // Keep escaped control characters from expanding session frames beyond the wire limit.
+    if text.contains(char::is_control) {
+        Ok(text.replace(char::is_control, "?"))
+    } else {
+        Ok(text)
+    }
 }
 fn elapsed<'de, D: serde::Deserializer<'de>>(
     deserializer: D,

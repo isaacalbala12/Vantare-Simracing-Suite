@@ -45,15 +45,12 @@ impl Reader {
         let result = (|| {
             self.unchanged(deadline)?;
             let frame = self.request(&json!(["session-summaries"]), deadline)?;
-            let rows = match metadata_page::<SessionSummary>(
-                frame,
-                "session-summaries",
-                "series-session.v1",
-            )? {
-                Some((total, rows)) if rows.len() as u64 == total => rows,
-                Some(_) => return Err(error(ErrorCode::Limit, "Resumen de sesiones truncado")),
-                None => Vec::new(),
-            };
+            // The session command returns one bounded window, and total counts
+            // older rows that can be outside it.
+            let rows =
+                metadata_page::<SessionSummary>(frame, "session-summaries", "series-session.v1")?
+                    .map(|(_, rows)| rows)
+                    .unwrap_or_default();
             if rows
                 .windows(2)
                 .any(|rows| (rows[0].epoch, rows[0].session) <= (rows[1].epoch, rows[1].session))

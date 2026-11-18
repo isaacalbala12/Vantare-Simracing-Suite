@@ -449,7 +449,7 @@ fn unfinished_recordings_are_not_cached_and_cancelled_index_does_not_start_work(
 }
 
 #[test]
-fn sessions_rejects_a_truncated_catalog_instead_of_returning_a_partial_list() {
+fn sessions_accept_a_retained_window_smaller_than_the_total() {
     let dir = Directory::new();
     metadata_fixture(&dir.db());
     let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
@@ -457,15 +457,21 @@ fn sessions_rejects_a_truncated_catalog_instead_of_returning_a_partial_list() {
     inject(
         &mut reader,
         vec![
-            Ok(before),
+            Ok(before.clone()),
             Ok(json!([
                 "session-summaries",
                 "series-session.v1",
                 257,
                 [session_row()]
             ])),
+            Ok(before),
         ],
     );
-    assert_eq!(reader.sessions().unwrap_err().code, ErrorCode::Limit);
-    reaped(&mut reader);
+    let sessions = reader.sessions().unwrap();
+    assert_eq!(sessions.len(), 1);
+    assert_eq!(
+        sessions[0].session,
+        session_row()["session"].as_u64().unwrap()
+    );
+    assert!(!reader.closed);
 }

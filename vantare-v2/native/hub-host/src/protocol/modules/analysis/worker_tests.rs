@@ -234,15 +234,16 @@ fn compare_absolute_deadline_uses_injected_clock_between_pages_and_drops_session
     std::fs::remove_dir_all(root).unwrap();
 }
 
+fn open_session(epoch: u64) -> serde_json::Value {
+    serde_json::json!(["session-open", {
+        "epoch":epoch,"session":3,"kind":"race","kindText":"","trackName":"Spa",
+        "vehicle":"Porsche","className":"GT3","startedAtMs":epoch * 1000
+    }])
+}
+
 fn metadata_commands() -> Vec<serde_json::Value> {
     use serde_json::json;
-    let mut commands = Vec::new();
-    for (epoch, session) in [(1, 3), (2, 3)] {
-        commands.push(json!(["session-open", {
-            "epoch":epoch,"session":session,"kind":"race","kindText":"","trackName":"Spa",
-            "vehicle":"Porsche","className":"GT3","startedAtMs":epoch * 1000
-        }]));
-    }
+    let mut commands = vec![open_session(1), open_session(2)];
     for (epoch, car, lap, ms) in [
         (1, 7, 0, 90_125),
         (2, 7, 1, 91_250),
@@ -334,9 +335,9 @@ fn inspect_and_open_join_real_metadata_by_full_key() {
             .map(|lap| (lap.session, lap.lap_time_ms))
             .collect::<Vec<_>>(),
         [
-            (Some(1), Some(90_125)),
-            (Some(0), Some(91_250)),
-            (Some(0), None)
+            (Some(opened[1].index), Some(90_125)),
+            (Some(opened[0].index), Some(91_250)),
+            (Some(opened[0].index), None)
         ]
     );
     assert_eq!(
@@ -344,6 +345,69 @@ fn inspect_and_open_join_real_metadata_by_full_key() {
         Some([31_000, 30_000, 29_125].as_slice())
     );
     assert_eq!(laps[2].sectors_ms, None);
+    drop(current);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn inspect_and_open_keep_recent_sessions_and_null_laps_outside_the_window() {
+    let mut commands = metadata_commands();
+    commands.extend((3..=257).map(open_session));
+    let (root, reader) =
+        fixture_with_metadata(&[(1, 3, 7), (2, 3, 7)], 1, 2, false, &commands, false);
+    drop(reader);
+    let exe = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join("vantare-storage.exe");
+    let path = root.join("recording.duckdb");
+    let created = stamp(&path).unwrap().created;
+    let mut current = None;
+    let mut cache = BTreeMap::new();
+    let mut request = job(0, 0);
+    request.operation = Operation::Inspect {
+        id: "id".into(),
+        path: path.clone(),
+        created,
+    };
+    let Reply::AnalysisInspect { sessions, .. } =
+        execute(&exe, &request, &mut current, &mut cache).unwrap()
+    else {
+        panic!("inspect")
+    };
+    assert_eq!(sessions.len(), 256);
+    assert_eq!(sessions[0].started_at_ms, 257_000);
+    assert_eq!(sessions[255].started_at_ms, 2_000);
+
+    request.operation = Operation::Open {
+        path,
+        created,
+        token: "token".into(),
+    };
+    let Reply::AnalysisOpen {
+        sessions: opened,
+        laps,
+        ..
+    } = execute(&exe, &request, &mut current, &mut cache).unwrap()
+    else {
+        panic!("open")
+    };
+    assert_eq!(opened, sessions);
+    assert_eq!(laps.len(), 2);
+    assert_eq!(
+        (
+            laps[0].session,
+            laps[0].lap_time_ms,
+            laps[0].sectors_ms.as_ref()
+        ),
+        (None, None, None)
+    );
+    assert_eq!(laps[0].lap_time_approx_ms, Some(10));
+    assert_eq!(laps[1].session, Some(opened[255].index));
+    assert_eq!(laps[1].lap_time_ms, Some(91_250));
     drop(current);
     std::fs::remove_dir_all(root).unwrap();
 }

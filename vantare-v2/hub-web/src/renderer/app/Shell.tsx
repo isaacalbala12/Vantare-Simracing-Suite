@@ -49,7 +49,7 @@ import { profileCommands } from "./profile-commands";
 import { RegisteredScreen } from "./ScreenRegistry";
 import { useSettings } from "./SettingsState";
 import { type Section, useUi } from "./UiState";
-import { useUpdatesChannel } from "./UpdatesState";
+import { useUpdates } from "./UpdatesState";
 import { WindowControls } from "./WindowControls";
 
 export function Shell() {
@@ -64,7 +64,8 @@ function ShellContent() {
   const host = useHost();
   const query = useQueryClient();
   const settings = useSettings();
-  const channel = useUpdatesChannel();
+  const updates = useUpdates();
+  const channel = updates.isError ? undefined : updates.data?.channel;
   const analisisBeta = settings.view?.general.analisisBeta;
   const editBlocked =
     !settings.view ||

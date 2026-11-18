@@ -177,6 +177,7 @@ pub fn writer_alive(path: &Path) -> bool {
 }
 /// Solo tests: hace «asentado» un archivo recién creado.
 #[cfg(all(test, windows))]
+#[allow(clippy::unwrap_used)]
 pub fn backdate(path: &Path) {
     use std::os::windows::fs::FileTimesExt;
     let old = std::time::SystemTime::now() - PUBLISH_GRACE * 2;

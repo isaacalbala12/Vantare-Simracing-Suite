@@ -79,9 +79,15 @@ export async function checkProfileContextKeys(page: Page) {
 /** Runs in the existing Chromium web job, not jsdom, without any new server/dependency. */
 export async function openProfileRemovalWithKeyboard(page: Page) {
   const card = page.locator(".v-launcher-profile").first();
-  await card.focus();
+  // Base UI queues the card's initial focus on a microtask plus an animation
+  // frame, and that queued focus takes it back after a single focus() call.
+  // Focus inside the observation so every attempt is checked against a
+  // settled page (#2590, same fix as #2550).
   await until(
-    () => card.evaluate((node) => node === document.activeElement),
+    async () => {
+      await card.focus();
+      return card.evaluate((node) => node === document.activeElement);
+    },
     5000,
     "profile card receives focus before opening its menu",
   );
@@ -97,9 +103,13 @@ export async function openProfileRemovalWithKeyboard(page: Page) {
     "profile menu completes opening and places its initial focus",
   );
   const remove = menu.getByRole("menuitem", { name: "Eliminar", exact: true });
-  await remove.focus();
+  // Same queued initial focus as the card: ask again on every pass instead of
+  // trusting a single focus() call (#2590).
   await until(
-    () => remove.evaluate((node) => node === document.activeElement),
+    async () => {
+      await remove.focus();
+      return remove.evaluate((node) => node === document.activeElement);
+    },
     5000,
     "Remove owns keyboard focus before Enter",
   );

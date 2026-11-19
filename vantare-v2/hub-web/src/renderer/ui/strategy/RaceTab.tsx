@@ -314,7 +314,7 @@ function RaceEditor({
     if (refused)
       document
         .getElementById(`${id}-${draft.field}`)
-        ?.scrollIntoView?.({ block: "center" });
+        ?.scrollIntoView?.({ block: "nearest" });
   }, [refused, draft, id]);
   const focusTitle = useCallback(
     (node: HTMLHeadingElement | null) => node?.focus(),

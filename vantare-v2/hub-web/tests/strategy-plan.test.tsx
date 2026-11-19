@@ -538,6 +538,21 @@ describe("result of a calculation", () => {
     ).toContain("ruedas nuevas en 4 de 5");
   });
 
+  it("says «las que pediste» only when the plan has the laps of the form", async () => {
+    // the mock sample calculates 3 laps and its form asks for 3
+    mount("planned");
+    await openPlan();
+    const laps = (name: string) =>
+      within(screen.getByRole("list", { name: "Cifras del plan" }))
+        .getByText("Vueltas")
+        .closest("li")?.textContent ?? name;
+    expect(laps("asked")).toContain("las que pediste");
+    cleanup();
+    // the Fuji plan has 236 and the same form asks for 3: nothing is said
+    await showResult();
+    expect(laps("other")).not.toContain("las que pediste");
+  });
+
   it("keeps the figures when the plan is too long to draw, and says so", async () => {
     const base = result();
     await showResult(

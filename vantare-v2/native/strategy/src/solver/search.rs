@@ -297,6 +297,9 @@ pub(super) fn solve(
         for node in nodes {
             retained_states -= 1;
             retained_items -= decision_items(&node);
+            // Las ruedas montadas y su edad son las mismas para todos los tramos
+            // que se prueban desde este plan: se miran una vez.
+            let mounted = super::tyres::mounted(&node.tyre, &node.tyre_usage, node.age);
             for driver in &m.drivers {
                 if !m.sequence_allows(node.decision.stints.len(), &driver.id) {
                     continue;
@@ -317,22 +320,12 @@ pub(super) fn solve(
                         if f > node.fuel
                             || v > node.ve
                             || (m.input.tyre_life_laps.value > 0.0
-                                && f64::from(
-                                    super::tyres::age(&node.tyre, &node.tyre_usage, node.age)
-                                        + laps,
-                                ) > m.input.tyre_life_laps.value)
+                                && f64::from(mounted.age + laps) > m.input.tyre_life_laps.value)
                         {
                             break;
                         }
                         let mut after = node.clone();
-                        let eval = m.stint(
-                            lap + 1,
-                            laps,
-                            node.fuel,
-                            &driver.id,
-                            level,
-                            super::tyres::mounted(&node.tyre, &node.tyre_usage, node.age),
-                        )?;
+                        let eval = m.stint(lap + 1, laps, node.fuel, &driver.id, level, mounted)?;
                         after.evaluation.add(&eval);
                         if m.apply_driver(
                             &mut after.drivers,
@@ -353,10 +346,7 @@ pub(super) fn solve(
                         if after.worst_fuel < 0
                             || after.worst_ve < 0
                             || (worst.input.tyre_life_laps.value > 0.0
-                                && f64::from(
-                                    super::tyres::age(&node.tyre, &node.tyre_usage, node.age)
-                                        + laps,
-                                ) > worst.input.tyre_life_laps.value)
+                                && f64::from(mounted.age + laps) > worst.input.tyre_life_laps.value)
                         {
                             after.worst_feasible = false;
                         }

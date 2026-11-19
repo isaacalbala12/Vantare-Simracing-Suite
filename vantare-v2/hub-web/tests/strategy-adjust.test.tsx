@@ -187,6 +187,8 @@ describe("the view selector", () => {
           stops: [],
           canReset: false,
           error: null,
+          cause: null,
+          automatic: null,
         };
       }
       return view;
@@ -1018,6 +1020,9 @@ function withSchedule(stopLaps: number[], raceLaps = 236) {
       maxLap: (stopLaps[index + 1] ?? raceLaps) - 1,
       fuelLiters: 78,
       vePercent: 99,
+      fixed: { fuelLiters: null, vePercent: null },
+      pitSeconds: 61,
+      limits: { kind: "unavailable" as const },
     }));
     return view;
   };

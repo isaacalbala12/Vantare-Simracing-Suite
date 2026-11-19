@@ -659,6 +659,32 @@ async function adjustStates(
     0,
   );
 
+  // a recalculated plan says it is a trial, in the summary and in Carrera
+  await button(page, "Ajustar paradas").click();
+  await button(page, "+ 1 vuelta").press("Enter");
+  await modified();
+  await button(page, "Recalcular").press("Enter");
+  await page
+    .getByText("Plan recalculado: 6 horas y 1 minuto; 5 paradas.", {
+      exact: true,
+    })
+    .waitFor({ state: "attached" });
+  await button(page, "Resumen").click();
+  const trial = page.getByText(
+    "Plan recalculado de prueba: no se guarda en el archivo.",
+    { exact: true },
+  );
+  assert.equal(await trial.count(), 1);
+  assert.equal(await fileState(), "saved");
+  assert.equal(await page.getByRole("alert").count(), 0);
+  await saveShot("plan-recalculado");
+  await page.getByRole("tab", { name: "Carrera", exact: true }).click();
+  await page
+    .getByText("Calculado · 6:01:04 · 5 paradas", { exact: true })
+    .waitFor();
+  assert.equal(await trial.count(), 1);
+  await saveShot("carrera-plan-recalculado");
+
   // a recalculation: the plan stays on view while it runs
   await ready("plannedFujiRecalculating");
   await button(page, "Ajustar paradas").click();

@@ -355,6 +355,10 @@ export const strategy = {
       notEditable: "Este plan no se puede ajustar a mano.",
       noStops: "Este plan no tiene paradas que ajustar.",
       notSaved: "Estos ajustes son para probar. No se guardan en el archivo.",
+      trial: "Plan recalculado de prueba: no se guarda en el archivo.",
+      conflict: "El plan ha cambiado. Te mostramos el actual.",
+      pendingFromRace:
+        "Tienes ajustes del plan sin recalcular. Ve a la pestaña Plan para recalcular o restablecer.",
       recalculate: "Recalcular",
       reset: "Restablecer",
       previous: "valor anterior",
@@ -421,6 +425,8 @@ export const strategy = {
           ends: "al extremo · también puedes arrastrar.",
           drag: "Cada stint conserva al menos 1 vuelta.",
         },
+        pinned:
+          "Este final de stint no se puede mover: los stints de sus lados se quedarían sin vueltas.",
         last: "El último stint termina con la carrera. Para cambiarlo, mueve el final del stint anterior.",
       },
       stops: {

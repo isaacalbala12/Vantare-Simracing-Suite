@@ -1,4 +1,11 @@
-import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  Fragment,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type {
   StrategyCalculationView,
   StrategyComputeForm,
@@ -14,6 +21,7 @@ import {
   certificateNotice,
   clock,
   editSummary,
+  isTrialPlan,
   lapTime,
   load,
   movedStops,
@@ -280,11 +288,15 @@ function ViewSelector({
 function EditNotices({
   edit,
   edited,
+  recalculating,
 }: {
   edit: StrategyEditView;
   edited: boolean;
+  recalculating: boolean;
 }) {
-  const failed = edit.error && t.adjust.errors[edit.error];
+  // The host keeps the failure of the last attempt until the plan is edited
+  // again: not shown while a new attempt runs, so a second failure is a new alert.
+  const failed = !recalculating && edit.error && t.adjust.errors[edit.error];
   return (
     <>
       {edited && (
@@ -324,17 +336,31 @@ function Result({
   form,
   name,
   actions,
+  trial,
 }: {
   plan: StrategyPlanView;
   result: StrategyCalculationView;
   form: StrategyComputeForm | null;
   name: string;
   actions: PlanActions;
+  trial: boolean;
 }) {
   const { state, edit } = plan;
   const { timeline } = result;
   const [mode, setMode] = useState<Mode>("summary");
   const [selected, setSelected] = useState(0);
+  // A press on Recalcular waits for the lap that is still going to the host, and
+  // then goes: it is never lost, and never goes before the move it follows.
+  const [unsettled, setUnsettled] = useState(false);
+  const [wantsRecalculation, setWantsRecalculation] = useState(false);
+  const settle = useCallback((now: boolean) => setUnsettled(now), []);
+  const recalculate = actions.edit.recalculate;
+  const isEdited = plan.state === "edited";
+  useEffect(() => {
+    if (!wantsRecalculation || (isEdited && unsettled)) return;
+    setWantsRecalculation(false);
+    if (isEdited) recalculate();
+  }, [wantsRecalculation, unsettled, isEdited, recalculate]);
   const edited = state === "edited";
   const recalculating = state === "calculating";
   const busy = actions.pending || recalculating;
@@ -421,11 +447,7 @@ function Result({
   const headActions = recalculating ? undefined : edited ? (
     <>
       {reset}
-      <Button
-        variant="primary"
-        disabled={busy}
-        onClick={actions.edit.recalculate}
-      >
+      <Button variant="primary" onClick={() => setWantsRecalculation(true)}>
         <Icon name="refresh" />
         {t.adjust.recalculate}
       </Button>
@@ -478,9 +500,21 @@ function Result({
           </div>
         </div>
       )}
-      {edit && <EditNotices edit={edit} edited={edited} />}
+      {edit && (
+        <EditNotices
+          edit={edit}
+          edited={edited}
+          recalculating={recalculating}
+        />
+      )}
       {!edited && !recalculating && view === "summary" && (
         <Notice result={result} />
+      )}
+      {view === "summary" && isTrialPlan(plan, trial) && (
+        <p className="strategy-trial">
+          <Icon name="info" />
+          {t.adjust.trial}
+        </p>
       )}
       {(view === "summary" || edited || recalculating) && (
         <Figures result={result} form={form} stale={edited || recalculating} />
@@ -514,6 +548,7 @@ function Result({
                 locked={recalculating}
                 stale={edited || recalculating}
                 move={actions.edit.moveBoundary}
+                onUnsettled={settle}
               />
               {!edited && <p className="strategy-help">{t.adjust.notSaved}</p>}
             </>
@@ -550,11 +585,14 @@ export function PlanTab({
   form,
   name,
   actions,
+  trial,
 }: {
   plan: StrategyPlanView;
   form: StrategyComputeForm | null;
   name: string;
   actions: PlanActions;
+  // the plan on view is a recalculation of this session, not the file's
+  trial: boolean;
 }) {
   const state = plan.state;
   const calculate = (
@@ -620,6 +658,7 @@ export function PlanTab({
               form={form}
               name={name}
               actions={actions}
+              trial={trial}
             />
           </div>
         );
@@ -737,6 +776,7 @@ export function PlanTab({
             form={form}
             name={name}
             actions={actions}
+            trial={trial}
           />
         </div>
       ) : null;

@@ -12,7 +12,7 @@ import type {
 } from "../../../contract/generated/strategy";
 import { Icon } from "../../assets/icons/Icon";
 import { strategy as t } from "../../i18n/strategy";
-import { planCard } from "../../screens/strategy/planText";
+import { isTrialPlan, planCard } from "../../screens/strategy/planText";
 import { Button } from "../Button";
 import {
   decimal,
@@ -215,6 +215,7 @@ type EditorActions = {
 export function RaceTab({
   form,
   plan,
+  trial,
   viewPlan,
   editing,
   draft,
@@ -228,6 +229,8 @@ export function RaceTab({
   form: StrategyComputeForm | null;
   // the plan, to say in a card what it is; `viewPlan` goes to the Plan tab
   plan: StrategyPlanView;
+  // the plan is a recalculation of this session, not the file's
+  trial: boolean;
   viewPlan: () => void;
   editing: boolean;
   draft?: Draft;
@@ -263,6 +266,12 @@ export function RaceTab({
             <div className="strategy-kicker">{t.calc.card.eyebrow}</div>
             <h3>{card.title}</h3>
             {card.certificate && <p>{card.certificate}</p>}
+            {isTrialPlan(plan, trial) && (
+              <p className="strategy-trial">
+                <Icon name="info" />
+                {t.calc.adjust.trial}
+              </p>
+            )}
           </div>
           <Button disabled={pending} onClick={viewPlan}>
             {t.calc.card.view}

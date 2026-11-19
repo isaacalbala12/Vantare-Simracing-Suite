@@ -677,7 +677,7 @@ describe("a plan with pending changes", () => {
     expect(screen.getByText("6:01:04")).toBeTruthy();
   });
 
-  it("says a conflict with the plan changed outside and shows the host's plan", async () => {
+  it("shows the host's plan when it answers a conflict on the plan", async () => {
     let current: StrategyView | undefined;
     mount(
       "plannedFuji",
@@ -703,9 +703,7 @@ describe("a plan with pending changes", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Parada 2, vuelta 85" }));
     click("+ 1 vuelta");
     await waitFor(() => expect(screen.getByText("Vuelta 100")).toBeTruthy());
-    expect(status()).toBe(
-      "No se ha guardado: el archivo ha cambiado fuera de esta pantalla.",
-    );
+    expect(status()).toBe("El plan ha cambiado. Te mostramos el actual.");
   });
 });
 
@@ -866,22 +864,509 @@ describe("the plan card in Carrera", () => {
   });
 });
 
-// ---- the pending adjustments block a new calculation ----
+// ---- a plan that changed is not a file that changed ----
 
-describe("a calculation with adjustments pending", () => {
-  it("says to recalculate or reset first when the host refuses it", async () => {
-    mount("plannedFuji", (request) =>
-      request.method === "strategy.compute"
-        ? { kind: "strategyEditPending" }
-        : undefined,
+describe("a conflict on the plan", () => {
+  it.each([
+    "strategy.moveBoundary",
+    "strategy.moveStop",
+    "strategy.recalculate",
+    "strategy.resetEdit",
+  ] as const)("%s says the plan changed, not the file", async (method) => {
+    let current: StrategyView | undefined;
+    let armed = false;
+    mount(
+      "plannedFuji",
+      (request) =>
+        armed && request.method === method && current
+          ? { kind: "strategyConflict", current }
+          : undefined,
+      (view) => {
+        current ??= (() => {
+          const next = structuredClone(view);
+          next.plan.computeId = 9;
+          if (next.plan.edit) {
+            next.plan.edit.stops[1].lap = 100;
+            next.plan.edit.stints[1].toLap = 100;
+            next.plan.edit.stints[2].fromLap = 101;
+          }
+          return next;
+        })();
+        return view;
+      },
     );
-    await openRace();
+    await stops();
+    fireEvent.click(screen.getByRole("radio", { name: "Parada 2, vuelta 85" }));
+    if (method === "strategy.recalculate" || method === "strategy.resetEdit")
+      await moveSecondStop();
+    armed = true;
+    if (method === "strategy.moveStop") click("+ 1 vuelta");
+    else if (method === "strategy.moveBoundary") {
+      click("Ajustar stints");
+      fireEvent.change(slider(), { target: { value: "90" } });
+    } else
+      click(method === "strategy.recalculate" ? "Recalcular" : "Restablecer");
+    await waitFor(() =>
+      expect(status()).toBe("El plan ha cambiado. Te mostramos el actual."),
+    );
+    // nothing was lost and the file is as it was: the text says no such thing
+    expect(screen.queryByText(/No se ha guardado/)).toBeNull();
+    expect(screen.queryByText(/archivo ha cambiado/)).toBeNull();
+  });
+});
+
+// ---- the failure of a recalculation is not shown while it recalculates ----
+
+// The host does not answer `strategy.view` until it is released.
+function mountGated(scene: string, held: Request["method"]) {
+  const base = clientFor(scene);
+  let release = () => {};
+  let gate: Promise<void> | undefined;
+  const request = Object.assign(
+    vi.fn(async (next: Request) => {
+      if (gate && next.method === held) await gate;
+      return base(next);
+    }),
+    { host: base.host },
+  );
+  render(
+    <SectionChromeProvider>
+      <SectionTabsSlot />
+      <StrategyScreen client={{ request }} />
+    </SectionChromeProvider>,
+  );
+  return {
+    request,
+    hold: () => {
+      gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    },
+    release: () => {
+      gate = undefined;
+      release();
+    },
+  };
+}
+
+describe("the failure of a recalculation while it recalculates again", () => {
+  it("is hidden during the new attempt and shown again, as a new alert, if it fails again", async () => {
+    const { hold, release } = mountGated(
+      "plannedFujiNotPreserved",
+      "strategy.view",
+    );
+    await stops();
+    await moveSecondStop();
+    click("Recalcular");
+    const first = await screen.findByRole("alert");
+    hold();
+    click("Recalcular");
+    await heading("Recalculando…");
+    // the host keeps the failure of the last attempt in the edit; the screen does not show it now
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen.queryByText(/El cálculo no ha respetado tus ajustes/),
+    ).toBeNull();
+    release();
+    const second = await screen.findByRole("alert");
+    expect(second.textContent).toContain(
+      "El cálculo no ha respetado tus ajustes",
+    );
+    expect(second).not.toBe(first);
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+  });
+});
+
+// ---- an end of stint that cannot move ----
+
+// The plan of the Fuji scene with its stops on these laps (what the host sends is
+// only read: these tests do not move anything).
+function withSchedule(stopLaps: number[], raceLaps = 236) {
+  return (view: StrategyView) => {
+    const { plan } = view;
+    const timeline = plan.result?.timeline;
+    if (!timeline || !plan.edit) return view;
+    const bounds = [0, ...stopLaps, raceLaps];
+    const stints = bounds.slice(1).map((toLap, index) => ({
+      fromLap: bounds[index] + 1,
+      toLap,
+    }));
+    timeline.stints = stints;
+    timeline.pits = stopLaps.map((lap) => ({ ...timeline.pits[0], lap }));
+    if (plan.result?.metrics) plan.result.metrics.pitCount = stopLaps.length;
+    plan.edit.stints = stints;
+    plan.edit.stops = stopLaps.map((lap, index) => ({
+      lap,
+      minLap: (stopLaps[index - 1] ?? 0) + 1,
+      maxLap: (stopLaps[index + 1] ?? raceLaps) - 1,
+      fuelLiters: 78,
+      vePercent: 99,
+    }));
+    return view;
+  };
+}
+
+describe("an end of stint with no lap to move to", () => {
+  it("is not a control that does nothing: it is off and says why", async () => {
+    const request = mount("plannedFuji", undefined, withSchedule([1, 2]));
+    await stints();
+    // stints of one lap on both sides: the only lap it can have is the one it has
+    expect(slider().getAttribute("min")).toBe("1");
+    expect(slider().getAttribute("max")).toBe("1");
+    expect(slider().disabled).toBe(true);
+    expect(lap().disabled).toBe(true);
+    const reason =
+      "Este final de stint no se puede mover: los stints de sus lados se quedarían sin vueltas.";
+    expect(screen.getByText(reason)).toBeTruthy();
+    const described = slider().getAttribute("aria-describedby");
+    expect(
+      described && document.getElementById(described)?.textContent,
+    ).toContain(reason);
+    fireEvent.change(slider(), { target: { value: "2" } });
+    expect(calls(request, "strategy.moveBoundary")).toHaveLength(0);
+    // the next one has room
+    fireEvent.click(screen.getByRole("radio", { name: "Stint 2, 1 vuelta" }));
+    expect(slider().disabled).toBe(false);
+    expect(slider().getAttribute("min")).toBe("2");
+    expect(screen.queryByText(reason)).toBeNull();
+  });
+
+  it("works with the most stints a plan can have (17)", async () => {
+    mount(
+      "plannedFuji",
+      undefined,
+      withSchedule(Array.from({ length: 16 }, (_, index) => 10 + index * 10)),
+    );
+    await stints();
+    const group = screen.getByRole("group", { name: "Elige el stint" });
+    const radios = within(group).getAllByRole("radio");
+    expect(radios).toHaveLength(17);
+    fireEvent.click(radios[15]);
+    expect(slider().disabled).toBe(false);
+    expect(slider().getAttribute("min")).toBe("151");
+    expect(slider().getAttribute("max")).toBe("235");
+    fireEvent.click(radios[16]);
+    expect(screen.queryByRole("slider")).toBeNull();
+    expect(
+      screen.getByText(/El último stint termina con la carrera/),
+    ).toBeTruthy();
+    const timeline = screen.getByRole("img", { name: /Línea de tiempo/ });
+    expect(timeline.getAttribute("aria-label")).toContain(
+      "17 stints y 16 paradas",
+    );
+  });
+});
+
+// ---- a press on Recalcular is never lost ----
+
+describe("Recalcular right after typing a lap", () => {
+  it("is one press: the move goes first, then the recalculation", async () => {
+    const { request, hold, release } = mountGated(
+      "plannedFuji",
+      "strategy.moveBoundary",
+    );
+    await stints();
+    await moveSecondBoundary();
+    hold();
+    fireEvent.click(screen.getByRole("radio", { name: "Stint 2, 47 vueltas" }));
+    fireEvent.change(lap(), { target: { value: "100" } });
+    // the click takes the focus from the box: the lap is sent, and the press follows
+    fireEvent.blur(lap());
+    click("Recalcular");
+    await waitFor(() =>
+      expect(calls(request, "strategy.moveBoundary")).toHaveLength(2),
+    );
+    // not before the host has answered the move
+    expect(calls(request, "strategy.recalculate")).toHaveLength(0);
+    release();
+    await waitFor(() => expect(status()).toContain("Plan recalculado"));
+    const order = request.mock.calls
+      .map(([sent]) => sent)
+      .filter(
+        (sent) =>
+          sent.method === "strategy.moveBoundary" ||
+          sent.method === "strategy.recalculate",
+      )
+      .map((sent) =>
+        sent.method === "strategy.moveBoundary"
+          ? `move ${sent.lap}`
+          : "recalculate",
+      );
+    expect(order).toEqual(["move 90", "move 100", "recalculate"]);
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
+  it("does not send twice when pressed twice meanwhile", async () => {
+    const { request, hold, release } = mountGated(
+      "plannedFuji",
+      "strategy.moveBoundary",
+    );
+    await stints();
+    await moveSecondBoundary();
+    hold();
+    fireEvent.click(screen.getByRole("radio", { name: "Stint 2, 47 vueltas" }));
+    fireEvent.change(lap(), { target: { value: "100" } });
+    fireEvent.blur(lap());
+    const recalculate = button("Recalcular");
+    fireEvent.click(recalculate);
+    fireEvent.click(recalculate);
+    release();
+    await waitFor(() => expect(status()).toContain("Plan recalculado"));
+    expect(calls(request, "strategy.recalculate")).toHaveLength(1);
+  });
+});
+
+// ---- «Confirmar y calcular» with the plan adjusted ----
+
+describe("Confirmar y calcular with adjustments pending", () => {
+  it("sends you to the Plan tab, where Recalcular and Restablecer are, and keeps the data", async () => {
+    const request = mount("plannedFuji");
+    await stops();
+    await moveSecondStop();
+    fireEvent.click(tab("Carrera"));
     click("Editar carrera");
+    // nothing written: the data are confirmed as they are and the calculation is refused
     click("Confirmar y calcular");
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe(
+      "Tienes ajustes del plan sin recalcular. Ve a la pestaña Plan para recalcular o restablecer.",
+    );
+    expect(calls(request, "strategy.compute")).toHaveLength(1);
+    // the data were confirmed, so the editor is closed and the data are shown
+    expect(
+      screen.queryByRole("button", { name: "Confirmar y calcular" }),
+    ).toBeNull();
+    expect(button("Editar carrera")).toBeTruthy();
+    expect(screen.getByText("360 min · 236 vueltas")).toBeTruthy();
+    // and the adjustments are still there, with their way out
+    fireEvent.click(tab("Plan"));
+    await heading("Plan modificado");
+    expect(button("Recalcular")).toBeTruthy();
+    expect(button("Restablecer")).toBeTruthy();
+  });
+
+  it("keeps the text of the Plan tab for the same refusal there", async () => {
+    mount("plannedFuji", (request) =>
+      request.method === "strategy.pickFile"
+        ? { kind: "strategyEditPending" }
+        : undefined,
+    );
+    await stops();
+    await moveSecondStop();
+    fireEvent.click(tab("Carrera"));
+    const user = userEvent.setup();
+    await user.click(
+      screen.getByRole("button", { name: "Más acciones de archivo" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Abrir archivo…" }),
+    );
+    // from Carrera there are no such buttons: it says where they are
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "pestaña Plan",
+    );
+    // in the Plan tab those buttons are there, and the text says so
+    fireEvent.click(tab("Plan"));
+    await heading("Plan modificado");
+    expect(screen.getByRole("alert").textContent).toBe(
       "Tienes ajustes del plan sin recalcular. Recalcula o restablece antes de continuar.",
     );
+    expect(button("Recalcular")).toBeTruthy();
+  });
+});
+
+// ---- the recalculated plan is a trial, and says it ----
+
+const trial = "Plan recalculado de prueba: no se guarda en el archivo.";
+const fileState = () =>
+  document.querySelector(".strategy-file-state")?.getAttribute("data-state");
+// Moves the second stop, recalculates and waits for the new plan.
+async function recalculated() {
+  await stops();
+  await moveSecondStop();
+  click("Recalcular");
+  await waitFor(() => expect(status()).toContain("Plan recalculado"));
+}
+
+describe("the mark of a recalculated plan", () => {
+  it("is in the summary and in the card of Carrera, with the same words and no alert", async () => {
+    mount("plannedFuji");
+    await recalculated();
+    click("Resumen");
+    const line = screen.getByText(trial);
+    expect(line.closest('[role="alert"], [role="status"]')).toBeNull();
+    expect(screen.getAllByText(trial)).toHaveLength(1);
+    // the file is as it was
+    expect(fileState()).toBe("saved");
+    fireEvent.click(tab("Carrera"));
+    expect(screen.getAllByText(trial)).toHaveLength(1);
+    expect(screen.getByText("Calculado · 6:01:04 · 5 paradas")).toBeTruthy();
+    expect(fileState()).toBe("saved");
+  });
+
+  it("is not there for a plan that was just calculated, nor when it is only moved", async () => {
+    mount("plannedFuji");
+    await openPlan();
+    expect(screen.queryByText(trial)).toBeNull();
+    fireEvent.click(tab("Carrera"));
+    expect(screen.queryByText(trial)).toBeNull();
+    fireEvent.click(tab("Plan"));
+    click("Ajustar paradas");
+    await moveSecondStop();
+    // the warning of the editor says it already
+    expect(screen.queryByText(trial)).toBeNull();
+    fireEvent.click(tab("Carrera"));
+    expect(screen.queryByText(trial)).toBeNull();
+  });
+
+  it("is not there when a calculation from nothing ends", async () => {
+    mount("ready");
+    await openRace();
+    fireEvent.click(tab("Plan"));
+    click("Calcular plan");
+    await waitFor(() => expect(status()).toContain("Plan calculado"));
+    expect(screen.queryByText(trial)).toBeNull();
+    fireEvent.click(tab("Carrera"));
+    expect(screen.queryByText(trial)).toBeNull();
+  });
+
+  it("is not repeated next to the warning of the editor when the plan is adjusted again", async () => {
+    mount("plannedFuji");
+    await recalculated();
+    click("Resumen");
+    expect(screen.getAllByText(trial)).toHaveLength(1);
+    click("Ajustar paradas");
+    click("+ 1 vuelta");
+    await heading("Plan modificado");
+    expect(screen.queryByText(trial)).toBeNull();
+    expect(screen.getAllByText(notSaved)).toHaveLength(1);
+    fireEvent.click(tab("Carrera"));
+    expect(screen.queryByText(trial)).toBeNull();
+  });
+
+  it("goes with a new calculation from the plan", async () => {
+    mount("plannedFuji");
+    await recalculated();
+    click("Resumen");
+    expect(screen.getAllByText(trial)).toHaveLength(1);
+    click("Calcular de nuevo");
+    await waitFor(() => expect(status()).toMatch(/^Plan calculado/));
+    expect(screen.queryByText(trial)).toBeNull();
+    fireEvent.click(tab("Carrera"));
+    expect(screen.queryByText(trial)).toBeNull();
+  });
+
+  it("goes with a new calculation from Carrera", async () => {
+    mount("plannedFuji");
+    await recalculated();
+    fireEvent.click(tab("Carrera"));
+    expect(screen.getAllByText(trial)).toHaveLength(1);
+    click("Editar carrera");
+    click("Confirmar y calcular");
+    await waitFor(() => expect(status()).toMatch(/^Plan calculado/));
+    expect(screen.queryByText(trial)).toBeNull();
+    fireEvent.click(tab("Carrera"));
+    expect(screen.queryByText(trial)).toBeNull();
+  });
+
+  it("goes when another strategy is chosen, and does not come back with its plan", async () => {
+    mount("plannedFuji");
+    await recalculated();
+    click("Resumen");
+    expect(screen.getAllByText(trial)).toHaveLength(1);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox", { name: "Estrategia" }));
+    await user.click(
+      await screen.findByRole("option", { name: "Alternative" }),
+    );
+    fireEvent.click(tab("Plan"));
+    await heading("Sin calcular");
+    expect(screen.queryByText(trial)).toBeNull();
+    // a plan calculated afterwards is not a trial
+    click("Calcular plan");
+    await waitFor(() => expect(status()).toMatch(/^Plan calculado/));
+    expect(screen.queryByText(trial)).toBeNull();
+    fireEvent.click(tab("Carrera"));
+    expect(screen.queryByText(trial)).toBeNull();
+  });
+
+  it("goes when another file is opened", async () => {
+    mount("plannedFuji");
+    await recalculated();
+    click("Resumen");
+    expect(screen.getAllByText(trial)).toHaveLength(1);
+    const user = userEvent.setup();
+    await user.click(button("← Tus estrategias"));
+    await user.click(
+      screen.getByRole("button", { name: "Más acciones de archivo" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Abrir archivo…" }),
+    );
+    await screen.findByRole("heading", { name: "Tus estrategias" });
+    await user.click(button("Continuar"));
+    fireEvent.click(tab("Plan"));
+    await heading("Sin calcular");
+    expect(screen.queryByText(trial)).toBeNull();
+    click("Calcular plan");
+    await waitFor(() => expect(status()).toMatch(/^Plan calculado/));
+    expect(screen.queryByText(trial)).toBeNull();
+  });
+
+  it("goes with the session: a screen on another client does not inherit it", async () => {
+    const first = clientFor("plannedFuji");
+    const second = clientFor("plannedFuji");
+    const shell = (request: Client) => (
+      <SectionChromeProvider>
+        <SectionTabsSlot />
+        <StrategyScreen client={{ request }} />
+      </SectionChromeProvider>
+    );
+    const view = render(shell(first));
+    await stops();
+    await moveSecondStop();
+    click("Recalcular");
+    await waitFor(() => expect(status()).toContain("Plan recalculado"));
+    click("Resumen");
+    expect(screen.getAllByText(trial)).toHaveLength(1);
+    view.rerender(shell(second));
+    await waitFor(() => expect(screen.queryByText(trial)).toBeNull());
+    await heading("Plan calculado");
+    expect(screen.queryByText(trial)).toBeNull();
+  });
+
+  // What the host keeps, the mark keeps: the plan it shows is still the recalculated one.
+  it("stays after Restablecer, which goes back to the recalculated plan (the host's last plan)", async () => {
+    mount("plannedFuji");
+    await recalculated();
+    click("Ajustar paradas");
+    click("+ 1 vuelta");
+    await heading("Plan modificado");
+    click("Restablecer");
+    await waitFor(() => expect(status()).toBe("Ajustes restablecidos."));
+    // Vuelta 86 is the recalculated plan: Restablecer does not go back to the file's
+    expect(screen.getByText("Vuelta 86")).toBeTruthy();
+    click("Resumen");
+    expect(screen.getAllByText(trial)).toHaveLength(1);
+  });
+
+  it("stays when the race is left and entered again, and when the file is saved as another", async () => {
+    mount("plannedFuji");
+    await recalculated();
+    const user = userEvent.setup();
+    await user.click(button("← Tus estrategias"));
+    await user.click(await screen.findByRole("button", { name: "Continuar" }));
+    fireEvent.click(tab("Plan"));
+    await heading("Plan calculado");
+    expect(screen.getAllByText(trial)).toHaveLength(1);
+    await user.click(
+      screen.getByRole("button", { name: "Más acciones de archivo" }),
+    );
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Guardar como…" }),
+    );
+    await waitFor(() => expect(status()).toBe("Guardado."));
+    expect(screen.getAllByText(trial)).toHaveLength(1);
   });
 });
 

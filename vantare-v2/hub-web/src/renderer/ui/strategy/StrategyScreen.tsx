@@ -46,8 +46,18 @@ type Selection = { eventId: string; strategyId: string };
 type Notice = "importedLegacy" | "recovered";
 
 export function StrategyScreen({ client }: { client: StrategyClient }) {
-  const { view, error, pending, pollFailed, retryPoll, act, clearError } =
-    useStrategy(client);
+  const {
+    view,
+    error,
+    pending,
+    pollFailed,
+    retryPoll,
+    recalculated,
+    whenIdle,
+    peek,
+    act,
+    clearError,
+  } = useStrategy(client);
   const [screen, setScreen] = useState<"collection" | "wizard" | "race">(
     "collection",
   );
@@ -58,6 +68,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
   const [focusRaceTitle, setFocusRaceTitle] = useState(false);
   const raceTitle = useRef<HTMLHeadingElement>(null);
   const [confirmConflict, setConfirmConflict] = useState<HostError>();
+  // the conflict answered to a move, a recalculation or a reset of the plan
+  const [planConflict, setPlanConflict] = useState<HostError>();
   const [announcement, setAnnouncement] = useState("");
   const [dismissed, setDismissed] = useState<Notice>();
   const [blocked, setBlocked] = useState<Selection>();
@@ -69,6 +81,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
   const showRace = screen === "race" && !!active && !!variant;
   const conflict = error?.kind === "strategyConflict";
   const editConflict = conflict && error === confirmConflict;
+  const adjustConflict = conflict && error === planConflict;
   const hasForm = !!view?.form;
   // The form can vanish under the editor (another view, another session): the
   // draft goes with it, and nothing stays locked.
@@ -194,11 +207,19 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     if (next.state === "edited" && lap !== undefined)
       setAnnouncement(t.calc.announce.moved(stop + 1, lap));
   }
+  // A conflict on the plan is not one of the file: nothing was written, and the
+  // host's plan is shown.
+  type Answer = Awaited<ReturnType<typeof act>>;
+  function planAnswered(result: Answer) {
+    if (result && "error" in result && result.error.kind === "strategyConflict")
+      setPlanConflict(result.error);
+  }
   // Each resolves to `undefined` when nothing was sent, else whether the host took it.
   async function moveBoundary(index: number, lap: number) {
     if (!view) return undefined;
     const result = await strategyMoveBoundary(act, view.plan, index, lap);
     if (!result) return undefined;
+    planAnswered(result);
     if ("value" in result) announceMove(result.value.plan, index);
     return "value" in result;
   }
@@ -206,6 +227,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     if (!view) return undefined;
     const result = await strategyMoveStop(act, view.plan, index, delta);
     if (!result) return undefined;
+    planAnswered(result);
     if ("value" in result) announceMove(result.value.plan, index);
     return "value" in result;
   }
@@ -213,12 +235,23 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     if (!view) return;
     setAnnouncement("");
     const result = await strategyResetEdit(act, view.plan);
+    planAnswered(result);
     if (result && "value" in result) setAnnouncement(t.calc.announce.reset);
   }
-  function recalculate() {
-    if (!view) return;
+  // One recalculation at a time. It waits for the action that is running (a lap
+  // that was just typed), and then asks for the plan the host has by then.
+  const recalculating = useRef(false);
+  async function recalculate() {
+    if (!view || recalculating.current) return;
+    recalculating.current = true;
     setAnnouncement("");
-    void strategyRecalculate(act, view.plan);
+    try {
+      await whenIdle();
+      const plan = peek()?.plan;
+      if (plan) planAnswered(await strategyRecalculate(act, plan));
+    } finally {
+      recalculating.current = false;
+    }
   }
 
   async function save() {
@@ -337,12 +370,15 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
       </div>
     </div>
   );
+  // In Carrera there are no Recalcular or Restablecer: it says where they are.
   const fileError =
     error &&
     !conflict &&
-    (error.kind in t.errors
-      ? t.errors[error.kind as keyof typeof t.errors]
-      : t.errors.other);
+    (error.kind === "strategyEditPending" && showRace && tab === "race"
+      ? t.calc.adjust.pendingFromRace
+      : error.kind in t.errors
+        ? t.errors[error.kind as keyof typeof t.errors]
+        : t.errors.other);
   return (
     <>
       <SectionChrome
@@ -421,7 +457,11 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
           }
           data-tone="error"
         >
-          {conflict && !editConflict ? t.conflict : announcement}
+          {conflict && !editConflict
+            ? adjustConflict
+              ? t.calc.adjust.conflict
+              : t.conflict
+            : announcement}
         </div>
         {editConflict && (
           <div className="strategy-notice" data-tone="error" role="alert">
@@ -493,6 +533,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                   draft={draft}
                   pending={pending}
                   plan={view.plan}
+                  trial={recalculated}
                   viewPlan={() => setTab("plan")}
                   edit={() => {
                     setBlocked(undefined);
@@ -511,6 +552,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                 <PlanTab
                   key={`${active.id}/${variant.id}`}
                   plan={view.plan}
+                  trial={recalculated}
                   form={view.form}
                   name={variant.name}
                   actions={{
@@ -524,7 +566,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                     edit: {
                       moveBoundary,
                       moveStop,
-                      recalculate,
+                      recalculate: () => void recalculate(),
                       reset: () => void resetEdit(),
                     },
                   }}

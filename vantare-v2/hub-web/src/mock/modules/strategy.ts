@@ -337,6 +337,17 @@ function noSolution(
   return { ...plan, state: "calculated", computeId, result };
 }
 
+// The same data whatever the order of the keys: the host compares what it writes.
+function sameData(a: unknown, b: unknown) {
+  const sorted = (_: string, value: unknown) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(
+          Object.entries(value).sort(([x], [y]) => x.localeCompare(y)),
+        )
+      : value;
+  return JSON.stringify(a, sorted) === JSON.stringify(b, sorted);
+}
+
 // QA: the scenes whose recalculation fails, and how
 const recalculationErrors: Record<string, StrategyEditError> = {
   recalcError: "scheduleNotPreserved",
@@ -1045,9 +1056,8 @@ export function create(context: MockContext): MockHandler {
         // the same data again is no change: neither the revision nor the plan move
         const unchanged =
           inputs &&
-          JSON.stringify(events) === JSON.stringify(current.events) &&
-          JSON.stringify(next) ===
-            JSON.stringify(formOf(event, event.strategies[variant]));
+          sameData(events, current.events) &&
+          sameData(next, formOf(event, event.strategies[variant]));
         if (!unchanged) {
           forms[key] = next;
           edit({ events });

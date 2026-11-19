@@ -1424,3 +1424,22 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* The plan on view was recalculated in this session: a quiet line, not an alert */
+.strategy-screen p.strategy-trial {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--text-2);
+}
+
+.strategy-screen p.strategy-trial > svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.strategy-plan-card .strategy-trial {
+  margin-top: var(--space-1);
+}

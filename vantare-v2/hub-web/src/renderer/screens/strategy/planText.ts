@@ -216,6 +216,16 @@ export function planCard(plan: StrategyPlanView) {
   };
 }
 
+// The plan on view is a recalculated one of this session, and no adjustment is
+// pending on it (the warning of the editor says it then): it is not in the file.
+export function isTrialPlan(plan: StrategyPlanView, recalculated: boolean) {
+  return (
+    recalculated &&
+    (plan.state === "calculated" || plan.state === "partial") &&
+    plan.result?.metrics != null
+  );
+}
+
 // The line for the single role="status": says what changed in the plan since
 // the screen last saw it. A plan that was already there on opening is silent.
 // `hadResult`: the plan before already had a result, so a calculation that ends

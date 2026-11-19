@@ -133,6 +133,7 @@ export function StintEditor({
   locked,
   stale,
   move,
+  onUnsettled,
 }: {
   edit: StrategyEditView;
   // the timeline as edited, and the laps of the stops in the calculated plan
@@ -145,13 +146,20 @@ export function StintEditor({
   // the amounts are those of the plan before the edit
   stale: boolean;
   move: EditActions["moveBoundary"];
+  // a lap typed or moved that the host has not answered yet
+  onUnsettled: (unsettled: boolean) => void;
 }) {
   const id = useId();
   const stint = edit.stints[index];
   const stop = edit.stops[index];
   const [target, setTarget] = useBoundaryTarget(index, stop?.lap, busy, move);
   const [draft, setDraft] = useState<string>();
+  const unsettled = target !== undefined || draft !== undefined;
+  useEffect(() => onUnsettled(unsettled), [unsettled, onUnsettled]);
+  useEffect(() => () => onUnsettled(false), [onUnsettled]);
   if (!stint) return null;
+  // both neighbours have one lap: the only lap this end can have is its own
+  const pinned = !!stop && stop.minLap === stop.maxLap;
   const laps = stint.toLap - stint.fromLap + 1;
   const last = index === edit.stops.length;
   const pit = timeline.pits[index];
@@ -232,7 +240,7 @@ export function StintEditor({
                   type="text"
                   inputMode="numeric"
                   autoComplete="off"
-                  disabled={locked}
+                  disabled={locked || pinned}
                   value={draft ?? String(shown)}
                   aria-describedby={`${id}-help`}
                   onChange={(event) => setDraft(event.target.value)}
@@ -256,7 +264,7 @@ export function StintEditor({
                 max={stop.maxLap}
                 step={1}
                 value={shown}
-                disabled={locked}
+                disabled={locked || pinned}
                 aria-labelledby={`${id}-label`}
                 aria-describedby={`${id}-help`}
                 aria-valuetext={a.stints.valueText(
@@ -281,10 +289,16 @@ export function StintEditor({
               <span>{stop.maxLap}</span>
             </div>
             <p id={`${id}-help`} className="strategy-help">
-              <kbd>{a.stints.keys.left}</kbd> <kbd>{a.stints.keys.right}</kbd>{" "}
-              {a.stints.keys.step} <kbd>{a.stints.keys.home}</kbd>{" "}
-              <kbd>{a.stints.keys.end}</kbd> {a.stints.keys.ends}{" "}
-              {a.stints.keys.drag}
+              {pinned ? (
+                a.stints.pinned
+              ) : (
+                <>
+                  <kbd>{a.stints.keys.left}</kbd>{" "}
+                  <kbd>{a.stints.keys.right}</kbd> {a.stints.keys.step}{" "}
+                  <kbd>{a.stints.keys.home}</kbd> <kbd>{a.stints.keys.end}</kbd>{" "}
+                  {a.stints.keys.ends} {a.stints.keys.drag}
+                </>
+              )}
             </p>
           </div>
         ) : (

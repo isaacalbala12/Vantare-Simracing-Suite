@@ -482,6 +482,7 @@ pub fn select_event(doc: &mut Document, event: usize, variant: usize) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::solver::InputField;
 
     fn form() -> ManualEvent {
         ManualEvent {
@@ -640,5 +641,74 @@ mod tests {
             parse_number("0").expect("explicit zero").to_bits(),
             0.0_f64.to_bits()
         );
+    }
+
+    /// Every scalar the crate rejects names its field; the message is the one
+    /// `validate` always gave.
+    #[test]
+    fn each_rejected_scalar_names_its_field() {
+        let cases = [
+            (Field::RaceLaps, "0", InputField::RaceLaps),
+            (Field::RaceLaps, "100001", InputField::RaceLaps),
+            (Field::BasePaceSeconds, "0", InputField::BasePace),
+            (Field::BasePaceSeconds, "-1", InputField::BasePace),
+            (Field::RefuelRate, "0", InputField::RefuelRate),
+            (Field::VeRate, "0", InputField::VeRate),
+            (Field::FuelCapacityLiters, "-1", InputField::FuelCapacity),
+            (Field::PitTransitSeconds, "-1", InputField::PitTransit),
+            (Field::FuelPerLapLiters, "-1", InputField::FuelPerLap),
+            (Field::VeCapacityPercent, "-1", InputField::VeCapacity),
+            (Field::VeCapacityPercent, "101", InputField::VeCapacity),
+            (Field::VePerLapPercent, "-1", InputField::VePerLap),
+            (Field::TyreLifeLaps, "-1", InputField::TyreLife),
+            (Field::TyreLifeLaps, "100001", InputField::TyreLife),
+            (Field::TyreLifeLaps, "10.5", InputField::TyreLife),
+            (Field::DegradationSeconds, "-1", InputField::Degradation),
+            (Field::TyreServiceSeconds, "-1", InputField::TyreService),
+            (Field::FormationSeconds, "-1", InputField::Formation),
+            (Field::FuelStep, "-1", InputField::FuelStep),
+            (Field::VeStep, "-1", InputField::VeStep),
+            (Field::ServiceMode, "turbo", InputField::ServiceMode),
+        ];
+        for (field, text, expected) in cases {
+            let mut form = form();
+            form[field] = text.into();
+            assert_eq!(form.input_field(), Some(expected), "{field:?} {text}");
+            let message = form.to_input().expect_err("rejected");
+            // `validate` keeps its text; the field comes alongside it
+            let input = form.build_input().expect("parses");
+            let invalid = input.validate_field().expect_err("rejected");
+            assert_eq!(invalid.field, Some(expected));
+            assert_eq!(invalid.message, message);
+            assert_eq!(input.validate().expect_err("rejected"), message);
+        }
+    }
+
+    #[test]
+    fn what_the_crate_accepts_or_cannot_pin_to_a_scalar_names_no_field() {
+        // valid, including a zero step (the grid chooses it) and a tank smaller
+        // than a lap (the search finds no plan; it is not an invalid entry)
+        for (field, text) in [
+            (Field::FuelStep, "0"),
+            (Field::VeStep, "0"),
+            (Field::FuelCapacityLiters, "1"),
+            (Field::FuelCapacityLiters, "1000"),
+        ] {
+            let mut form = form();
+            form[field] = text.into();
+            assert_eq!(form.input_field(), None, "{field:?} {text}");
+            form.to_input().expect("valid");
+        }
+        // text that is not a number never builds an input: no scalar to blame
+        let mut bad = form();
+        bad.base_pace_seconds = "abc".into();
+        assert_eq!(bad.input_field(), None);
+        // a rule across several fields is not one scalar
+        let mut input = form().to_input().expect("input");
+        input.event_rules.min_pit_stops = Some(2);
+        input.event_rules.max_pit_stops = Some(1);
+        let invalid = input.validate_field().expect_err("range");
+        assert_eq!(invalid.field, None);
+        assert_eq!(input.validate().expect_err("range"), invalid.message);
     }
 }

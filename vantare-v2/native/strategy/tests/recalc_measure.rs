@@ -82,6 +82,7 @@ fn recalculating_the_fuji_witness_with_fixed_amounts() {
             FixedStop {
                 fuel_liters: Some(fuel_liters),
                 ve_percent: Some(second.ve_percent),
+                change_tyres: None,
             },
         ]
     };
@@ -135,6 +136,7 @@ fn the_bounds_of_the_fuji_witness() {
         FixedStop {
             fuel_liters: Some(73.0),
             ve_percent: Some(97.0),
+            change_tyres: None,
         },
     ];
     for (name, fixed) in [("sin fijar", Vec::new()), ("parada 2 fijada", second)] {

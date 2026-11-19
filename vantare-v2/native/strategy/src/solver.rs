@@ -432,6 +432,9 @@ struct Node {
     fuel: i64,
     ve: i64,
     windows: u16,
+    /// Vueltas que llevan rodadas las ruedas montadas (#2691). Es cero mientras
+    /// todas las paradas monten ruedas nuevas.
+    age: u32,
     result: ResultV2,
 }
 
@@ -563,11 +566,16 @@ fn compare(left: &ResultV2, right: &ResultV2) -> Ordering {
     Ordering::Equal
 }
 
-fn pit_seconds(input: &Input, fuel: i64, ve: i64) -> f64 {
+/// Tiempo de una parada. Sin cambio de ruedas no se paga su servicio.
+fn pit_seconds(input: &Input, fuel: i64, ve: i64, change_tyres: bool) -> f64 {
     let pit = &input.pit_cost;
     let f = amount(fuel) / pit.refuel_rate_l_per_s.value;
     let v = amount(ve) / pit.ve_rate_p_per_s.value;
-    let tyres = pit.tyre_seconds.value;
+    let tyres = if change_tyres {
+        pit.tyre_seconds.value
+    } else {
+        0.0
+    };
     pit.transit_seconds.value
         + if pit.service_mode == "parallel" {
             f.max(v).max(tyres)
@@ -631,6 +639,10 @@ pub fn solve_v2_cancellable(input: &Input, cancel: &AtomicBool) -> Result<Solver
 /// todas las paradas fijadas. `proven` significa entonces «el más rápido entre
 /// los planes que respetan lo fijado» (`certificate.fixed_stops` lo señala).
 /// Con la lista vacía o con todo en automático es el mismo cálculo.
+///
+/// También se puede fijar qué se hace con las ruedas (`FixedStop::change_tyres`).
+/// Sin cambio no se paga su servicio y su edad sigue: cuenta para la vida máxima
+/// y el desgaste se acumula.
 pub fn solve_v2_fixed(
     input: &Input,
     fixed: &[FixedStop],
@@ -818,9 +830,13 @@ fn solve_search(
         fuel: fuel.capacity,
         ve: ve.capacity,
         windows: 0,
+        age: 0,
         result: ResultV2::default(),
     };
-    frontier[0].insert((fuel.capacity, ve.capacity, 0usize, 0u16), initial);
+    // La clave lleva todo lo que decide el futuro de un plan. Con el desgaste
+    // acumulado el futuro depende también de la edad de las ruedas: dos planes
+    // con las mismas cargas y ruedas de distinta edad no son intercambiables.
+    frontier[0].insert((fuel.capacity, ve.capacity, 0usize, 0u16, 0u32), initial);
     let mut best: Option<ResultV2> = None;
     let mut exhaustion_reason = None;
     'search: for lap in 0..input.race_laps {
@@ -831,9 +847,11 @@ fn solve_search(
                 .max_laps(node.fuel, remaining)
                 .min(ve.max_laps(node.ve, remaining));
             if input.tyre_life_laps.value > 0.0 {
+                // A las ruedas les queda su vida menos lo que ya llevan rodado.
                 limit = limit.min(
                     u32::try_from(units(input.tyre_life_laps.value)? / 1_000_000)
-                        .map_err(|e| e.to_string())?,
+                        .map_err(|e| e.to_string())?
+                        .saturating_sub(node.age),
                 );
             }
             for count in 1..=limit {
@@ -866,6 +884,13 @@ fn solve_search(
                     * f64::from(count)
                     * f64::from(count - 1)
                     / 2.0;
+                if node.age > 0 {
+                    // Ruedas sin cambiar: cada vuelta del tramo pierde además
+                    // lo que corresponde a las vueltas que ya llevaban.
+                    eval.degradation_seconds += input.degradation_per_lap_seconds.value
+                        * f64::from(count)
+                        * f64::from(node.age);
+                }
                 eval.formation_seconds = input.formation.seconds.value;
                 eval.total_seconds = eval.green_seconds
                     + eval.degradation_seconds
@@ -919,7 +944,11 @@ fn solve_search(
                 // Lo fijado depende solo del número de parada, que ya forma parte
                 // de la clave del estado: quedarse con el mejor de cada clave
                 // sigue siendo correcto.
-                let (fixed_fuel, fixed_ve) = fixed.at(after.result.pit_stops.len());
+                let stop = after.result.pit_stops.len();
+                let (fixed_fuel, fixed_ve) = fixed.at(stop);
+                // El cálculo escalar monta ruedas nuevas en todas las paradas,
+                // salvo que esté fijado seguir con las mismas.
+                let change_tyres = !fixed.keeps_tyres(stop);
                 for f in fuel.amounts(after.fuel, fixed_fuel) {
                     for v in ve.amounts(after.ve, fixed_ve) {
                         work += 1;
@@ -950,20 +979,23 @@ fn solve_search(
                         let mut next = after.clone();
                         next.fuel += f;
                         next.ve += v;
+                        next.age = if change_tyres { 0 } else { node.age + count };
                         next.result.pit_stops.push(PitStop {
                             lap: end,
                             fuel_liters: amount(f),
                             ve_percent: amount(v),
-                            change_tyres: true,
+                            change_tyres,
                             service_mode: input.pit_cost.service_mode.clone(),
                         });
-                        next.result.expected.pit_seconds += pit_seconds(input, f, v);
-                        next.result.expected.total_seconds += pit_seconds(input, f, v);
+                        let seconds = pit_seconds(input, f, v, change_tyres);
+                        next.result.expected.pit_seconds += seconds;
+                        next.result.expected.total_seconds += seconds;
                         let key = (
                             next.fuel,
                             next.ve,
                             next.result.pit_stops.len(),
                             next.windows,
+                            next.age,
                         );
                         let target =
                             &mut frontier[usize::try_from(end).map_err(|e| e.to_string())?];
@@ -1140,7 +1172,7 @@ fn single_fuel_decision(
             change_tyres: true,
             service_mode: input.pit_cost.service_mode.clone(),
         });
-        result.expected.pit_seconds += pit_seconds(input, quantity, 0);
+        result.expected.pit_seconds += pit_seconds(input, quantity, 0, true);
     }
     result.expected.green_seconds = f64::from(input.race_laps) * input.base_lap_seconds.value;
     result.expected.formation_seconds = input.formation.seconds.value;

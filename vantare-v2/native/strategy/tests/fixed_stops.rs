@@ -844,6 +844,7 @@ fn fuel(liters: f64) -> FixedStop {
     FixedStop {
         fuel_liters: Some(liters),
         ve_percent: None,
+        change_tyres: None,
     }
 }
 
@@ -1147,6 +1148,7 @@ fn a_fixed_amount_is_a_multiple_of_the_step_within_a_millionth() {
     let energy = |percent| FixedStop {
         fuel_liters: None,
         ve_percent: Some(percent),
+        change_tyres: None,
     };
     assert_eq!(problem(&input, energy(0.0)), None);
     assert_eq!(

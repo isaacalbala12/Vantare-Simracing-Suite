@@ -106,6 +106,26 @@ cambio de resultado intencionado y revisado.
   no hay plan. Con pasos finos (búsqueda extendida) no se señala parada.
 - «Cabe» se mide con el depósito lleno en la salida, que es como simula la
   búsqueda; el plan publicado informa después de la salida mínima (#2692).
+- **Ruedas (#2691).** `FixedStop::change_tyres` fija qué se hace con las ruedas
+  en una parada: `Some(true)`, ruedas nuevas; `Some(false)`, se sigue con las
+  mismas (no se paga su cambio, y su edad sigue contando para la vida máxima y
+  para el desgaste); `None`, lo de siempre, y no sale en el JSON. «Lo de
+  siempre» es que la búsqueda escalar y el respaldo montan ruedas nuevas en
+  todas las paradas: no eligen por su cuenta no cambiarlas (cambiaría los
+  planes del Hub), y con inventario físico elige la búsqueda extendida. Una
+  parada con las ruedas fijadas cuenta como parada fijada (`fixed_stops`, los
+  atajos apagados, `proven` entre los planes que lo respetan). Para ello la
+  búsqueda escalar lleva la edad de las ruedas en el estado y en la clave con
+  la que se queda con el mejor plan; mientras todas las paradas cambien ruedas
+  la edad es cero y el recorrido es el de antes. Si las ruedas que se fija no
+  cambiar no aguantan su vida máxima no hay plan, y la parada culpable sale
+  por el mismo camino que una cantidad imposible
+  (`FixedAmountUnreachable { stop }`, `unreachable_stop`). Con el calendario
+  fijo el respaldo sigue siendo exacto: un grupo de tramos unidos por paradas
+  sin cambio tiene plan exactamente cuando su suma cabe en la vida. Con
+  calendario libre reparte la vida entre esos tramos (al menos una vuelta para
+  cada uno). `fixed_stop_bounds` no mira las ruedas: sus límites siguen siendo
+  de combustible y energía.
 
 ### Desgaste de neumáticos acumulado (#2691)
 

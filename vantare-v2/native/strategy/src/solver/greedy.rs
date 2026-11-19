@@ -18,6 +18,11 @@
 //!
 //! Sin nada fijado, los tres pasos hacen las mismas cuentas que el plan de un
 //! solo paso anterior (lo vigilan las huellas de `tests/unfixed_fingerprints.rs`).
+//!
+//! El respaldo monta ruedas nuevas en todas las paradas, salvo donde esté
+//! fijado seguir con las mismas (#2691). Ahí la edad de las ruedas sigue: el
+//! paso 1 no deja que un grupo de tramos unidos por paradas sin cambio pase de
+//! la vida máxima, y el desgaste de esos tramos se acumula.
 use super::fixed::Fixed;
 use super::{
     FixedStop, GreedyRefusal, Input, OptimalityStatus, PitStop, Resource, ResultV2, SolverOutcome,
@@ -197,6 +202,9 @@ fn calendar(
         u32::MAX
     };
     let mut stints: Vec<u32> = Vec::new();
+    // Vueltas que llevan las ruedas montadas al empezar el tramo (#2691). Es
+    // cero salvo tras una parada en la que está fijado no cambiarlas.
+    let mut age = 0u32;
     let mut met = vec![false; rules.required_windows.len()];
     // Niveles con los que se llega a la vuelta `done`, antes del servicio.
     let at_start = |resource: Resource| Span {
@@ -207,7 +215,16 @@ fn calendar(
     let mut done = 0u32;
     loop {
         let remaining = input.race_laps - done;
-        let longest = tyres.min(cap);
+        // A las ruedas les queda su vida menos lo que ya llevan, y tienen que
+        // durar también los tramos que siguen sin cambio: una vuelta, al
+        // menos, para cada uno.
+        let kept_ahead = (stints.len()..fixed.required_stops())
+            .take_while(|&stop| fixed.keeps_tyres(stop))
+            .count();
+        let longest = tyres
+            .saturating_sub(age)
+            .saturating_sub(u32::try_from(kept_ahead).unwrap_or(u32::MAX))
+            .min(cap);
         // En la salida no hay parada; después, la de la vuelta `done`.
         let (fuel_after, ve_after) = if done == 0 {
             (fuel_span, ve_span)
@@ -250,6 +267,12 @@ fn calendar(
                 return Err(GreedyRefusal::ResourceTooSmall);
             }
             (stop - done, false)
+        };
+        // La parada que cierra este tramo tiene el número `stints.len()`.
+        age = if fixed.keeps_tyres(stints.len()) {
+            age + length
+        } else {
+            0
         };
         stints.push(length);
         done += length;
@@ -322,6 +345,8 @@ fn plan(
     let mut result = ResultV2::default();
     let (mut fuel_level, mut ve_level) = (fuel.capacity, ve.capacity);
     let mut done = 0u32;
+    // Vueltas que llevan las ruedas montadas al empezar el tramo.
+    let mut age = 0u32;
     let mut service_seconds = 0.0;
     for (index, &length) in stints.iter().enumerate() {
         let count = i64::from(length);
@@ -329,14 +354,21 @@ fn plan(
             let (fixed_fuel, fixed_ve) = fixed.at(index - 1);
             let fuel_amount = service(fuel, fuel_level, fuel_needs[index], fixed_fuel)?;
             let ve_amount = service(ve, ve_level, ve_needs[index], fixed_ve)?;
+            // El respaldo monta ruedas nuevas salvo que esté fijado no hacerlo.
+            let change_tyres = !fixed.keeps_tyres(index - 1);
+            age = if change_tyres {
+                0
+            } else {
+                age + stints[index - 1]
+            };
             result.pit_stops.push(PitStop {
                 lap: done,
                 fuel_liters: amount(fuel_amount),
                 ve_percent: amount(ve_amount),
-                change_tyres: true,
+                change_tyres,
                 service_mode: input.pit_cost.service_mode.clone(),
             });
-            service_seconds += pit_seconds(input, fuel_amount, ve_amount);
+            service_seconds += pit_seconds(input, fuel_amount, ve_amount, change_tyres);
             fuel_level += fuel_amount;
             ve_level += ve_amount;
         }
@@ -349,6 +381,11 @@ fn plan(
         eval.green_seconds += laps * input.base_lap_seconds.value;
         eval.degradation_seconds +=
             input.degradation_per_lap_seconds.value * laps * (laps - 1.0) / 2.0;
+        if age > 0 {
+            // Ruedas sin cambiar: el desgaste sigue desde su edad.
+            eval.degradation_seconds +=
+                input.degradation_per_lap_seconds.value * laps * f64::from(age);
+        }
     }
     let eval = &mut result.expected;
     eval.pit_seconds = service_seconds;

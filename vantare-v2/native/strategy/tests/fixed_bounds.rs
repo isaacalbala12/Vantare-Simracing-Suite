@@ -241,6 +241,7 @@ fn race(rng: &mut Rng) -> Option<Race> {
         .map(|_| FixedStop {
             fuel_liters: some(rng, Some(fuel)),
             ve_percent: some(rng, energy),
+            change_tyres: None,
         })
         .collect();
     Some(Race {
@@ -501,6 +502,7 @@ fn fuel(liters: f64) -> FixedStop {
     FixedStop {
         fuel_liters: Some(liters),
         ve_percent: None,
+        change_tyres: None,
     }
 }
 

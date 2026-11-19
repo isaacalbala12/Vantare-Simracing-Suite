@@ -434,8 +434,22 @@ pub(super) fn solve(
                         {
                             continue;
                         }
-                        let (fixed_fuel, fixed_ve) = fixed.at(after.decision.pit_stops.len());
-                        for (next_tyre, change_tyres) in m.tyres.next(&after.tyre) {
+                        let stop = after.decision.pit_stops.len();
+                        let (fixed_fuel, fixed_ve) = fixed.at(stop);
+                        // Con las ruedas fijadas en esta parada solo se prueba
+                        // eso: seguir con las montadas, o las opciones que
+                        // montan otras (sin inventario, ruedas nuevas).
+                        let tyre_options = match fixed.tyres(stop) {
+                            None => m.tyres.next(&after.tyre),
+                            Some(false) => vec![(after.tyre.clone(), false)],
+                            Some(true) => m
+                                .tyres
+                                .next(&after.tyre)
+                                .into_iter()
+                                .filter(|(_, change)| *change)
+                                .collect(),
+                        };
+                        for (next_tyre, change_tyres) in tyre_options {
                             for f in m.fuel.amounts(after.fuel, fixed_fuel) {
                                 for v in m.ve.amounts(after.ve, fixed_ve) {
                                     work += 1;

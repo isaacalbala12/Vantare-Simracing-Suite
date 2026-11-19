@@ -165,6 +165,8 @@ function useStateValue() {
             case "protected":
               message = t.protected;
               break;
+            default:
+              break;
           }
         }
         if (

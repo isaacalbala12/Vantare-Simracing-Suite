@@ -116,7 +116,7 @@ it("ignores invalid replies that select no pending request and keeps the others 
   expect(logged()).not.toContain("secreto");
   expect(logged()).not.toContain("Users");
 });
-it("lets the observers see the request as done with a generic error", async () => {
+it("settles the request exactly once for the observers; the old deadline never fires afterwards", async () => {
   const { client, port2, requested } = setup();
   const events: unknown[] = [];
   client.observeRequests((event) => events.push(event));
@@ -124,8 +124,51 @@ it("lets the observers see the request as done with a generic error", async () =
   await requested(1);
   port2.postMessage({ kind: "response", id: 1, result: { method: "x" } });
   await pending;
+  vi.advanceTimersByTime(60_000);
   expect(events).toEqual([
     { id: 1, method: "core.get", phase: "start" },
     { id: 1, method: "core.get", phase: "done", error: { kind: "io" } },
   ]);
+});
+it("rejects on an invalid failure too, when its id is pending", async () => {
+  const { client, port2, requested } = setup();
+  const pending = settle(client.request(coreGet));
+  await requested(1);
+  port2.postMessage({ kind: "failure", id: 1, error: { kind: secret } });
+  expect(await pending).toBeInstanceOf(InvalidHostResponse);
+});
+it("ignores a second reply for the same id, valid or not", async () => {
+  const { client, port2, flush, requested } = setup();
+  const first = settle(client.request(coreGet));
+  const other = settle(client.request(coreGet));
+  await requested(2);
+  port2.postMessage({ kind: "response", id: 1, result: { method: "x" } });
+  expect(await first).toBeInstanceOf(InvalidHostResponse);
+  port2.postMessage({ kind: "failure", id: 1, error: { kind: "busy" } });
+  port2.postMessage({ kind: "response", id: 1, result: { method: "y" } });
+  await flush();
+  expect(vi.getTimerCount()).toBe(1);
+  port2.postMessage({ kind: "failure", id: 2, error: { kind: "busy" } });
+  expect(await other).toMatchObject({ detail: { kind: "busy" } });
+});
+it("ids that are not safe ids select nothing", async () => {
+  const { client, port2, flush, requested } = setup();
+  const pending = settle(client.request(coreGet));
+  await requested(1);
+  for (const id of [Number.NaN, Infinity, -Infinity, 2 ** 32, 2 ** 53, 1e21]) {
+    port2.postMessage({ kind: "response", id, result: secret });
+    await flush();
+  }
+  expect(vi.getTimerCount()).toBe(1);
+  port2.postMessage({ kind: "failure", id: 1, error: { kind: "busy" } });
+  expect(await pending).toMatchObject({ detail: { kind: "busy" } });
+});
+it("logs the first invalid replies and then only an occasional count", async () => {
+  const { port2, flush } = setup();
+  for (let i = 0; i < 250; i++) port2.postMessage(secret);
+  await flush();
+  await flush();
+  expect(log.mock.calls.length).toBeGreaterThanOrEqual(5);
+  expect(log.mock.calls.length).toBeLessThanOrEqual(8);
+  expect(logged()).not.toContain("secreto");
 });

@@ -9,6 +9,7 @@ import type {
 } from "../../contract/generated/contract";
 import type { LauncherReviewResult } from "../../contract/launcher-review-bridge";
 import {
+  invalidReplyLog,
   isInvalidResponseFailure,
   readReplyEnvelope,
 } from "../../contract/local-failure";
@@ -50,6 +51,7 @@ export type RequestObservation = {
 } & ({ phase: "start" } | { phase: "done"; reply?: Reply; error?: HostError });
 export class Client {
   private disposed = false;
+  private logInvalid = invalidReplyLog();
   private requestListeners = new Set<(event: RequestObservation) => void>();
   private subscriptions = new Map<Topic, number>();
   observeRequests(receive: (event: RequestObservation) => void) {
@@ -110,7 +112,7 @@ export class Client {
       if (!isHostMessage(data)) {
         const envelope = readReplyEnvelope(data);
         if (envelope) this.rejectInvalid(envelope.id);
-        else console.error("Host message failed validation: unreadable");
+        else this.logInvalid("unreadable");
         return;
       }
       if (
@@ -151,10 +153,10 @@ export class Client {
   private rejectInvalid(id: number) {
     const request = this.pending.get(id);
     if (!request) {
-      console.error("Host reply failed validation: no pending request");
+      this.logInvalid("no pending request");
       return;
     }
-    console.error(`Host reply failed validation: ${request.method} id=${id}`);
+    this.logInvalid(`${request.method} id=${id}`);
     clearTimeout(request.timer);
     request.dispose?.();
     this.pending.delete(id);

@@ -35,6 +35,9 @@ export function isInvalidResponseFailure(
 }
 // Minimal read of a message that failed validation: only `kind` and `id`, and
 // only when it can answer one pending request. The content is never looked at.
+// `id` follows the contract range (up to 0xffffffff), which includes the ids Main
+// keeps for itself (HOST_BACKGROUND_ID); that is harmless: Main drops those and
+// the renderer only matches ids of its own pending requests.
 export function readReplyEnvelope(
   value: unknown,
 ): { kind: "response" | "failure"; id: number } | undefined {
@@ -43,4 +46,16 @@ export function readReplyEnvelope(
   if ((kind !== "response" && kind !== "failure") || !integer(id) || id < 1)
     return undefined;
   return { kind, id };
+}
+// One logger per connection (no global state, no timers): the first replies are
+// logged one by one, then only a running count every `summaryEvery`, so a host
+// that keeps sending invalid replies cannot flood the log. Content is never given.
+export function invalidReplyLog(limit = 5, summaryEvery = 100) {
+  let count = 0;
+  return (what: string) => {
+    count++;
+    if (count <= limit) console.error("Host reply failed validation:", what);
+    else if (count % summaryEvery === 0)
+      console.error(`Host replies failed validation: ${count} so far`);
+  };
 }

@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import AxeBuilder from "@axe-core/playwright";
 import { chromium, type Page } from "playwright-core";
 import { analysisQaNow } from "../src/mock/analysis-scenes";
 import { analysisText as a } from "../src/renderer/i18n/analysis.es";
 import { recordingStatusText as t } from "../src/renderer/i18n/recording-status.es";
 import { writeAnalysisSheet } from "./analysis-sheet";
+import { axeClassic } from "./axe-classic";
+import { press, visible } from "./wait-for";
 import { webQaPreview } from "./web-qa";
 
 const scenes = [
@@ -54,13 +55,13 @@ export async function checkRecordingStatus(
         console.log(name);
         await page.setViewportSize({ width, height: 980 });
         await page.goto(`${base}?escena=analysis-qa-status-${scene}`);
-        await page
-          .getByRole("tab", { name: a.recordings, exact: true })
-          .waitFor();
+        await visible(
+          page.getByRole("tab", { name: a.recordings, exact: true }),
+        );
         if (scheme === "light") {
-          await page
-            .getByRole("button", { name: "Cambiar tema claro u oscuro" })
-            .click();
+          await press(
+            page.getByRole("button", { name: "Cambiar tema claro u oscuro" }),
+          );
           await page.waitForFunction(
             () => document.documentElement.dataset.scheme === "light",
           );
@@ -71,27 +72,23 @@ export async function checkRecordingStatus(
             : ".v-context .v-an-status-message",
         );
         const kind = scene === "recordingPreviousDay" ? "recording" : scene;
-        await indicator.getByText(t[kind], { exact: true }).waitFor();
+        await visible(indicator.getByText(t[kind], { exact: true }));
         if (scene === "recordingPreviousDay")
-          await indicator.getByText(/^Empezó el 16 nov/).waitFor();
+          await visible(indicator.getByText(/^Empezó el 16 nov/));
         if (scene === "quotaUnmet")
-          await indicator
-            .getByText(t.quotaUnmetHelp, { exact: true })
-            .waitFor();
+          await visible(indicator.getByText(t.quotaUnmetHelp, { exact: true }));
         if (scene === "pendingOff" || scene === "pendingOn") {
-          await indicator
-            .locator("..")
-            .getByRole("button", { name: a.undo })
-            .waitFor();
+          await visible(
+            indicator.locator("..").getByRole("button", { name: a.undo }),
+          );
           assert.equal(await page.getByText(a.off, { exact: true }).count(), 0);
         }
         if (scene === "limit") {
-          await page.getByText(t.pruneTitle(3), { exact: true }).waitFor();
-          await indicator.getByText(t.limitHelp, { exact: true }).waitFor();
+          await visible(page.getByText(t.pruneTitle(3), { exact: true }));
+          await visible(indicator.getByText(t.limitHelp, { exact: true }));
         }
-        const report = await new AxeBuilder({ page })
-          .include(".v-shell")
-          .analyze();
+        // Axe clásico (ver axe-classic.ts): falla si el contexto tiene iframes.
+        const report = await axeClassic(page, [".v-shell"]);
         results.push({ name, violations: report.violations });
         assert.deepEqual(report.violations, [], name);
         if (reference)
@@ -121,7 +118,7 @@ export async function checkRecordingStatus(
               .getAttribute("aria-valuetext"),
             t.bytes(4_900_000_000, 5_000_000_000),
           );
-          await page.getByRole("button", { name: t.acknowledge }).click();
+          await press(page.getByRole("button", { name: t.acknowledge }));
           await page
             .getByText(t.pruneTitle(3), { exact: true })
             .waitFor({ state: "hidden" });
@@ -129,9 +126,9 @@ export async function checkRecordingStatus(
             await page.locator(".v-an-prune-list li:visible").count(),
             3,
           );
-          await page.locator(".v-notification-bell").click();
-          await page.getByText(t.notification, { exact: true }).waitFor();
-          await page.getByText(t.notice(3), { exact: true }).waitFor();
+          await press(page.locator(".v-notification-bell"));
+          await visible(page.getByText(t.notification, { exact: true }));
+          await visible(page.getByText(t.notice(3), { exact: true }));
           if (reference)
             await page.screenshot({
               path: resolve(output, `notification-${scheme}-${width}.png`),

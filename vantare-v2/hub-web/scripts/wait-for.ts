@@ -32,3 +32,9 @@ export async function press(locator: Locator, timeout = 20000) {
   await visible(locator, timeout);
   await locator.click({ timeout });
 }
+
+// Lo mismo con una tecla: espera a que el elemento sea visible y luego la pulsa.
+export async function pressKey(locator: Locator, key: string, timeout = 20000) {
+  await visible(locator, timeout);
+  await locator.press(key, { timeout });
+}

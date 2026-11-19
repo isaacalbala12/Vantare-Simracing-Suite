@@ -26,3 +26,8 @@ export function printTimingSummary(wallSeconds: number) {
     `[tiempo] suma de comprobaciones ${sum.toFixed(1)} s, reloj total ${wallSeconds.toFixed(1)} s`,
   );
 }
+
+/** Nombres de los checks que ya se han ejecutado (para comprobar el reparto en partes). */
+export function timedNames() {
+  return [...durations.keys()];
+}

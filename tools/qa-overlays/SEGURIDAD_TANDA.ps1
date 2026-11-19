@@ -76,7 +76,7 @@ function Assert-TandaPython([string]$Path,[switch]$SyntaxOnly){
 }
 function Invoke-TandaPython([string[]]$Arguments,[string]$Log,[int]$Timeout=120){
  Assert-TandaPython $PythonExe
- Invoke-TandaProcess $PythonExe (@('-I')+$Arguments) $Log $Timeout
+ Invoke-TandaProcess $PythonExe (@('-I','-B')+$Arguments) $Log $Timeout
 }
 function Invoke-TandaShutdownCountdown([scriptblock]$Request,[scriptblock]$Cancel,[scriptblock]$Check,[scriptblock]$Sleep,[scriptblock]$Clock){
  $state=@{accepted=$false;cancelled=$false;delay_s=60};$scheduled=$false

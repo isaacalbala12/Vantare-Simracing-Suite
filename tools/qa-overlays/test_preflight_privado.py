@@ -1,5 +1,6 @@
 """A synthetic seed exercises the leak guard without reading any real key."""
 import base64
+import bz2
 import contextlib
 import gzip
 import hashlib
@@ -14,6 +15,8 @@ from unittest.mock import patch
 
 import preflight_privado
 from preflight_privado import CHUNK, PrivateMaterial, read_key, scan, signatures, verify_kit_zip
+
+WINDOWS = sys.platform == "win32"
 
 
 class PrivateMaterialTests(unittest.TestCase):
@@ -127,6 +130,151 @@ class PrivateMaterialTests(unittest.TestCase):
         with self.assertRaises(PrivateMaterial):
             scan(log, self.patterns)
 
+    def test_file_that_grows_while_scanned_is_rejected(self):
+        target = self.root / "datos.bin"
+        target.write_bytes(b"contenido limpio " * 64)
+        real_scan_stream = preflight_privado.scan_stream
+
+        def grow_after_scan(stream, patterns):
+            real_scan_stream(stream, patterns)
+            with open(target, "ab") as extra:
+                extra.write(b"x" * 32)
+
+        with patch.object(preflight_privado, "scan_stream", grow_after_scan):
+            with self.assertRaises(PrivateMaterial):
+                scan(target, self.patterns)
+
+    def test_zip_replaced_between_hash_and_open_is_rejected(self):
+        archive = self.root / "kit.zip"
+        with zipfile.ZipFile(archive, "w") as output:
+            output.writestr("bin/vantare-qa-license.exe", "fake executable")
+        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+        real_zip_file = zipfile.ZipFile
+
+        def replace_then_open(file, *args, **kwargs):
+            # The same handle is reused, so only the before/after fstat can
+            # detect that the verified bytes are no longer the consumed ones.
+            with open(archive, "ab") as extra:
+                extra.write(b"tampered after hashing")
+            return real_zip_file(file, *args, **kwargs)
+
+        with patch.object(preflight_privado.zipfile, "ZipFile", replace_then_open):
+            with self.assertRaises(PrivateMaterial):
+                verify_kit_zip(archive, expected)
+
+    def test_clean_file_without_alternate_streams_is_allowed(self):
+        target = self.root / "datos.json"
+        target.write_text('{"value":1}', encoding="utf8")
+        scan(target, self.patterns)
+
+
+class AlternateStreamTests(unittest.TestCase):
+    """NTFS alternate data streams hide bytes from the regular scan."""
+
+    def setUp(self):
+        self.seed = bytes(range(32, 64))
+        self.patterns = signatures(b"qa-a1b2c3d4" + self.seed)
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+
+    def add_stream(self, path, name="oculto"):
+        try:
+            with open(f"{path}:{name}", "w", encoding="ascii") as hidden:
+                hidden.write("cualquier cosa que no es la clave")
+        except OSError as error:
+            self.skipTest(f"Alternate data streams not available: {error}")
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_alternate_stream_in_staging_file_is_rejected(self):
+        target = self.root / "datos.json"
+        target.write_text('{"value":1}', encoding="utf8")
+        self.add_stream(target)
+        with self.assertRaises(PrivateMaterial):
+            scan(target, self.patterns)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_alternate_stream_in_log_is_rejected(self):
+        log = self.root / "tanda.log"
+        log.write_text("linea limpia\n", encoding="utf8")
+        self.add_stream(log, "evidencia")
+        with self.assertRaises(PrivateMaterial):
+            scan(log, self.patterns)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_alternate_stream_in_approved_zip_is_rejected(self):
+        archive = self.root / "kit.zip"
+        with zipfile.ZipFile(archive, "w") as output:
+            output.writestr("bin/vantare-qa-license.exe", "fake executable")
+        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+        self.add_stream(archive)
+        with self.assertRaises(PrivateMaterial):
+            verify_kit_zip(archive, expected)
+
+    def test_plain_file_without_streams_passes(self):
+        target = self.root / "datos.bin"
+        target.write_bytes(b"limpio")
+        scan(target, self.patterns)
+
+
+class ShortSignatureTests(unittest.TestCase):
+    """Short container signatures need a full header before rejecting a file."""
+
+    def setUp(self):
+        self.seed = bytes(range(32, 64))
+        self.patterns = signatures(b"qa-a1b2c3d4" + self.seed)
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name)
+
+    def scan_bytes(self, payload):
+        path = self.root / "renamed.bin"
+        path.write_bytes(payload)
+        scan(path, self.patterns)
+
+    @staticmethod
+    def newc_header(name=b"TRAILER!!!\0", size=0):
+        fields = (0, 0o100644, 0, 0, 1, 0, size, 0, 0, 0, 0, len(name), 0)
+        return b"070701" + b"".join(f"{value:08x}".encode("ascii") for value in fields) + name
+
+    @staticmethod
+    def cab_header():
+        size = 36
+        header = (b"MSCF" + b"\0" * 4 + size.to_bytes(4, "little") + b"\0" * 4
+                  + size.to_bytes(4, "little"))
+        return header + b"\0" * (size - len(header))
+
+    def test_plain_text_starting_with_a_short_signature_is_allowed(self):
+        for text in (b"BZh9: nota del operador\n", b"070701 encabezado no real\n",
+                     b"MSCF nota de la tanda\n"):
+            with self.subTest(prefix=text[:6]):
+                self.scan_bytes(text)
+
+    def test_plain_text_shorter_than_any_header_is_allowed(self):
+        for text in (b"BZh", b"070701", b"MSCF"):
+            with self.subTest(prefix=text):
+                self.scan_bytes(text)
+
+    def test_real_bzip2_cpio_and_cab_headers_are_rejected(self):
+        payloads = {
+            "bzip2": bz2.compress(b"payload" * 40),
+            "cpio-newc": self.newc_header(),
+            "cab": self.cab_header(),
+        }
+        for name, payload in payloads.items():
+            with self.subTest(container=name):
+                with self.assertRaisesRegex(PrivateMaterial, "Contenedor"):
+                    self.scan_bytes(payload)
+
+    def test_short_binary_without_a_valid_header_is_still_rejected(self):
+        for payload in (b"BZh\x00\x02\x03", b"070701\x00\x01\x02", b"MSCF\x00\x01"):
+            with self.subTest(prefix=payload[:6]):
+                with self.assertRaises(PrivateMaterial):
+                    self.scan_bytes(payload)
+
+    def test_bzip2_with_an_invalid_level_is_not_a_container(self):
+        self.scan_bytes(b"BZh0" + b"\x31\x41\x59\x26\x53\x59" + b"texto")
+
 
 class ConsoleContractTests(unittest.TestCase):
     """The console only ever shows the verdict: no traceback, path or key bytes."""
@@ -174,6 +322,21 @@ class ConsoleContractTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("QA_PRIVATE_PREFLIGHT_OK", stdout)
         self.assertEqual(stderr, "")
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_console_fails_closed_on_an_alternate_stream_without_leaking_it(self):
+        archive = self.root / "kit.zip"
+        expected = self.build_zip(archive)
+        log = self.tree / "tanda.log"
+        log.write_text("linea limpia\n", encoding="utf8")
+        try:
+            with open(f"{log}:oculto", "w", encoding="ascii") as hidden:
+                hidden.write("contenido oculto")
+        except OSError as error:
+            self.skipTest(f"Alternate data streams not available: {error}")
+        code, stdout, stderr = self.run_cli(archive, expected)
+        self.assert_failed_closed(code, stdout, stderr)
+        self.assertNotIn("oculto", stderr)
 
     def test_console_fails_closed_without_a_usable_expected_hash(self):
         archive = self.root / "kit.zip"

@@ -32,13 +32,25 @@ export function visible(
     return access.verified && !access.blocked && access.tester;
   return true;
 }
-export function lock(section: Section, access: AccessView): string | undefined {
+// Strategy opens under the same rule as Analysis: the «Funciones en pruebas»
+// preference on the nightly channel. Everyone else keeps «Próximamente».
+export function strategyOpen(channel?: string, analisisBeta?: boolean) {
+  return analisisBeta === true && channel === "nightly";
+}
+export function lock(
+  section: Section,
+  access: AccessView,
+  channel?: string,
+  analisisBeta?: boolean,
+): string | undefined {
   if (
     section === "analysis" ||
     section === "settings" ||
     section === "home" ||
     section === "account"
   )
+    return undefined;
+  if (section === "strategy" && strategyOpen(channel, analisisBeta))
     return undefined;
   if (section === "strategy" || section === "engineer") return t("shell.soon");
   if (access.blocked) return t("shell.blocked");
@@ -60,7 +72,7 @@ export function navigation(
           ? "shell.reports"
           : entry.label,
       ),
-      locked: lock(entry.id, access),
+      locked: lock(entry.id, access, channel, analisisBeta),
     }));
 }
 export { isSection } from "./sections";

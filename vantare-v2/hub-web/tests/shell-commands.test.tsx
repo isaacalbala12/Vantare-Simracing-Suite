@@ -751,7 +751,9 @@ it("offers the Analysis beta switch in Settings only on the nightly channel", as
     cache.setQueryData(["updates"], { ...updates, channel: "nightly" }),
   );
   await screen.findByText("Funciones en pruebas");
-  expect(screen.getByRole("switch", { name: "Análisis (beta)" })).toBeTruthy();
+  expect(
+    screen.getByRole("switch", { name: "Análisis y Estrategia (beta)" }),
+  ).toBeTruthy();
 });
 
 function betaSettings(settings: SettingsView) {
@@ -851,4 +853,58 @@ it("shows the no-access screen with the beta on and no Analysis permission", asy
   expect(
     await screen.findByText("Análisis no está incluido en tu acceso"),
   ).toBeTruthy();
+});
+
+// collapsed in jsdom, so the upcoming mark is the lock beside the icon
+const upcoming = (item: HTMLElement | null) =>
+  Boolean(item?.querySelector(".v-nav-lock"));
+
+it("opens the real Strategy screen only with the beta on nightly", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  const settings = cache.getQueryData<SettingsView>(settingsKey);
+  if (!settings) throw new Error("Missing settings");
+  const requests = vi.spyOn(Client.prototype, "request");
+  const strategyCalls = () =>
+    requests.mock.calls.filter(([r]) => r.method.startsWith("strategy."));
+  const entry = () =>
+    document.querySelector<HTMLElement>('.v-sidebar [data-nav="strategy"]');
+  // today's behaviour: upcoming badge, no calls to the host
+  fireEvent.click(entry() as HTMLElement);
+  await waitFor(() => expect(upcoming(entry())).toBe(true));
+  expect(upcoming(entry())).toBe(true);
+  expect(strategyCalls()).toHaveLength(0);
+  act(() => {
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    cache.setQueryData(settingsKey, betaSettings(settings));
+  });
+  await waitFor(() => expect(upcoming(entry())).toBe(false));
+  fireEvent.click(entry() as HTMLElement);
+  await waitFor(() => expect(strategyCalls().length).toBeGreaterThan(0));
+  expect(entry()?.getAttribute("aria-current")).toBe("page");
+});
+
+it("returns Strategy to the upcoming page when the channel leaves nightly", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  const settings = cache.getQueryData<SettingsView>(settingsKey);
+  if (!settings) throw new Error("Missing settings");
+  act(() => {
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    cache.setQueryData(settingsKey, betaSettings(settings));
+  });
+  const entry = () =>
+    document.querySelector<HTMLElement>('.v-sidebar [data-nav="strategy"]');
+  await waitFor(() => expect(upcoming(entry())).toBe(false));
+  fireEvent.click(entry() as HTMLElement);
+  const requests = vi.spyOn(Client.prototype, "request");
+  act(() =>
+    cache.setQueryData(["updates"], { ...updates, channel: "testers" }),
+  );
+  await waitFor(() => expect(upcoming(entry())).toBe(true));
+  requests.mockClear();
+  await new Promise((r) => setTimeout(r, 400));
+  expect(
+    requests.mock.calls.filter(([x]) => x.method.startsWith("strategy.")),
+  ).toHaveLength(0);
 });

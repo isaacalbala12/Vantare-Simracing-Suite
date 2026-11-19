@@ -55,6 +55,7 @@ export function create(context: MockContext): MockHandler {
   )
     settings.track.exists = true;
   if (sceneName === "ajustes-layout-protegido") settings.track.protected = true;
+  if (sceneName === "strategy-menu") settings.general.analisisBeta = true;
   context.windowsNotificationsEnabled =
     settings.general.toasts && !settings.protected;
   context.settingsData = settings;

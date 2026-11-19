@@ -169,9 +169,9 @@ export const settingsText = {
   "privacy.local": "Privacidad en este equipo",
   "analysis.title": analysisText.title,
   "privacy.betaFeatures": "Funciones en pruebas",
-  "privacy.analysisBeta": "Análisis (beta)",
+  "privacy.analysisBeta": "Análisis y Estrategia (beta)",
   "privacy.analysisBetaHelp":
-    "Muestra la sección Análisis en el menú. Solo está en la versión nightly y puede cambiar o fallar.",
+    "Activa las secciones Análisis y Estrategia en el menú. Solo están en la versión nightly y pueden cambiar o fallar.",
   "privacy.crashes": "Enviar informes de fallos",
   "privacy.crashesHelp":
     "Versión, sistema operativo, código de fallo y direcciones numéricas de la pila. Sin mensajes, rutas ni identificador personal.",

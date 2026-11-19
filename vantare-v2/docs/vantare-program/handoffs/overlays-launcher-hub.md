@@ -3612,3 +3612,21 @@ handoff vivo).
 4. Comprobar `--version` del Release y ejecutar los 4 escenarios `#[ignore]`.
 5. Color rasterizado del tramo 0,8–1,0 de degradados (captura en el PC).
 6. PR de UNA línea (`Engine::default() = Rune`) con autorización de Isaac.
+
+### Deuda: ciclo de vida de Rune en CI (19/11/2026)
+Los 4 escenarios de #2522 (cierre por EOF `--control-stdin`, reinicio tras caída,
+salida 0 que cierra la sesión, instancia única) se ejecutan SOLO en el PC de
+juego (escritorio Windows y adaptador compatible). Motivo (informe de lectura
+`informe-lifecycle-runner`, Rune d5338988): el launcher real arranca Rune con
+`--start-hidden`, que SIGUE creando un HWND y una superficie wgpu
+(`window/create.rs`: la ventana se crea antes de iniciar gráficos; la vía de
+primer fotograma por CPU exige `visible`; el arranque oculto pide adaptador y
+dispositivo); Rune no fuerza WARP; `VANTARE_SIN_GRAFICOS=1` da código 6 incluso
+para `--version`; la prueba de salida 0 envía `WM_CLOSE` a un HWND real.
+Para llevarlos al runner `windows-latest` haría falta un cambio de código en Rune:
+un arranque explícito SIN ventana para el exe Release QA que conserve IPC y
+`Supervisor::stdin`, emita una señal de preparación y salga por el cierre
+compartido (cubriría EOF, caída/reinicio y exclusión de instancia; `WM_CLOSE`
+real seguiría en el PC). Decisión de la raíz (19-nov): FUERA por ahora, no toca
+el host de producción; los 4 escenarios se hacen en la sesión del PC. Sí se
+añade al workflow del kit la comprobación de `--version` del Release de Rune.

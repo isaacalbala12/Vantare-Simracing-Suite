@@ -307,6 +307,33 @@ comprimidos o contenedores identificados por firma. La única excepción es el
 ZIP del kit cuyo hash se verifica; el preflight no lo descomprime. El
 veredicto no imprime contenido ni rutas de los ficheros que coinciden.
 
+#### Streams NTFS, TOCTOU y firmas cortas (#2608)
+
+Cualquier fichero del árbol de medición, de los logs o el propio ZIP del kit
+que declare un stream alternativo NTFS distinto de `::$DATA` hace fallar el
+preflight con `QA_PRIVATE_PREFLIGHT_FAILED`. Los streams se enumeran con
+`FindFirstStreamW`/`FindNextStreamW` sin leer su contenido y solo en Windows;
+en otros sistemas el recorrido de streams no aplica. Un volumen que no admite
+streams no puede ocultar nada, y un fichero ausente falla al abrirse. No se
+inspeccionan streams de directorios.
+
+El invariante TOCTOU es «el fichero que se verifica es el que se consume»: se
+abre una única vez, el tipo y el reparse point se comprueban sobre ese mismo
+handle, el escaneo y el SHA-256 leen de él, y `zipfile.ZipFile` recibe ese
+mismo objeto, sin reabrir por ruta. Si el tamaño o el mtime cambian durante la
+lectura, el preflight falla cerrado. Residual declarado: un cambio entre
+listar el directorio y abrir cada fichero no se detecta; se mitiga porque el
+servidor es de confianza y el árbol se prepara en una carpeta QA nueva.
+
+Las firmas cortas se validan ahora con su cabecera completa, sin abrir ni
+descomprimir el contenedor: `BZh` exige nivel 1–9 y el magic de bloque o de
+fin bzip2 justo después; `070701`/`070702` exigen campos hex de 8 caracteres
+en el encabezado newc; `MSCF` exige los cuatro bytes reservados a cero y un
+tamaño de cabinet coherente. Un texto imprimible que empiece por esas letras
+ya no se rechaza, y un contenedor binario, aunque esté truncado, se sigue
+rechazando. `test_preflight_privado.py` conserva fixtures inocuos y mínimos
+reales de bz2, cpio newc y cab.
+
 El ensayo sin GPU ejecuta `PROBAR_CREDENCIAL_TANDA.ps1` y el descubrimiento
 de tests Python incluye `test_preflight_privado.py`.
 

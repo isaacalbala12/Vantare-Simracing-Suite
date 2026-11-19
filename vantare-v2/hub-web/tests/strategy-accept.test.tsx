@@ -1177,16 +1177,79 @@ describe("the card of an outdated accepted plan next to a proposal", () => {
         expect(screen.queryByRole("alert")).toBeNull();
       });
 
-  it("is the same card when the proposal comes from «Calcular con los datos nuevos»", async () => {
-    mount("acceptedFujiUnreachable");
-    await openPlan("Plan aceptado");
-    click("Calcular con los datos nuevos");
-    const card = await screen.findByRole("region", {
+  // the scene of the mock itself: the proposal is of the SAME Fuji race as the
+  // accepted plan, so the figures next to each other make sense
+  it("shows a proposal of the same race next to a plan that no longer reaches the finish", async () => {
+    mount("acceptedFujiUnreachableNew");
+    await openPlan();
+    const card = screen.getByRole("region", {
       name: "Ya tienes un plan aceptado",
     });
     expect(cardIcon()?.getAttribute("data-tone")).toBe("error");
     expect(card.textContent).toContain("el plan aceptado ya no llega a meta.");
+    expect(card.textContent).toContain("6:01:04 · 5 paradas · desactualizado");
+    expect(card.textContent).toContain("Esta propuesta: 6:01:06 · 5 paradas");
+    expect(card.textContent).toContain("2,0 s más lenta");
+    expect(screen.getByText("6:01:06")).toBeTruthy();
   });
+});
+
+// ---- the notice of the accepted plan on its own follows the cause too (#2708) ----
+
+describe("the notice of an accepted plan that cannot be kept", () => {
+  const notice = () =>
+    document.querySelector(".strategy-plan .strategy-stale") as HTMLElement;
+  const cases = [
+    {
+      cause: "resourceExhausted",
+      tone: "error",
+      title: "Con los datos nuevos, este plan no llega a meta",
+    },
+    {
+      cause: "scheduleMismatch",
+      tone: "error",
+      title: "Con los datos nuevos, este plan no llega a meta",
+    },
+    {
+      cause: "reserveNotMet",
+      tone: "warn",
+      title:
+        "Con los datos nuevos, este plan llega a meta, pero sin la reserva que pides",
+    },
+    {
+      cause: "other",
+      tone: "warn",
+      title:
+        "No hemos podido comprobar si este plan llega a meta con los datos nuevos",
+    },
+  ] as const;
+  for (const { cause, tone, title } of cases)
+    for (const failLap of [null, 170])
+      it(`titles «${cause}» (lap ${failLap ?? "unknown"}) as ${tone}`, async () => {
+        mount("acceptedFujiUnreachable", undefined, (view) => {
+          const next = structuredClone(view);
+          if (next.plan.accepted)
+            next.plan.accepted.unreachable = { cause, failLap };
+          return next;
+        });
+        await openPlan("Plan aceptado");
+        const box = notice();
+        expect(box.getAttribute("data-tone")).toBe(tone);
+        expect(within(box).getByText(title)).toBeTruthy();
+        // only the strong tone is an alert; the others are a plain region
+        expect(screen.queryAllByRole("alert")).toHaveLength(
+          tone === "error" ? 1 : 0,
+        );
+        // the tag next to the title says the same: it never says «No llega a meta» of a plan that does
+        expect(stateTag()).toBe(
+          tone === "error" ? "No llega a meta" : "Desactualizado",
+        );
+        // nothing says and denies in the same breath
+        const said = box.textContent ?? "";
+        if (tone === "warn") expect(said).not.toContain("no llega a meta");
+        expect(said).not.toContain("sigue llegando a meta");
+        expect(screen.getAllByRole("status")).toHaveLength(1);
+      });
 });
 
 // ---- the words of the question tell the truth about «Descartar cambios» ----

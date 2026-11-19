@@ -1344,18 +1344,23 @@ async function staleStates(
   );
   assert.doesNotMatch(said, /en la vuelta \d/);
   await shot("a-desact-imposible");
-  // the new calculation comes next to the plan that no longer reaches the finish:
-  // the strong tone and the words of its cause
-  await press(button(page, "Calcular con los datos nuevos"));
+  if (zoomed) return;
+  // a proposal of the same race next to the plan that no longer reaches the
+  // finish: the strong tone and the words of its cause
+  await openAcceptedPlan(
+    page,
+    base,
+    "acceptedFujiUnreachableNew",
+    "Plan calculado",
+    false,
+  );
   const card = page.getByRole("region", { name: "Ya tienes un plan aceptado" });
   await visible(card);
   await visible(card.locator('.strategy-compare-icon[data-tone="error"]'));
-  assert.match(
-    (await card.textContent()) ?? "",
-    /el plan aceptado ya no llega a meta\./,
-  );
+  const cardText = (await card.textContent()) ?? "";
+  assert.match(cardText, /el plan aceptado ya no llega a meta\./);
+  assert.match(cardText, /Esta propuesta: 6:01:06 · 5 paradas/);
   await shot("a-desact-imposible-nueva");
-  if (zoomed) return;
   // the data changed and the new proposal has the same stops: it is a proposal
   // (its own certificate and figures), the outdated plan is shown apart, and it
   // can be accepted, which brings the plan up to date

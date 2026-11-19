@@ -599,6 +599,10 @@ export const strategy = {
       },
       unreachable: {
         title: "Con los datos nuevos, este plan no llega a meta",
+        reserveTitle:
+          "Con los datos nuevos, este plan llega a meta, pero sin la reserva que pides",
+        unknownTitle:
+          "No hemos podido comprobar si este plan llega a meta con los datos nuevos",
         // `failLap` is null until the solver crate reports it; the lap is said
         // only when the host sends it
         resourceExhausted: (lap: number | null) =>

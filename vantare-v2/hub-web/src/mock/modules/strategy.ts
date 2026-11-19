@@ -986,7 +986,7 @@ export function create(context: MockContext): MockHandler {
   // QA: the data changed after the plan was accepted (the plan keeps the old ones)
   if (saved.form && /^acceptedFuji(Stale|StaleSame|List)$/.test(scenario))
     saved.form.inputs.basePaceSeconds = "90.9";
-  if (saved.form && scenario === "acceptedFujiUnreachable")
+  if (saved.form && /^acceptedFujiUnreachable(New)?$/.test(scenario))
     saved.form.inputs.fuelPerLapLiters = "1.85";
   // QA: a collection with an accepted plan, an outdated one and none
   if (scenario === "acceptedFujiList")
@@ -1496,7 +1496,7 @@ export function create(context: MockContext): MockHandler {
           // the Fuji plan was accepted with the entries of the Fuji case
           if (/^acceptedFuji(Stale|StaleSame|List)$/.test(scenario))
             entries.inputs.basePaceSeconds = "90.472";
-          if (scenario === "acceptedFujiUnreachable")
+          if (/^acceptedFujiUnreachable(New)?$/.test(scenario))
             entries.inputs.fuelPerLapLiters = "1.83";
           savedAccepts[key] = { acceptedAt: mockNow, entries, result };
         }
@@ -1515,13 +1515,17 @@ export function create(context: MockContext): MockHandler {
       if (
         scenario.startsWith("planned") ||
         scenario === "acceptedFujiNew" ||
+        scenario === "acceptedFujiUnreachableNew" ||
         scenario === "acceptedFujiStaleSame"
       ) {
         // QA: a document with its plan already calculated and editable; the
         // Fuji scenes have the size of a real race. `acceptedFujiNew` has the
-        // proposal of an adjusted calendar next to the plan accepted before.
+        // proposal of an adjusted calendar next to the plan accepted before, and
+        // `acceptedFujiUnreachableNew` the same next to one that no longer reaches
+        // the finish (the fuel per lap went up).
         current.plan =
-          scenario === "acceptedFujiNew"
+          scenario === "acceptedFujiNew" ||
+          scenario === "acceptedFujiUnreachableNew"
             ? fujiMovedPlan()
             : scenario === "acceptedFujiStaleSame"
               ? fujiStaleSamePlan()

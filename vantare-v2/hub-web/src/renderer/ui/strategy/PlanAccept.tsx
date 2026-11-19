@@ -6,12 +6,13 @@ import { strategy } from "../../i18n/strategy";
 import {
   acceptedDay,
   acceptedOn,
+  cannotReach,
   changeLine,
   compareUnreachable,
   differenceText,
   planSummary,
+  staleUnreachableText,
   type Tag,
-  unreachableText,
 } from "../../screens/strategy/planText";
 import { Button } from "../Button";
 
@@ -250,13 +251,18 @@ export function StaleNotice({
   const id = useId();
   const s = t.stale;
   const unreachable = accepted.state === "staleUnreachable";
+  // the cause says how strong the notice is: a plan that does not reach the finish
+  // is an alert; one that reaches it without the reserve, or that could not be
+  // checked, is a warning
+  const said = unreachable ? staleUnreachableText(accepted.unreachable) : null;
+  const strong = unreachable && cannotReach(accepted.unreachable);
   const shown = accepted.changes.slice(0, shownChanges);
   const rest = accepted.changes.length - shown.length;
-  const title = unreachable ? t.unreachable.title : s.title;
+  const title = said ? said.title : s.title;
   const body = (
     <>
       <span className="strategy-icon">
-        <Icon name={unreachable ? "alert" : "warn"} />
+        <Icon name={strong ? "alert" : "warn"} />
       </span>
       <div>
         <strong id={`${id}-title`}>{title}</strong>
@@ -268,11 +274,9 @@ export function StaleNotice({
           </ul>
         )}
         {rest > 0 && <p>{s.more(rest)}</p>}
-        <p>
-          {unreachable && accepted.unreachable
-            ? unreachableText(accepted.unreachable)
-            : s.reaches}
-        </p>
+        {(said ? said.detail : s.reaches) && (
+          <p>{said ? said.detail : s.reaches}</p>
+        )}
         <div className="strategy-actions">
           <Button
             size="sm"
@@ -291,7 +295,7 @@ export function StaleNotice({
       </div>
     </>
   );
-  return unreachable ? (
+  return strong ? (
     <div
       className="strategy-notice strategy-stale"
       data-tone="error"

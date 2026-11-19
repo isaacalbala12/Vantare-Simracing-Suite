@@ -15,7 +15,10 @@ use crate::strategy::{
     StrategyChange, StrategyCompare, StrategyUnreachable, StrategyUnreachableCause,
 };
 use crate::strategy::{
-    STRATEGY_EXPORT_LIMIT, StrategyExportFileValue, StrategyExportTarget, StrategyExportText,
+    STRATEGY_EXPORT_LIMIT, StrategyAmountIssue, StrategyAmountLimits, StrategyAmountRange,
+    StrategyAutomaticPlan, StrategyEditCause, StrategyExportFileValue, StrategyExportTarget,
+    StrategyExportText, StrategyStopAmount, StrategyStopFixed, StrategyStopLimits,
+    StrategyStopServiceReason,
 };
 use serde_json::json;
 
@@ -44,6 +47,15 @@ pub(crate) fn typescript() -> String {
     declare::<StrategyEditView>(&mut text);
     declare::<StrategyEditStop>(&mut text);
     declare::<StrategyEditError>(&mut text);
+    declare::<StrategyEditCause>(&mut text);
+    declare::<StrategyAutomaticPlan>(&mut text);
+    declare::<StrategyStopFixed>(&mut text);
+    declare::<StrategyStopLimits>(&mut text);
+    declare::<StrategyAmountLimits>(&mut text);
+    declare::<StrategyAmountRange>(&mut text);
+    declare::<StrategyAmountIssue>(&mut text);
+    declare::<StrategyStopAmount>(&mut text);
+    declare::<StrategyStopServiceReason>(&mut text);
     declare::<StrategyReason>(&mut text);
     declare::<StrategyFile>(&mut text);
     declare::<StrategyFileMode>(&mut text);
@@ -94,6 +106,24 @@ pub(crate) fn typescript() -> String {
         ]
     );
     crate::protocol::bindings::constants!(&mut text, "strategyReasons", StrategyReason::ALL);
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "strategyAmountIssues",
+        StrategyAmountIssue::ALL
+    );
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "strategyStopAmounts",
+        [
+            StrategyStopAmount::FuelLiters,
+            StrategyStopAmount::VePercent
+        ]
+    );
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "strategyStopServiceReasons",
+        StrategyStopServiceReason::ALL
+    );
     crate::protocol::bindings::constants!(&mut text, "strategyFileModes", StrategyFileMode::ALL);
     crate::protocol::bindings::constants!(
         &mut text,
@@ -250,6 +280,31 @@ pub(crate) fn corpus() -> serde_json::Value {
             HostError::StrategyNothingToExport,
             HostError::StrategyExportNotCsv,
             HostError::StrategyFileInUse,
+            // «Puedes poner 70 o 71»
+            HostError::StrategyInvalidStopService {
+                amount: StrategyStopAmount::FuelLiters,
+                reason: StrategyStopServiceReason::OffGrid,
+                below: Some(70.into()),
+                above: Some(71.into()),
+            },
+            HostError::StrategyInvalidStopService {
+                amount: StrategyStopAmount::FuelLiters,
+                reason: StrategyStopServiceReason::AboveCapacity,
+                below: Some(82.into()),
+                above: None,
+            },
+            HostError::StrategyInvalidStopService {
+                amount: StrategyStopAmount::VePercent,
+                reason: StrategyStopServiceReason::Negative,
+                below: None,
+                above: Some(0.into()),
+            },
+            HostError::StrategyInvalidStopService {
+                amount: StrategyStopAmount::VePercent,
+                reason: StrategyStopServiceReason::NotInUse,
+                below: None,
+                above: None,
+            },
         ]
         .map(|error| HostToUi::Failure { id: 1, error }),
     );
@@ -349,6 +404,24 @@ Carrera: Fuji · Estrategia: Base"
                 compute_id: 7,
                 index: 0,
                 delta: -1,
+            },
+            Request::StrategySetStopService {
+                revision: "b".repeat(64),
+                compute_id: 7,
+                index: 1,
+                fuel_liters: Some(60.into()),
+                ve_percent: None,
+            },
+            Request::StrategySetStopService {
+                revision: "b".repeat(64),
+                compute_id: 7,
+                index: 0,
+                fuel_liters: None,
+                ve_percent: serde_json::Number::from_f64(97.5),
+            },
+            Request::StrategyClearStopServices {
+                revision: "b".repeat(64),
+                compute_id: 7,
             },
             Request::StrategyRecalculate {
                 revision: "b".repeat(64),
@@ -557,9 +630,14 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                         max_lap: 2,
                         fuel_liters: 3.into(),
                         ve_percent: 5.into(),
+                        fixed: StrategyStopFixed::default(),
+                        pit_seconds: 52.into(),
+                        limits: single_stop_limits(),
                     }],
                     can_reset: false,
                     error: None,
+                    cause: None,
+                    automatic: None,
                 }),
             }),
         }),
@@ -676,9 +754,14 @@ fn reason_samples(dirty: &StrategyView) -> Vec<HostToUi> {
             max_lap: 2,
             fuel_liters: 3.into(),
             ve_percent: 5.into(),
+            fixed: StrategyStopFixed::default(),
+            pit_seconds: 52.into(),
+            limits: single_stop_limits(),
         }],
         can_reset: true,
         error: None,
+        cause: None,
+        automatic: None,
     };
     let shown = |state| {
         view_with(
@@ -737,17 +820,59 @@ fn reason_samples(dirty: &StrategyView) -> Vec<HostToUi> {
 /// A three-stint plan whose boundaries moved (`edited`), the same plan while it
 /// recalculates (`calculating`), a recalculation that failed, and the infeasible answer.
 #[allow(clippy::too_many_lines)] // One flat list of wire samples.
+/// The limits of the only stop of the one-stop samples, with nothing fixed.
+fn single_stop_limits() -> StrategyStopLimits {
+    let limits = || StrategyAmountLimits::Used {
+        arrival: Some(StrategyAmountRange {
+            min: 1.into(),
+            max: 1.into(),
+        }),
+        range: Some(StrategyAmountRange {
+            min: 3.into(),
+            max: 9.into(),
+        }),
+        issue: None,
+        fail_lap: None,
+    };
+    StrategyStopLimits::Exact {
+        fuel: limits(),
+        ve: limits(),
+    }
+}
+
+#[allow(clippy::too_many_lines)] // One flat list of wire samples.
 fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
-    let pit = |lap, fuel: i64| StrategyPit {
+    let pit = |lap, fuel: i64, pinned: bool| StrategyPit {
         lap,
         fuel_liters: fuel.into(),
         ve_percent: 5.into(),
         change_tyres: true,
         service: StrategyPitService::Parallel,
         pit_seconds: 52.into(),
-        pinned: StrategyPitPinned::default(),
+        pinned: StrategyPitPinned {
+            fuel_liters: pinned,
+            ..StrategyPitPinned::default()
+        },
     };
-    let result = |feasible: bool| StrategyCalculationView {
+    let range = |min: i64, max: i64| {
+        Some(StrategyAmountRange {
+            min: min.into(),
+            max: max.into(),
+        })
+    };
+    let used = |issue, fail_lap| StrategyAmountLimits::Used {
+        arrival: range(2, 6),
+        range: range(11, 24),
+        issue,
+        fail_lap,
+    };
+    let exact = |fuel| StrategyStopLimits::Exact {
+        fuel,
+        ve: used(None, None),
+    };
+    // nothing fixed, limits of every stop
+    let automatic = [exact(used(None, None)), exact(used(None, None))];
+    let result = |feasible: bool, pinned: bool| StrategyCalculationView {
         certificate: Some(if feasible {
             StrategyCertificate::Proven
         } else {
@@ -776,46 +901,146 @@ fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
             stints: [(1, 3), (4, 6), (7, 9)]
                 .map(|(from_lap, to_lap)| StrategyStint { from_lap, to_lap })
                 .to_vec(),
-            pits: vec![pit(3, 12), pit(6, 13)],
+            pits: vec![pit(3, 12, false), pit(6, 13, pinned)],
         }),
     };
-    let edit = |error| StrategyEditView {
-        stints: [(1, 2), (3, 6), (7, 9)]
-            .map(|(from_lap, to_lap)| StrategyStint { from_lap, to_lap })
-            .to_vec(),
-        stops: vec![
-            StrategyEditStop {
-                lap: 2,
-                min_lap: 1,
-                max_lap: 5,
-                fuel_liters: 12.into(),
-                ve_percent: 5.into(),
-            },
-            StrategyEditStop {
-                lap: 6,
-                min_lap: 3,
-                max_lap: 8,
-                fuel_liters: 13.into(),
-                ve_percent: 5.into(),
-            },
-        ],
-        can_reset: true,
-        error,
+    // `second` is the amount fixed in the second stop and its limits
+    let fixed_edit = |error, second: Option<i64>, limits: [StrategyStopLimits; 2]| {
+        let [first_limits, second_limits] = limits;
+        StrategyEditView {
+            stints: [(1, 2), (3, 6), (7, 9)]
+                .map(|(from_lap, to_lap)| StrategyStint { from_lap, to_lap })
+                .to_vec(),
+            stops: vec![
+                StrategyEditStop {
+                    lap: 2,
+                    min_lap: 1,
+                    max_lap: 5,
+                    fuel_liters: 12.into(),
+                    ve_percent: 5.into(),
+                    fixed: StrategyStopFixed::default(),
+                    pit_seconds: 52.into(),
+                    limits: first_limits,
+                },
+                StrategyEditStop {
+                    lap: 6,
+                    min_lap: 3,
+                    max_lap: 8,
+                    fuel_liters: 13.into(),
+                    ve_percent: 5.into(),
+                    fixed: StrategyStopFixed {
+                        fuel_liters: second.map(Into::into),
+                        ve_percent: None,
+                    },
+                    pit_seconds: serde_json::Number::from_f64(53.5).unwrap_or_else(|| 0.into()),
+                    limits: second_limits,
+                },
+            ],
+            can_reset: true,
+            error,
+            cause: None,
+            automatic: second.map(|_| StrategyAutomaticPlan {
+                total_seconds: 301.into(),
+                fuel_finish_liters: 24.into(),
+                ve_finish_percent: 85.into(),
+            }),
+        }
     };
-    let plan = |state, compute_id, feasible, error| StrategyPlanView {
+    let edit = |error| fixed_edit(error, None, automatic.clone());
+    let plan_with = |state, compute_id, result, edit| StrategyPlanView {
         state,
         compute_id: Some(compute_id),
-        result: Some(Box::new(result(feasible))),
+        result: Some(Box::new(result)),
         error: None,
         error_field: None,
         accepted: None,
-        edit: Some(edit(error)),
+        edit: Some(edit),
+    };
+    let plan = |state, compute_id, feasible, error| {
+        plan_with(state, compute_id, result(feasible, false), edit(error))
     };
     let with_plan = |plan| StrategyView {
         plan,
         ..dirty.clone()
     };
-    vec![
+    // a fixed amount inside its limits, one that is too little (with the lap it
+    // fails in, and short of the reserve at the finish), one that is too much
+    // and one where nothing fits; a car without virtual energy; no limits
+    let fixed = |second: i64, limits: StrategyStopLimits| {
+        with_plan(plan_with(
+            StrategyPlanState::Edited,
+            7,
+            result(true, false),
+            fixed_edit(None, Some(second), [exact(used(None, None)), limits]),
+        ))
+    };
+    let issue = |issue, fail_lap| exact(used(Some(issue), fail_lap));
+    let mut samples = vec![
+        sample_response(Reply::StrategySetStopService {
+            value: fixed(14, exact(used(None, None))),
+        }),
+        sample_response(Reply::StrategySetStopService {
+            value: fixed(4, issue(StrategyAmountIssue::BelowMin, Some(8))),
+        }),
+        sample_response(Reply::StrategySetStopService {
+            value: fixed(10, issue(StrategyAmountIssue::BelowMin, None)),
+        }),
+        sample_response(Reply::StrategySetStopService {
+            value: fixed(28, issue(StrategyAmountIssue::AboveMax, None)),
+        }),
+        sample_response(Reply::StrategySetStopService {
+            value: fixed(
+                14,
+                StrategyStopLimits::Exact {
+                    fuel: StrategyAmountLimits::Used {
+                        arrival: None,
+                        range: None,
+                        issue: Some(StrategyAmountIssue::NoRange),
+                        fail_lap: None,
+                    },
+                    ve: StrategyAmountLimits::Unused,
+                },
+            ),
+        }),
+        sample_response(Reply::StrategySetStopService {
+            value: fixed(14, StrategyStopLimits::Unavailable),
+        }),
+        sample_response(Reply::StrategyClearStopServices {
+            value: with_plan(plan(StrategyPlanState::Edited, 7, true, None)),
+        }),
+        // recalculated with the amount fixed: the plan says which amount is the person's
+        sample_response(Reply::StrategyView {
+            value: with_plan(plan_with(
+                StrategyPlanState::Calculated,
+                8,
+                result(true, true),
+                StrategyEditView {
+                    can_reset: false,
+                    ..fixed_edit(None, Some(13), automatic.clone())
+                },
+            )),
+        }),
+        // no plan respects what is fixed in the second stop
+        sample_response(Reply::StrategyView {
+            value: with_plan(plan_with(
+                StrategyPlanState::Calculated,
+                8,
+                result(false, false),
+                StrategyEditView {
+                    cause: Some(StrategyEditCause::FixedAmountUnreachable { stop: 1 }),
+                    ..fixed_edit(
+                        None,
+                        Some(4),
+                        [
+                            exact(used(None, None)),
+                            issue(StrategyAmountIssue::BelowMin, Some(8)),
+                        ],
+                    )
+                },
+            )),
+        }),
+    ];
+    samples.extend([
         sample_response(Reply::StrategyMoveBoundary {
             value: with_plan(plan(StrategyPlanState::Edited, 7, true, None)),
         }),
@@ -839,7 +1064,8 @@ fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
         sample_response(Reply::StrategyResetEdit {
             value: with_plan(plan(StrategyPlanState::Calculated, 7, true, None)),
         }),
-    ]
+    ]);
+    samples
 }
 
 /// The accepted plan next to the proposal: each state, a comparison in each

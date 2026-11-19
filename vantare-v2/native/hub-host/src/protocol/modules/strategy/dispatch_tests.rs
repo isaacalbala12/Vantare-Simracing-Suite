@@ -286,6 +286,19 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
             to_lap: index * 10 + 10,
         })
         .collect();
+    // every stop with both amounts fixed and the longest limits there are
+    let widest = || crate::strategy::StrategyAmountLimits::Used {
+        arrival: Some(crate::strategy::StrategyAmountRange {
+            min: number(123_456.789),
+            max: number(123_456.789),
+        }),
+        range: Some(crate::strategy::StrategyAmountRange {
+            min: number(123_456.789),
+            max: number(123_456.789),
+        }),
+        issue: Some(crate::strategy::StrategyAmountIssue::BelowMin),
+        fail_lap: Some(u32::MAX),
+    };
     let stops: Vec<_> = (0..16_u32)
         .map(|index| StrategyEditStop {
             lap: index * 10 + 10,
@@ -293,6 +306,15 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
             max_lap: index * 10 + 19,
             fuel_liters: number(123_456.789),
             ve_percent: number(99.5),
+            fixed: crate::strategy::StrategyStopFixed {
+                fuel_liters: Some(number(123_456.789)),
+                ve_percent: Some(number(99.999_999)),
+            },
+            pit_seconds: number(123_456.789),
+            limits: crate::strategy::StrategyStopLimits::Exact {
+                fuel: widest(),
+                ve: widest(),
+            },
         })
         .collect();
     let plan = StrategyPlanView {
@@ -329,7 +351,11 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
                         change_tyres: true,
                         service: StrategyPitService::Sequential,
                         pit_seconds: number(123_456.789),
-                        pinned: crate::strategy::StrategyPitPinned::default(),
+                        pinned: crate::strategy::StrategyPitPinned {
+                            fuel_liters: true,
+                            ve_percent: true,
+                            change_tyres: false,
+                        },
                     })
                     .collect(),
             }),
@@ -339,6 +365,14 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
             stops,
             can_reset: true,
             error: None,
+            cause: Some(crate::strategy::StrategyEditCause::FixedAmountUnreachable {
+                stop: u32::MAX,
+            }),
+            automatic: Some(crate::strategy::StrategyAutomaticPlan {
+                total_seconds: number(123_456.789),
+                fuel_finish_liters: number(123_456.789),
+                ve_finish_percent: number(99.999_999),
+            }),
         }),
         ..StrategyPlanView::default()
     };
@@ -652,6 +686,7 @@ fn invalid_compute_input_does_not_modify_the_draft_or_disk() {
 }
 
 #[test]
+#[allow(clippy::too_many_lines)] // One view built field by field.
 fn bounded_strategy_timeline_and_edit_fit_even_with_a_full_document_view() {
     use crate::strategy::{
         STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyMetrics,
@@ -734,11 +769,28 @@ fn bounded_strategy_timeline_and_edit_fit_even_with_a_full_document_view() {
                     max_lap: u32::MAX,
                     fuel_liters: Number::from_f64(f64::MAX).unwrap(),
                     ve_percent: Number::from_f64(f64::MAX).unwrap(),
+                    fixed: crate::strategy::StrategyStopFixed {
+                        fuel_liters: Number::from_f64(f64::MAX),
+                        ve_percent: Number::from_f64(f64::MAX),
+                    },
+                    pit_seconds: Number::from_f64(f64::MAX).unwrap(),
+                    limits: crate::strategy::StrategyStopLimits::Exact {
+                        fuel: widest_limits(),
+                        ve: widest_limits(),
+                    },
                 };
                 STRATEGY_PIT_LIMIT
             ],
             can_reset: true,
             error: Some(StrategyEditError::ScheduleNotPreserved),
+            cause: Some(crate::strategy::StrategyEditCause::FixedAmountUnreachable {
+                stop: u32::MAX,
+            }),
+            automatic: Some(crate::strategy::StrategyAutomaticPlan {
+                total_seconds: Number::from_f64(f64::MAX).unwrap(),
+                fuel_finish_liters: Number::from_f64(f64::MAX).unwrap(),
+                ve_finish_percent: Number::from_f64(f64::MAX).unwrap(),
+            }),
         }),
     };
     let mut pipe = Pipe::new(Vec::new());
@@ -748,6 +800,22 @@ fn bounded_strategy_timeline_and_edit_fit_even_with_a_full_document_view() {
     };
     frame::write(&mut pipe, &message).unwrap();
     assert!(pipe.into_inner().len() <= frame::LIMIT);
+}
+
+/// The limits of an amount with every number as long as a number can be.
+fn widest_limits() -> crate::strategy::StrategyAmountLimits {
+    let range = || {
+        Some(crate::strategy::StrategyAmountRange {
+            min: serde_json::Number::from_f64(f64::MAX).unwrap(),
+            max: serde_json::Number::from_f64(f64::MAX).unwrap(),
+        })
+    };
+    crate::strategy::StrategyAmountLimits::Used {
+        arrival: range(),
+        range: range(),
+        issue: Some(crate::strategy::StrategyAmountIssue::BelowMin),
+        fail_lap: Some(u32::MAX),
+    }
 }
 
 fn confirm_fields(name: &str) -> crate::strategy::StrategyFields {
@@ -2473,4 +2541,185 @@ fn the_export_requests_carry_a_target_and_nothing_else() {
             );
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Fuel and energy fixed by hand (E5f, #2709), through the dispatcher.
+// ---------------------------------------------------------------------------
+
+fn fix_stop(view: &StrategyView, index: u32, fuel: Option<f64>, ve: Option<f64>) -> Request {
+    Request::StrategySetStopService {
+        revision: view.revision.clone(),
+        compute_id: view.plan.compute_id.unwrap(),
+        index,
+        fuel_liters: fuel.and_then(serde_json::Number::from_f64),
+        ve_percent: ve.and_then(serde_json::Number::from_f64),
+    }
+}
+
+fn clear_stops(view: &StrategyView) -> Request {
+    Request::StrategyClearStopServices {
+        revision: view.revision.clone(),
+        compute_id: view.plan.compute_id.unwrap(),
+    }
+}
+
+fn fixed_amounts(view: &StrategyView) -> Vec<Option<f64>> {
+    view.plan
+        .edit
+        .as_ref()
+        .unwrap()
+        .stops
+        .iter()
+        .map(|stop| {
+            stop.fixed
+                .fuel_liters
+                .as_ref()
+                .and_then(serde_json::Number::as_f64)
+        })
+        .collect()
+}
+
+#[test]
+fn fixing_and_clearing_amounts_answer_with_the_view_and_edit_only_the_session() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    let stops = view.plan.edit.as_ref().unwrap().stops.len();
+    let planned = view.plan.edit.as_ref().unwrap().stops[0]
+        .fuel_liters
+        .as_f64()
+        .unwrap();
+    let HostToUi::Response {
+        result: Reply::StrategySetStopService { value: fixed },
+        ..
+    } = request(&mut session, &fix_stop(&view, 0, Some(planned), None))
+    else {
+        panic!("fix the first stop");
+    };
+    assert_eq!(fixed.plan.state, StrategyPlanState::Edited);
+    let mut expected = vec![None; stops];
+    expected[0] = Some(planned);
+    assert_eq!(fixed_amounts(&fixed), expected);
+    assert_eq!(
+        (fixed.revision.as_str(), fixed.dirty),
+        (view.revision.as_str(), false)
+    );
+    // the view the renderer asks for later is the same one
+    assert_eq!(view_strategy(&mut session), fixed);
+    // a new calculation is refused while what is fixed is not recalculated
+    assert_eq!(
+        failure(&mut session, &edit_compute(&fixed)),
+        HostError::StrategyEditPending
+    );
+    let HostToUi::Response {
+        result: Reply::StrategyClearStopServices { value: cleared },
+        ..
+    } = request(&mut session, &clear_stops(&fixed))
+    else {
+        panic!("clear what is fixed");
+    };
+    assert_eq!(fixed_amounts(&cleared), vec![None; stops]);
+    assert_eq!(cleared.plan.state, StrategyPlanState::Edited);
+    assert!(!cleared.dirty);
+}
+
+#[test]
+fn an_amount_off_the_grid_is_a_typed_failure_on_the_wire() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    let error = failure(&mut session, &fix_stop(&view, 0, Some(7.5), None));
+    assert_eq!(
+        serde_json::to_value(&error).unwrap(),
+        serde_json::json!({
+            "kind": "strategyInvalidStopService",
+            "amount": "fuelLiters",
+            "reason": "offGrid",
+            "below": 7.0,
+            "above": 8.0
+        })
+    );
+    assert_eq!(view_strategy(&mut session), view, "nothing was fixed");
+    assert_eq!(
+        failure(&mut session, &fix_stop(&view, 99, Some(7.0), None)),
+        HostError::Rejected
+    );
+}
+
+#[test]
+fn fixing_amounts_needs_the_same_access_as_every_strategy_request() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    session.current.access.verified = false;
+    for sent in [fix_stop(&view, 0, Some(7.0), None), clear_stops(&view)] {
+        assert_eq!(failure(&mut session, &sent), HostError::Denied);
+    }
+    session.current.access.verified = true;
+    session.current.access.blocked = true;
+    assert_eq!(
+        failure(&mut session, &fix_stop(&view, 0, Some(7.0), None)),
+        HostError::Denied
+    );
+}
+
+#[test]
+fn fixing_during_a_recalculation_is_busy_and_recalculating_carries_what_was_fixed() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    let planned = view.plan.edit.as_ref().unwrap().stops[0]
+        .fuel_liters
+        .as_f64()
+        .unwrap();
+    let HostToUi::Response {
+        result: Reply::StrategySetStopService { value: fixed },
+        ..
+    } = request(&mut session, &fix_stop(&view, 0, Some(planned), None))
+    else {
+        panic!("fix the first stop");
+    };
+    // the amount the plan already loads, now fixed: the recalculation keeps it
+    // and the plan says it is fixed by hand
+    let running = edited(&mut session, &recalculate(&fixed));
+    assert_eq!(running.plan.state, StrategyPlanState::Calculating);
+    session.strategy.test_join_calculation();
+    let done = view_strategy(&mut session);
+    assert_eq!(done.plan.state, StrategyPlanState::Calculated);
+    let pits = &done
+        .plan
+        .result
+        .as_ref()
+        .unwrap()
+        .timeline
+        .as_ref()
+        .unwrap()
+        .pits;
+    assert_eq!(pits[0].fuel_liters.as_f64(), Some(planned));
+    assert!(pits[0].pinned.fuel_liters);
+    assert!(pits[1..].iter().all(|pit| !pit.pinned.fuel_liters));
+    assert_eq!(fixed_amounts(&done)[0], Some(planned));
+    assert!(!done.dirty, "nothing reached the document");
+    // while a recalculation runs the edit is busy
+    let cleared = match request(&mut session, &clear_stops(&done)) {
+        HostToUi::Response {
+            result: Reply::StrategyClearStopServices { value },
+            ..
+        } => value,
+        other => panic!("clear: {other:?}"),
+    };
+    let held = hold_recalculation(&mut session);
+    let busy = view_strategy(&mut session);
+    assert_eq!(
+        failure(&mut session, &fix_stop(&busy, 0, Some(planned), None)),
+        HostError::Busy
+    );
+    assert_eq!(failure(&mut session, &clear_stops(&busy)), HostError::Busy);
+    assert!(matches!(
+        failure(&mut session, &fix_stop(&cleared, 0, Some(planned), None)),
+        HostError::StrategyConflict { .. }
+    ));
+    held.release.send(()).unwrap();
+    session.strategy.test_join_calculation();
 }

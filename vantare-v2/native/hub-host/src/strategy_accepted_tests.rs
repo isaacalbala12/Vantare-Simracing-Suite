@@ -463,27 +463,48 @@ fn a_plan_that_no_longer_reaches_the_finish_says_why_and_is_kept() {
     let view = accept(&mut state).unwrap();
     let saved = state.save(&view.revision).unwrap();
     let original = accepted(&saved).result.clone();
+    // The first lap the accepted plan cannot complete at 2.5 L per lap, counted
+    // here lap by lap from the load it starts with and what each stop adds.
+    let timeline = original.timeline.as_ref().unwrap();
+    let mut fuel = timeline.fuel_start_liters.as_f64().unwrap();
+    let mut dry_lap = None;
+    'race: for (stint, laps) in timeline.stints.iter().enumerate() {
+        for lap in laps.from_lap..=laps.to_lap {
+            if fuel < 2.5 {
+                dry_lap = Some(lap);
+                break 'race;
+            }
+            fuel -= 2.5;
+        }
+        if let Some(pit) = timeline.pits.get(stint) {
+            fuel += pit.fuel_liters.as_f64().unwrap();
+        }
+    }
+    assert!(dry_lap.is_some(), "the thirstier car does run dry");
     let cases = [
-        // thirstier: the fuel of the plan runs out
+        // thirstier: the fuel of the plan runs out, and the lap is known
         (
             form(|form| form.inputs.fuel_per_lap_liters = "2.5".into()),
             StrategyUnreachableCause::ResourceExhausted,
             StrategyField::FuelPerLapLiters,
+            dry_lap,
         ),
-        // a reserve the plan was not made for
+        // a reserve the plan was not made for: it finishes, there is no lap
         (
             form(|form| form.inputs.reserve_laps = "3".into()),
             StrategyUnreachableCause::ReserveNotMet,
             StrategyField::ReserveLaps,
+            None,
         ),
         // a longer race: the calendar does not cover it
         (
             form(|form| form.inputs.race_laps = "30".into()),
             StrategyUnreachableCause::ScheduleMismatch,
             StrategyField::RaceLaps,
+            None,
         ),
     ];
-    for (changed, cause, field) in cases {
+    for (changed, cause, field, fail_lap) in cases {
         let view = state.view();
         let view = state
             .confirm(
@@ -498,8 +519,8 @@ fn a_plan_that_no_longer_reaches_the_finish_says_why_and_is_kept() {
         assert_eq!(plan.state, StrategyAcceptedState::StaleUnreachable, "{cause:?}");
         let unreachable = plan.unreachable.expect("a cause");
         assert_eq!(unreachable.cause, cause);
-        // the lap of the failure comes with the solver crate (E5e)
-        assert_eq!(unreachable.fail_lap, None);
+        // the lap of the failure is the one the replay of the crate names
+        assert_eq!(unreachable.fail_lap, fail_lap, "{cause:?}");
         assert!(plan.changes.iter().any(|change| change.field == field));
         assert_eq!(plan.result, original);
         assert_eq!(view.events[0].accepted_plan, StrategyAcceptedMark::Stale);
@@ -1066,4 +1087,320 @@ fn a_changed_text_with_a_control_character_is_reported_without_its_value() {
     assert_eq!(change.after, None);
     // a long text and a control are the same kind of thing: not shown
     assert_eq!(accepted(&view).state, StrategyAcceptedState::Stale);
+}
+
+// ---------------------------------------------------------------------------
+// Fuel and energy fixed by hand (E5f, #2709): they live in the session and reach
+// the document only inside an accepted plan.
+// ---------------------------------------------------------------------------
+
+/// A race of 20 laps calculated on top of `planned`, moved to stints of five
+/// laps (5-5-5-5) and recalculated: the tank holds six, so every stop has room
+/// for more than one amount.
+fn roomy(state: &mut State) -> StrategyView {
+    let calculated = compute(state, &form(|form| form.inputs.race_laps = "20".into()));
+    assert_eq!(calculated.plan.edit.as_ref().unwrap().stops.len(), 3);
+    for (index, lap) in [(0, 5), (1, 10), (2, 15)] {
+        let view = state.view();
+        state
+            .move_boundary(&view.revision, view.plan.compute_id.unwrap(), index, lap)
+            .unwrap();
+    }
+    recalculated(state)
+}
+
+fn recalculated(state: &mut State) -> StrategyView {
+    let view = state.view();
+    state
+        .recalculate(&view.revision, view.plan.compute_id.unwrap())
+        .unwrap();
+    state.test_join_calculation();
+    state.view()
+}
+
+fn number(value: f64) -> serde_json::Number {
+    serde_json::Number::from_f64(value).unwrap()
+}
+
+/// Fixes one litre more than the plan loads in the first stop.
+fn fix_first_stop(state: &mut State) -> (StrategyView, serde_json::Number) {
+    let view = state.view();
+    let planned = view.plan.edit.as_ref().unwrap().stops[0]
+        .fuel_liters
+        .as_f64()
+        .unwrap();
+    let amount = number(planned + 1.0);
+    let fixed = state
+        .set_stop_service(
+            &view.revision,
+            view.plan.compute_id.unwrap(),
+            0,
+            Some(&amount),
+            None,
+        )
+        .unwrap();
+    (fixed, amount)
+}
+
+#[test]
+fn fixing_an_amount_is_of_the_session_and_never_touches_the_document() {
+    let root = Root::new();
+    let (mut state, _) = planned(&root);
+    let before = roomy(&mut state);
+    assert_eq!(before.plan.state, StrategyPlanState::Calculated);
+    let on_disk = fs::read(root.primary()).unwrap();
+    let draft = state.doc.as_ref().unwrap().bytes().to_vec();
+    let (view, amount) = fix_first_stop(&mut state);
+    assert_eq!(view.plan.state, StrategyPlanState::Edited);
+    let edit = view.plan.edit.as_ref().unwrap();
+    assert_eq!(edit.stops[0].fixed.fuel_liters, Some(amount));
+    // neither the document, its revision, «Sin guardar» nor the file moved
+    assert_eq!((view.revision.as_str(), view.dirty), (before.revision.as_str(), before.dirty));
+    assert_eq!(state.doc.as_ref().unwrap().bytes(), draft);
+    assert_eq!(fs::read(root.primary()).unwrap(), on_disk);
+    assert_eq!(view.plan.result, before.plan.result);
+    // «Volver todo a automático», and «Restablecer» after fixing again
+    let cleared = state
+        .clear_stop_services(&view.revision, view.plan.compute_id.unwrap())
+        .unwrap();
+    let stops = &cleared.plan.edit.as_ref().unwrap().stops;
+    assert!(stops.iter().all(|stop| stop.fixed == StrategyStopFixed::default()));
+    fix_first_stop(&mut state);
+    let reset = state
+        .reset_edit(&view.revision, view.plan.compute_id.unwrap())
+        .unwrap();
+    assert_eq!(reset.plan, before.plan);
+    assert_eq!(state.doc.as_ref().unwrap().bytes(), draft);
+    assert_eq!(fs::read(root.primary()).unwrap(), on_disk);
+    // a new session knows nothing of what was fixed
+    fix_first_stop(&mut state);
+    state.retire();
+    let reopened = state.open().unwrap();
+    assert_eq!(reopened.plan.edit, None);
+}
+
+#[test]
+fn accepting_copies_which_amounts_were_fixed_and_saving_and_reopening_keeps_them() {
+    let root = Root::new();
+    let (mut state, _) = planned(&root);
+    roomy(&mut state);
+    let (pending, amount) = fix_first_stop(&mut state);
+    // what is fixed is not a plan until it is recalculated
+    assert_eq!(
+        state.accept(&pending.revision, pending.plan.compute_id.unwrap(), NOW),
+        Err(HostError::StrategyEditPending)
+    );
+    let proposal = recalculated(&mut state);
+    assert_eq!(proposal.plan.state, StrategyPlanState::Calculated);
+    let pits = &proposal.plan.result.as_ref().unwrap().timeline.as_ref().unwrap().pits;
+    assert_eq!(pits[0].fuel_liters, amount);
+    assert!(pits[0].pinned.fuel_liters && !pits[0].pinned.ve_percent);
+    // recalculating did not write anything either
+    assert!(!String::from_utf8_lossy(state.doc.as_ref().unwrap().bytes()).contains("pinned"));
+    let view = accept(&mut state).unwrap();
+    assert_eq!(accepted(&view).result, **proposal.plan.result.as_ref().unwrap());
+    let pinned = |document: &serde_json::Value| -> Vec<serde_json::Value> {
+        document["events"][0]["strategies"][0]["acceptedPlan"]["result"]["timeline"]["pits"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|pit| pit["pinned"].clone())
+            .collect()
+    };
+    let automatic =
+        serde_json::json!({"fuelLiters": false, "vePercent": false, "changeTyres": false});
+    let by_hand =
+        serde_json::json!({"fuelLiters": true, "vePercent": false, "changeTyres": false});
+    let mut expected = vec![automatic; pits.len()];
+    expected[0] = by_hand;
+    assert_eq!(pinned(&stored(&state)), expected);
+    // the document keeps the plan, never the edit: no limits, no session state
+    let text = String::from_utf8_lossy(state.doc.as_ref().unwrap().bytes()).into_owned();
+    for key in ["\"limits\"", "\"fixed\"", "\"automatic\"", "\"cause\"", "\"edit\""] {
+        assert!(!text.contains(key), "{key} in the document");
+    }
+    let saved = state.save(&view.revision).unwrap();
+    assert!(accepted(&saved).saved);
+    let on_disk: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.primary()).unwrap()).unwrap();
+    assert_eq!(pinned(&on_disk), expected);
+    let reopened = root.state().open().unwrap();
+    assert_eq!(reopened.state, StrategyState::Ready);
+    assert_eq!(accepted(&reopened).result, accepted(&saved).result);
+    assert_eq!(accepted(&reopened).state, StrategyAcceptedState::Accepted);
+}
+
+#[test]
+fn fixing_an_amount_answers_each_refusal_in_its_order_and_changes_nothing() {
+    let root = Root::new();
+    let mut state = root.state();
+    let amount = number(7.0);
+    let fix = |state: &mut State, revision: &str, compute_id: u32, index: u32| {
+        state.set_stop_service(revision, compute_id, index, Some(&amount), None)
+    };
+    // not open yet
+    assert_eq!(fix(&mut state, &"a".repeat(64), 1, 0), Err(HostError::Denied));
+    assert_eq!(
+        state.clear_stop_services(&"a".repeat(64), 1),
+        Err(HostError::Denied)
+    );
+    drop(state);
+    let (mut state, plain) = planned(&root);
+    let view = roomy(&mut state);
+    let id = view.plan.compute_id.unwrap();
+    // a malformed revision, an outdated one, another plan
+    assert_eq!(fix(&mut state, "not-a-revision", id, 0), Err(HostError::Rejected));
+    for (revision, compute_id) in [
+        ("f".repeat(64), id),
+        (view.revision.clone(), id + 1),
+        (view.revision.clone(), plain.plan.compute_id.unwrap()),
+    ] {
+        let conflict = fix(&mut state, &revision, compute_id, 0);
+        assert!(
+            matches!(conflict, Err(HostError::StrategyConflict { .. })),
+            "{conflict:?}"
+        );
+        let conflict = state.clear_stop_services(&revision, compute_id);
+        assert!(
+            matches!(conflict, Err(HostError::StrategyConflict { .. })),
+            "{conflict:?}"
+        );
+    }
+    // a stop that does not exist, a number the calculation cannot take
+    assert_eq!(fix(&mut state, &view.revision, id, 99), Err(HostError::Rejected));
+    assert!(matches!(
+        state.set_stop_service(&view.revision, id, 0, Some(&number(7.5)), None),
+        Err(HostError::StrategyInvalidStopService { .. })
+    ));
+    assert_eq!(state.view(), view, "no refusal changed anything");
+    // while a recalculation runs: busy with its id, a conflict with the old one
+    fix(&mut state, &view.revision, id, 0).unwrap();
+    let (release, wait) = std::sync::mpsc::sync_channel::<()>(1);
+    state.test_start_recalculation(move |_| {
+        let _ = wait.recv();
+        Err(StrategyEditError::Failed)
+    });
+    let running = state.view();
+    assert_eq!(running.plan.state, StrategyPlanState::Calculating);
+    let running_id = running.plan.compute_id.unwrap();
+    assert_eq!(fix(&mut state, &view.revision, running_id, 1), Err(HostError::Busy));
+    assert_eq!(
+        state.clear_stop_services(&view.revision, running_id),
+        Err(HostError::Busy)
+    );
+    assert!(matches!(
+        fix(&mut state, &view.revision, id, 1),
+        Err(HostError::StrategyConflict { .. })
+    ));
+    assert_eq!(state.view(), running);
+    release.send(()).unwrap();
+    state.test_join_calculation();
+    // without an editable plan there is nothing to fix
+    let empty = Root::new();
+    let mut fresh = empty.state();
+    let opened = fresh.open().unwrap();
+    assert!(matches!(
+        fix(&mut fresh, &opened.revision, 1, 0),
+        Err(HostError::StrategyConflict { .. })
+    ));
+}
+
+#[test]
+fn a_protected_document_fixes_nothing() {
+    let root = Root::new();
+    write_document(&root, |v| {
+        v["events"][0]["strategies"][0]["acceptedPlan"]["extra"] = 1.into();
+    });
+    let mut state = root.state();
+    assert_eq!(state.open().err(), Some(HostError::Protected));
+    let view = state.view();
+    assert_eq!(view.state, StrategyState::Protected);
+    assert_eq!(
+        state.set_stop_service(&view.revision, 1, 0, Some(&number(7.0)), None),
+        Err(HostError::Protected)
+    );
+    assert_eq!(
+        state.clear_stop_services(&view.revision, 1),
+        Err(HostError::Protected)
+    );
+}
+
+#[test]
+fn the_requests_that_fix_amounts_carry_no_path_and_state_both_amounts() {
+    let set = serde_json::json!({
+        "method": "strategy.setStopService",
+        "revision": "a".repeat(64),
+        "computeId": 1,
+        "index": 0,
+        "fuelLiters": 60,
+        "vePercent": null
+    });
+    let clear = serde_json::json!({
+        "method": "strategy.clearStopServices",
+        "revision": "a".repeat(64),
+        "computeId": 1
+    });
+    for request in [&set, &clear] {
+        serde_json::from_value::<crate::protocol::Request>(request.clone()).unwrap();
+        for extra in [
+            "path",
+            "dataDir",
+            "destination",
+            "changeTyres",
+            "serviceMode",
+            "pinned",
+        ] {
+            let mut invalid = request.clone();
+            invalid[extra] = "x".into();
+            assert!(
+                serde_json::from_value::<crate::protocol::Request>(invalid).is_err(),
+                "{request} + {extra}"
+            );
+        }
+    }
+    // both amounts are stated every time: a missing key is not «automatic»
+    for missing in ["fuelLiters", "vePercent", "index", "computeId", "revision"] {
+        let mut invalid = set.clone();
+        invalid.as_object_mut().unwrap().remove(missing);
+        assert!(
+            serde_json::from_value::<crate::protocol::Request>(invalid).is_err(),
+            "without {missing}"
+        );
+    }
+    // an amount is a number or null, never a text
+    for bad in [
+        serde_json::json!("60"),
+        serde_json::json!(true),
+        serde_json::json!([60]),
+        serde_json::json!({"liters": 60}),
+    ] {
+        let mut invalid = set.clone();
+        invalid["fuelLiters"] = bad.clone();
+        assert!(
+            serde_json::from_value::<crate::protocol::Request>(invalid).is_err(),
+            "{bad}"
+        );
+    }
+    // decimals and null travel as they are
+    let mut decimal = set.clone();
+    decimal["fuelLiters"] = serde_json::Value::Null;
+    decimal["vePercent"] = serde_json::json!(97.5);
+    assert_eq!(
+        serde_json::from_value::<crate::protocol::Request>(decimal).unwrap(),
+        crate::protocol::Request::StrategySetStopService {
+            revision: "a".repeat(64),
+            compute_id: 1,
+            index: 0,
+            fuel_liters: None,
+            ve_percent: Some(number(97.5)),
+        }
+    );
+    // and the view of a plan with fixed amounts names no path
+    let root = Root::new();
+    let (mut state, _) = planned(&root);
+    roomy(&mut state);
+    let (view, _) = fix_first_stop(&mut state);
+    let text = serde_json::to_string(&view).unwrap();
+    let root_text = root.0.to_string_lossy().replace('\\', "\\\\");
+    assert!(!text.contains(&root_text) && !text.contains("strategy-v2.json\\"));
 }

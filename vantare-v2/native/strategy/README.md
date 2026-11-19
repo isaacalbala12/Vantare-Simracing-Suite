@@ -176,6 +176,15 @@ Este crate no proporciona adquisición de Analysis, catálogos firmados ni su
 transporte, y no certifica por sí solo la integración visual/operativa de Hub.
 La UI v5 Go completa queda fuera de este corte.
 
+El anfitrión del Hub deja fijar a mano el combustible y la energía de cada
+parada del calendario editado (`strategy.setStopService` y
+`strategy.clearStopServices`, #2709). Lo fijado vive en la sesión, no en el
+documento: solo llega a él dentro de un plan aceptado, como `pinned` por parada.
+El anfitrión no copia ninguna regla del cálculo: valida cada cantidad con
+`check_fixed_stops`, enseña los límites de `fixed_stop_bounds` y recalcula con
+`recalculate_edited_plan_fixed`, que le dice la parada culpable cuando no hay
+plan. Un cálculo nuevo es libre y descarta lo fijado.
+
 ## Verificación
 
 Desde `native/strategy`:

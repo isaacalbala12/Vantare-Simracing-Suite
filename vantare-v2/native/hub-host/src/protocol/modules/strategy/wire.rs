@@ -83,7 +83,38 @@ pub enum Request {
         index: u32,
         delta: i8,
     },
-    /// Recalculates with the edited schedule as a constraint (new `computeId`).
+    /// Fixes by hand what stop `index` (0-based) of the edited schedule loads.
+    /// Both amounts are stated every time: a number fixes it and `null` leaves
+    /// it to the calculation. Only in the session: the document does not change.
+    #[serde(rename = "strategy.setStopService")]
+    StrategySetStopService {
+        revision: String,
+        #[serde(rename = "computeId")]
+        compute_id: u32,
+        index: u32,
+        /// The key is required (in Rust too): leaving it out is not «automatic».
+        #[serde(
+            rename = "fuelLiters",
+            deserialize_with = "crate::strategy::stated_amount"
+        )]
+        #[cfg_attr(any(test, feature = "bindings"), ts(type = "number | null"))]
+        fuel_liters: Option<serde_json::Number>,
+        #[serde(
+            rename = "vePercent",
+            deserialize_with = "crate::strategy::stated_amount"
+        )]
+        #[cfg_attr(any(test, feature = "bindings"), ts(type = "number | null"))]
+        ve_percent: Option<serde_json::Number>,
+    },
+    /// Returns every stop of the edited schedule to automatic.
+    #[serde(rename = "strategy.clearStopServices")]
+    StrategyClearStopServices {
+        revision: String,
+        #[serde(rename = "computeId")]
+        compute_id: u32,
+    },
+    /// Recalculates with the edited schedule and what is fixed by hand as
+    /// constraints (new `computeId`).
     #[serde(rename = "strategy.recalculate")]
     StrategyRecalculate {
         revision: String,
@@ -183,6 +214,14 @@ pub enum Reply {
     StrategyMoveStop {
         value: crate::strategy::StrategyView,
     },
+    #[serde(rename = "strategy.setStopService")]
+    StrategySetStopService {
+        value: crate::strategy::StrategyView,
+    },
+    #[serde(rename = "strategy.clearStopServices")]
+    StrategyClearStopServices {
+        value: crate::strategy::StrategyView,
+    },
     #[serde(rename = "strategy.recalculate")]
     StrategyRecalculate {
         value: crate::strategy::StrategyView,
@@ -254,6 +293,17 @@ pub enum HostError {
     /// Another program (a spreadsheet, usually) has the CSV open and it cannot be
     /// replaced: close it and try again. Never `busy`, which means «wait a moment».
     StrategyFileInUse,
+    /// `strategy.setStopService` with an amount the calculation cannot take
+    /// whatever the other stops do. Nothing was fixed. `below` and `above` are the
+    /// nearest amounts it does take on each side, `null` when there is none.
+    StrategyInvalidStopService {
+        amount: crate::strategy::StrategyStopAmount,
+        reason: crate::strategy::StrategyStopServiceReason,
+        #[cfg_attr(any(test, feature = "bindings"), ts(type = "number | null"))]
+        below: Option<serde_json::Number>,
+        #[cfg_attr(any(test, feature = "bindings"), ts(type = "number | null"))]
+        above: Option<serde_json::Number>,
+    },
     StrategyConflict {
         current: Box<crate::strategy::StrategyView>,
     },

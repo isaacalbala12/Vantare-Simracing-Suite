@@ -421,8 +421,9 @@ pub struct StrategyPit {
     /// (see `strategy_accepted::pit_seconds`).
     #[cfg_attr(any(test, feature = "bindings"), ts(type = "number"))]
     pub pit_seconds: Number,
-    /// Which amounts the person fixed by hand. Reserved: the calculation decides
-    /// everything today, so every flag is `false` until the amounts can be fixed.
+    /// Which amounts the person fixed by hand (`strategy.setStopService`): a
+    /// recalculation with fixed amounts sets them. Tyres cannot be fixed, so
+    /// `changeTyres` is always `false`.
     pub pinned: StrategyPitPinned,
 }
 

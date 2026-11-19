@@ -644,7 +644,7 @@ fn write_document(root: &Root, change: impl FnOnce(&mut serde_json::Value)) -> V
 #[test]
 fn a_document_with_a_malformed_plan_opens_protected_and_is_never_touched() {
     type Break = fn(&mut serde_json::Value);
-    let cases: [(&str, Break); 8] = [
+    let cases: [(&str, Break); 16] = [
         ("an unknown key", |v| {
             v["events"][0]["strategies"][0]["acceptedPlan"]["extra"] = 1.into();
         }),
@@ -675,6 +675,44 @@ fn a_document_with_a_malformed_plan_opens_protected_and_is_never_touched() {
         }),
         ("a plan under a schema that has none", |v| {
             v["schemaVersion"] = "2.1.0".into();
+        }),
+        // what the renderer's validator would refuse must not open: the view built
+        // from it would be rejected as a whole
+        ("a date with a lower case t", |v| {
+            v["events"][0]["strategies"][0]["acceptedPlan"]["acceptedAt"] =
+                "2026-11-19t18:42:00Z".into();
+        }),
+        ("a date with a lower case z", |v| {
+            v["events"][0]["strategies"][0]["acceptedPlan"]["acceptedAt"] =
+                "2026-11-19T18:42:00z".into();
+        }),
+        ("a date with a space", |v| {
+            v["events"][0]["strategies"][0]["acceptedPlan"]["acceptedAt"] =
+                "2026-11-19 18:42:00Z".into();
+        }),
+        ("a negative fuel step", |v| {
+            v["events"][0]["strategies"][0]["acceptedPlan"]["result"]["steps"]["fuelLiters"] =
+                (-1).into();
+        }),
+        ("a negative energy step", |v| {
+            v["events"][0]["strategies"][0]["acceptedPlan"]["result"]["steps"]["vePercent"] =
+                (-0.5).into();
+        }),
+        ("an unproven plan whose reason is no feasible plan", |v| {
+            let result = &mut v["events"][0]["strategies"][0]["acceptedPlan"]["result"];
+            result["certificate"] = "not_proven".into();
+            result["reason"] = "noFeasiblePlan".into();
+        }),
+        ("an unproven plan whose reason is unsatisfiable constraints", |v| {
+            let result = &mut v["events"][0]["strategies"][0]["acceptedPlan"]["result"];
+            result["certificate"] = "not_proven".into();
+            result["reason"] = "constraintsUnsatisfiable".into();
+        }),
+        ("a race longer than the crate takes", |v| {
+            let timeline =
+                &mut v["events"][0]["strategies"][0]["acceptedPlan"]["result"]["timeline"];
+            timeline["stints"] = serde_json::json!([{"fromLap": 1, "toLap": 100_001}]);
+            timeline["pits"] = serde_json::json!([]);
         }),
     ];
     for (name, change) in cases {
@@ -876,4 +914,156 @@ fn the_seconds_of_a_stop_match_the_replay_of_the_crate_and_add_up_to_the_plan() 
             }
         }
     }
+}
+
+#[test]
+fn the_dates_the_renderer_accepts_still_open() {
+    // the exact form of the validator: `T`, `Z` or a numeric offset, optional fraction
+    for date in [
+        "2026-11-19T18:42:00Z",
+        "2026-11-19T18:42:00.123456789Z",
+        "2026-11-19T18:42:00+01:00",
+        "2026-11-19T18:42:00.5-05:30",
+    ] {
+        let root = Root::new();
+        write_document(&root, |v| {
+            v["events"][0]["strategies"][0]["acceptedPlan"]["acceptedAt"] = date.into();
+        });
+        let view = root.state().open().unwrap();
+        assert_eq!(accepted(&view).accepted_at, date);
+    }
+}
+
+#[test]
+fn removing_the_plan_during_a_calculation_is_busy_and_the_plan_never_comes_back() {
+    let root = Root::new();
+    let (mut state, _) = planned(&root);
+    let view = accept(&mut state).unwrap();
+    let saved = state.save(&view.revision).unwrap();
+    // a calculation clones the document, plan included
+    let start = |state: &mut State| {
+        let view = state.view();
+        state
+            .compute(
+                view.active_event_id.as_deref().unwrap(),
+                view.active_strategy_id.as_deref().unwrap(),
+                &view.revision,
+                &form(|_| {}),
+            )
+            .unwrap();
+        state.view()
+    };
+    let running = start(&mut state);
+    assert_eq!(running.plan.state, StrategyPlanState::Calculating);
+    assert_eq!(
+        state.unaccept(&running.revision),
+        Err(HostError::Busy)
+    );
+    // nothing changed: when the calculation ends the plan is still there
+    assert_eq!(state.view().revision, running.revision);
+    state.test_join_calculation();
+    let done = state.view();
+    assert_eq!(accepted(&done).state, StrategyAcceptedState::Accepted);
+    assert_eq!(done.events[0].accepted_plan, StrategyAcceptedMark::Accepted);
+    // and once it ended, removing it works as ever
+    let removed = state.unaccept(&done.revision).unwrap();
+    assert!(removed.plan.accepted.is_none());
+    assert!(saved.plan.accepted.is_some());
+}
+
+#[test]
+fn showing_the_accepted_plan_during_a_calculation_discards_its_result_and_keeps_the_document() {
+    let root = Root::new();
+    let (mut state, _) = planned(&root);
+    let view = accept(&mut state).unwrap();
+    let saved = state.save(&view.revision).unwrap();
+    let before = state.doc.as_ref().unwrap().bytes().to_vec();
+    state
+        .compute(
+            saved.active_event_id.as_deref().unwrap(),
+            saved.active_strategy_id.as_deref().unwrap(),
+            &saved.revision,
+            &form(|form| form.inputs.base_pace_seconds = "95".into()),
+        )
+        .unwrap();
+    // the running calculation is dropped; its document never replaces the shown one
+    let shown = state.show_accepted(&saved.revision).unwrap();
+    assert_eq!(shown.plan.state, StrategyPlanState::Uncalculated);
+    state.test_join_calculation();
+    let after = state.view();
+    assert_eq!(after.plan.state, StrategyPlanState::Uncalculated);
+    assert_eq!(after.revision, saved.revision);
+    assert_eq!(state.doc.as_ref().unwrap().bytes(), before);
+    assert_eq!(accepted(&after).state, StrategyAcceptedState::Accepted);
+}
+
+#[test]
+fn accepting_during_a_calculation_is_busy_or_a_conflict_never_a_second_plan() {
+    let root = Root::new();
+    let (mut state, proposal) = planned(&root);
+    let old_id = proposal.plan.compute_id.unwrap();
+    state
+        .compute(
+            proposal.active_event_id.as_deref().unwrap(),
+            proposal.active_strategy_id.as_deref().unwrap(),
+            &proposal.revision,
+            &form(|form| form.inputs.base_pace_seconds = "95".into()),
+        )
+        .unwrap();
+    let running = state.view();
+    // the plan that is being calculated cannot be accepted yet...
+    assert_eq!(
+        state.accept(&running.revision, running.plan.compute_id.unwrap(), NOW),
+        Err(HostError::Busy)
+    );
+    // ...and the one that was on screen is gone
+    assert!(matches!(
+        state.accept(&running.revision, old_id, NOW),
+        Err(HostError::StrategyConflict { .. })
+    ));
+    state.test_join_calculation();
+    assert!(state.view().plan.accepted.is_none());
+}
+
+#[test]
+fn an_entry_that_is_not_finite_is_the_same_entry_when_it_is_written_the_same() {
+    use vantare_strategy::application::ManualField;
+    let copy = StrategyComputeForm {
+        fields: fields(),
+        inputs: StrategySolverFields {
+            fuel_step: "inf".into(),
+            ve_step: "NaN".into(),
+            ..inputs()
+        },
+    };
+    let now = copy.manual().unwrap();
+    assert_eq!(accepted::changes(&copy, &now), Vec::new());
+    let mut later = copy.manual().unwrap();
+    later[ManualField::FuelStep] = "1".into();
+    let changes = accepted::changes(&copy, &later);
+    assert_eq!(changes.len(), 1);
+    assert_eq!(changes[0].field, StrategyField::FuelStep);
+}
+
+#[test]
+fn a_changed_text_with_a_control_character_is_reported_without_its_value() {
+    let root = Root::new();
+    let (mut state, _) = planned(&root);
+    let view = accept(&mut state).unwrap();
+    state.save(&view.revision).unwrap();
+    // a document written by hand holds a team the form cannot show, nor a change
+    let mut value: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.primary()).unwrap()).unwrap();
+    value["events"][0]["team"] = vantare_strategy::document::manual("a\u{1}b".into());
+    fs::write(root.primary(), serde_json::to_vec(&value).unwrap()).unwrap();
+    let view = root.state().open().unwrap();
+    let change = accepted(&view)
+        .changes
+        .iter()
+        .find(|change| change.field == StrategyField::Team)
+        .expect("the team changed");
+    assert_eq!(change.before, Some(String::new()));
+    assert_eq!(change.after, None);
+    // a long text and a control are the same kind of thing: not shown
+    assert_eq!(accepted(&view).state, StrategyAcceptedState::Stale);
 }

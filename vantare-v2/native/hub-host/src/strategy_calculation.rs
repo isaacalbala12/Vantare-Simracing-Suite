@@ -417,7 +417,8 @@ pub struct StrategyPit {
     pub ve_percent: Number,
     pub change_tyres: bool,
     pub service: StrategyPitService,
-    /// The time the stop takes in the pits, from the crate's own replay of the plan.
+    /// The time the stop takes in the pits, priced as the crate's model prices it
+    /// (see `strategy_accepted::pit_seconds`).
     #[cfg_attr(any(test, feature = "bindings"), ts(type = "number"))]
     pub pit_seconds: Number,
     /// Which amounts the person fixed by hand. Reserved: the calculation decides

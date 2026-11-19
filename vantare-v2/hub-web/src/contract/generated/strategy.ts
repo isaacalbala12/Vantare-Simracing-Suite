@@ -77,7 +77,8 @@ export type StrategyTimeline = { pilot: string, basePaceSeconds: number, fuelSta
 export type StrategyStint = { fromLap: number, toLap: number, };
 export type StrategyPit = { lap: number, fuelLiters: number, vePercent: number, changeTyres: boolean, service: StrategyPitService, 
 /**
- * The time the stop takes in the pits, from the crate's own replay of the plan.
+ * The time the stop takes in the pits, priced as the crate's model prices it
+ * (see `strategy_accepted::pit_seconds`).
  */
 pitSeconds: number, 
 /**

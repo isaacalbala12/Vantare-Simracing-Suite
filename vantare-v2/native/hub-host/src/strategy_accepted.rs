@@ -5,7 +5,7 @@
 //! The document stores it per variant under `acceptedPlan` (schema 2.2.0). The
 //! wire shows it as `plan.accepted`, apart from `plan.result` (the proposal).
 use super::{
-    StrategyField,
+    StrategyField, StrategyReason,
     calculation::{StrategyCalculationView, StrategyCertificate, StrategyComputeForm, StrategyPit},
     valid_text,
 };
@@ -137,7 +137,11 @@ pub(super) fn plan_is_valid(plan: &StrategyAcceptedPlan) -> bool {
     };
     let reason_fits = match result.certificate {
         Some(StrategyCertificate::Proven) => result.reason.is_none(),
-        Some(StrategyCertificate::NotProven) => result.reason.is_some(),
+        // the renderer takes only these two for a plan that has a timeline
+        Some(StrategyCertificate::NotProven) => matches!(
+            result.reason,
+            Some(StrategyReason::SearchBudgetExhausted | StrategyReason::FineGridNoFallback)
+        ),
         _ => false,
     };
     let stints_fit = timeline.stints.len() == timeline.pits.len() + 1
@@ -146,7 +150,9 @@ pub(super) fn plan_is_valid(plan: &StrategyAcceptedPlan) -> bool {
             .stints
             .iter()
             .scan(1_u32, |from, stint| {
-                let fits = stint.from_lap == *from && stint.to_lap >= stint.from_lap;
+                let fits = stint.from_lap == *from
+                    && stint.to_lap >= stint.from_lap
+                    && stint.to_lap <= MAX_RACE_LAPS;
                 *from = stint.to_lap.saturating_add(1);
                 Some(fits)
             })
@@ -159,6 +165,8 @@ pub(super) fn plan_is_valid(plan: &StrategyAcceptedPlan) -> bool {
     let numbers = [&metrics.total_seconds, &metrics.fuel_reserve_required_laps]
         .into_iter()
         .chain(metrics.fuel_reserve_real_laps.iter())
+        .chain(result.steps.fuel_liters.iter())
+        .chain(result.steps.ve_percent.iter())
         .chain([
             &timeline.base_pace_seconds,
             &timeline.fuel_start_liters,
@@ -175,8 +183,51 @@ pub(super) fn plan_is_valid(plan: &StrategyAcceptedPlan) -> bool {
         && numbers
         && plan.entries.manual().is_ok()
         && valid_text(&plan.accepted_at)
-        && chrono::DateTime::parse_from_rfc3339(&plan.accepted_at).is_ok()
+        && is_rfc3339(&plan.accepted_at)
         && valid_text(&timeline.pilot)
+}
+
+/// The most laps the crate takes in a race (`Input::validate`).
+const MAX_RACE_LAPS: u32 = 100_000;
+
+/// A date as the renderer's validator spells it, and a real one: `YYYY-MM-DDTHH:MM:SS`,
+/// an optional fraction, then `Z` or `+HH:MM` / `-HH:MM`. (`chrono` alone also takes
+/// a lower case `t` or `z` and a space, which that validator refuses.)
+fn is_rfc3339(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    let digits = |range: std::ops::Range<usize>| {
+        bytes.get(range).is_some_and(|part| part.iter().all(u8::is_ascii_digit))
+    };
+    let mut at = 19;
+    let head = digits(0..4)
+        && bytes.get(4) == Some(&b'-')
+        && digits(5..7)
+        && bytes.get(7) == Some(&b'-')
+        && digits(8..10)
+        && bytes.get(10) == Some(&b'T')
+        && digits(11..13)
+        && bytes.get(13) == Some(&b':')
+        && digits(14..16)
+        && bytes.get(16) == Some(&b':')
+        && digits(17..19);
+    if bytes.get(at) == Some(&b'.') {
+        let start = at + 1;
+        at = start;
+        while bytes.get(at).is_some_and(u8::is_ascii_digit) {
+            at += 1;
+        }
+        if at == start {
+            return false;
+        }
+    }
+    let zone = match bytes.get(at..) {
+        Some([b'Z']) => true,
+        Some([b'+' | b'-', ..]) => {
+            digits(at + 1..at + 3) && bytes.get(at + 3) == Some(&b':') && digits(at + 4..at + 6) && bytes.len() == at + 6
+        }
+        _ => false,
+    };
+    head && zone && chrono::DateTime::parse_from_rfc3339(text).is_ok()
 }
 
 /// The plan stored in a variant: `Ok(None)` when it has none, `Err` when what it
@@ -219,16 +270,22 @@ fn counts(field: ManualField) -> bool {
 
 /// `1.83` and `1.830` are the same number; a text is compared as written.
 fn same_entry(field: ManualField, before: &str, after: &str) -> bool {
+    if before.trim() == after.trim() {
+        return true; // also `inf` and `NaN`, which are never equal as numbers
+    }
     if numeric(field)
         && let (Ok(before), Ok(after)) = (before.trim().parse::<f64>(), after.trim().parse::<f64>())
     {
-        return (before - after).abs() <= f64::EPSILON * before.abs().max(after.abs());
+        return before.is_finite()
+            && after.is_finite()
+            && (before - after).abs() <= f64::EPSILON * before.abs().max(after.abs());
     }
-    before.trim() == after.trim()
+    false
 }
 
+/// The text of a change when it can travel: short, and with no control character.
 fn shown(text: &str) -> Option<String> {
-    (text.len() <= STRATEGY_CHANGE_TEXT_LIMIT).then(|| text.to_owned())
+    (text.len() <= STRATEGY_CHANGE_TEXT_LIMIT && valid_text(text)).then(|| text.to_owned())
 }
 
 /// The entries that differ from the copy, in the order of the form.
@@ -275,10 +332,11 @@ pub(super) fn pit_decision(pit: &StrategyPit) -> PitDecision {
     }
 }
 
-/// The seconds one stop takes in the pits, priced as the crate's model prices a
-/// stop (`Model::pit`, which is private): the transit plus the service, in parallel
-/// or one after another. A test holds it to the replay of the crate and to the total
-/// of every plan the solver returns, so the two cannot drift apart.
+/// The seconds one stop takes in the pits, priced the way the crate's model prices
+/// a stop (`Model::pit`, which is private): the transit plus the service, in
+/// parallel or one after another. It is NOT read from the crate: a test holds this
+/// copy to the replay of the crate and to the total of a plan the solver returns, so
+/// the two cannot drift apart.
 pub(super) fn pit_seconds(input: &Input, pit: &PitDecision) -> f64 {
     let cost = &input.pit_cost;
     let fuel = pit.fuel_liters / cost.refuel_rate_l_per_s.value;
@@ -326,7 +384,7 @@ pub(super) fn reach(
         .iter()
         .map(|stint| stint.to_lap - stint.from_lap + 1)
         .collect();
-    if stints.iter().sum::<u32>() != input.race_laps {
+    if stints.iter().try_fold(0_u32, |sum, &laps| sum.checked_add(laps)) != Some(input.race_laps) {
         return Some(StrategyUnreachable {
             cause: StrategyUnreachableCause::ScheduleMismatch,
             fail_lap: None,

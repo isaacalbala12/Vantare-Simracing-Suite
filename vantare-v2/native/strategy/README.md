@@ -20,6 +20,19 @@ nueva y lo protege. Este crate solo acepta la versión y conserva los bytes
 (`Document::remove` quita la clave sin reescribir el resto); la validación del
 plan aceptado la hace el host (`hub-host`).
 
+**Compatibilidad hacia delante del plan guardado.** El host lee `acceptedPlan` con
+`deny_unknown_fields` y con todos los campos obligatorios, y las paradas
+(`StrategyPit`) forman parte de él. Por tanto E5f–E5h **no pueden añadir campos
+obligatorios** a lo guardado sin romper los archivos 2.2.0 ya escritos. Regla
+decidida: todo campo nuevo del plan guardado se añade con `#[serde(default)]` (los
+archivos antiguos siguen abriendo) y **no se sube a 2.3.0**. A cambio, un Hub de E5a
+que lea un archivo escrito por uno posterior lo abrirá protegido por el campo
+desconocido, que es lo que haría con una versión más nueva y es aceptable en
+nightly. Una subida a 2.3.0 solo se justifica si hace falta que un lector anterior
+lo rechace por versión, o si un campo nuevo no puede tener valor por defecto. Cada
+campo nuevo debe además entrar en el validador de `hub-web` (`exact(...)` de la
+parada) en el mismo cambio del contrato.
+
 Las ediciones validan el documento completo antes de guardar y conservan los
 bytes de campos no editados. Las seis entradas de
 `testdata/oracle/document-rules.json` se generaron contra Go en

@@ -101,8 +101,10 @@ impl Document {
     }
 
     /// Removes an object member (or an array element) and the comma that
-    /// separated it; every other byte stays. The result is validated whole before
-    /// it replaces the document, and a missing path is an error.
+    /// separated it; every other byte stays. A key repeated in the object goes
+    /// away in every copy (the parser keeps the last one, and the earlier ones must
+    /// not show through once it is gone). The result is validated whole before it
+    /// replaces the document, and a missing path is an error.
     pub fn remove(&mut self, pointer: &str) -> Result<(), String> {
         let (parent, key) = pointer.rsplit_once('/').ok_or("se requiere JSON pointer")?;
         let unescape = |s: &str| s.replace("~1", "/").replace("~0", "~");
@@ -112,46 +114,14 @@ impl Document {
             parent[1..].split('/').map(unescape).collect::<Vec<_>>()
         };
         let key = unescape(key);
-        let range = locate(&self.bytes, 0..self.bytes.len(), &parts)?;
-        let object = self.bytes.get(range.start) == Some(&b'{');
-        // (name, start of the member, end of its value) of every member of the parent
-        let mut members = Vec::new();
-        let mut pos = skip_space(&self.bytes, range.start + 1);
-        let end = range.end - 1;
-        let mut index = 0;
-        while pos < end {
-            let start = pos;
-            let name = if object {
-                let key_end = token_end(&self.bytes, pos)?;
-                let name: String =
-                    serde_json::from_slice(&self.bytes[pos..key_end]).map_err(|e| e.to_string())?;
-                pos = skip_space(&self.bytes, key_end) + 1; // the colon
-                name
-            } else {
-                index.to_string()
-            };
-            pos = skip_space(&self.bytes, pos);
-            let value_end = token_end(&self.bytes, pos)?;
-            members.push((name, start, value_end));
-            pos = skip_space(&self.bytes, value_end);
-            if self.bytes.get(pos) == Some(&b',') {
-                pos = skip_space(&self.bytes, pos + 1);
-            }
-            index += 1;
-        }
-        let at = members
-            .iter()
-            .position(|(name, _, _)| *name == key)
-            .ok_or_else(|| format!("campo no encontrado: {key}"))?;
-        let (_, start, value_end) = members[at];
-        // Take the comma after the member, or the one before it when it is the last.
-        let (from, to) = match members.get(at + 1) {
-            Some(&(_, next, _)) => (start, next),
-            None if at > 0 => (members[at - 1].2, value_end),
-            None => (start, value_end),
-        };
         let mut bytes = self.bytes.clone();
-        bytes.drain(from..to);
+        let mut removed = false;
+        while remove_last(&mut bytes, &parts, &key)? {
+            removed = true;
+        }
+        if !removed {
+            return Err(format!("campo no encontrado: {key}"));
+        }
         *self = Self::parse(&bytes)?;
         Ok(())
     }
@@ -255,6 +225,52 @@ fn token_end(bytes: &[u8], start: usize) -> Result<usize, String> {
     } else {
         Err("token JSON incompleto".into())
     }
+}
+
+/// Removes the last member `key` of the container at `parts`, with the comma that
+/// separated it. `false` when there is none (or the container is not there).
+fn remove_last(bytes: &mut Vec<u8>, parts: &[String], key: &str) -> Result<bool, String> {
+    let Ok(range) = locate(bytes, 0..bytes.len(), parts) else {
+        return Ok(false);
+    };
+    let object = bytes.get(range.start) == Some(&b'{');
+    // (name, start of the member, end of its value) of every member of the container
+    let mut members = Vec::new();
+    let mut pos = skip_space(bytes, range.start + 1);
+    let end = range.end - 1;
+    let mut index = 0;
+    while pos < end {
+        let start = pos;
+        let name = if object {
+            let key_end = token_end(bytes, pos)?;
+            let name: String =
+                serde_json::from_slice(&bytes[pos..key_end]).map_err(|e| e.to_string())?;
+            pos = skip_space(bytes, key_end) + 1; // the colon
+            name
+        } else {
+            index.to_string()
+        };
+        pos = skip_space(bytes, pos);
+        let value_end = token_end(bytes, pos)?;
+        members.push((name, start, value_end));
+        pos = skip_space(bytes, value_end);
+        if bytes.get(pos) == Some(&b',') {
+            pos = skip_space(bytes, pos + 1);
+        }
+        index += 1;
+    }
+    let Some(at) = members.iter().rposition(|(name, _, _)| name == key) else {
+        return Ok(false);
+    };
+    let (_, start, value_end) = members[at];
+    // Take the comma after the member, or the one before it when it is the last.
+    let (from, to) = match members.get(at + 1) {
+        Some(&(_, next, _)) => (start, next),
+        None if at > 0 => (members[at - 1].2, value_end),
+        None => (start, value_end),
+    };
+    bytes.drain(from..to);
+    Ok(true)
 }
 
 fn locate(bytes: &[u8], range: Range<usize>, parts: &[String]) -> Result<Range<usize>, String> {
@@ -1169,6 +1185,29 @@ mod tests {
         let before = doc.bytes().to_vec();
         assert!(doc.remove("/events/0/id").is_err());
         assert_eq!(doc.bytes(), before);
+    }
+
+    #[test]
+    fn remove_takes_every_copy_of_a_repeated_key() {
+        // serde keeps the last copy of a repeated key, so that is the one that must
+        // go; and the earlier ones must not show through afterwards
+        let bytes = plan_document("2.2.0", "{\"acceptedAt\":\"2026-11-19T18:42:00Z\"}");
+        let text = String::from_utf8(bytes).expect("utf8");
+        let twice = text.replacen(
+            "\"acceptedPlan\":{\"acceptedAt\":\"2026-11-19T18:42:00Z\"},",
+            "\"acceptedPlan\":{\"acceptedAt\":\"2026-11-18T10:00:00Z\"},\"acceptedPlan\":{\"acceptedAt\":\"2026-11-19T18:42:00Z\"},",
+            1,
+        );
+        assert_ne!(twice, text, "the fixture has the member to repeat");
+        let mut doc = Document::parse(twice.as_bytes()).expect("a repeated key parses");
+        let pointer = "/events/0/strategies/0/acceptedPlan";
+        assert_eq!(
+            doc.value().pointer(pointer).unwrap()["acceptedAt"],
+            "2026-11-19T18:42:00Z"
+        );
+        doc.remove(pointer).expect("remove");
+        assert!(doc.value().pointer(pointer).is_none(), "no copy is left");
+        assert!(!String::from_utf8_lossy(doc.bytes()).contains("acceptedPlan"));
     }
 
     /// What the frozen GPUI Hub does: it opens with `Document::parse`, edits with

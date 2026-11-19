@@ -344,7 +344,7 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
     };
     let mut view = value;
     view.form = Some(Box::new(form));
-    // next to the proposal, the accepted plan: the same full plan, the 26 entries
+    // next to the proposal, the accepted plan: the same full plan, the 25 entries
     // that can make it stale each changed (texts of the limit made of what JSON
     // escapes), a cause and a comparison
     let kept = plan.result.clone().unwrap();

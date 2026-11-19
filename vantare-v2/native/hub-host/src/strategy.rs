@@ -749,8 +749,14 @@ impl State {
 
     /// Removes the accepted plan of the active variant (it is «Sin guardar» until
     /// saved). The proposal on screen stays.
+    ///
+    /// A calculation holds a copy of the document with the plan in it and would put
+    /// it back when it ends, so while one runs the answer is `busy`, as for `accept`.
     pub(crate) fn unaccept(&mut self, revision: &str) -> Result<StrategyView, HostError> {
         self.require_edit(revision)?;
+        if self.calculation.running() {
+            return Err(HostError::Busy);
+        }
         let doc = self.doc.as_ref().ok_or(HostError::Rejected)?;
         let (event, variant) = active_indices(doc).ok_or(HostError::StrategyNoAcceptedPlan)?;
         if accepted::plan_of(doc, event, variant).is_none() {

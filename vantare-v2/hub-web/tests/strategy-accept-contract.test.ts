@@ -201,6 +201,47 @@ it("rejects an inconsistent accepted plan", () => {
   expect(
     broken("accepted", (v) => (accepted(v).acceptedAt = "2026-11-19")),
   ).toBe(false);
+  // the exact spelling the host also requires of a stored plan: if the two ever
+  // differ, a document the host opens would make the renderer drop its view
+  for (const date of [
+    "2026-11-19t18:42:00Z",
+    "2026-11-19T18:42:00z",
+    "2026-11-19 18:42:00Z",
+    "2026-11-19T18:42:00+0100",
+  ])
+    expect(
+      broken("accepted", (v) => (accepted(v).acceptedAt = date)),
+      date,
+    ).toBe(false);
+  for (const date of [
+    "2026-11-19T18:42:00.123456789Z",
+    "2026-11-19T18:42:00+01:00",
+  ])
+    expect(
+      broken("accepted", (v) => (accepted(v).acceptedAt = date)),
+      date,
+    ).toBe(true);
+  expect(
+    broken("accepted", (v) => (accepted(v).result.steps.fuelLiters = -1)),
+  ).toBe(false);
+  expect(
+    broken("accepted", (v) => (accepted(v).result.steps.vePercent = -0.5)),
+  ).toBe(false);
+  // an unproven plan with a timeline has one of two reasons, never the no-plan ones
+  for (const [reason, valid] of [
+    ["searchBudgetExhausted", true],
+    ["fineGridNoFallback", true],
+    ["noFeasiblePlan", false],
+    ["constraintsUnsatisfiable", false],
+    [null, false],
+  ] as const)
+    expect(
+      broken("accepted", (v) => {
+        accepted(v).result.certificate = "not_proven";
+        accepted(v).result.reason = reason;
+      }),
+      String(reason),
+    ).toBe(valid);
   expect(broken("accepted", (v) => (accepted(v).path = "C:\\a"))).toBe(false);
   expect(
     broken("accepted", (v) => (accepted(v).compare = { same: true })),

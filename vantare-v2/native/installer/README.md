@@ -306,7 +306,7 @@ de `hub-ui` (recibo de P3) y bytes inertes, con HKCU y carpetas inyectados y el
 | Vuelta atrás tras el relevo | Vuelve a GPUI con sus datos; lo que escribió la nueva queda en su carpeta |
 | Reparar | Sustituye un `hub-ui` dañado con la misma versión y conserva los datos |
 | Versión antigua | Rechazada (código 3) sin tocar nada |
-| Fallos durante el relevo | Disco lleno (inyectado), raíz sin permiso de escritura y documento ocupado: la anterior sigue activa y se puede reintentar |
+| Fallos durante el relevo | Disco lleno (inyectado), documento sin permiso de lectura y documento ocupado: la generación a medias se retira, la anterior sigue activa y se puede reintentar |
 | Electron abierto | Setup, Reparar y Desinstalar se detienen (código 2) sin cerrar la aplicación |
 | Accesos ajenos | Los de otra instalación ni se pisan ni se borran |
 | Desinstalar | Retira todos los miembros propios y conserva `data` y lo ajeno; reinstalar recupera los datos |

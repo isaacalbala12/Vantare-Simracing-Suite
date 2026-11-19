@@ -1640,11 +1640,13 @@ impl Drop for Shell {
         let _ = windows_registry::CURRENT_USER.remove_tree(&self.registry);
     }
 }
-/// Real `ACCESS_DENIED` for new files of one QA directory; the ACE is always removed.
+/// Real `ACCESS_DENIED` when reading one QA file; the ACE is always removed.
+/// A file on purpose: a session holding the backup and restore privileges
+/// renames and creates directories regardless of a deny ACE on the folder.
 struct Denied(PathBuf);
 impl Denied {
     fn new(path: &Path) -> Self {
-        Self::icacls(path, "/deny", "*S-1-1-0:(WD)");
+        Self::icacls(path, "/deny", "*S-1-1-0:(RD)");
         Self(path.to_path_buf())
     }
     fn icacls(path: &Path, action: &str, entry: &str) {
@@ -1975,13 +1977,15 @@ fn relay_fault(fault: &str) {
     let before = index(&old.join("data"));
     let state = fs::read(fixture.root.join("state.json")).expect("state");
     let electron = fixture.electron("1.0.1");
-    // The root accepts no new file: neither the boot marker nor a restored state.
-    let denied = (fault == "access-denied").then(|| Denied::new(&fixture.root));
+    // Either document fault stops the data copy once the new generation is
+    // already in place, so the rollback has a half-built generation to retire.
+    let document = old.join("data/hub/hub-settings.json");
+    let denied = (fault == "access-denied").then(|| Denied::new(&document));
     let busy = (fault == "busy-document").then(|| {
         fs::OpenOptions::new()
             .read(true)
             .share_mode(0)
-            .open(old.join("data/hub/hub-settings.json"))
+            .open(&document)
             .expect("exclusive document")
     });
     let cancel = AtomicBool::new(false);
@@ -2031,7 +2035,7 @@ fn injected_disk_full_during_the_relay_keeps_gpui_active_and_can_be_retried() {
 }
 
 #[test]
-fn read_only_root_during_the_relay_keeps_gpui_active_and_can_be_retried() {
+fn denied_document_during_the_relay_keeps_gpui_active_and_can_be_retried() {
     relay_fault("access-denied");
 }
 

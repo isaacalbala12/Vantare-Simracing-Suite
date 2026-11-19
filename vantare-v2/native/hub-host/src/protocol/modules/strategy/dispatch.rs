@@ -1,4 +1,5 @@
 use super::{HostError, HostToUi, Pipe, Reply, Request, Session, frame, io};
+use crate::strategy::Picked;
 
 pub(super) fn allowed(session: &Session) -> bool {
     session.current.access.verified && !session.current.access.blocked && session.closing.is_none()
@@ -16,16 +17,20 @@ pub(super) fn picked(
     let allowed = strategy.observe(session.current.account_generation.as_deref(), allowed);
     strategy.poll_calculation();
     let result = if allowed {
-        strategy.picked_file(selection, std::time::Instant::now())
+        strategy.picked(selection, std::time::Instant::now())
     } else {
         // Whoever cannot be served cannot hold a ticket either.
         strategy.drop_ticket();
         Err(HostError::Denied)
     };
     let message = match result {
-        Ok(value) => HostToUi::Response {
+        Ok(Picked::View(value)) => HostToUi::Response {
             id: selection.id,
-            result: Reply::StrategyPickFile { value },
+            result: Reply::StrategyPickFile { value: *value },
+        },
+        Ok(Picked::Export(value)) => HostToUi::Response {
+            id: selection.id,
+            result: Reply::StrategyExportFile { value },
         },
         Err(error) => HostToUi::Failure {
             id: selection.id,
@@ -148,6 +153,12 @@ pub(super) fn dispatch(
             Request::StrategyShowAccepted { revision } => strategy
                 .show_accepted(revision)
                 .map(|value| Reply::StrategyShowAccepted { value }),
+            Request::StrategyExport { revision, target } => strategy
+                .export_text(revision, target)
+                .map(|value| Reply::StrategyExport { value }),
+            Request::StrategyExportFile { revision, target } => strategy
+                .export_file(id, revision, target.clone(), std::time::Instant::now())
+                .map(|value| Reply::StrategyExportFile { value }),
             _ => Err(HostError::Rejected),
         }
     } else {

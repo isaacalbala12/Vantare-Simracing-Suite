@@ -5,6 +5,7 @@ import {
   strategyAcceptedStates,
   strategyChangeTextLimit,
   strategyEditErrors,
+  strategyExportLimit,
   strategyFields,
   strategyFileModes,
   strategyFileNameMax,
@@ -542,8 +543,57 @@ function form(value: unknown): boolean {
   );
 }
 
+// What an export writes: the proposal a calculation names, or the accepted plan.
+// Never a path or a file.
+function exportTarget(value: unknown): boolean {
+  if (!record(value)) return false;
+  if (value.kind === "proposal")
+    return exact(value, ["kind", "computeId"]) && computeId(value.computeId);
+  return value.kind === "accepted" && exact(value, ["kind"]);
+}
+
+// The plan as text: the host bounds it (`strategyExportLimit` bytes) and it has
+// no control characters other than the line breaks.
+function exportText(value: unknown): boolean {
+  return (
+    record(value) &&
+    exact(value, ["text"]) &&
+    typeof value.text === "string" &&
+    bytes.encode(value.text).length <= strategyExportLimit &&
+    // control characters other than the line break
+    !/[^\P{Cc}\n]/u.test(value.text)
+  );
+}
+
+// The answers of `strategy.exportFile`: the ticket (only main sees it), the file
+// written (its name) and the cancelled dialog.
+function exportFileValue(value: unknown): boolean {
+  if (!record(value)) return false;
+  switch (value.kind) {
+    case "ticket":
+      return (
+        exact(value, ["kind", "suggestedName"]) && fileName(value.suggestedName)
+      );
+    case "saved":
+      return (
+        exact(value, ["kind", "file"]) && record(value.file) && file(value.file)
+      );
+    case "cancelled":
+      return exact(value, ["kind"]);
+    default:
+      return false;
+  }
+}
+
 export function isRequest(value: Record<string, unknown>): boolean {
   switch (value.method) {
+    case "strategy.export":
+    case "strategy.exportFile":
+      return (
+        exact(value, ["method", "revision", "target"]) &&
+        revision(value.revision) &&
+        exportTarget(value.target)
+      );
     case "strategy.select":
       return (
         exact(value, ["method", "eventId", "strategyId", "revision"]) &&
@@ -646,11 +696,15 @@ export function isRequest(value: Record<string, unknown>): boolean {
   }
 }
 export function isReply(value: Record<string, unknown>): boolean {
-  return (
-    oneOf(value.method, strategyMethods) &&
-    exact(value, ["method", "value"]) &&
-    view(value.value)
-  );
+  if (
+    !oneOf(value.method, strategyMethods) ||
+    !exact(value, ["method", "value"])
+  )
+    return false;
+  if (value.method === "strategy.export") return exportText(value.value);
+  if (value.method === "strategy.exportFile")
+    return exportFileValue(value.value);
+  return view(value.value);
 }
 export function isError(value: Record<string, unknown>): boolean {
   if (
@@ -665,6 +719,9 @@ export function isError(value: Record<string, unknown>): boolean {
       "strategyPickExpired",
       "strategyNotAcceptable",
       "strategyNoAcceptedPlan",
+      "strategyNothingToExport",
+      "strategyExportNotCsv",
+      "strategyFileInUse",
     ])
   )
     return exact(value, ["kind"]);

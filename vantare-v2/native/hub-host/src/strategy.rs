@@ -33,6 +33,12 @@ pub use calculation::{
     StrategyPitPinned, StrategyPlanState, StrategyPlanView, StrategyReason, StrategyServiceSteps,
     StrategySolverFields, StrategyStint, StrategyTimeline,
 };
+#[path = "strategy_export.rs"]
+mod export;
+pub(crate) use export::Picked;
+pub use export::{
+    STRATEGY_EXPORT_LIMIT, StrategyExportFileValue, StrategyExportTarget, StrategyExportText,
+};
 #[path = "strategy_file.rs"]
 mod file;
 #[cfg(test)]
@@ -1095,3 +1101,6 @@ mod data_tests;
 #[cfg(test)]
 #[path = "strategy_accepted_tests.rs"]
 mod accepted_tests;
+#[cfg(test)]
+#[path = "strategy_export_tests.rs"]
+mod export_tests;

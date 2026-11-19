@@ -7,8 +7,11 @@ import corpus from "../../contract/generated/corpus/strategy.json";
 import type {
   StrategyAcceptedMark,
   StrategyAcceptedView,
+  StrategyCalculationView,
   StrategyChange,
   StrategyEditError,
+  StrategyExportFileValue,
+  StrategyExportTarget,
   StrategyField,
   StrategyFields,
   StrategyPlanView,
@@ -20,7 +23,7 @@ import type {
 import { strategyReasons } from "../../contract/generated/strategy";
 import type { MockContext, MockHandler } from "../context";
 
-type PickMode = "open" | "saveAs";
+type PickMode = "open" | "saveAs" | "export";
 
 function sample(state: string): StrategyView {
   const value = corpus.host.find(
@@ -39,7 +42,8 @@ function withoutInputs(): StrategyView {
   const value = corpus.host.find(
     (item) =>
       item.result?.method === "strategy.view" &&
-      item.result.value.events[0]?.hasInputs === false,
+      "events" in item.result.value &&
+      item.result.value.events?.[0]?.hasInputs === false,
   )?.result?.value;
   if (!value) throw Error("Missing strategy fixture without inputs");
   return structuredClone(value) as StrategyView;
@@ -236,10 +240,12 @@ function calculation(state: "calculated" | "error"): StrategyPlanView {
   const plan = corpus.host.find(
     (item) =>
       item.result?.method === "strategy.view" &&
-      item.result.value.plan.state === state,
-  )?.result?.value.plan;
-  if (!plan) throw Error("Missing strategy calculation fixture");
-  return structuredClone(plan) as StrategyPlanView;
+      "plan" in item.result.value &&
+      item.result.value.plan?.state === state,
+  )?.result?.value;
+  if (!plan || !("plan" in plan))
+    throw Error("Missing strategy calculation fixture");
+  return structuredClone(plan.plan) as StrategyPlanView;
 }
 
 // The plan of the reason scenes (QA): the first sample of the corpus with that reason.
@@ -884,7 +890,14 @@ export function create(context: MockContext): MockHandler {
   // «Abrir otro archivo…» / «Guardar como…»: one ticket at a time, as in the host
   const primaryFile = "strategy-v2.json";
   const existingFiles = new Set([primaryFile, "carreras-2026.json"]);
-  let ticket: { id: number; mode: PickMode; revision: string } | undefined;
+  let ticket:
+    | {
+        id: number;
+        mode: PickMode;
+        revision: string;
+        target?: StrategyExportTarget;
+      }
+    | undefined;
   // the reason scenes (QA): the calculation ends with this reason
   const reason = strategyReasons.find(
     (value) => scenario === `reason${value[0].toUpperCase()}${value.slice(1)}`,
@@ -923,6 +936,69 @@ export function create(context: MockContext): MockHandler {
     view.file = { name };
     return view;
   }
+
+  // The plan an export writes, or the error the host answers: the same checks, in
+  // the same order. The text is a plain approximation of the host's, not its bytes.
+  function exportSource(
+    target: StrategyExportTarget,
+  ): { result: StrategyCalculationView; head: string } | HostError {
+    const plan = current.plan;
+    if (target.kind === "proposal") {
+      if (plan.computeId !== target.computeId)
+        return { kind: "strategyConflict", current: shown() };
+      if (plan.state === "calculating") return { kind: "busy" };
+      if (plan.state === "edited") return { kind: "strategyEditPending" };
+      if (
+        !["calculated", "partial"].includes(plan.state) ||
+        !plan.result?.timeline ||
+        !plan.result.metrics
+      )
+        return { kind: "strategyNothingToExport" };
+      return { result: plan.result, head: "PROPUESTA SIN ACEPTAR" };
+    }
+    const kept = shown().plan.accepted;
+    if (!kept) return { kind: "strategyNothingToExport" };
+    const mark = {
+      accepted: "",
+      stale: " · DESACTUALIZADO",
+      staleUnreachable: " · DESACTUALIZADO · NO LLEGA A META",
+    }[kept.state];
+    return {
+      result: kept.result,
+      head: `PLAN ACEPTADO · ${kept.acceptedAt}${mark}`,
+    };
+  }
+  function exportText(source: {
+    result: StrategyCalculationView;
+    head: string;
+  }): string {
+    const event = current.events.find(({ id }) => id === current.activeEventId);
+    const variant = event?.strategies.find(
+      ({ id }) => id === current.activeStrategyId,
+    );
+    const { metrics, timeline } = source.result;
+    const lines = [
+      source.head,
+      `Carrera: ${event?.name ?? ""} · Estrategia: ${variant?.name ?? ""}`,
+      `Duración del plan ${metrics?.totalSeconds ?? 0} s · ${metrics?.pitCount ?? 0} paradas`,
+    ];
+    for (const [index, stint] of (timeline?.stints ?? []).entries()) {
+      lines.push(
+        `Stint ${index + 1} · vueltas ${stint.fromLap}–${stint.toLap}`,
+      );
+      const pit = timeline?.pits[index];
+      if (pit)
+        lines.push(
+          `Parada ${index + 1} · vuelta ${pit.lap} · +${pit.fuelLiters} L · +${pit.vePercent} %`,
+        );
+    }
+    lines.push("Hecho con Vantare");
+    return lines.join("\n");
+  }
+  const exportName = () => {
+    const event = current.events.find(({ id }) => id === current.activeEventId);
+    return `${event?.name ?? "Plan de estrategia"}.csv`;
+  };
 
   // what the host checks when it records the ticket (and again when it answers)
   function pickError(mode: PickMode, revision: string): HostError | undefined {
@@ -992,6 +1068,40 @@ export function create(context: MockContext): MockHandler {
     return respond();
   }
 
+  // the final answer of an export dialog; `name` is the last segment chosen
+  function finishExport(
+    id: number,
+    target: StrategyExportTarget,
+    name: string | null,
+  ): HostToUi {
+    const respond = (value: StrategyExportFileValue): HostToUi => ({
+      kind: "response",
+      id,
+      result: { method: "strategy.exportFile", value },
+    });
+    if (name === null) return respond({ kind: "cancelled" });
+    const fail = (error: HostError): HostToUi => ({
+      kind: "failure",
+      id,
+      error,
+    });
+    const sceneError = (
+      {
+        fileUnavailable: { kind: "strategyFileUnavailable" },
+        fileTooLarge: { kind: "strategyFileTooLarge" },
+        pickExpired: { kind: "strategyPickExpired" },
+        exportInUse: { kind: "strategyFileInUse" },
+        exportNotCsv: { kind: "strategyExportNotCsv" },
+        targetExists: { kind: "strategyTargetExists" },
+      } as Record<string, HostError>
+    )[scenario];
+    if (sceneError) return fail(sceneError);
+    if (!/\.csv$/iu.test(name)) return fail({ kind: "strategyExportNotCsv" });
+    const source = exportSource(target);
+    if ("kind" in source) return fail(source);
+    return respond({ kind: "saved", file: { name } });
+  }
+
   function answerPick(
     message: Extract<UiToHost, { kind: "pickedStrategyFile" }>,
   ): HostToUi {
@@ -1008,7 +1118,10 @@ export function create(context: MockContext): MockHandler {
       generation !== context.core.accountGeneration
     )
       return denied();
-    if (message.path === null) return finishPick(message.id, held.mode, null);
+    if (message.path === null)
+      return held.target
+        ? finishExport(message.id, held.target, null)
+        : finishPick(message.id, held.mode, null);
     if (held.revision !== current.revision)
       return {
         kind: "failure",
@@ -1016,7 +1129,9 @@ export function create(context: MockContext): MockHandler {
         error: { kind: "strategyConflict", current: shown() },
       };
     const name = message.path.split(/[\\/]/).pop() ?? "";
-    return finishPick(message.id, held.mode, name || null);
+    return held.target
+      ? finishExport(message.id, held.target, name || null)
+      : finishPick(message.id, held.mode, name || null);
   }
 
   function edit(changes: Partial<StrategyView>) {
@@ -1058,6 +1173,8 @@ export function create(context: MockContext): MockHandler {
       request.method !== "strategy.accept" &&
       request.method !== "strategy.unaccept" &&
       request.method !== "strategy.showAccepted" &&
+      request.method !== "strategy.export" &&
+      request.method !== "strategy.exportFile" &&
       request.method !== "strategy.discard"
     )
       return undefined;
@@ -1164,6 +1281,44 @@ export function create(context: MockContext): MockHandler {
         kind: "response",
         id,
         result: { method: request.method, value: shown() },
+      };
+    }
+    if (
+      request.method === "strategy.export" ||
+      request.method === "strategy.exportFile"
+    ) {
+      if (request.revision !== current.revision)
+        return failure({ kind: "strategyConflict", current: shown() });
+      if (scenario === "nothingToExport")
+        return failure({ kind: "strategyNothingToExport" });
+      const source = exportSource(request.target);
+      if ("kind" in source) return failure(source);
+      if (request.method === "strategy.export")
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: "strategy.export",
+            value: { text: exportText(source) },
+          },
+        };
+      // played without the main process: the dialog answers at once
+      if (id < 0x80000000)
+        return finishExport(id, request.target, exportName());
+      if (ticket) return failure({ kind: "busy" });
+      ticket = {
+        id,
+        mode: "export",
+        revision: request.revision,
+        target: request.target,
+      };
+      return {
+        kind: "response",
+        id,
+        result: {
+          method: "strategy.exportFile",
+          value: { kind: "ticket", suggestedName: exportName() },
+        },
       };
     }
     if ("revision" in request) {

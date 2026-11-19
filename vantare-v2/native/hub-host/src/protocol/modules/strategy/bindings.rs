@@ -14,6 +14,9 @@ use crate::strategy::{
     STRATEGY_CHANGE_TEXT_LIMIT, StrategyAcceptedMark, StrategyAcceptedState, StrategyAcceptedView,
     StrategyChange, StrategyCompare, StrategyUnreachable, StrategyUnreachableCause,
 };
+use crate::strategy::{
+    STRATEGY_EXPORT_LIMIT, StrategyExportFileValue, StrategyExportTarget, StrategyExportText,
+};
 use serde_json::json;
 
 #[allow(clippy::too_many_lines)] // One flat list of declarations.
@@ -53,6 +56,10 @@ pub(crate) fn typescript() -> String {
     declare::<StrategyCompare>(&mut text);
     declare::<StrategyUnreachable>(&mut text);
     declare::<StrategyUnreachableCause>(&mut text);
+    declare::<StrategyExportTarget>(&mut text);
+    declare::<StrategyExportText>(&mut text);
+    declare::<StrategyExportFileValue>(&mut text);
+    crate::protocol::bindings::constants!(&mut text, "strategyExportLimit", STRATEGY_EXPORT_LIMIT);
     crate::protocol::bindings::constants!(
         &mut text,
         "strategyChangeTextLimit",
@@ -240,6 +247,9 @@ pub(crate) fn corpus() -> serde_json::Value {
             HostError::StrategyPickExpired,
             HostError::StrategyNotAcceptable,
             HostError::StrategyNoAcceptedPlan,
+            HostError::StrategyNothingToExport,
+            HostError::StrategyExportNotCsv,
+            HostError::StrategyFileInUse,
         ]
         .map(|error| HostToUi::Failure { id: 1, error }),
     );
@@ -260,6 +270,27 @@ pub(crate) fn corpus() -> serde_json::Value {
             ..ready_sample()
         },
     }));
+    // the plan as text, and the three answers of the export dialog
+    host.push(sample_response(Reply::StrategyExport {
+        value: StrategyExportText {
+            text: "PROPUESTA SIN ACEPTAR
+Carrera: Fuji · Estrategia: Base"
+                .into(),
+        },
+    }));
+    for value in [
+        StrategyExportFileValue::Ticket {
+            suggested_name: "Fuji - Base.csv".into(),
+        },
+        StrategyExportFileValue::Saved {
+            file: StrategyFile {
+                name: "Fuji - Base.csv".into(),
+            },
+        },
+        StrategyExportFileValue::Cancelled,
+    ] {
+        host.push(sample_response(Reply::StrategyExportFile { value }));
+    }
     let mut ui = Vec::from(
         [
             Request::StrategyOpen {},
@@ -344,6 +375,22 @@ pub(crate) fn corpus() -> serde_json::Value {
             },
             Request::StrategyShowAccepted {
                 revision: "b".repeat(64),
+            },
+            Request::StrategyExport {
+                revision: "b".repeat(64),
+                target: StrategyExportTarget::Proposal { compute_id: 7 },
+            },
+            Request::StrategyExport {
+                revision: "b".repeat(64),
+                target: StrategyExportTarget::Accepted {},
+            },
+            Request::StrategyExportFile {
+                revision: "b".repeat(64),
+                target: StrategyExportTarget::Proposal { compute_id: 7 },
+            },
+            Request::StrategyExportFile {
+                revision: "b".repeat(64),
+                target: StrategyExportTarget::Accepted {},
             },
             Request::StrategySave {
                 revision: "b".repeat(64),

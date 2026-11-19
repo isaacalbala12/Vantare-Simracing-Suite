@@ -139,7 +139,7 @@ function sample(state: string): { value: Json } & Record<string, unknown> {
     (message) =>
       message.result?.value &&
       "plan" in message.result.value &&
-      message.result.value.plan.state === state,
+      message.result.value.plan?.state === state,
   )?.result;
   if (!found) throw Error(`Missing ${state} sample`);
   return structuredClone(found) as never;

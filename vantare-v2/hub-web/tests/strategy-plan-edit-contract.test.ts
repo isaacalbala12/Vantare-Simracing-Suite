@@ -74,7 +74,7 @@ function sample(state: string): Reply {
     (message) =>
       message.result?.value &&
       "plan" in message.result.value &&
-      message.result.value.plan.state === state,
+      message.result.value.plan?.state === state,
   )?.result;
   if (!found) throw Error(`Missing ${state} sample`);
   return structuredClone(found) as unknown as Reply;

@@ -1592,7 +1592,7 @@
   min-width: 0;
 }
 
-.strategy-stale .strategy-changes {
+.strategy-plan .strategy-stale .strategy-changes {
   margin: var(--space-2) 0 0;
   padding: 0;
   list-style: none;

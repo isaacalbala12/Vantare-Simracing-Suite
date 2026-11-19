@@ -81,6 +81,12 @@ cambio de resultado intencionado y revisado.
   (`manual_service_grid`), con la tolerancia de la unidad interna del cálculo
   (una millonésima): `check_fixed_stops` lo comprueba con la misma regla que la
   búsqueda.
+- Errores de entrada: una cantidad que el cálculo no acepta falla con
+  `invalid_input: fixedStops[n].fuelLiters …` (o `.vePercent`), como el resto
+  de validaciones del solver. Fijar una parada que no existe en el calendario
+  editado falla con `fixed_stop_outside_edited_schedule`, sin prefijo, como los
+  demás errores de `recalculate_edited_plan` (`invalid_edited_stint_schedule`,
+  `edited_stop_count_conflicts_with_event_rules`…).
 - `certificate.fixed_stops` cuenta las paradas con algo fijado y no sale en el
   JSON cuando es 0. Con un valor mayor, `proven` significa «el plan más rápido
   entre los que respetan lo fijado» y `no_solution`, «ninguno lo respeta», en la

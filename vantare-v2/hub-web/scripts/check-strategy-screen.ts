@@ -849,6 +849,7 @@ async function exercise(
   await planStates(page, base, scheme, width, saveShot);
   await carreraWithPlan(page, base, saveShot);
   await acceptStates(page, base, saveShot);
+  await amountStates(page, base, scheme, width, evidence);
 
   await collection(page, base, "ready");
   await chooseWizard(page);
@@ -975,6 +976,7 @@ export async function checkStrategyScreen(
         await editRace(page, shot);
         await planStates(page, base, scheme, width, shot, true);
         await acceptStates(page, base, shot, true);
+        await amountStates(page, base, scheme, width, evidence, true);
       } finally {
         await page.close();
       }
@@ -1663,4 +1665,279 @@ async function exportStates(
     ),
   );
   await shot("x-error-enuso");
+}
+
+// ---- Combustible y energía a mano (E5g) ----
+// Funciones propias, al final del archivo: fijar lo que carga una parada, los
+// errores del anfitrión, el plan recalculado con lo fijado, la causa «ningún plan»
+// y la pregunta antes de «Calcular de nuevo». Cada estado pasa por `verify` (axe,
+// desbordamiento, un solo status, sin rutas) y, con evidencia, se fotografía con
+// el nombre del diseño de Opus (`m-*`).
+
+const setStopRequests = async (page: Page) =>
+  (await strategyRequests(page)).filter(
+    (request) => request.method === "strategy.setStopService",
+  );
+const amountBox = (page: Page, what: string, stop: number) =>
+  page.getByRole("textbox", {
+    name: `${what} de la parada ${stop}`,
+    exact: true,
+  });
+const modeRadio = (page: Page, what: string, stop: number, label: string) =>
+  page
+    .getByRole("group", {
+      name: `${what} de la parada ${stop}: cómo se decide`,
+    })
+    .getByRole("radio", { name: label, exact: true });
+// the stop chips are radios: the first takes the focus, the arrows walk to the rest
+async function pickStop(page: Page, stop: number) {
+  await page.getByRole("radio", { name: /^Parada 1, vuelta/ }).focus();
+  for (let step = 1; step < stop; step++)
+    await page.keyboard.press("ArrowRight");
+  await visible(
+    page.getByRole("radio", {
+      name: new RegExp(`^Parada ${stop}, vuelta`),
+      checked: true,
+    }),
+  );
+}
+// «A mano» with the arrow key from «Automático»: the box opens with the focus in it
+async function toManual(page: Page, what: string, stop: number) {
+  await modeRadio(page, what, stop, "Automático").focus();
+  await page.keyboard.press("ArrowRight");
+  const box = amountBox(page, what, stop);
+  await visible(box);
+  await until(
+    () => box.evaluate((node) => node === document.activeElement),
+    5000,
+    "the amount box takes the focus",
+  );
+  return box;
+}
+async function typeAmount(box: Locator, text: string) {
+  await box.fill(text);
+  await box.press("Enter");
+}
+
+async function amountStates(
+  page: Page,
+  base: string,
+  scheme: Scheme,
+  width: number,
+  evidence?: string,
+  zoomed = false,
+) {
+  const suffix = scheme === "dark" ? "oscuro" : "claro";
+  const prefix = zoomed ? "zoom125-" : width === 1280 ? "1280-" : "";
+  const shot = async (name: string) => {
+    await verify(page, name, scheme, width);
+    if (!evidence) return;
+    // the shot starts at the timeline, so the editor is on it
+    await page
+      .locator(".strategy-timeline-card")
+      .evaluate((node) => node.scrollIntoView({ block: "start" }));
+    await page.screenshot({
+      path: resolve(evidence, `${prefix}${name}-${suffix}.png`),
+    });
+  };
+  const status = () => planStatus(page);
+  const paradas = async (scene: string) => {
+    await openAcceptedPlan(page, base, scene, "Plan calculado", zoomed);
+    await press(button(page, "Ajustar paradas"));
+    await visible(page.getByRole("heading", { name: "Ajustar paradas" }));
+    await pickStop(page, 2);
+  };
+
+  // m-auto: nothing is fixed; the limits are the host's (73–81 L, not the sketch's 77)
+  await paradas("plannedFuji");
+  await visible(page.getByText("Puedes fijar de 73 a 81 L.", { exact: true }));
+  await visible(
+    page.getByText("Se llega con entre 0,4 y 4,4 L.", { exact: true }),
+  );
+  assert.equal(await page.getByText("fijado por ti").count(), 0);
+  assert.equal(
+    await page.getByText(/neumáticos/i).count(),
+    0,
+    "tyres are not fixed here",
+  );
+  await shot("m-auto");
+
+  // m-fijado: 60 L leaves no plan; the lap is the host's
+  const fuel = await toManual(page, "Combustible", 2);
+  await typeAmount(fuel, "60");
+  await visible(
+    page.getByText(
+      /^Con 60 L no hay plan: te quedarías sin combustible en la vuelta 121/,
+    ),
+  );
+  await focusVisible(fuel);
+  assert.equal(await fuel.getAttribute("aria-invalid"), null);
+  assert.match(
+    (await status()) ?? "",
+    /^Parada 2: combustible fijado en 60 L\. Con 60 L no hay plan/,
+  );
+  const fixed = (await setStopRequests(page)).at(-1);
+  assert.deepEqual(
+    {
+      index: fixed?.index,
+      fuelLiters: fixed?.fuelLiters,
+      vePercent: fixed?.vePercent,
+    },
+    { index: 1, fuelLiters: 60, vePercent: null },
+  );
+  assert.match(String(fixed?.revision), /^[0-9a-f]{64}$/);
+  assert.equal(typeof fixed?.computeId, "number");
+  assert.equal(
+    await page.getByRole("alert").count(),
+    0,
+    "a warning is not an alert",
+  );
+  assert.equal(
+    await page.locator(".strategy-file-state").getAttribute("data-state"),
+    "saved",
+  );
+  await shot("m-fijado");
+
+  // m-error: it does not fit; nothing changes but the message
+  const before = (await setStopRequests(page)).length;
+  await typeAmount(fuel, "90");
+  const energy = await toManual(page, "Energía", 2);
+  await typeAmount(energy, "103");
+  await until(
+    async () => (await page.getByRole("alert").count()) === 2,
+    5000,
+    "both refusals",
+  );
+  assert.deepEqual(await page.getByRole("alert").allTextContents(), [
+    "No cabe: el depósito no admite más de 82 L.",
+    "No cabe: la energía no puede pasar de 100 %.",
+  ]);
+  assert.equal(await fuel.getAttribute("aria-invalid"), "true");
+  assert.equal(await page.getByText("Con 90 L").count(), 0);
+  assert.equal(await fuel.inputValue(), "90");
+  assert.equal((await setStopRequests(page)).length > before, true);
+  await shot("m-error");
+
+  // m-rejilla: the nearest amounts the grid takes
+  await modeRadio(page, "Energía", 2, "A mano").focus();
+  await page.keyboard.press("ArrowLeft");
+  await visible(page.getByText("lo decide el cálculo"));
+  await typeAmount(fuel, "70,5");
+  await visible(
+    page.getByText(
+      "Escribe litros enteros: el cálculo carga de 1 L en 1 L. Puedes poner 70 o 71.",
+      { exact: true },
+    ),
+  );
+  await shot("m-rejilla");
+  // «Volver todo a automático»: the way back, in one request
+  await fuel.fill("71");
+  await fuel.press("Enter");
+  await visible(button(page, "Volver todo a automático"));
+  await pressKey(button(page, "Volver todo a automático"), "Enter");
+  await until(
+    async () => (await page.getByText("fijado por ti").count()) === 0,
+    5000,
+    "back to automatic",
+  );
+  assert.equal(
+    await status(),
+    "Todo vuelve a automático. Recalcula para ver el plan.",
+  );
+  const cleared = (await strategyRequests(page)).filter(
+    (request) => request.method === "strategy.clearStopServices",
+  );
+  assert.equal(cleared.length, 1);
+  assert.match(String(cleared[0].revision), /^[0-9a-f]{64}$/);
+
+  // m-recalculado: the energy of the last stop, fixed, and the plan recalculated with it
+  await paradas("plannedFujiFixedProven");
+  await pickStop(page, 5);
+  const last = await toManual(page, "Energía", 5);
+  await typeAmount(last, "80");
+  await visible(page.getByRole("heading", { name: "Plan modificado" }));
+  await visible(
+    page.getByText("Has fijado 80 % en la parada 5.", { exact: true }),
+  );
+  await pressKey(button(page, "Recalcular"), "Enter");
+  await visible(page.getByText(/^Llegarás a meta con .* de energía/));
+  await shot("m-recalculado-paradas");
+  await press(button(page, "Resumen"));
+  await visible(
+    page.getByText(
+      "Comprobado: es el plan más rápido respetando lo que fijaste",
+      { exact: true },
+    ),
+  );
+  await visible(
+    page.getByText(
+      "Lo que fijaste hace el plan 2,0 s más lento que el plan automático (6:01:04).",
+      { exact: true },
+    ),
+  );
+  await visible(page.getByText("2,0 s más que el automático", { exact: true }));
+  await visible(page.getByText("1 con cantidades fijadas", { exact: true }));
+  assert.equal(
+    await page.locator(".strategy-legs .strategy-fixed-tag").count(),
+    1,
+  );
+  await shot("m-recalculado");
+
+  // «Calcular de nuevo» throws away what was fixed: it asks first, with the focus on «Cancelar»
+  const computes = async () =>
+    (await strategyRequests(page)).filter(
+      (request) => request.method === "strategy.compute",
+    ).length;
+  await press(button(page, "Calcular de nuevo"));
+  const question = page.getByRole("group", {
+    name: "¿Calcular de nuevo y perder lo que fijaste?",
+  });
+  await visible(question);
+  await focusVisible(question.getByRole("button", { name: "Cancelar" }));
+  assert.equal(await computes(), 0);
+  await shot("m-calcular");
+  await page.keyboard.press("Escape");
+  await until(
+    async () => (await question.count()) === 0,
+    5000,
+    "the question closes",
+  );
+  await focusVisible(button(page, "Calcular de nuevo"));
+  assert.equal(await computes(), 0);
+
+  // m-imposible: 40 L in the second stop leave no plan, and the host says which stop
+  await paradas("plannedFuji");
+  const short = await toManual(page, "Combustible", 2);
+  await typeAmount(short, "40");
+  await visible(page.getByRole("heading", { name: "Plan modificado" }));
+  await pressKey(button(page, "Recalcular"), "Enter");
+  const alert = page
+    .getByRole("alert")
+    .filter({ hasText: "Ningún plan cumple lo que fijaste" });
+  await visible(alert);
+  assert.match(
+    (await alert.textContent()) ?? "",
+    /Con lo que fijaste en la parada 2 no hay plan que termine la carrera\./,
+  );
+  assert.equal(
+    await status(),
+    "Ningún plan cumple lo que fijaste: mira la parada 2.",
+  );
+  await visible(
+    page.getByText(
+      /^Con 40 L no hay plan: te quedarías sin combustible en la vuelta 110/,
+    ),
+  );
+  await shot("m-imposible");
+  await pressKey(button(page, "Volver la parada 2 a automático"), "Enter");
+  await visible(button(page, "Recalcular"));
+  const back = (await setStopRequests(page)).at(-1);
+  assert.deepEqual(
+    {
+      index: back?.index,
+      fuelLiters: back?.fuelLiters,
+      vePercent: back?.vePercent,
+    },
+    { index: 1, fuelLiters: null, vePercent: null },
+  );
 }

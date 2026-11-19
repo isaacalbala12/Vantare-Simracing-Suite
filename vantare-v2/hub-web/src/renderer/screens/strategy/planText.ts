@@ -14,6 +14,7 @@ import type {
   StrategyUnreachable,
 } from "../../../contract/generated/strategy";
 import { strategy } from "../../i18n/strategy";
+import { amounts } from "../../i18n/strategyAmounts";
 
 // Only reading aids: every number shown comes from the calculation. Nothing
 // here recalculates a plan; it spells what the host sent.
@@ -75,6 +76,11 @@ export type Notice = {
   details: string[];
 };
 
+// How many stops of a plan carry an amount fixed by hand (the plan's own marks).
+export const pinnedCount = (timeline: StrategyTimeline | null | undefined) =>
+  timeline?.pits.filter(({ pinned }) => pinned.fuelLiters || pinned.vePercent)
+    .length ?? 0;
+
 // The sentence under the plan: what the certificate does and does not say.
 export function certificateNotice(result: StrategyCalculationView): Notice {
   const steps = stepsText(result.steps);
@@ -84,7 +90,13 @@ export function certificateNotice(result: StrategyCalculationView): Notice {
   if (certificate === "proven")
     return degraded
       ? { tone: "warn", title: c.coarse, details: [c.coarseDetail(steps)] }
-      : { tone: "ok", title: c.proven, details: [c.provenDetail(steps)] };
+      : pinnedCount(result.timeline) > 0
+        ? {
+            tone: "ok",
+            title: amounts.certificate.title,
+            details: [amounts.certificate.detail(steps)],
+          }
+        : { tone: "ok", title: c.proven, details: [c.provenDetail(steps)] };
   if (certificate === "no_solution")
     return { tone: "error", title: c.noSolution, details: [`${because}.`] };
   // not proven, or no certificate at all: there is a plan only if it has figures
@@ -563,7 +575,10 @@ export function planAnnouncement(
     case "partial": {
       const { result } = plan;
       if (!result) return undefined;
-      if (result.certificate === "no_solution") return a.noSolution;
+      if (result.certificate === "no_solution")
+        return plan.edit?.cause
+          ? amounts.announce.noPlanFor(plan.edit.cause.stop + 1)
+          : a.noSolution;
       if (!result.metrics) return a.unfinished;
       if (result.certificate !== "proven")
         return recalculated ? a.recalculatedUnproven : a.unproven;

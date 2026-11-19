@@ -6,6 +6,7 @@ import type {
   StrategyEventSummary,
   StrategyField,
   StrategyPlanState,
+  StrategyPlanView,
   StrategyView,
 } from "../../../contract/generated/strategy";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
@@ -17,6 +18,12 @@ import {
 } from "../../screens/strategy/strategyCompute";
 import { strategyConfirm } from "../../screens/strategy/strategyConfirm";
 import { strategyCreate } from "../../screens/strategy/strategyCreate";
+import {
+  strategyMoveBoundary,
+  strategyMoveStop,
+  strategyRecalculate,
+  strategyResetEdit,
+} from "../../screens/strategy/strategyEdit";
 import {
   fileActions,
   type StrategyClient,
@@ -79,12 +86,18 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     form: StrategyComputeForm;
   }>(undefined);
   const lastPlanState = useRef<StrategyPlanState>(undefined);
+  const lastHadResult = useRef(false);
   const plan = view?.plan;
   // The single status line says what happened to the plan since the last view.
   useEffect(() => {
     if (!plan) return;
-    const said = planAnnouncement(plan, lastPlanState.current);
+    const said = planAnnouncement(
+      plan,
+      lastPlanState.current,
+      lastHadResult.current,
+    );
     lastPlanState.current = plan.state;
+    lastHadResult.current = plan.result !== null;
     if (said) setAnnouncement(said);
   }, [plan]);
   useEffect(() => {
@@ -172,6 +185,40 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     if (result.error.kind === "strategyConflict")
       setConfirmConflict(result.error);
     return false;
+  }
+
+  // The plan moves in memory only: the document, its state in the file bar and
+  // the revision are the host's and do not change with these.
+  function announceMove(next: StrategyPlanView, stop: number) {
+    const lap = next.edit?.stops[stop]?.lap;
+    if (next.state === "edited" && lap !== undefined)
+      setAnnouncement(t.calc.announce.moved(stop + 1, lap));
+  }
+  // Each resolves to `undefined` when nothing was sent, else whether the host took it.
+  async function moveBoundary(index: number, lap: number) {
+    if (!view) return undefined;
+    const result = await strategyMoveBoundary(act, view.plan, index, lap);
+    if (!result) return undefined;
+    if ("value" in result) announceMove(result.value.plan, index);
+    return "value" in result;
+  }
+  async function moveStop(index: number, delta: -1 | 1) {
+    if (!view) return undefined;
+    const result = await strategyMoveStop(act, view.plan, index, delta);
+    if (!result) return undefined;
+    if ("value" in result) announceMove(result.value.plan, index);
+    return "value" in result;
+  }
+  async function resetEdit() {
+    if (!view) return;
+    setAnnouncement("");
+    const result = await strategyResetEdit(act, view.plan);
+    if (result && "value" in result) setAnnouncement(t.calc.announce.reset);
+  }
+  function recalculate() {
+    if (!view) return;
+    setAnnouncement("");
+    void strategyRecalculate(act, view.plan);
   }
 
   async function save() {
@@ -445,6 +492,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                   editing={editing}
                   draft={draft}
                   pending={pending}
+                  plan={view.plan}
+                  viewPlan={() => setTab("plan")}
                   edit={() => {
                     setBlocked(undefined);
                     clearError();
@@ -472,6 +521,12 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                     unreadable: pollFailed,
                     readAgain: retryPoll,
                     review,
+                    edit: {
+                      moveBoundary,
+                      moveStop,
+                      recalculate,
+                      reset: () => void resetEdit(),
+                    },
                   }}
                 />
               )}

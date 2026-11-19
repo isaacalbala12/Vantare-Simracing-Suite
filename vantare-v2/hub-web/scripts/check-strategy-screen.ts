@@ -392,6 +392,26 @@ async function planStates(
     assert(!/Ajustar|Recalcular|Restablecer|valor anterior/.test(text), name);
     assert.equal(await page.getByRole("slider").count(), 0, name);
   };
+  // a plan with a schedule offers the three views, and nothing to change yet
+  const summaryOnly = async (name: string) => {
+    const views = page
+      .getByRole("group", { name: "Vista del plan" })
+      .getByRole("button");
+    assert.deepEqual(
+      await views.allTextContents(),
+      ["Resumen", "Ajustar stints", "Ajustar paradas"],
+      name,
+    );
+    assert.equal(await page.getByRole("slider").count(), 0, name);
+    assert.equal(
+      await page
+        .locator(".strategy-plan")
+        .getByRole("button", { name: /^(Recalcular|Restablecer)$/ })
+        .count(),
+      0,
+      name,
+    );
+  };
 
   await ready("ready");
   await page.getByRole("heading", { name: "Calcula tu plan" }).waitFor();
@@ -418,7 +438,7 @@ async function planStates(
 
   await ready("plannedFuji");
   await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
-  await noEditing("plan-ok");
+  await summaryOnly("plan-ok");
   await checkTimeline(page, "plan-ok");
   assert.equal(
     await page
@@ -437,8 +457,10 @@ async function planStates(
   await page
     .getByText("Plan válido, pero sin garantía de que sea el más rápido")
     .waitFor();
-  await noEditing("plan-parcial");
+  await summaryOnly("plan-parcial");
   await saveShot("plan-parcial");
+
+  await adjustStates(page, ready, saveShot);
 
   await ready("computeFailed");
   await button(page, "Calcular plan").press("Enter");
@@ -485,6 +507,191 @@ async function planStates(
     "Copa Fuji",
   );
   await saveShot("carrera-calcular-error");
+}
+
+// The Carrera tab of a race with a plan: the card that leads to the plan, and none without.
+async function carreraWithPlan(
+  page: Page,
+  base: string,
+  saveShot: (name: string) => Promise<void>,
+) {
+  await collection(page, base, "plannedFuji");
+  await button(page, "Continuar").click();
+  await page
+    .getByText("Calculado · 6:01:04 · 5 paradas", { exact: true })
+    .waitFor();
+  await saveShot("carrera-plan");
+  await button(page, "Ver plan").press("Enter");
+  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
+}
+
+const rangeOf = (page: Page) =>
+  page.getByRole("slider", { name: "Termina en la vuelta", exact: true });
+async function lapReaches(page: Page, wanted: (lap: number) => boolean) {
+  let seen = Number.NaN;
+  await until(
+    async () => {
+      seen = Number(await rangeOf(page).inputValue());
+      return wanted(seen);
+    },
+    5000,
+    "stint boundary lap",
+  );
+  return seen;
+}
+
+// The edited plan: moving stints (keys, typed lap and drag) and stops, the plan
+// that is modified, recalculated or reset, and what a recalculation can do wrong.
+async function adjustStates(
+  page: Page,
+  ready: (scene: string) => Promise<void>,
+  saveShot: (name: string) => Promise<void>,
+) {
+  const fileState = () =>
+    page.locator(".strategy-file-state").getAttribute("data-state");
+  const notSaved = page.getByText(
+    "Estos ajustes son para probar. No se guardan en el archivo.",
+    { exact: true },
+  );
+  const modified = () =>
+    page.getByRole("heading", { name: "Plan modificado" }).waitFor();
+  const status = () =>
+    page.locator(".strategy-screen").getByRole("status").textContent();
+
+  // stints: radios with arrows, the slider with keys, a typed lap and the mouse
+  await ready("plannedFuji");
+  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
+  await button(page, "Ajustar stints").click();
+  await page.getByRole("heading", { name: "Ajustar stints" }).waitFor();
+  assert.equal(await notSaved.count(), 1);
+  await page.getByRole("radio", { name: "Stint 1, 43 vueltas" }).focus();
+  await page.keyboard.press("ArrowRight");
+  assert(
+    await page
+      .getByRole("radio", { name: "Stint 2, 42 vueltas" })
+      .evaluate((node) => (node as HTMLInputElement).checked),
+    "arrow key walks the stints",
+  );
+  const range = rangeOf(page);
+  assert.equal(await range.getAttribute("min"), "44");
+  assert.equal(await range.getAttribute("max"), "126");
+  assert.equal(
+    await range.getAttribute("aria-valuetext"),
+    "Vuelta 85: el stint 2 tiene 42 vueltas y el stint 3, 42 vueltas",
+  );
+  await saveShot("plan-stints");
+  await range.focus();
+  await focusVisible(range);
+  await range.press("ArrowRight");
+  assert.equal(await lapReaches(page, (lap) => lap === 86), 86);
+  await modified();
+  await focusVisible(range);
+  assert.equal(await fileState(), "saved");
+  assert.equal(await notSaved.count(), 1);
+  await range.press("Home");
+  assert.equal(await lapReaches(page, (lap) => lap === 44), 44);
+  await range.press("End");
+  assert.equal(await lapReaches(page, (lap) => lap === 126), 126);
+  await range.press("PageDown");
+  await lapReaches(page, (lap) => lap < 126);
+  await range.press("PageUp");
+  await lapReaches(page, (lap) => lap === 126);
+  assert.equal(
+    await range.getAttribute("aria-valuetext"),
+    "Vuelta 126: el stint 2 tiene 83 vueltas y el stint 3, 1 vuelta",
+  );
+  const typed = page.getByRole("textbox", { name: "Termina en la vuelta" });
+  await typed.fill("90");
+  await typed.press("Enter");
+  assert.equal(await lapReaches(page, (lap) => lap === 90), 90);
+  await typed.fill("999");
+  await typed.press("Enter");
+  assert.equal(await lapReaches(page, (lap) => lap === 126), 126);
+  await range.scrollIntoViewIfNeeded();
+  const box = await range.boundingBox();
+  assert(box, "slider box");
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width * 0.9, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.2, y, { steps: 6 });
+  await page.mouse.up();
+  const dragged = await lapReaches(page, (lap) => lap < 70);
+  assert(dragged >= 44, `dragged to ${dragged}`);
+  // the plan is modified, and the file is still as it was
+  assert.equal(await fileState(), "saved");
+  await saveShot("plan-stints-mod");
+
+  // stops: the stop that moves, the plan that is modified and the way out
+  await ready("plannedFuji");
+  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
+  await button(page, "Ajustar paradas").click();
+  await page.getByRole("heading", { name: "Ajustar paradas" }).waitFor();
+  await page.getByRole("radio", { name: "Parada 1, vuelta 43" }).focus();
+  await page.keyboard.press("ArrowRight");
+  const later = button(page, "+ 1 vuelta");
+  await later.focus();
+  await focusVisible(later);
+  await saveShot("plan-paradas");
+  await later.press("Enter");
+  await modified();
+  assert.equal(
+    await status(),
+    "Parada 2 en la vuelta 86. Cambios pendientes de recalcular.",
+  );
+  // the button that was pressed keeps the focus through the change
+  await focusVisible(later);
+  assert.equal(await page.getByText("valor anterior").count(), 8);
+  assert.equal(await notSaved.count(), 1);
+  assert.equal(await fileState(), "saved");
+  await saveShot("plan-pend");
+  await button(page, "Resumen").click();
+  assert.equal(await notSaved.count(), 1);
+  await button(page, "Restablecer").click();
+  await page
+    .getByText("Ajustes restablecidos.", { exact: true })
+    .waitFor({ state: "attached" });
+  assert.equal(await page.getByText("valor anterior").count(), 0);
+  assert.equal(
+    await page
+      .locator(".strategy-plan")
+      .getByRole("button", { name: /^(Recalcular|Restablecer)$/ })
+      .count(),
+    0,
+  );
+
+  // a recalculation: the plan stays on view while it runs
+  await ready("plannedFujiRecalculating");
+  await button(page, "Ajustar paradas").click();
+  await button(page, "+ 1 vuelta").press("Enter");
+  await modified();
+  await button(page, "Recalcular").press("Enter");
+  await page.getByRole("heading", { name: "Recalculando…" }).waitFor();
+  assert.equal(await status(), "Recalculando el plan.");
+  await page.keyboard.press("Tab");
+  await saveShot("plan-recalculando");
+  await button(page, "Cancelar").press("Enter");
+  await modified();
+
+  // a recalculation that fails, and a plan with no schedule
+  await ready("plannedFujiNotPreserved");
+  await button(page, "Ajustar paradas").click();
+  await button(page, "+ 1 vuelta").press("Enter");
+  await modified();
+  await button(page, "Recalcular").press("Enter");
+  await page.getByRole("alert").waitFor();
+  assert.equal(await button(page, "Recalcular").isEnabled(), true);
+  await saveShot("plan-edit-error");
+
+  await ready("plannedFujiNoEdit");
+  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
+  await page
+    .getByText("Este plan no se puede ajustar a mano.", { exact: true })
+    .waitFor();
+  assert.equal(
+    await page.getByRole("group", { name: "Vista del plan" }).count(),
+    0,
+  );
+  await saveShot("plan-sin-edicion");
 }
 
 async function exercise(
@@ -563,6 +770,7 @@ async function exercise(
   await saveShot("carrera");
   await editRace(page, saveShot);
   await planStates(page, base, scheme, width, saveShot);
+  await carreraWithPlan(page, base, saveShot);
 
   await collection(page, base, "ready");
   await chooseWizard(page);

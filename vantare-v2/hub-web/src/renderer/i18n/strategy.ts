@@ -73,7 +73,7 @@ export const strategy = {
       "Ya existe un archivo con ese nombre. Elige otro nombre.",
     strategyDirty: "Guarda o descarta los cambios antes de continuar.",
     strategyEditPending:
-      "Confirma o descarta los datos pendientes antes de continuar.",
+      "Tienes ajustes del plan sin recalcular. Recalcula o restablece antes de continuar.",
     strategyInvalidText:
       "No se han podido usar esos datos. Revisa lo que has escrito.",
     strategyImportFailed: "No hemos podido traer los datos del Hub anterior.",
@@ -345,9 +345,132 @@ export const strategy = {
     freshTyres: "ruedas nuevas",
     sameTyres: "mismas ruedas",
     services: { parallel: "a la vez", sequential: "uno tras otro" },
+    adjust: {
+      view: "Vista del plan",
+      modes: {
+        summary: "Resumen",
+        stints: "Ajustar stints",
+        stops: "Ajustar paradas",
+      },
+      notEditable: "Este plan no se puede ajustar a mano.",
+      noStops: "Este plan no tiene paradas que ajustar.",
+      notSaved: "Estos ajustes son para probar. No se guardan en el archivo.",
+      recalculate: "Recalcular",
+      reset: "Restablecer",
+      previous: "valor anterior",
+      modified: "Plan modificado",
+      moved: (stop: number, from: number, to: number) =>
+        `La parada ${stop} pasa de la vuelta ${from} a la ${to}.`,
+      movedMany: (count: number) =>
+        `Has movido ${count} paradas respecto al plan calculado.`,
+      backAtStart:
+        "Las paradas están donde las dejó el cálculo. Puedes recalcular o restablecer.",
+      pending: {
+        title: "Cambios pendientes de recalcular",
+        detail:
+          "Las cifras de abajo son del plan anterior. Recalcula para actualizar tiempos y cargas y comprobar que el plan sigue siendo posible. «Restablecer» vuelve al último plan válido.",
+      },
+      recalculating: {
+        heading: "Recalculando…",
+        sub: "Con los ajustes que has hecho.",
+        title: "Recalculando el plan",
+        detail:
+          "Puedes cancelar cuando quieras: tus ajustes se quedan como están.",
+      },
+      errors: {
+        invalidSchedule: {
+          title: "Ese calendario no es válido",
+          detail:
+            "Las paradas no se pueden colocar así. Mueve alguna parada o pulsa «Restablecer».",
+        },
+        eventRulesConflict: {
+          title: "Las reglas del evento no permiten este calendario",
+          detail:
+            "El número de paradas choca con el mínimo o el máximo que pide el evento. Pulsa «Restablecer» para volver al plan calculado.",
+        },
+        scheduleNotPreserved: {
+          title: "El cálculo no ha respetado tus ajustes",
+          detail:
+            "El resultado no coincide con las paradas que pediste, así que no se ha aplicado. Puedes recalcular otra vez o pulsar «Restablecer».",
+        },
+        failed: {
+          title: "No se pudo recalcular",
+          detail:
+            "Algo falló durante el recálculo. Tus ajustes siguen ahí. Prueba otra vez o pulsa «Restablecer».",
+        },
+      },
+      stints: {
+        heading: "Ajustar stints",
+        sub: "Mueve dónde termina un stint. La parada se mueve con él.",
+        pick: "Elige el stint",
+        laps: "Vueltas",
+        total: "Total",
+        leaves: "Sale con",
+        arrives: "Llega con",
+        endsWith: "Termina con",
+        endsIn: "Termina en la vuelta",
+        proposal: (lap: number) => `propuesta: ${lap}`,
+        valueText: (lap: number, stint: number, laps: number, next: number) =>
+          `Vuelta ${lap}: el stint ${stint} tiene ${lapsWord(laps)} y el stint ${stint + 1}, ${lapsWord(next)}`,
+        keys: {
+          left: "←",
+          right: "→",
+          home: "Inicio",
+          end: "Fin",
+          step: "una vuelta ·",
+          ends: "al extremo · también puedes arrastrar.",
+          drag: "Cada stint conserva al menos 1 vuelta.",
+        },
+        last: "El último stint termina con la carrera. Para cambiarlo, mueve el final del stint anterior.",
+      },
+      stops: {
+        heading: "Ajustar paradas",
+        sub: "Adelanta o retrasa una parada vuelta a vuelta.",
+        pick: "Elige la parada",
+        fuel: "Combustible",
+        energy: "Energía virtual",
+        tyres: "Neumáticos",
+        service: "En la parada",
+        freshTyres: "Nuevos",
+        sameTyres: "Los mismos",
+        move: "Mover la parada",
+        earlier: "− 1 vuelta",
+        later: "+ 1 vuelta",
+        range: (from: number, to: number) =>
+          `Puede ir entre la vuelta ${from} y la ${to}`,
+        was: (lap: number) => `antes en la ${lap} · pendiente de recalcular`,
+        atFirst:
+          "No se puede adelantar más: el stint anterior se quedaría sin vueltas.",
+        atLast:
+          "No se puede retrasar más: el stint siguiente se quedaría sin vueltas.",
+        pinned:
+          "Esta parada no se puede mover: los stints de sus lados se quedarían sin vueltas.",
+        amounts:
+          "El combustible, la energía y las ruedas de cada parada los decide el cálculo; aquí solo se elige la vuelta.",
+      },
+    },
+    card: {
+      eyebrow: "Plan",
+      done: (duration: string, stops: string) =>
+        `Calculado · ${duration} · ${stops}`,
+      modified: "Plan modificado · pendiente de recalcular",
+      recalculating: "Recalculando el plan…",
+      noSolution: "Sin plan posible",
+      unfinished: "Cálculo sin terminar",
+      view: "Ver plan",
+    },
     announce: {
       calculating: "Calculando el plan.",
+      recalculating: "Recalculando el plan.",
       cancelled: "Cálculo cancelado.",
+      recalcCancelled: "Recálculo cancelado. Tus ajustes siguen pendientes.",
+      recalculated: (duration: string, stops: string) =>
+        `Plan recalculado: ${duration}; ${stops}.`,
+      recalculatedUnproven:
+        "Plan recalculado sin garantía de ser el más rápido.",
+      moved: (stop: number, lap: number) =>
+        `Parada ${stop} en la vuelta ${lap}. Cambios pendientes de recalcular.`,
+      reset: "Ajustes restablecidos.",
       done: (duration: string, stops: string) =>
         `Plan calculado: ${duration}; ${stops}.`,
       unproven: "Plan calculado sin garantía de ser el más rápido.",

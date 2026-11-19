@@ -1,7 +1,8 @@
-import { Fragment, type ReactNode, useEffect, useRef } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import type {
   StrategyCalculationView,
   StrategyComputeForm,
+  StrategyEditView,
   StrategyField,
   StrategyPlanView,
   StrategyTimeline,
@@ -12,15 +13,19 @@ import {
   addedLoad,
   certificateNotice,
   clock,
+  editSummary,
   lapTime,
   load,
+  movedStops,
   planSubtitle,
   reserveFigure,
   reserveNote,
+  scheduleTimeline,
   tyresNote,
 } from "../../screens/strategy/planText";
 import { Button } from "../Button";
-import { PlanTimeline } from "./PlanTimeline";
+import { type EditActions, StintEditor, StopEditor } from "./PlanAdjust";
+import { PlanTimeline, type TimelineMark } from "./PlanTimeline";
 
 const t = strategy.calc;
 
@@ -35,6 +40,7 @@ export type PlanActions = {
   readAgain: () => void;
   // to the Carrera tab; with a field, the editor opens with that field marked
   review: (field: StrategyField | null) => void;
+  edit: EditActions;
 };
 
 function Heading({
@@ -103,14 +109,21 @@ function Figure({
   label,
   value,
   note,
+  stale,
 }: {
   label: string;
   value: string;
   note?: string;
+  // the figure is that of the plan before the edit
+  stale: boolean;
 }) {
   return (
-    <li className="strategy-card strategy-figure">
+    <li
+      className="strategy-card strategy-figure"
+      data-stale={stale || undefined}
+    >
       <span>{label}</span>
+      {stale && <em>{t.adjust.previous}</em>}
       <b>{value}</b>
       {note && <small>{note}</small>}
     </li>
@@ -120,9 +133,11 @@ function Figure({
 function Figures({
   result,
   form,
+  stale,
 }: {
   result: StrategyCalculationView;
   form: StrategyComputeForm | null;
+  stale: boolean;
 }) {
   const { metrics, timeline } = result;
   if (!metrics) return null;
@@ -134,30 +149,44 @@ function Figures({
         label={f.duration}
         value={clock(metrics.totalSeconds)}
         note={f.durationNote}
+        stale={stale}
       />
       <Figure
         label={f.laps}
         value={String(metrics.laps)}
         note={asked === metrics.laps ? f.asked : undefined}
+        stale={stale}
       />
       <Figure
         label={f.stops}
         value={String(metrics.pitCount)}
         note={timeline ? tyresNote(timeline.pits) : undefined}
+        stale={stale}
       />
       <Figure
         label={f.left}
         value={reserveFigure(metrics.fuelReserveRealLaps)}
         note={reserveNote(metrics, timeline?.fuelFinishLiters)}
+        stale={stale}
       />
     </ul>
   );
 }
 
-function Legs({ timeline }: { timeline: StrategyTimeline }) {
+function Legs({
+  timeline,
+  stale,
+}: {
+  timeline: StrategyTimeline;
+  stale: boolean;
+}) {
   const last = timeline.stints.length - 1;
   return (
-    <ol className="strategy-legs" aria-label={t.list}>
+    <ol
+      className="strategy-legs"
+      aria-label={t.list}
+      data-stale={stale || undefined}
+    >
       {timeline.stints.map((stint, index) => {
         const pit = timeline.pits[index];
         const laps = stint.toLap - stint.fromLap + 1;
@@ -220,20 +249,108 @@ function Notice({ result }: { result: StrategyCalculationView }) {
   );
 }
 
+type Mode = "summary" | "stints" | "stops";
+
+function ViewSelector({
+  mode,
+  onChange,
+}: {
+  mode: Mode;
+  onChange: (mode: Mode) => void;
+}) {
+  const modes = t.adjust.modes;
+  return (
+    <fieldset className="strategy-modes">
+      <legend className="v-sr-only">{t.adjust.view}</legend>
+      {(Object.keys(modes) as Mode[]).map((key) => (
+        <button
+          key={key}
+          type="button"
+          aria-pressed={mode === key}
+          onClick={() => onChange(key)}
+        >
+          {modes[key]}
+        </button>
+      ))}
+    </fieldset>
+  );
+}
+
+// The warning that goes with an edited plan, and the failure of its recalculation.
+function EditNotices({
+  edit,
+  edited,
+}: {
+  edit: StrategyEditView;
+  edited: boolean;
+}) {
+  const failed = edit.error && t.adjust.errors[edit.error];
+  return (
+    <>
+      {edited && (
+        <section
+          className="strategy-notice strategy-pending"
+          data-tone="warn"
+          aria-label={t.adjust.pending.title}
+        >
+          <span className="strategy-icon">
+            <Icon name="warn" />
+          </span>
+          <div>
+            <strong>{t.adjust.pending.title}</strong>
+            <p>{t.adjust.pending.detail}</p>
+            <p>{t.adjust.notSaved}</p>
+          </div>
+        </section>
+      )}
+      {failed && (
+        <div className="strategy-notice" data-tone="error" role="alert">
+          <span className="strategy-icon">
+            <Icon name="alert" />
+          </span>
+          <div>
+            <strong>{failed.title}</strong>
+            <p>{failed.detail}</p>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Result({
+  plan,
   result,
   form,
   name,
-  state,
   actions,
 }: {
+  plan: StrategyPlanView;
   result: StrategyCalculationView;
   form: StrategyComputeForm | null;
   name: string;
-  state: string;
   actions: PlanActions;
 }) {
+  const { state, edit } = plan;
   const { timeline } = result;
+  const [mode, setMode] = useState<Mode>("summary");
+  const [selected, setSelected] = useState(0);
+  const edited = state === "edited";
+  const recalculating = state === "calculating";
+  const busy = actions.pending || recalculating;
+  const canReset = !!edit?.canReset && !recalculating;
+  const stops = edit?.stops.length ?? 0;
+  const adjustable = !!edit && !!timeline && !!result.metrics && stops > 0;
+  const view: Mode = adjustable ? mode : "summary";
+  // stint i and stop i are the two ends of the same boundary: one selection
+  const index = Math.min(selected, view === "stops" ? stops - 1 : stops);
+  const mark: TimelineMark | undefined =
+    view === "summary"
+      ? undefined
+      : { kind: view === "stops" ? "stop" : "stint", index };
+  const shown = timeline ? scheduleTimeline(timeline, edit) : null;
+  const proposal = timeline?.pits.map((pit) => pit.lap) ?? [];
+  const moves = movedStops(timeline, edit);
   const again = (
     <Button
       variant="ghost"
@@ -242,6 +359,11 @@ function Result({
     >
       <Icon name="refresh" />
       {t.again}
+    </Button>
+  );
+  const reset = canReset && (
+    <Button variant="ghost" disabled={busy} onClick={actions.edit.reset}>
+      {t.adjust.reset}
     </Button>
   );
   if (result.certificate === "no_solution")
@@ -259,6 +381,7 @@ function Result({
           title={t.certificate.noSolution}
           details={[...certificateNotice(result).details, t.noSolution.hint]}
         >
+          {reset}
           <Button variant="primary" onClick={() => actions.review(null)}>
             <Icon name="pencil" />
             {t.review}
@@ -278,6 +401,7 @@ function Result({
         />
         <Notice result={result} />
         <div className="strategy-actions">
+          {reset}
           <Button variant="primary" onClick={() => actions.review(null)}>
             <Icon name="pencil" />
             {t.review}
@@ -285,24 +409,134 @@ function Result({
         </div>
       </>
     );
+  const [title, sub] = recalculating
+    ? [t.adjust.recalculating.heading, t.adjust.recalculating.sub]
+    : edited
+      ? [t.adjust.modified, editSummary(moves)]
+      : view === "stints"
+        ? [t.adjust.stints.heading, t.adjust.stints.sub]
+        : view === "stops"
+          ? [t.adjust.stops.heading, t.adjust.stops.sub]
+          : [t.done.heading, planSubtitle(result)];
+  const headActions = recalculating ? undefined : edited ? (
+    <>
+      {reset}
+      <Button
+        variant="primary"
+        disabled={busy}
+        onClick={actions.edit.recalculate}
+      >
+        <Icon name="refresh" />
+        {t.adjust.recalculate}
+      </Button>
+    </>
+  ) : (
+    <>
+      {reset}
+      {again}
+    </>
+  );
   return (
     <>
       <Heading
         state={state}
         name={name}
-        title={t.done.heading}
-        sub={planSubtitle(result)}
-        actions={again}
+        title={title}
+        sub={sub}
+        actions={headActions}
       />
-      <Notice result={result} />
-      <Figures result={result} form={form} />
-      {timeline ? (
+      {recalculating && (
+        <div
+          className="strategy-card strategy-calculating"
+          data-recalculating=""
+        >
+          <span className="strategy-spinner" aria-hidden="true" />
+          <div>
+            <strong>{t.adjust.recalculating.title}</strong>
+            <p>{t.adjust.recalculating.detail}</p>
+          </div>
+          <Button disabled={actions.pending} onClick={actions.cancel}>
+            <Icon name="x" />
+            {t.cancel}
+          </Button>
+        </div>
+      )}
+      {actions.unreadable && recalculating && (
+        <div className="strategy-notice" data-tone="error" role="alert">
+          <span className="strategy-icon">
+            <Icon name="alert" />
+          </span>
+          <div>
+            <strong>{t.unreadable.title}</strong>
+            <p>{t.unreadable.detail}</p>
+            <div className="strategy-actions">
+              <Button variant="primary" onClick={actions.readAgain}>
+                <Icon name="refresh" />
+                {t.retry}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {edit && <EditNotices edit={edit} edited={edited} />}
+      {!edited && !recalculating && view === "summary" && (
+        <Notice result={result} />
+      )}
+      {(view === "summary" || edited || recalculating) && (
+        <Figures result={result} form={form} stale={edited || recalculating} />
+      )}
+      {shown ? (
         <>
           <section className="strategy-card strategy-timeline-card">
-            <h3>{t.full}</h3>
-            <PlanTimeline timeline={timeline} />
+            <div className="strategy-timeline-head">
+              <h3>{t.full}</h3>
+              {adjustable && <ViewSelector mode={view} onChange={setMode} />}
+            </div>
+            {edit && stops === 0 && (
+              <p className="strategy-help">{t.adjust.noStops}</p>
+            )}
+            {!edit && <p className="strategy-help">{t.adjust.notEditable}</p>}
+            <PlanTimeline
+              timeline={shown}
+              selected={mark}
+              proposal={proposal}
+            />
           </section>
-          <Legs timeline={timeline} />
+          {view === "stints" && edit && (
+            <>
+              <StintEditor
+                edit={edit}
+                timeline={shown}
+                proposal={proposal}
+                index={index}
+                onSelect={setSelected}
+                busy={actions.pending}
+                locked={recalculating}
+                stale={edited || recalculating}
+                move={actions.edit.moveBoundary}
+              />
+              {!edited && <p className="strategy-help">{t.adjust.notSaved}</p>}
+            </>
+          )}
+          {view === "stops" && edit && (
+            <>
+              <StopEditor
+                edit={edit}
+                timeline={timeline ?? shown}
+                proposal={proposal}
+                index={index}
+                onSelect={setSelected}
+                busy={actions.pending}
+                locked={recalculating}
+                stale={edited || recalculating}
+                move={actions.edit.moveStop}
+              />
+              {!edited && <p className="strategy-help">{t.adjust.notSaved}</p>}
+            </>
+          )}
+          {view === "summary" && (
+            <Legs timeline={shown} stale={edited || recalculating} />
+          )}
         </>
       ) : (
         <p className="strategy-too-long">{t.tooLong}</p>
@@ -376,6 +610,19 @@ export function PlanTab({
         </div>
       );
     case "calculating":
+      // a recalculation keeps the plan and the edit on view
+      if (plan.result)
+        return (
+          <div className="strategy-plan">
+            <Result
+              plan={plan}
+              result={plan.result}
+              form={form}
+              name={name}
+              actions={actions}
+            />
+          </div>
+        );
       return (
         <div className="strategy-plan">
           {heading(t.calculating.heading, t.calculating.sub)}
@@ -481,15 +728,14 @@ export function PlanTab({
       );
     }
     default:
-      // calculated, partial and edited. Editing the plan is a later step: an
-      // edited plan is shown as the calculated one, without controls to edit it.
+      // calculated, partial and edited
       return plan.result ? (
         <div className="strategy-plan">
           <Result
+            plan={plan}
             result={plan.result}
             form={form}
             name={name}
-            state={state}
             actions={actions}
           />
         </div>

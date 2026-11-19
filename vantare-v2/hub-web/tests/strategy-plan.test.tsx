@@ -539,51 +539,6 @@ describe("states of the plan", () => {
     );
     expect(document.querySelector('[aria-invalid="true"]')).toBeNull();
   });
-
-  it("shows no plan and no editing in an edited plan: it is the calculated plan", async () => {
-    mount(
-      "ready",
-      undefined,
-      showing(
-        plan("edited", {
-          edit: {
-            stints: [
-              { fromLap: 1, toLap: 43 },
-              { fromLap: 44, toLap: 236 },
-            ],
-            stops: [
-              {
-                lap: 43,
-                minLap: 1,
-                maxLap: 235,
-                fuelLiters: 78,
-                vePercent: 99,
-              },
-            ],
-            canReset: true,
-            error: null,
-          },
-        }),
-      ),
-    );
-    await openPlan();
-    expect(
-      screen.getByRole("heading", { name: "Plan calculado" }),
-    ).toBeTruthy();
-    expect(screen.getByText("6:01:04")).toBeTruthy();
-    for (const label of [
-      /Ajustar/,
-      /Recalcular/,
-      /Restablecer/,
-      /valor anterior/,
-      /Plan modificado/,
-    ])
-      expect(screen.queryByText(label)).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: /Recalcular|Restablecer/ }),
-    ).toBeNull();
-    expect(screen.queryByRole("slider")).toBeNull();
-  });
 });
 
 // ---- the numbers, the timeline and the list ----
@@ -1042,9 +997,9 @@ describe("announcements", () => {
       "Plan calculado: 6 horas y 1 minuto; 5 paradas.",
     );
     expect(total(7200, 0)).toBe("Plan calculado: 2 horas; sin paradas.");
-    expect(planAnnouncement(plan("calculating"), "uncalculated")).toBe(
-      "Calculando el plan.",
-    );
+    expect(
+      planAnnouncement(plan("calculating", { result: null }), "uncalculated"),
+    ).toBe("Calculando el plan.");
     // a plan that was already there when the screen opened is not announced
     expect(planAnnouncement(plan("calculated"), undefined)).toBeUndefined();
     expect(planAnnouncement(plan("calculated"), "calculated")).toBeUndefined();

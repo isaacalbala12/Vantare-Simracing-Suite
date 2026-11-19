@@ -3541,3 +3541,74 @@ pico del barrido cuando EASE_OUT(t)=0,4 (≈212,9 ms); glifo «◆», no «?»; 
 Revisión Sonnet: primer frame PIT corregido (`row.in_pits` conserva `Pose`);
 reentrada 1,0→1,0 sin tween frente a 200 ms de GPUI; color rasterizado del tramo
 0,8–1,0 del degradado pendiente de captura en el PC.
+
+## VANTA-144 · Cambio de motor, licencia QA, kit y cita programada (17–19/11/2026)
+
+Estado a 19-nov: los 19 tipos de widget y los dos Looks existen en Rune; el
+cambio de motor está preparado detrás de un interruptor y GPUI sigue por
+defecto. Falta VALIDAR, no portar (ver «Qué falta para cambiar la línea»).
+Entradas trasladadas desde los cuerpos de los PR (los workers no editan el
+handoff vivo).
+
+### Interruptor del motor (M1–M4)
+- M1 #2520: enum `Engine{Gpui,Rune}` en el launcher (`runtime/src/bin/vantare/engine.rs`),
+  defecto GPUI en UN solo sitio («la línea»). Precedencia: `--overlays-bin` >
+  `--overlays-engine gpui|rune` > `VANTARE_OVERLAYS_ENGINE`. Si falta el exe de
+  Rune, error claro; no cae a GPUI en silencio.
+- M2 #2522: ciclo de vida con el exe de Rune (cierre por EOF, reinicio tras
+  caída, salida 0, instancia única). Los 4 escenarios reales están `#[ignore]`
+  (el job lifecycle de CI no tiene el artefacto): DEUDA, se ejecutan en la
+  tanda del PC o con el kit.
+- M3 #2526: diagnóstico/informe/triaje reconocen `vantare-overlays-rune`
+  (`hub-host`, `services`; artefacto web `report_local.ts` regenerado con su
+  generador y oráculo 9→10).
+- M4 #2535 y seguimiento #2536: empaquetado SIN activar. Rune es un workspace
+  aislado: `cargo fetch --locked` solo en esa fase (opción b), build
+  `--offline --locked` con `CARGO_HOME` propio y limpio, lock sin cambios y
+  dependencias git solo del fork `isaacalbala12/rune` rev d5338988; `--version`
+  en Rune y `external_bins` en el inventario. Pendiente: comprobar `--version`
+  del exe Release (GUI) por tubería en CI.
+
+### Licencia QA para medir (opción B de Isaac)
+- L1/L2 #2581: feature `qa-license` y binario `vantare-qa-license`; los
+  `key_id` `qa-*` solo se aceptan con la feature (#2581, #2596 diagnóstico);
+  guardas de distribución (bin interno, feature rechazada, registro `qa-*`
+  rechazado, marcador en el escaneo final); tests QA en el gate #2591.
+- Firmar en el servidor / instalar en el PC #2601 (+ P2 #2607): `fingerprint`,
+  `sign` (solo servidor; rechaza `--out` en repo git o carpeta de la clave),
+  `install-credential` (no lee ninguna privada; `issued_at` acotado).
+- Clave pública QA aprobada: key_id `qa-d0143296` (variable de repo
+  `QA_LICENSE_PUBLIC_KEY`, solo la pública). La privada vive solo en
+  `D:\VantareServer\custodia\qa-license\` (fuera de evidence, repo y worktrees).
+- Custodia y kit (F): #2603 (credencial firmada, escáner de privados, contenedores
+  por bytes mágicos), #2597/#2656/#2675 (modo del artefacto, workflow
+  `qa-kit-artifacts.yml` con núcleo `paint-stats,qa-license` y CLI, importador y
+  sellado con recibo externo). Seguimiento abierto: #2608 (ADS, TOCTOU, firmas
+  cortas).
+
+### Tanda del PC y cita programada
+- Kit visual congelado be17532a5 (run CI 44216020723; ZIP 2c326a8d…): 223
+  parejas GPUI↔Rune + 4 escenarios de ciclo de vida; sin medición ni licencia.
+  Tooling: #2525 (kit), #2573 (importador/`-SoloVisual`), #2583 (workflow del
+  kit), #2611 (guard contra matar procesos ajenos), #2617.
+- La sesión del 19-nov a las 02:00 NO se realizó: el PC no respondía al SSH y
+  la ejecución de F falló por cuota de Codex. Lección: el lanzamiento no puede
+  depender de un modelo → #2674 (`LANZAR-CITA.ps1`, tarea programada del
+  servidor, entradas fijas por SHA-256, kill switch, preflight v2 con Python
+  ≥3.11 primero). CONDICIÓN VIGENTE: NO se registra ninguna cita real hasta el
+  ensayo con `LogonType Password` y SSH real, el día que Isaac fije la hora.
+- Reglas: prohibido matar procesos por nombre; custodia fuera de evidence;
+  workflows necesitan OK de la raíz.
+
+### Taller (Hub, #2598)
+- 27 textos `watchFor` reescritos; pines de `retirement/manifest.json`
+  migrados con `revisions[2592]` (script `pin_watch_for_2592.py`). Pendiente: capturas
+  reales de Rune del Taller T2 en la sesión siguiente del PC.
+
+### Qué falta para cambiar la línea del motor
+1. Tanda visual real en el PC (223 parejas + 4 lifecycle) con hora de Isaac.
+2. Ensayo `Password` + SSH real y registro de la cita con OK de la raíz.
+3. Kit de medición y medición CPU/memoria con licencia QA (3 condiciones de la raíz).
+4. Comprobar `--version` del Release y ejecutar los 4 escenarios `#[ignore]`.
+5. Color rasterizado del tramo 0,8–1,0 de degradados (captura en el PC).
+6. PR de UNA línea (`Engine::default() = Rune`) con autorización de Isaac.

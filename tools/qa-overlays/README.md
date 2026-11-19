@@ -369,3 +369,44 @@ ni identificadores. evidence-hashes.json se publica por .tmp+rename. La
 extracción tar valida todos los headers primero y rechaza enlaces duros,
 simbólicos y tipos no regulares antes de crear salida. completed_without_error
 indica fin sin errores; no pretende certificar una limpieza no observada.
+
+### Cita visual programada en el servidor
+
+La raíz registra una sola tarea tras la autorización de Isaac para esa fecha.
+El controlador sirve para las 223 parejas visuales y los cuatro escenarios
+de ciclo de vida. La medición tiene su propio protocolo.
+
+1. Preparar una carpeta con permisos de Administrator, el preflight visual
+   v2 fechado para la cita, el ZIP aprobado, su staging exacto y el recibo
+   del ensayo que exige el preflight. Fijar el inicio del preflight a
+   `visual_utc` menos cinco minutos y el fin a `visual_utc`. El v2 comprueba
+   Python antes de consultar sesión y discos.
+2. Guardar `cita.json` con `preflight_utc` y `visual_utc` en UTC
+   `yyyy-MM-ddTHH:mm:ssZ`, `source_sha`, `zip_sha256` y `preflight_sha256`
+   en minúsculas y rutas absolutas `zip`, `kit`, `preflight` y `output`.
+   Usar el hash del ZIP aprobado para la cita. La salida real es
+   `D:/VantareServer/evidence/overlays-rune`.
+3. Preparar una acción con la ruta absoluta de PowerShell 7 y argumentos
+   `-NoProfile -NonInteractive -File "<ruta>/LANZAR-CITA.ps1" -Cita "<ruta>/cita.json" -CitaSha256 <SHA-256 de cita.json>`.
+   `TAREA-CITA.ps1` define `New-CitaTaskDefinition`: recibe la acción,
+   la hora del preflight en hora local del servidor y la cuenta Administrator.
+   En el registro real, el Programador solicita la contraseña en su interfaz,
+   con «Ejecutar tanto si el usuario inició sesión como si no» y acceso de red
+   para el SSH ya configurado. Disparador único, una instancia (`IgnoreNew`),
+   cero reinicios y cero arranques tardíos.
+4. Para cancelar antes de la tanda, crear
+   `D:/VantareServer/qa/CITA-CANCELAR`. Se comprueba al inicio, antes y
+   después del preflight y mientras el controlador espera el inicio visual.
+   Cuando toma el control TANDA, se aplican su limpieza, límite de 72 minutos
+   y salvaguardas de apagado. Un aborto de TANDA deja el equipo encendido.
+   La salida gráfica se ejecuta solo en el PC.
+5. Leer `RESULTADO-CITA-<UTC>.json`, su línea `.txt` y el log indicado.
+   El `.lock` impide volver a ejecutar la misma cita. Un preflight no
+   satisfactorio es un aborto terminal.
+
+`PROBAR_CITA_PROGRAMADA.ps1 -Salida <directorio-nuevo>` registra
+`VantareCitaEnsayo` a +3 minutos con perfil S4U, SSH falso y
+`VANTARE_SIN_GRAFICOS=1`. Extrae una copia nueva del ZIP histórico
+be17532a5 y usa su preflight v2 archivado. El caso positivo ejecuta
+`TANDA -Modo Ensayo` con el guard 6.
+El ensayo guarda el log y retira su tarea.

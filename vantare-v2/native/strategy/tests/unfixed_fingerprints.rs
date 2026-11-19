@@ -12,7 +12,8 @@
 //!
 //! Para regenerar las huellas (solo si el cambio de resultado es intencionado y
 //! está revisado): `VANTARE_STRATEGY_HUELLAS=escribir cargo test -p vantare-strategy
-//! --test unfixed_fingerprints`.
+//! --test unfixed_fingerprints`. Desde E5e solo se han regenerado las 76 que
+//! #2691 cambia a propósito (ver más abajo).
 //!
 //! Además de la huella del caso entero se guarda cada caso troceado por partes
 //! (#2691, más abajo), en `testdata/unfixed/partes/`. Esas partes son las de
@@ -160,10 +161,9 @@ fn check(section: &str, cases: &[Case]) {
             .filter(|deviation| deviation["id"] == case.id.as_str())
             .collect();
         problems.extend(part_problems(case, &parts[index], &before[index], &listed));
-        // La huella entera: la de ahora. Un caso con partes listadas puede
-        // seguir con la huella de antes mientras no se regenere.
-        let pending = !listed.is_empty() && stored[index]["sha256"] == before[index]["sha256"];
-        if stored[index] != whole[index] && !pending {
+        // La huella entera es la de ahora. Las de los casos listados se
+        // regeneraron con #2691; las demás son las originales.
+        if stored[index] != whole[index] {
             problems.push(format!(
                 "{}: huella entera: {}",
                 case.id,
@@ -473,8 +473,9 @@ fn figures(part: &Value) -> Value {
 }
 
 /// Las huellas por partes se sacaron de los mismos resultados que las huellas
-/// originales: cada línea lleva el SHA-256 del caso entero y tiene que ser el
-/// de la huella original de ese caso.
+/// originales: cada línea lleva el SHA-256 del caso entero, que es el de la
+/// huella original de ese caso. Las únicas huellas enteras que ya no coinciden
+/// con él son las de los casos listados en las desviaciones de #2691.
 #[test]
 fn the_part_fingerprints_belong_to_the_original_fingerprints() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/unfixed");
@@ -482,7 +483,7 @@ fn the_part_fingerprints_belong_to_the_original_fingerprints() {
         serde_json::from_slice(&std::fs::read(&path).expect("huellas guardadas"))
             .expect("JSON de huellas")
     };
-    let mut cases = 0;
+    let (mut cases, mut regenerated) = (0, 0);
     for section in [
         "oracle-scalar",
         "oracle-extended",
@@ -496,16 +497,18 @@ fn the_part_fingerprints_belong_to_the_original_fingerprints() {
         assert_eq!(whole.len(), parts.len(), "{section}: número de casos");
         for (whole, parts) in whole.iter().zip(&parts) {
             assert_eq!(whole["id"], parts["id"], "{section}: orden de los casos");
-            // Un caso con partes listadas en las desviaciones de #2691 tiene,
-            // una vez regenerado, otra huella entera; los demás, la original.
+            // Un caso con partes listadas en las desviaciones de #2691 tiene
+            // otra huella entera, regenerada; los demás, la original.
             let listed = deviations
                 .iter()
                 .any(|deviation| deviation["id"] == whole["id"]);
-            assert!(
-                listed || whole["sha256"] == parts["sha256"],
-                "{section}: {} cambia de huella entera sin estar listado",
+            assert_eq!(
+                listed,
+                whole["sha256"] != parts["sha256"],
+                "{section}: {} cambia de huella entera exactamente si está listado",
                 whole["id"]
             );
+            regenerated += usize::from(listed);
             assert!(
                 parts["partes"]
                     .as_object()
@@ -517,6 +520,7 @@ fn the_part_fingerprints_belong_to_the_original_fingerprints() {
         }
     }
     assert_eq!(cases, 696, "las huellas originales son 696");
+    assert_eq!(regenerated, 76, "las regeneradas con #2691 son 76");
 }
 
 fn outcome_summary(outcome: &SolverOutcome) -> String {

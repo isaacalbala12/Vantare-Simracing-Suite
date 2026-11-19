@@ -22,12 +22,12 @@ concurrency:
 
 jobs:
   build:
-    name: Binarios del kit de la tanda (Release, sin ejecutar)
+    name: Binarios del kit de la tanda (Release, sin gráficos)
     runs-on: windows-latest
     timeout-minutes: 90
     env:
       RUSTUP_TOOLCHAIN: '1.99.1'
-      VANTARE_SIN_GRAFICOS: '1'          # nada de gráficos en el runner; solo se compila
+      VANTARE_SIN_GRAFICOS: '1'          # barrera de gráficos por defecto en el runner
       VANTARE_BUILD_CHANNEL: nightly
       CARGO_PROFILE_RELEASE_OPT_LEVEL: '3'
       CARGO_PROFILE_RELEASE_DEBUG: '0'
@@ -75,6 +75,13 @@ jobs:
           $pe = [BitConverter]::ToInt32($bytes, 0x3c)
           $subsystem = [BitConverter]::ToUInt16($bytes, $pe + 0x5c)
           if ($subsystem -ne 2) { throw "Release debe ser Windows GUI (2), recibido $subsystem" }
+      - name: Verificar versión de Rune Release por stdout
+        run: |
+          $binary = Join-Path $env:TARGET_RUNE 'release/vantare-overlays-rune.exe'
+          $version = [Environment]::GetEnvironmentVariable('VANTARE_VERSION', 'Process')
+          if ($null -eq $version) { $version = '0.0.0' }
+          Remove-Item Env:VANTARE_SIN_GRAFICOS -ErrorAction SilentlyContinue
+          & ./vantare-v2/native/packaging/rune-release-version-tests.ps1 -Executable $binary -Version $version -Channel $env:VANTARE_BUILD_CHANNEL
       - name: Compilar GPUI parity-capture, núcleo paint-stats, services y launcher (Release)
         env:
           CARGO_TARGET_DIR: ${{ env.TARGET_MAIN }}

@@ -453,7 +453,7 @@ fn farthest_failure(tank: Tank, stints: &[u32], fixed: &[Option<i64>]) -> Option
 fn the_failing_lap_is_the_farthest_one_any_loads_reach() {
     let mut rng = Rng(0xE5F_0003);
     let (mut races, mut laps, mut reserve) = (0, 0, 0);
-    while races < 1_500 {
+    while races < 6_000 {
         let Some(race) = race(&mut rng) else { continue };
         races += 1;
         let found = bounds(&race.input, &race.edited, &race.fixed);
@@ -484,8 +484,11 @@ fn the_failing_lap_is_the_farthest_one_any_loads_reach() {
             }
         }
     }
+    // Las dos respuestas tienen que darse muchas veces: «sin vuelta de fallo»
+    // solo vale cuando algún reparto completa todas las vueltas (y lo que falta
+    // es la reserva), y eso lo decide la fuerza bruta, no la cuenta.
     assert!(
-        laps > 60 && reserve > 5,
+        laps > 150 && reserve > 40,
         "{laps} con vuelta de fallo, {reserve} sin reserva en meta"
     );
 }
@@ -710,6 +713,45 @@ fn an_amount_short_of_the_reserve_has_no_failing_lap() {
         bounds(&input, &edited, &[fuel(3.0)])[0].fuel.problem,
         Some(FixedProblem::BelowMin { fail_lap: Some(12) })
     );
+}
+
+// El mejor caso puede pasar por otra parada fijada antes de quedarse corto:
+// la vuelta de fallo (o la falta de reserva) se mira al final de ese camino, no
+// en el tramo siguiente a la parada. 20 L a 2 L por vuelta, reserva de una
+// vuelta (2 L), tramos 4-4-4: se llega a la parada 1 con 12 L.
+#[test]
+fn the_best_case_goes_through_later_fixed_stops() {
+    let mut input = twelve_laps();
+    input.fuel_reserve = base_input().fuel_reserve;
+    input.fuel_reserve["laps"]["value"] = json!(1.0);
+    let edited = schedule(&[4, 4, 4]);
+    let problems = |first: f64, second: f64| {
+        let fixed = [fuel(first), fuel(second)];
+        assert!(!recalculates(&input, &edited, &fixed));
+        let found = bounds(&input, &edited, &fixed);
+        (found[0].fuel.problem, found[1].fuel.problem)
+    };
+    // 0 L y luego 5 L: se llega a la parada 2 con 4 L, se sale con 9 y el
+    // último tramo gasta 8. Se completan todas las vueltas y queda 1 L: falta
+    // la reserva, no hay vuelta de fallo. Vale para las dos paradas.
+    let short_of_reserve = Some(FixedProblem::BelowMin { fail_lap: None });
+    assert_eq!(problems(0.0, 5.0), (short_of_reserve, short_of_reserve));
+    // 0 L y luego 3 L: se sale de la parada 2 con 7 L, que dan para 3 vueltas
+    // (9, 10 y 11). La 12 no se completa, y la culpa es de las dos paradas.
+    let dry_in_the_last_lap = Some(FixedProblem::BelowMin { fail_lap: Some(12) });
+    assert_eq!(
+        problems(0.0, 3.0),
+        (dry_in_the_last_lap, dry_in_the_last_lap)
+    );
+    // Con 1 L más en la primera (o 6 L en la segunda) ya hay plan.
+    assert_eq!(
+        bounds(&input, &edited, &[fuel(1.0), fuel(5.0)])[0]
+            .fuel
+            .problem,
+        None
+    );
+    assert!(recalculates(&input, &edited, &[fuel(1.0), fuel(5.0)]));
+    assert!(recalculates(&input, &edited, &[fuel(0.0), fuel(6.0)]));
 }
 
 // Lo que el recálculo rechaza como error, los límites lo rechazan igual y con

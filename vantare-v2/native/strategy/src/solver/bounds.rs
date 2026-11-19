@@ -199,8 +199,15 @@ fn resource_bounds(
 }
 
 /// Con una cantidad fijada que es poco en la parada `stop`: la primera vuelta
-/// que no se completa aun llevando siempre el nivel más alto posible. `None`:
-/// en el mejor caso se completan todas las vueltas y lo que falta es la reserva.
+/// que no se completa aun llevando siempre el nivel más alto posible. `None`
+/// solo cuando en el mejor caso se completan todas las vueltas y lo que falta
+/// es la reserva.
+///
+/// Con poco, el mejor caso solo puede acabar de esas dos maneras. No puede
+/// tropezar con una cantidad fijada que no quepa más adelante: salir con menos
+/// nivel solo deja más hueco, y saliendo con más (dentro de `service`) cabe. Aun
+/// así esa rama está escrita y no responde `None`: si algún día se diera, la
+/// vuelta que no se completa es la siguiente a esa parada.
 fn fail_lap(
     resource: Resource,
     stints: &[u32],
@@ -209,18 +216,35 @@ fn fail_lap(
     arrival: Span,
 ) -> Option<u32> {
     let mut done: u32 = stints[..=stop].iter().sum();
-    let mut level = arrival.serviced(resource, fixed(stop))?;
-    for stint in stop + 1..stints.len() {
-        let after = level.driven(resource, i64::from(stints[stint]));
+    let Some(mut level) = arrival.serviced(resource, fixed(stop)) else {
+        debug_assert!(false, "una cantidad menor que el mínimo cabe");
+        return Some(done + 1);
+    };
+    for (stint, &laps) in stints.iter().enumerate().skip(stop + 1) {
+        let after = level.driven(resource, i64::from(laps));
         if after.hi < 0 {
-            // `per_lap` no es cero: con consumo cero el nivel no baja.
-            let completed = u32::try_from(level.hi / resource.per_lap).ok()?;
+            // Con consumo cero el nivel no baja: aquí `per_lap` no es cero.
+            let completed = level
+                .hi
+                .checked_div(resource.per_lap)
+                .and_then(|completed| u32::try_from(completed).ok())
+                .map_or(0, |completed| completed.min(laps - 1));
             return Some(done + completed + 1);
         }
-        done += stints[stint];
-        if stint + 1 < stints.len() {
-            level = after.serviced(resource, fixed(stint))?;
+        done += laps;
+        if stint + 1 == stints.len() {
+            debug_assert!(
+                after.hi < resource.reserve,
+                "con menos del mínimo no se llega a meta con la reserva"
+            );
+            return None;
         }
+        let Some(serviced) = after.serviced(resource, fixed(stint)) else {
+            debug_assert!(false, "saliendo con menos, lo fijado después cabe");
+            return Some(done + 1);
+        };
+        level = serviced;
     }
-    None
+    debug_assert!(false, "después de una parada siempre hay un tramo");
+    Some(done + 1)
 }

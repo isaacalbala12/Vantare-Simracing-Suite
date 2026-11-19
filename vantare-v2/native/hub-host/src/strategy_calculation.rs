@@ -18,9 +18,8 @@ use std::{
 use ts_rs::TS;
 use vantare_strategy::{
     application::{self, Fallback, ManualEvent, ManualField, SourceStatus},
-    solver::InputField,
     document::Document,
-    solver::{self, GreedyRefusal, Input, OptimalityStatus, SolverOutcome},
+    solver::{self, GreedyRefusal, Input, InputField, OptimalityStatus, SolverOutcome},
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -737,35 +736,38 @@ pub(super) fn invalid_field(manual: &ManualEvent, inputs: bool) -> Option<Strate
         .iter()
         .copied()
         .filter(|field| inputs || !field.is_scalar())
-        .find_map(|field| {
-        let text = manual[field].trim();
-        let bad = match field {
-            ManualField::RaceLaps | ManualField::DurationMinutes => text.parse::<u32>().is_err(),
-            ManualField::FuelCapacityLiters
-            | ManualField::PitTransitSeconds
-            | ManualField::BasePaceSeconds
-            | ManualField::FuelPerLapLiters
-            | ManualField::VeCapacityPercent
-            | ManualField::VePerLapPercent
-            | ManualField::TyreLifeLaps
-            | ManualField::DegradationSeconds
-            | ManualField::RefuelRate
-            | ManualField::VeRate
-            | ManualField::TyreServiceSeconds
-            | ManualField::FormationSeconds
-            | ManualField::FuelStep
-            | ManualField::VeStep
-            | ManualField::ReserveLaps => !text.parse::<f64>().is_ok_and(f64::is_finite),
-            _ => false,
-        };
-        bad.then(|| field.into())
-        });
+        .find(|&field| is_not_a_number(manual, field))
+        .map(StrategyField::from);
     not_a_number.or_else(|| {
         inputs
             .then(|| manual.input_field())
             .flatten()
             .map(StrategyField::from)
     })
+}
+
+/// Whether the text of a field that must be a number (or a whole number) is not.
+fn is_not_a_number(manual: &ManualEvent, field: ManualField) -> bool {
+    let text = manual[field].trim();
+    match field {
+        ManualField::RaceLaps | ManualField::DurationMinutes => text.parse::<u32>().is_err(),
+        ManualField::FuelCapacityLiters
+        | ManualField::PitTransitSeconds
+        | ManualField::BasePaceSeconds
+        | ManualField::FuelPerLapLiters
+        | ManualField::VeCapacityPercent
+        | ManualField::VePerLapPercent
+        | ManualField::TyreLifeLaps
+        | ManualField::DegradationSeconds
+        | ManualField::RefuelRate
+        | ManualField::VeRate
+        | ManualField::TyreServiceSeconds
+        | ManualField::FormationSeconds
+        | ManualField::FuelStep
+        | ManualField::VeStep
+        | ManualField::ReserveLaps => !text.parse::<f64>().is_ok_and(f64::is_finite),
+        _ => false,
+    }
 }
 
 fn number(value: f64) -> Result<Number, StrategyPlanError> {

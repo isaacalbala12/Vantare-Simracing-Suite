@@ -355,7 +355,9 @@ impl ManualEvent {
         if let Ok(previous) =
             serde_json::from_value::<Input>(variant["overrides"]["nativeScalarInput"].clone())
         {
-            previous.validate()?;
+            // only what the form cannot edit blocks: the scalars of what was stored are
+            // not checked, since the form being sent replaces them (a negative step
+            // saved before steps were checked must not lock the event for good)
             if previous.event_rules.min_pit_stops.is_some()
                 || previous.event_rules.max_pit_stops.is_some()
                 || !previous.event_rules.required_windows.is_empty()

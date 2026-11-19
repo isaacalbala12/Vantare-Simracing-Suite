@@ -893,7 +893,11 @@ it("with several bad entries the mock names the field the host names", () => {
   // the order of `ManualField::ALL` in the host: the laps come before the pace,
   // and a text that is not a number beats a limit of the crate
   const cases: [string, Partial<StrategySolverFields>, string][] = [
-    ["laps and pace texts", { basePaceSeconds: "x", raceLaps: "y" }, "raceLaps"],
+    [
+      "laps and pace texts",
+      { basePaceSeconds: "x", raceLaps: "y" },
+      "raceLaps",
+    ],
     [
       "text late, limit early",
       { basePaceSeconds: "0", serviceMode: "turbo", reserveLaps: "z" },
@@ -904,9 +908,7 @@ it("with several bad entries the mock names the field the host names", () => {
     const host = session("strategy-ready");
     const opened = host.open();
     expect(
-      host.failure(
-        confirmation(opened, { inputs: { ...changed, ...change } }),
-      ),
+      host.failure(confirmation(opened, { inputs: { ...changed, ...change } })),
       case_,
     ).toEqual({ kind: "strategyInvalidInput", field });
   }

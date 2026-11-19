@@ -51,6 +51,7 @@ import {
   StateTag,
 } from "./PlanAccept";
 import { type EditActions, StintEditor, StopEditor } from "./PlanAdjust";
+import { type ExportActions, ExportMenu, ExportNotice } from "./PlanExport";
 import { PlanTimeline, type TimelineMark } from "./PlanTimeline";
 
 const t = strategy.calc;
@@ -78,6 +79,7 @@ export type PlanActions = {
   review: (field: StrategyField | null) => void;
   edit: EditActions;
   acceptance: AcceptActions;
+  export: ExportActions;
 };
 
 function Heading({
@@ -432,6 +434,7 @@ function Result({
   const cancelRef = useRef<HTMLButtonElement>(null);
   const acceptRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLButtonElement>(null);
+  const exportRef = useRef<HTMLButtonElement>(null);
   // the question takes the focus; the menu that opened it must not take it back
   const skipFocus = useRef(false);
   const restore = useRef<"accept" | "menu" | null>(null);
@@ -482,6 +485,17 @@ function Result({
   const shown = timeline ? scheduleTimeline(timeline, edit) : null;
   const proposal = timeline?.pits.map((pit) => pit.lap) ?? [];
   const moves = movedStops(timeline, edit);
+  // The notice of the export goes away, or tries again, and the focus stays on the
+  // button that opened it: the notice it was in is gone.
+  const exporting = actions.export;
+  const closeExport = () => {
+    exporting.dismiss();
+    exportRef.current?.focus();
+  };
+  const retryExport = () => {
+    exporting.retry();
+    exportRef.current?.focus();
+  };
   const again = (
     <Button
       variant="ghost"
@@ -577,6 +591,9 @@ function Result({
   ) : (
     <>
       {reset}
+      {exporting.available && (
+        <ExportMenu actions={exporting} triggerRef={exportRef} />
+      )}
       {again}
       {acceptable && !asks && (
         <Button
@@ -620,6 +637,11 @@ function Result({
         sub={sub}
         actions={headActions}
         tag={tag}
+      />
+      <ExportNotice
+        state={exporting.state}
+        retry={retryExport}
+        dismiss={closeExport}
       />
       {recalculating && (
         <div

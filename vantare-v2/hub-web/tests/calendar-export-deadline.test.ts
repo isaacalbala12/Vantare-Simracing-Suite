@@ -130,3 +130,49 @@ it("keeps the main publication deadline exception a closed list", () => {
     "report.localExport",
   ]);
 });
+
+it("keeps a file dialog of Estrategia pending as long as its ticket lives, and no longer than a margin after", async () => {
+  expect(requestDeadline("strategy.pickFile")).toBe(135_000);
+  expect(requestDeadline("strategy.exportFile")).toBe(135_000);
+  expect(requestDeadline("strategy.export")).toBe(requestTimeoutMs);
+  const { client, peer } = await connectHeld();
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    let settled = false;
+    const request = {
+      method: "strategy.exportFile",
+      revision: "a".repeat(64),
+      target: { kind: "accepted" },
+    } as const;
+    const first = client.request(request);
+    void first.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    // a dialog open for 100 s is not a core that does not answer
+    await vi.advanceTimersByTimeAsync(100_000);
+    expect(settled).toBe(false);
+    peer.postMessage({
+      kind: "response",
+      id: 1,
+      result: {
+        method: "strategy.exportFile",
+        value: { kind: "saved", file: { name: "plan.csv" } },
+      },
+    });
+    await expect(first).resolves.toEqual({
+      method: "strategy.exportFile",
+      value: { kind: "saved", file: { name: "plan.csv" } },
+    });
+    // but a host that never answers does not hold it for ever
+    const second = client.request(request).catch((error: unknown) => error);
+    await vi.advanceTimersByTimeAsync(135_001);
+    expect(await second).toEqual(new HostFailure({ kind: "coreUnavailable" }));
+  } finally {
+    client.close();
+  }
+});

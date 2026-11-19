@@ -170,6 +170,13 @@ describe("strategy file picker in the main process", () => {
       id: 0x80000000,
       path: null,
     });
+    // the renderer that waits is told the ticket expired: it never waits for nothing
+    expect(renderer).toHaveBeenCalledTimes(1);
+    expect(renderer).toHaveBeenLastCalledWith({
+      kind: "failure",
+      id: 1,
+      error: { kind: "strategyPickExpired" },
+    });
     now += strategyPickCooldownMs;
     pick.request(2, "open", revision, renderer, () => connected);
     pick.receive(ack(0x80000001));
@@ -181,7 +188,40 @@ describe("strategy file picker in the main process", () => {
       id: 0x80000001,
       path: null,
     });
-    expect(renderer).not.toHaveBeenCalled();
+    // a renderer that is gone is told nothing
+    expect(renderer).toHaveBeenCalledTimes(1);
+  });
+
+  it("tells the renderer the ticket expired when the dialog closes after it", async () => {
+    let now = 0;
+    let finish: (path: string | undefined) => void = () => {};
+    const host = vi.fn(),
+      renderer = vi.fn(),
+      open = vi.fn(
+        () =>
+          new Promise<string | undefined>((resolve) => {
+            finish = resolve;
+          }),
+      );
+    const pick = strategyFilePicker(open, host, () => now);
+    pick.request(4, "saveAs", revision, renderer, () => true);
+    pick.receive(ack(0x80000000));
+    now = strategyPickLifetimeSeconds * 1000;
+    finish("D:/private/late.json");
+    await wait();
+    // the late path is not handed over: the ticket is void
+    expect(host).toHaveBeenLastCalledWith({
+      kind: "pickedStrategyFile",
+      id: 0x80000000,
+      path: null,
+    });
+    expect(renderer).toHaveBeenCalledTimes(1);
+    expect(renderer).toHaveBeenLastCalledWith({
+      kind: "failure",
+      id: 4,
+      error: { kind: "strategyPickExpired" },
+    });
+    expect(JSON.stringify(renderer.mock.calls)).not.toContain("private");
   });
 
   it("answers a dialog the user closes with a null path and then cools down", async () => {
@@ -406,6 +446,13 @@ describe("export dialog of the plan in the main process", () => {
       kind: "pickedStrategyFile",
       id: 0x80000000,
       path: null,
+    });
+    // the renderer does not wait for an answer that will never come
+    expect(renderer).toHaveBeenCalledTimes(1);
+    expect(renderer).toHaveBeenLastCalledWith({
+      kind: "failure",
+      id: 1,
+      error: { kind: "io" },
     });
   });
 

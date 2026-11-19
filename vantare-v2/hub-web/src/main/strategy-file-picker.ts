@@ -40,12 +40,20 @@ export function strategyFilePicker(
         connected: () => boolean;
       }
     | undefined;
-  function cancel() {
+  // Voids the ticket. With `answer`, the renderer that waits is told why too: an
+  // expired ticket, or an acknowledgement the dialog cannot be opened for.
+  function cancel(answer?: "expired" | "io") {
     const current = pending;
     pending = undefined;
     if (current) {
       nextDialog = now() + strategyPickCooldownMs;
       sendHost({ kind: "pickedStrategyFile", id: current.id, path: null });
+      if (answer && current.connected())
+        current.reply({
+          kind: "failure",
+          id: current.rendererId,
+          error: { kind: answer === "io" ? "io" : "strategyPickExpired" },
+        });
     }
   }
   async function show(current: NonNullable<typeof pending>) {
@@ -56,7 +64,7 @@ export function strategyFilePicker(
           : await open(current.mode);
       if (pending !== current) return;
       if (!current.connected() || now() >= current.expires) {
-        cancel();
+        cancel("expired");
         return;
       }
       const message = {
@@ -89,7 +97,7 @@ export function strategyFilePicker(
     connected: () => boolean,
   ) {
     if (!connected()) return;
-    if (pending && now() >= pending.expires) cancel();
+    if (pending && now() >= pending.expires) cancel("expired");
     if (pending || now() < nextDialog) {
       reply({ kind: "failure", id, error: { kind: "busy" } });
       return;
@@ -165,7 +173,7 @@ export function strategyFilePicker(
       }
       if (current.phase !== "ack") return true;
       if (!current.connected() || now() >= current.expires) {
-        cancel();
+        cancel("expired");
         return true;
       }
       if (current.method === "strategy.exportFile") {
@@ -175,7 +183,7 @@ export function strategyFilePicker(
             ? message.result.value
             : undefined;
         if (value?.kind !== "ticket") {
-          cancel();
+          cancel("io");
           return true;
         }
         current.suggestedName = value.suggestedName;

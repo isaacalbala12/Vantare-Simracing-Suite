@@ -1625,3 +1625,105 @@ mark.strategy-changed {
   color: var(--text-3);
   font-size: var(--text-small);
 }
+
+/* Exportar el plan (E5d): the button with its menu, «Copiado» and the notices */
+.strategy-export {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.strategy-export-icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.strategy-export-done {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-small);
+  color: var(--text-2);
+}
+
+.strategy-export-done > .strategy-export-icon {
+  color: var(--ok);
+}
+
+/* busy, not disabled: it keeps the focus the menu gave back */
+.strategy-export-trigger[aria-disabled="true"] {
+  opacity: var(--disabled-opacity);
+  cursor: default;
+}
+
+/* the menu covers text: solid, not the 80 % of the panels */
+.v-popup.strategy-export-popup {
+  background: var(--surface-1);
+}
+
+.strategy-export-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warn) 12%, var(--surface-1));
+  color: var(--text-1);
+  font-size: var(--text-small);
+}
+
+.strategy-export-note > .strategy-export-icon {
+  flex: none;
+  color: var(--warn-text, var(--warn));
+}
+
+.strategy-export-item {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: var(--space-4);
+  align-items: start;
+  padding-block: var(--space-3);
+}
+
+.strategy-export-item > .strategy-export-icon {
+  grid-row: 1 / span 2;
+  margin-top: var(--space-1);
+  color: var(--text-3);
+}
+
+.strategy-export-item > :where(small) {
+  grid-column: 2;
+}
+
+.strategy-export-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.strategy-export-notice[data-tone="error"] {
+  align-items: flex-start;
+}
+
+.strategy-export-notice > :where(div) {
+  flex: 1;
+  min-width: 0;
+}
+
+.strategy-plan .strategy-export-notice :where(p) {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-small);
+  color: var(--text-2);
+}
+
+.strategy-export-notice[data-tone="ok"] > .strategy-icon {
+  color: var(--ok);
+}
+
+.strategy-export-notice > .v-button {
+  flex: none;
+}
+
+.strategy-export-notice .strategy-actions {
+  margin-top: var(--space-4);
+}

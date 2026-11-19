@@ -916,10 +916,31 @@ function validInputs(inputs: StrategySolverFields): boolean {
   return refusedInput(inputs) === undefined;
 }
 
+// What can go wrong when the plan is exported, as a QA scene: the first four are
+// its own, the next four are those of E4a that an export can meet too.
+const exportFaults = [
+  "exportBusy",
+  "exportInUse",
+  "exportNotCsv",
+  "nothingToExport",
+  "fileUnavailable",
+  "fileTooLarge",
+  "pickExpired",
+  "targetExists",
+];
+
 export function create(context: MockContext): MockHandler {
   const scenario = context.sceneName.startsWith("strategy-")
     ? context.sceneName.slice(9)
     : "empty";
+  // The scene is the fault itself (`exportInUse`, on the usual sample plan) or the
+  // fault after `plannedFuji` or `acceptedFuji` (`plannedFujiExportInUse`: Opus' Fuji plan,
+  // calculated; `acceptedFujiExportInUse`: the same plan, accepted and saved).
+  const fault = (() => {
+    const rest = scenario.replace(/^(plannedFuji|acceptedFuji)/, "");
+    const name = rest.charAt(0).toLowerCase() + rest.slice(1);
+    return exportFaults.includes(name) ? name : undefined;
+  })();
   if (context.sceneName.startsWith("strategy-") && scenario !== "denied") {
     context.core.access.verified = true;
     context.core.accountGeneration = "a".repeat(64);
@@ -938,6 +959,8 @@ export function create(context: MockContext): MockHandler {
     "accepted",
     "calculating",
     "compute",
+    "export",
+    "nothingToExport",
   ].some((prefix) => scenario.startsWith(prefix))
     ? "ready"
     : scenario;
@@ -1343,7 +1366,7 @@ export function create(context: MockContext): MockHandler {
         exportNotCsv: { kind: "strategyExportNotCsv" },
         targetExists: { kind: "strategyTargetExists" },
       } as Record<string, HostError>
-    )[scenario];
+    )[fault ?? ""];
     if (sceneError) return fail(sceneError);
     if (!/\.csv$/iu.test(name)) return fail({ kind: "strategyExportNotCsv" });
     const source = exportSource(target);
@@ -1540,7 +1563,14 @@ export function create(context: MockContext): MockHandler {
     ) {
       if (request.revision !== current.revision)
         return failure({ kind: "strategyConflict", current: shown() });
-      if (scenario === "nothingToExport")
+      // the host checks the calculation the proposal names before anything else
+      if (
+        request.target.kind === "proposal" &&
+        current.plan.computeId !== request.target.computeId
+      )
+        return failure({ kind: "strategyConflict", current: shown() });
+      if (fault === "exportBusy") return failure({ kind: "busy" });
+      if (fault === "nothingToExport")
         return failure({ kind: "strategyNothingToExport" });
       const source = exportSource(request.target);
       if ("kind" in source) return failure(source);

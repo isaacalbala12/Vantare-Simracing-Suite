@@ -1929,6 +1929,34 @@ async function amountStates(
   await focusVisible(button(page, "Calcular de nuevo"));
   assert.equal(await computes(), 0);
 
+  // m-calcular-sin-terminar: «Cálculo sin terminar» (no figures) with an amount
+  // fixed by hand asks before «Calcular de nuevo» throws it away, as the plan does
+  await openAcceptedPlan(
+    page,
+    base,
+    "plannedFujiUnfinishedFixed",
+    "Cálculo sin terminar",
+    zoomed,
+  );
+  const computesBefore = await computes();
+  await pressKey(button(page, "Calcular de nuevo"), "Enter");
+  const unfinished = page.getByRole("group", {
+    name: "¿Calcular de nuevo y perder lo que fijaste?",
+  });
+  await visible(unfinished);
+  const unfinishedCancel = unfinished.getByRole("button", { name: "Cancelar" });
+  await focused(unfinishedCancel);
+  await focusVisible(unfinishedCancel);
+  assert.equal(await computes(), computesBefore);
+  await shot("m-calcular-sin-terminar");
+  await page.keyboard.press("Escape");
+  await until(
+    async () => (await unfinished.count()) === 0,
+    5000,
+    "the question of the unfinished calculation closes",
+  );
+  await focused(button(page, "Calcular de nuevo"));
+
   // m-imposible: 40 L in the second stop leave no plan, and the host says which stop
   await paradas("plannedFuji");
   const short = await toManual(page, "Combustible", 2);

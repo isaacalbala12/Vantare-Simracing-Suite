@@ -9,7 +9,8 @@
       "!bun.lock",
       "!src/renderer/design/generated",
       "!src/renderer/assets",
-      "!src/contract/generated"
+      "!src/contract/generated",
+      "!test-results"
     ]
   },
   "formatter": {

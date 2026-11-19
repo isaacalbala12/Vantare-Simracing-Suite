@@ -6,7 +6,7 @@ import type {
 } from "../../../contract/generated/contract";
 import { useHost } from "../../app/Host";
 import { useLauncherRequest } from "../../app/LauncherRequest";
-import { HostFailure } from "../../bridge/client";
+import { HostFailure, InvalidHostResponse } from "../../bridge/client";
 import { launcherText as text } from "../../i18n/launcher";
 import { profileText } from "../../i18n/profile-editor";
 import { Button } from "../../ui/Button";
@@ -33,6 +33,7 @@ import {
 } from "./state";
 
 function failureText(failure: unknown): string {
+  if (failure instanceof InvalidHostResponse) return text.invalidResponse;
   if (failure instanceof HostFailure) {
     switch (failure.detail.kind) {
       case "busy":

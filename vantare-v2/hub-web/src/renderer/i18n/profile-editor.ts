@@ -76,6 +76,8 @@ export const profileText = {
   protected: "El documento está protegido. Vuelve a cargarlo antes de editar.",
   busy: "Launcher está ocupado. Tu borrador se conserva; vuelve a intentarlo.",
   coreUnavailable: "El núcleo no está disponible. Tu borrador se conserva.",
+  invalidResponse:
+    "La respuesta del núcleo no es válida. Tu borrador se conserva.",
   openFailed:
     "No se pudo abrir el perfil. Vuelve a cargarlo e inténtalo de nuevo.",
   failed:

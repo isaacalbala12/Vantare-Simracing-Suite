@@ -89,6 +89,12 @@ export type PlanActions = {
   // to the Carrera tab; with a field, the editor opens with that field marked
   review: (field: StrategyField | null) => void;
   edit: EditActions;
+  // The strategy whose «no plan with what you fixed» screen was on view. It lives
+  // in the screen, not in the tab: leaving the tab unmounts the plan, and the
+  // screen must come back as it was.
+  keptFixed: { current: string | null };
+  // the strategy on view
+  strategyKey: string;
   acceptance: AcceptActions;
   export: ExportActions;
 };
@@ -497,15 +503,18 @@ function Result({
     }
   }, [asking]);
   // the fixed «no plan» screen was on view (see `fixedNoPlan`)
-  const keptFixed = useRef(false);
+  const kept = actions.keptFixed;
+  const keptHere = kept.current === actions.strategyKey;
   // Going back to automatic takes away the button that was pressed: the focus goes to
   // Recalcular, which is what comes next.
   const recalcRef = useRef<HTMLButtonElement>(null);
   const [focusRecalc, setFocusRecalc] = useState(false);
   useEffect(() => {
-    if (!focusRecalc || !recalcRef.current) return;
+    if (!focusRecalc) return;
+    // the request is spent whether or not «Recalcular» is there: one left over
+    // would swallow the next real one
     setFocusRecalc(false);
-    recalcRef.current.focus();
+    recalcRef.current?.focus();
   }, [focusRecalc]);
   const clearAll = async () => {
     const answer = await actions.edit.clearStopServices();
@@ -636,11 +645,12 @@ function Result({
   // never had anything fixed is the plain «no plan» one.
   const noPlan = result.certificate === "no_solution" && !!edit;
   const fixedNoPlan =
-    noPlan &&
-    (edit.cause !== null || fixedCount > 0 || (edited && keptFixed.current));
+    noPlan && (edit.cause !== null || fixedCount > 0 || (edited && keptHere));
   useEffect(() => {
-    if (!noPlan) keptFixed.current = false;
-    else if (edit?.cause != null || fixedCount > 0) keptFixed.current = true;
+    if (!noPlan) {
+      if (kept.current === actions.strategyKey) kept.current = null;
+    } else if (edit?.cause != null || fixedCount > 0)
+      kept.current = actions.strategyKey;
   });
   if (fixedNoPlan && edit)
     return (

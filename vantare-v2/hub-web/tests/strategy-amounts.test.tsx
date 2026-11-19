@@ -46,7 +46,8 @@ function clientFor(
       return mapView &&
         (value.method === "strategy.open" ||
           value.method === "strategy.view" ||
-          value.method === "strategy.setStopService")
+          value.method === "strategy.setStopService" ||
+          value.method === "strategy.clearStopServices")
         ? { ...value, value: mapView(value.value as StrategyView) }
         : value;
     }
@@ -840,6 +841,21 @@ describe("«Calcular de nuevo» in every state that offers it", () => {
     );
   });
 
+  // the scene of the mock itself (QA): the same question, with no mapping of the view
+  it("asks in the scene «plannedFujiUnfinishedFixed» of the mock", async () => {
+    const request = mount("plannedFujiUnfinishedFixed");
+    await screen.findByRole("heading", { name: "Tus estrategias" });
+    click("Continuar");
+    fireEvent.click(tab("Plan"));
+    await heading("Cálculo sin terminar");
+    click("Calcular de nuevo");
+    const ask = await screen.findByRole("group", { name: question });
+    expect(document.activeElement).toBe(
+      within(ask).getByRole("button", { name: "Cancelar" }),
+    );
+    expect(calls(request, "strategy.compute")).toHaveLength(0);
+  });
+
   it("does not offer it while a recalculation runs", async () => {
     await stops("plannedFujiRecalculating");
     pick(2, 85);
@@ -914,6 +930,31 @@ describe("the plan with no plan and what was fixed", () => {
     expect(
       screen.queryByRole("heading", { name: "Sin plan con lo que fijaste" }),
     ).toBeNull();
+  });
+
+  // `Result` is unmounted with the tab: what it remembers must not be lost with it
+  it("keeps «Recalcular» after going back to automatic, also when the tab is left and come back to", async () => {
+    await stops();
+    pick(2, 85);
+    await fix("Combustible", 2, "40");
+    await heading("Plan modificado");
+    click("Recalcular");
+    await heading("Sin plan con lo que fijaste");
+    click("Volver la parada 2 a automático");
+    await waitFor(() => expect(button("Recalcular")).toBeTruthy());
+    expect(
+      screen.getByRole("heading", { name: "Sin plan con lo que fijaste" }),
+    ).toBeTruthy();
+    fireEvent.click(tab("Carrera"));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", { name: "Sin plan con lo que fijaste" }),
+      ).toBeNull(),
+    );
+    fireEvent.click(tab("Plan"));
+    await heading("Sin plan con lo que fijaste");
+    expect(button("Recalcular")).toBeTruthy();
+    expect(button("Restablecer")).toBeTruthy();
   });
 
   it("keeps the stop selector on the one the host points at, also when it changes", async () => {
@@ -1165,6 +1206,40 @@ describe("what the host refuses of a fixed amount", () => {
       });
     },
   );
+});
+
+describe("the focus asked for Recalcular", () => {
+  // the host answers a «back to automatic» with a view that has no edit pending, so
+  // there is no «Recalcular» to take the focus: the request must not wait for a
+  // «Recalcular» that shows up later, after another edit, and take the focus then
+  it("is dropped when «Recalcular» is not on screen, so the next one is not swallowed", async () => {
+    let notEdited = false;
+    await stops("plannedFuji", undefined, (view) => {
+      if (notEdited) view.plan.state = "calculated";
+      return view;
+    });
+    pick(2, 85);
+    await fix("Combustible", 2, "75");
+    await heading("Plan modificado");
+    notEdited = true;
+    click("Volver todo a automático");
+    await waitFor(() => expect(screen.queryByText("fijado por ti")).toBeNull());
+    expect(screen.queryByRole("button", { name: "Recalcular" })).toBeNull();
+    // a new edit brings «Recalcular»; the focus stays where the person is
+    notEdited = false;
+    pick(2, 85);
+    await fix("Combustible", 2, "76");
+    await heading("Plan modificado");
+    expect(button("Recalcular")).toBeTruthy();
+    expect(document.activeElement).not.toBe(button("Recalcular"));
+    // and the next real «back to automatic» still takes the focus to «Recalcular»
+    // (a request left over from before would swallow it)
+    click("Volver todo a automático");
+    await waitFor(() => expect(screen.queryByText("fijado por ti")).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement).toBe(button("Recalcular")),
+    );
+  });
 });
 
 describe("«Restablecer» when the last valid plan had amounts fixed", () => {

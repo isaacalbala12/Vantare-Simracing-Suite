@@ -1541,6 +1541,18 @@ export function create(context: MockContext): MockHandler {
         );
         // QA: a plan with no editable schedule (a race by time)
         if (scenario === "plannedFujiNoEdit") current.plan.edit = null;
+        // QA: «Cálculo sin terminar» (no figures, no timeline) with an amount fixed
+        // by hand: «Calcular de nuevo» asks before it throws that away
+        if (scenario === "plannedFujiUnfinishedFixed") {
+          const { result, edit } = current.plan;
+          if (result) {
+            result.certificate = "not_proven";
+            result.reason = "searchBudgetExhausted";
+            result.metrics = null;
+            result.timeline = null;
+          }
+          if (edit?.stops[1]) edit.stops[1].fixed.fuelLiters = 77;
+        }
         editing = startEditing(current.plan, fuji);
       }
     }

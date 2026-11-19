@@ -86,6 +86,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
   // the button that sent us to Carrera is gone: its title takes the focus
   const [focusRaceTitle, setFocusRaceTitle] = useState(false);
   const raceTitle = useRef<HTMLHeadingElement>(null);
+  // see `PlanActions.keptFixed`
+  const keptFixed = useRef<string | null>(null);
   const [confirmConflict, setConfirmConflict] = useState<HostError>();
   // the conflict answered to a move, a recalculation or a reset of the plan
   const [planConflict, setPlanConflict] = useState<HostError>();
@@ -754,6 +756,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                     unreadable: pollFailed,
                     readAgain: retryPoll,
                     review,
+                    keptFixed,
+                    strategyKey: `${active.id}/${variant.id}`,
                     edit: {
                       moveBoundary,
                       moveStop,

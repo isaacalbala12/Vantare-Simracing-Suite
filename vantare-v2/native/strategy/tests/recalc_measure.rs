@@ -63,8 +63,8 @@ fn recalculating_the_fuji_witness_with_virtual_energy() {
 
 /// Medición de «Recalcular» con cantidades fijadas a mano (#2690), sobre el
 /// mismo calendario de Fuji. Parte de lo que el cálculo carga solo y fija la
-/// segunda parada: lo mismo, 5 L menos (la primera parada compensa) y 0 L (no
-/// hay plan).
+/// segunda parada: lo mismo, 4 L menos (la primera parada compensa: llega con
+/// 3,3 L y le caben 78), 5 L menos (ya no cabe compensar) y 0 L.
 #[test]
 #[ignore = "measurement"]
 fn recalculating_the_fuji_witness_with_fixed_amounts() {
@@ -88,6 +88,7 @@ fn recalculating_the_fuji_witness_with_fixed_amounts() {
     for (name, fixed) in [
         ("sin fijar", Vec::new()),
         ("lo mismo", pin(second.fuel_liters)),
+        ("4 L menos", pin(second.fuel_liters - 4.0)),
         ("5 L menos", pin(second.fuel_liters - 5.0)),
         ("0 L", pin(0.0)),
     ] {

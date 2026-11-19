@@ -1040,6 +1040,54 @@ fn a_fixed_search_that_runs_out_of_budget_is_not_proven() {
     assert_eq!(outcome.certificate.fixed_stops, 1);
 }
 
+// Fuji 6 h (236 vueltas, 82 L a 1,83 L por vuelta, pasos de 1 L), calendario
+// 43-42-42-43-42-24. Sin fijar, las paradas cargan 74, 77, 79, 76 y 46 L.
+// A la parada 1 se llega con 3,3 L y la rejilla deja cargar como mucho 78 L
+// (81,3 L en el depósito). Para que la parada 2 cargue N litros menos, la
+// parada 1 tiene que cargar N más: con 4 L menos caben justos (78 L); con 5 L
+// menos harían falta 79 L y ya no caben, así que no hay plan y la culpable es
+// la parada 2 (índice 1), que es la que se fijó.
+#[test]
+fn fuji_second_stop_can_load_four_litres_less_but_not_five() {
+    let mut input = base_input();
+    input.race_laps = 236;
+    input.budget.max_candidates = 20_000; // la búsqueda se rinde: decide el respaldo
+    let edited = EditedPlan {
+        stints: vec![43, 42, 42, 43, 42, 24],
+        pit_stop_laps: vec![43, 85, 127, 170, 212],
+    };
+    let automatic = recalculate_edited_plan_detailed(&input, &edited, &AtomicBool::new(false))
+        .expect("sin fijar")
+        .0;
+    assert_eq!(loads(&automatic), [74.0, 77.0, 79.0, 76.0, 46.0]);
+
+    let four_less = recalculate_edited_plan_fixed(
+        &input,
+        &edited,
+        &[FixedStop::default(), fuel(73.0)],
+        &AtomicBool::new(false),
+    )
+    .expect("4 L menos");
+    assert_eq!(four_less.fallback, Fallback::Applied);
+    assert_eq!(loads(&four_less.outcome), [78.0, 73.0, 79.0, 76.0, 46.0]);
+    assert_eq!(four_less.unreachable_stop, None);
+    assert_eq!(four_less.outcome.result.stints, edited.stints);
+
+    let five_less = recalculate_edited_plan_fixed(
+        &input,
+        &edited,
+        &[FixedStop::default(), fuel(72.0)],
+        &AtomicBool::new(false),
+    )
+    .expect("un resultado, no un error");
+    assert!(!five_less.outcome.result.feasible);
+    assert_eq!(
+        five_less.fallback,
+        Fallback::Refused(GreedyRefusal::FixedAmountUnreachable { stop: 1 })
+    );
+    assert_eq!(five_less.unreachable_stop, Some(1));
+}
+
 // ---------------------------------------------------------------------------
 // «Múltiplo del paso» con decimales.
 // ---------------------------------------------------------------------------

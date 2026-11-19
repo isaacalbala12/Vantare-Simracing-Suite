@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "playwright-core";
 import type { HostToUi, UiToHost } from "../src/contract/generated/contract";
-import { until } from "./wait-for";
+import { press, until, visible } from "./wait-for";
 
 // Comprobar y capturar son cosas distintas: `verify` (axe, desbordamiento,
 // foco, conducta) corre SIEMPRE; los PNG solo se escriben si se pasa
@@ -40,6 +40,14 @@ async function setup(page: Page, scheme: Scheme, zoom: number) {
         message: HostToUi | UiToHost,
         transfer?: StructuredSerializeOptions | Transferable[],
       ) {
+        // what the screen asked of the host, for the checks of the accepted plan
+        if (message?.kind === "request") {
+          const w = window as unknown as { __strategyRequests?: unknown[] };
+          w.__strategyRequests = [
+            ...(w.__strategyRequests ?? []),
+            message.request,
+          ];
+        }
         if (message?.kind === "hello" && "theme" in message)
           message = { ...message, theme: { ...message.theme, scheme } };
         if (
@@ -240,6 +248,7 @@ async function verify(
   const { violations } = await new AxeBuilder({ page })
     .include(".strategy-screen")
     .include('[role="menu"][aria-label="Archivo"]')
+    .include('[role="menu"][aria-label="Más acciones del plan aceptado"]')
     .exclude('[data-base-ui-focus-guard][aria-hidden="true"]')
     .analyze();
   assert.deepEqual(
@@ -557,7 +566,7 @@ async function adjustStates(
   const fileState = () =>
     page.locator(".strategy-file-state").getAttribute("data-state");
   const notSaved = page.getByText(
-    "Estos ajustes son para probar. No se guardan en el archivo.",
+    "Estos ajustes son de prueba hasta que recalcules y aceptes el plan.",
     { exact: true },
   );
   const modified = () =>
@@ -666,7 +675,7 @@ async function adjustStates(
     0,
   );
 
-  // a recalculated plan says it is a trial, in the summary and in Carrera. The
+  // a recalculated plan is a proposal, in the summary and in Carrera. The
   // first stop goes one lap earlier: the solver has a plan for that calendar (and
   // not for the second stop one lap later), and does not prove it.
   await button(page, "Ajustar paradas").click();
@@ -680,11 +689,16 @@ async function adjustStates(
     })
     .waitFor({ state: "attached" });
   await button(page, "Resumen").click();
-  const trial = page.getByText(
-    "Plan recalculado de prueba: no se guarda en el archivo.",
+  const proposal = page.getByText(
+    "Es una propuesta: no se guarda en el archivo hasta que la aceptes.",
     { exact: true },
   );
-  assert.equal(await trial.count(), 1);
+  assert.equal(
+    await page
+      .getByText("Puedes aceptarla aunque no tenga garantía", { exact: true })
+      .count(),
+    1,
+  );
   assert.equal(await fileState(), "saved");
   assert.equal(await page.getByRole("alert").count(), 0);
   await saveShot("plan-recalculado");
@@ -692,7 +706,7 @@ async function adjustStates(
   await page
     .getByText("Calculado · 6:01:06 · 5 paradas", { exact: true })
     .waitFor();
-  assert.equal(await trial.count(), 1);
+  assert.equal(await proposal.count(), 1);
   await saveShot("carrera-plan-recalculado");
 
   // a recalculation: the plan stays on view while it runs
@@ -752,6 +766,7 @@ async function exercise(
       (width === 1440 ||
         name.startsWith("carrera") ||
         name.startsWith("plan-") ||
+        /^(a|c)-/.test(name) ||
         (scheme === "dark" && ["col", "as-reglas"].includes(name)))
     )
       await page.screenshot({
@@ -807,6 +822,7 @@ async function exercise(
   await editRace(page, saveShot);
   await planStates(page, base, scheme, width, saveShot);
   await carreraWithPlan(page, base, saveShot);
+  await acceptStates(page, base, saveShot);
 
   await collection(page, base, "ready");
   await chooseWizard(page);
@@ -870,13 +886,21 @@ export async function checkStrategyScreen(
   evidence?: string,
 ) {
   if (evidence) await mkdir(evidence, { recursive: true });
+  // The hour of «Aceptado el … a las …» is the machine's: these pages use
+  // Madrid's, so the checks and the captures do not depend on where they run.
+  // (The context goes with the browser, which the caller closes.)
+  const browser = parent.context().browser();
+  const context = browser
+    ? await browser.newContext({ timezoneId: "Europe/Madrid" })
+    : parent.context();
+  const newPage = () => context.newPage();
   await Promise.all(
     (["dark", "light"] as const).flatMap((scheme) =>
       [
         [1440, 900],
         [1280, 720],
       ].map(async ([width, height]) => {
-        const page = await parent.context().newPage();
+        const page = await newPage();
         try {
           await exercise(page, base, scheme, width, height, evidence);
         } finally {
@@ -886,7 +910,7 @@ export async function checkStrategyScreen(
     ),
   );
 
-  const page = await parent.context().newPage();
+  const page = await newPage();
   try {
     await navigate(page, base, "proximamente-base");
     await page
@@ -899,7 +923,7 @@ export async function checkStrategyScreen(
   }
   await Promise.all(
     (["light", "dark"] as const).map(async (scheme) => {
-      const page = await parent.context().newPage();
+      const page = await newPage();
       try {
         const width = 1600;
         await page.setViewportSize({ width, height: 900 });
@@ -923,6 +947,7 @@ export async function checkStrategyScreen(
         await shot("carrera");
         await editRace(page, shot);
         await planStates(page, base, scheme, width, shot, true);
+        await acceptStates(page, base, shot, true);
       } finally {
         await page.close();
       }
@@ -934,7 +959,7 @@ export async function checkStrategyScreen(
     ["light", 100, true],
     ["dark", 100, true],
   ] as const) {
-    const page = await parent.context().newPage();
+    const page = await newPage();
     try {
       const width = zoom === 125 ? 1600 : 1440;
       await page.setViewportSize({ width, height: 900 });
@@ -976,4 +1001,384 @@ export async function checkStrategyScreen(
       await page.close();
     }
   }
+}
+
+// ---- Aceptar la propuesta (E5b) ----
+// Funciones propias, al final del archivo: los estados del plan aceptado, sus
+// menús y preguntas, la tarjeta de Carrera y la colección. Cada estado pasa por
+// `shot` (axe, desbordamiento, un solo status, sin rutas) y, con evidencia, se
+// fotografía con el nombre del diseño de Opus (`a-*`, `c-*`).
+
+type Shot = (name: string) => Promise<void>;
+
+const strategyRequests = (page: Page) =>
+  page.evaluate(
+    () =>
+      (window as unknown as { __strategyRequests?: Record<string, unknown>[] })
+        .__strategyRequests ?? [],
+  );
+const planStatus = (page: Page) =>
+  page.locator(".strategy-screen").getByRole("status").textContent();
+const stateTag = (page: Page) =>
+  page.locator(".strategy-plan .strategy-state").first().textContent();
+const cardTag = (page: Page) =>
+  page.locator(".strategy-plan-card .strategy-state").textContent();
+const proposalLine =
+  "Es una propuesta: no se guarda en el archivo hasta que la aceptes.";
+
+// the plan tab of a scene, with the zoom the pass is running at
+async function openAcceptedPlan(
+  page: Page,
+  base: string,
+  scene: string,
+  title: string,
+  zoomed: boolean,
+) {
+  await openPlan(page, base, scene);
+  if (zoomed)
+    await until(
+      () => page.evaluate(() => document.documentElement.style.zoom === "1.25"),
+      5000,
+      "Strategy zoom 125%",
+    );
+  await visible(page.getByRole("heading", { name: title, exact: true }));
+}
+
+// the state the zoomed pass photographs, and the ones every pass checks
+async function proposalStates(
+  page: Page,
+  base: string,
+  shot: Shot,
+  zoomed: boolean,
+) {
+  // a proposal: only a proposal until it is accepted, and then accepted, not saved
+  await openAcceptedPlan(page, base, "plannedFuji", "Plan calculado", zoomed);
+  assert.equal(await stateTag(page), "Propuesta");
+  assert.equal(await page.getByText(proposalLine, { exact: true }).count(), 1);
+  assert.equal(await page.getByText(/Ingeniero|Exportar/).count(), 0);
+  await shot("a-propuesta");
+  await press(button(page, "Aceptar propuesta"));
+  await visible(page.getByRole("heading", { name: "Plan aceptado" }));
+  assert.equal(await planStatus(page), "Plan aceptado.");
+  assert.equal(await stateTag(page), "Aceptado");
+  assert.equal(
+    await page.locator(".strategy-file-state").getAttribute("data-state"),
+    "dirty",
+  );
+  await visible(button(page, "Deshacer"));
+  assert.equal(await page.getByText(proposalLine).count(), 0);
+  // the request carries the revision and the id of the plan on view
+  const accept = (await strategyRequests(page)).filter(
+    (request) => request.method === "strategy.accept",
+  );
+  assert.equal(accept.length, 1);
+  assert.match(String(accept[0].revision), /^[0-9a-f]{64}$/);
+  assert.equal(typeof accept[0].computeId, "number");
+  await shot("a-aceptado-singuardar");
+  if (zoomed) return;
+  // «Deshacer» brings the proposal back
+  await press(button(page, "Deshacer"));
+  await visible(page.getByRole("heading", { name: "Plan calculado" }));
+  assert.equal(await planStatus(page), "Plan aceptado quitado.");
+  assert.equal(await stateTag(page), "Propuesta");
+}
+
+async function acceptedStates(page: Page, base: string, shot: Shot) {
+  // the plan of a file that already holds it, saved: the menu, and its question
+  await openAcceptedPlan(page, base, "acceptedFuji", "Plan aceptado", false);
+  assert.equal(await stateTag(page), "Aceptado");
+  assert.equal(await button(page, "Aceptar propuesta").count(), 0);
+  await visible(
+    page.getByText(/^Aceptado el \d{1,2} \p{L}+\.? 2026 a las \d{2}:\d{2}\.$/u),
+  );
+  assert.equal(
+    await page.locator(".strategy-file-state").getAttribute("data-state"),
+    "saved",
+  );
+  await shot("a-aceptado");
+  const menu = button(page, "Más acciones del plan aceptado");
+  await menu.press("ArrowDown");
+  const item = page.getByRole("menuitem", { name: /Quitar plan aceptado/ });
+  await visible(item);
+  await until(
+    () => item.evaluate((node) => node === document.activeElement),
+    5000,
+    "focus on the first item of the menu of the accepted plan",
+  );
+  await shot("a-menu");
+  await page.keyboard.press("Escape");
+  await until(
+    async () => (await item.count()) === 0,
+    5000,
+    "menu of the accepted plan closed",
+  );
+  await until(
+    () =>
+      menu.evaluate(
+        (node) =>
+          node === document.activeElement && node.matches(":focus-visible"),
+      ),
+    5000,
+    "focus returns to the menu of the accepted plan",
+  );
+  // removing it asks in the same place, with the focus on the safe button
+  await menu.press("ArrowDown");
+  await visible(item);
+  await page.keyboard.press("Enter");
+  const question = page.getByRole("group", {
+    name: "¿Quitar el plan aceptado?",
+  });
+  await visible(question);
+  await until(
+    () =>
+      button(page, "Cancelar").evaluate(
+        (node) =>
+          node === document.activeElement && node.matches(":focus-visible"),
+      ),
+    5000,
+    "focus on Cancelar",
+  );
+  assert.equal(
+    (await strategyRequests(page)).filter(
+      (request) => request.method === "strategy.unaccept",
+    ).length,
+    0,
+  );
+  await shot("a-quitar");
+  await page.keyboard.press("Escape");
+  await until(
+    async () => (await question.count()) === 0,
+    5000,
+    "question closed",
+  );
+  await until(
+    () => menu.evaluate((node) => node === document.activeElement),
+    5000,
+    "focus returns to the menu after cancelling",
+  );
+  assert.equal(await stateTag(page), "Aceptado");
+
+  // a proposal accepted with no guarantee says so, and can be accepted
+  await openAcceptedPlan(
+    page,
+    base,
+    "plannedFujiPartial",
+    "Plan calculado",
+    false,
+  );
+  assert.equal(await stateTag(page), "Propuesta");
+  await visible(page.getByText("Puedes aceptarla aunque no tenga garantía"));
+  await shot("a-parcial");
+}
+
+async function newProposalStates(
+  page: Page,
+  base: string,
+  shot: Shot,
+  zoomed: boolean,
+) {
+  // a proposal that is not the accepted plan: both, side by side
+  await openAcceptedPlan(
+    page,
+    base,
+    "acceptedFujiNew",
+    "Plan calculado",
+    zoomed,
+  );
+  const card = page.getByRole("region", { name: "Ya tienes un plan aceptado" });
+  await visible(card);
+  const text = (await card.textContent()) ?? "";
+  assert.match(text, /Plan aceptado: 6:01:04 · 5 paradas · aceptado el/);
+  assert.match(text, /Esta propuesta: 6:01:06 · 5 paradas · 2,0 s más lenta/);
+  await visible(page.getByText("2,0 s más que tu plan aceptado"));
+  await shot("a-nueva");
+  if (zoomed) {
+    // the question that replaces the accepted plan, at this zoom too
+    await button(page, "Aceptar propuesta").press("Enter");
+    await visible(
+      page.getByRole("group", {
+        name: "¿Sustituir tu plan aceptado por esta propuesta?",
+      }),
+    );
+    return;
+  }
+  await page.locator(".strategy-race").evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await shot("a-nueva-lista");
+  await page.locator(".strategy-race").evaluate((node) => {
+    node.scrollTop = 0;
+  });
+  // replacing asks in the same place, moves the focus and goes back to the button
+  await button(page, "Aceptar propuesta").press("Enter");
+  const question = page.getByRole("group", {
+    name: "¿Sustituir tu plan aceptado por esta propuesta?",
+  });
+  await visible(question);
+  assert.equal(await card.count(), 0);
+  await until(
+    () =>
+      button(page, "Cancelar").evaluate(
+        (node) =>
+          node === document.activeElement && node.matches(":focus-visible"),
+      ),
+    5000,
+    "focus on Cancelar",
+  );
+  assert.equal(
+    (await strategyRequests(page)).filter(
+      (request) => request.method === "strategy.accept",
+    ).length,
+    0,
+  );
+  await shot("a-sustituir");
+  await page.keyboard.press("Escape");
+  await until(
+    () =>
+      button(page, "Aceptar propuesta").evaluate(
+        (node) =>
+          node === document.activeElement && node.matches(":focus-visible"),
+      ),
+    5000,
+    "focus returns to Aceptar propuesta",
+  );
+  await visible(card);
+  await button(page, "Aceptar propuesta").press("Enter");
+  await visible(question);
+  await press(button(page, "Sustituir plan aceptado"));
+  await visible(page.getByRole("heading", { name: "Plan aceptado" }));
+  assert.equal(await planStatus(page), "Plan sustituido.");
+  assert.equal(await stateTag(page), "Aceptado");
+  assert.equal(await button(page, "Deshacer").count(), 0);
+  // back to the accepted plan: the proposal goes
+  await openAcceptedPlan(
+    page,
+    base,
+    "acceptedFujiNew",
+    "Plan calculado",
+    false,
+  );
+  await press(button(page, "Volver al plan aceptado"));
+  await visible(page.getByRole("heading", { name: "Plan aceptado" }));
+  assert.equal(await planStatus(page), "Mostrando el plan aceptado.");
+  assert.equal(await card.count(), 0);
+}
+
+async function staleStates(
+  page: Page,
+  base: string,
+  shot: Shot,
+  zoomed: boolean,
+) {
+  if (!zoomed) {
+    // the data changed, and the plan still reaches the finish
+    await openAcceptedPlan(
+      page,
+      base,
+      "acceptedFujiStale",
+      "Plan aceptado",
+      false,
+    );
+    assert.equal(await stateTag(page), "Desactualizado");
+    await visible(page.getByText("Ritmo por vuelta: 1:30,472 → 1:30,900"));
+    await visible(page.getByText(/sigue llegando a meta/));
+    assert.equal(await page.getByText("datos antiguos").count(), 4);
+    assert.equal(await page.getByText(/6:02:/).count(), 0);
+    await shot("a-desactualizado");
+  }
+  // the data changed, and it does not: the cause, and no lap
+  await openAcceptedPlan(
+    page,
+    base,
+    "acceptedFujiUnreachable",
+    "Plan aceptado",
+    zoomed,
+  );
+  assert.equal(await stateTag(page), "No llega a meta");
+  const alert = page.locator(".strategy-plan").getByRole("alert");
+  await visible(alert);
+  const said = (await alert.textContent()) ?? "";
+  assert.match(said, /Consumo por vuelta: 1,83 L → 1,85 L/);
+  assert.match(
+    said,
+    /Se quedaría sin combustible, energía o neumáticos antes de llegar a meta\./,
+  );
+  assert.doesNotMatch(said, /en la vuelta \d/);
+  await shot("a-desact-imposible");
+}
+
+async function carreraAcceptStates(
+  page: Page,
+  base: string,
+  shot: Shot,
+  zoomed: boolean,
+) {
+  const carrera = async (scene: string, title: RegExp) => {
+    await collection(page, base, scene);
+    await button(page, "Continuar").click();
+    await visible(page.locator(".strategy-plan-card"));
+    await visible(page.getByText(title));
+    if (zoomed)
+      await until(
+        () =>
+          page.evaluate(() => document.documentElement.style.zoom === "1.25"),
+        5000,
+        "Strategy zoom 125%",
+      );
+  };
+  await carrera("plannedFuji", /^Calculado · 6:01:04 · 5 paradas$/);
+  assert.equal(await cardTag(page), "Propuesta");
+  assert.equal(await page.getByText(proposalLine, { exact: true }).count(), 1);
+  await visible(button(page, "Aceptar propuesta"));
+  await shot("c-propuesta");
+  if (zoomed) return;
+  await carrera("acceptedFuji", /^6:01:04 · 5 paradas$/);
+  assert.equal(await cardTag(page), "Aceptado");
+  assert.equal(await page.locator("mark").count(), 0);
+  await shot("c-aceptado");
+  await carrera("acceptedFujiUnreachable", /^Aceptado · 6:01:04 · 5 paradas$/);
+  assert.equal(await cardTag(page), "No llega a meta");
+  assert.deepEqual(await page.locator("mark").allTextContents(), [
+    "82 L · 1,85 L/v",
+  ]);
+  await visible(
+    page.getByText(/Has cambiado «Consumo por vuelta»: 1,83 L → 1,85 L\./),
+  );
+  await shot("c-desactualizado");
+  // the card leads to the plan
+  await button(page, "Ver plan").press("Enter");
+  await visible(page.getByRole("heading", { name: "Plan aceptado" }));
+}
+
+async function acceptCollection(page: Page, base: string, shot: Shot) {
+  await collection(page, base, "acceptedFujiList");
+  const rows = page.locator(".strategy-row");
+  assert.equal(await rows.count(), 3);
+  const row = (name: string) => rows.filter({ hasText: name });
+  assert.match(
+    (await row("Fuji 6 Horas").textContent()) ?? "",
+    /Desactualizado/,
+  );
+  assert.match((await row("Le Mans").textContent()) ?? "", /Plan aceptado/);
+  assert.doesNotMatch(
+    (await row("Sprint de Spa").textContent()) ?? "",
+    /Plan aceptado|Desactualizado/,
+  );
+  await shot("col-aceptado");
+}
+
+// Every state of accepting the plan; the zoomed pass only photographs the five
+// states Opus drew at 125 %.
+async function acceptStates(
+  page: Page,
+  base: string,
+  shot: Shot,
+  zoomed = false,
+) {
+  await proposalStates(page, base, shot, zoomed);
+  if (!zoomed) await acceptedStates(page, base, shot);
+  await newProposalStates(page, base, shot, zoomed);
+  await staleStates(page, base, shot, zoomed);
+  await carreraAcceptStates(page, base, shot, zoomed);
+  if (!zoomed) await acceptCollection(page, base, shot);
 }

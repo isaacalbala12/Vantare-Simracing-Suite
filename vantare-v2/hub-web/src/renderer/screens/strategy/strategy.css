@@ -1586,7 +1586,8 @@
 
 .strategy-stale .strategy-changes {
   margin: var(--space-2) 0 0;
-  padding-inline-start: var(--space-6);
+  padding: 0;
+  list-style: none;
   font-size: var(--text-small);
 }
 

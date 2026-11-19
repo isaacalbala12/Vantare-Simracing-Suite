@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -26,7 +27,10 @@ import {
 } from "../src/renderer/screens/strategy/planText";
 import { StrategyScreen } from "../src/renderer/ui/strategy/StrategyScreen";
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 // The mock host answers every request; `mapView` reshapes the views it sends
 // (open and view), so a test fixes the plan the screen has to show.
@@ -79,7 +83,21 @@ function fill(values: Record<string, string>) {
 }
 const tab = (name: string) => screen.getByRole("tab", { name });
 const statusText = () => screen.getByRole("status").textContent;
-const pause = (ms: number) => new Promise((done) => setTimeout(done, ms));
+// Simulated time: the screen asks the host for the end of a calculation by the
+// clock, so these tests move the clock and never wait for real.
+async function advance(ms: number) {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+}
+async function openPlanSimulated() {
+  await advance(0);
+  click("Continuar");
+  fireEvent.click(tab("Plan"));
+}
+const views = (request: Client) =>
+  methods(request).filter((method) => method === "strategy.view").length;
+const heading = (name: string) => screen.getByRole("heading", { name });
 async function openRace() {
   await screen.findByRole("heading", { name: "Tus estrategias" });
   click("Continuar");
@@ -283,34 +301,175 @@ describe("states of the plan", () => {
   });
 
   it("receives the result when the calculation ends, announces it and stops asking", async () => {
+    vi.useFakeTimers();
     const request = mount("ready");
-    await openPlan();
+    await openPlanSimulated();
     click("Calcular plan");
-    await screen.findByRole("heading", { name: "Plan calculado" });
+    await advance(0); // the calculation starts and the screen schedules its first read
+    await advance(300);
+    expect(heading("Plan calculado")).toBeTruthy();
     expect(statusText()).toBe("Plan calculado: 5 minutos; 1 parada.");
     expect(screen.getAllByRole("status")).toHaveLength(1);
     const asked = methods(request).length;
-    await pause(600);
+    await advance(2000);
     expect(methods(request)).toHaveLength(asked);
   });
 
   it("keeps asking for the view while the host is still calculating, and stops on cancel", async () => {
+    vi.useFakeTimers();
+    const request = mount("calculating");
+    await openPlanSimulated();
+    click("Calcular plan");
+    await advance(0);
+    expect(heading("Calculando…")).toBeTruthy();
+    const before = views(request);
+    await advance(750);
+    expect(views(request)).toBeGreaterThanOrEqual(before + 2);
+    // asking never disables the way out
+    expect((button("Cancelar") as HTMLButtonElement).disabled).toBe(false);
+    click("Cancelar");
+    await advance(0);
+    expect(heading("Sin calcular")).toBeTruthy();
+    const after = views(request);
+    await advance(2000);
+    expect(views(request)).toBe(after);
+  });
+
+  it("keeps asking after a transient read error and ends the calculation when the host answers", async () => {
+    vi.useFakeTimers();
+    let armed = false;
+    let failures = 0;
+    mount("ready", (r) => {
+      if (r.method === "strategy.compute") armed = true;
+      if (armed && r.method === "strategy.view" && failures < 2) {
+        failures++;
+        return { kind: "io" };
+      }
+    });
+    await openPlanSimulated();
+    click("Calcular plan");
+    await advance(0);
+    await advance(2000);
+    expect(failures).toBe(2);
+    expect(heading("Plan calculado")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("after three read errors in a row says so, offers to try again and stops asking", async () => {
+    vi.useFakeTimers();
+    let armed = false;
+    let broken = true;
+    const request = mount("ready", (r) => {
+      if (r.method === "strategy.compute") armed = true;
+      if (armed && broken && r.method === "strategy.view")
+        return { kind: "io" };
+    });
+    await openPlanSimulated();
+    click("Calcular plan");
+    await advance(0);
+    await advance(2000);
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("No se puede saber cómo va el cálculo");
+    expect(heading("Calculando…")).toBeTruthy();
+    const asked = views(request);
+    await advance(3000);
+    expect(views(request), "no more reads once it gave up").toBe(asked);
+    broken = false;
+    click("Reintentar");
+    await advance(1000);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(heading("Plan calculado")).toBeTruthy();
+  });
+
+  it("cancels the calculation in force, quoting its own id, not an old one", async () => {
     const request = mount("calculating");
     await openPlan();
     click("Calcular plan");
     await screen.findByRole("heading", { name: "Calculando…" });
-    const views = () =>
-      methods(request).filter((method) => method === "strategy.view").length;
-    const before = views();
-    await pause(700);
-    expect(views()).toBeGreaterThanOrEqual(before + 2);
-    // asking never disables the way out
-    expect((button("Cancelar") as HTMLButtonElement).disabled).toBe(false);
     click("Cancelar");
     await screen.findByRole("heading", { name: "Sin calcular" });
-    const after = views();
-    await pause(600);
-    expect(views()).toBe(after);
+    click("Calcular plan");
+    await screen.findByRole("heading", { name: "Calculando…" });
+    click("Cancelar");
+    await screen.findByRole("heading", { name: "Sin calcular" });
+    const cancels = request.mock.calls
+      .map(([r]) => r)
+      .filter((r) => r.method === "strategy.cancel");
+    expect(cancels).toEqual([
+      { method: "strategy.cancel", computeId: 1 },
+      { method: "strategy.cancel", computeId: 2 },
+    ]);
+  });
+
+  it("shows the error when busy lasts after the single retry, without looping", async () => {
+    let cancelled = false;
+    const request = mount("calculating", (r) => {
+      if (r.method === "strategy.cancel") cancelled = true;
+      if (r.method === "strategy.compute" && cancelled) return { kind: "busy" };
+    });
+    await openPlan();
+    click("Calcular plan");
+    await screen.findByRole("heading", { name: "Calculando…" });
+    click("Cancelar");
+    await screen.findByRole("heading", { name: "Sin calcular" });
+    click("Calcular plan");
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "El archivo está ocupado. Vuelve a intentarlo.",
+    );
+    const afterCancel = methods(request).slice(
+      methods(request).lastIndexOf("strategy.cancel"),
+    );
+    // the refused request, one view and one more request: nothing else
+    expect(afterCancel).toEqual([
+      "strategy.cancel",
+      "strategy.compute",
+      "strategy.view",
+      "strategy.compute",
+    ]);
+    expect(heading("Sin calcular")).toBeTruthy();
+    expect(button("Calcular plan")).toBeTruthy();
+  });
+
+  it("calculates again from a calculated plan with the saved form and shows the calculation", async () => {
+    vi.useFakeTimers();
+    const { seen, map } = watch();
+    const request = mount("planned", undefined, map);
+    await openPlanSimulated();
+    expect(heading("Plan calculado")).toBeTruthy();
+    click("Calcular de nuevo");
+    await advance(0);
+    expect(heading("Calculando…")).toBeTruthy();
+    expect(tab("Plan").getAttribute("aria-selected")).toBe("true");
+    expect(sent(request, "strategy.compute")).toEqual({
+      method: "strategy.compute",
+      eventId: "event-1",
+      strategyId: "variant-1",
+      revision: expect.any(String),
+      form: seen.view?.form,
+    });
+    await advance(300);
+    expect(heading("Plan calculado")).toBeTruthy();
+  });
+
+  it("calculates from the plan that the changed data left pending", async () => {
+    vi.useFakeTimers();
+    const { seen, map } = watch();
+    const request = mount("ready", undefined, (view) =>
+      showing({
+        state: "pendingChanges",
+        computeId: null,
+        result: null,
+        error: null,
+        errorField: null,
+        edit: null,
+      })(map(view)),
+    );
+    await openPlanSimulated();
+    expect(heading("Datos cambiados")).toBeTruthy();
+    click("Calcular plan");
+    await advance(0);
+    expect(heading("Calculando…")).toBeTruthy();
+    expect(sent(request, "strategy.compute").form).toEqual(seen.view?.form);
   });
 
   it("explains a failed calculation, keeps the data and offers to try again", async () => {
@@ -342,6 +501,10 @@ describe("states of the plan", () => {
     click("Revisar datos");
     expect(tab("Carrera").getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("heading", { name: "Coche" })).toBeTruthy();
+    // the pressed button is gone: the focus goes to the title of the race
+    expect(document.activeElement).toBe(
+      screen.getByRole("heading", { name: "Practice" }),
+    );
     expect(
       screen.queryByRole("button", { name: "Cancelar edición" }),
     ).toBeNull();
@@ -726,6 +889,101 @@ describe("certificate sentences", () => {
   );
 });
 
+// ---- singular and plural ----
+
+describe("singular and plural", () => {
+  const short = (laps: number, stints: number) => {
+    const bounds = Array.from({ length: stints }, (_, i) => ({
+      fromLap: i === 0 ? 1 : laps - (stints - 1 - i),
+      toLap: i === 0 ? laps - (stints - 1) : laps - (stints - 1 - i),
+    }));
+    const base = result();
+    return plan("calculated", {
+      result: {
+        ...base,
+        metrics: base.metrics && {
+          ...base.metrics,
+          laps,
+          pitCount: stints - 1,
+        },
+        timeline: base.timeline && {
+          ...base.timeline,
+          stints: bounds,
+          pits: base.timeline.pits.slice(0, stints - 1).map((pit, i) => ({
+            ...pit,
+            lap: bounds[i].toLap,
+          })),
+        },
+      },
+    });
+  };
+
+  it("a short race with no stops is one stint and no stops, not «1 stints»", async () => {
+    mount("ready", undefined, showing(short(3, 1)));
+    await openPlan();
+    expect(screen.getByText("Sin paradas para 3 vueltas.")).toBeTruthy();
+    expect(
+      screen.getByRole("img", {
+        name: "Línea de tiempo: 1 stint y sin paradas en 3 vueltas",
+      }),
+    ).toBeTruthy();
+    const row = within(
+      screen.getByRole("list", { name: "Stints y paradas" }),
+    ).getAllByRole("listitem")[0].textContent;
+    expect(row).toContain("Vueltas 1–3");
+    expect(row).toContain("3 vueltas");
+  });
+
+  it("one stop is «1 parada», two stints «2 stints», and a one-lap stint is «Vuelta»", async () => {
+    mount("ready", undefined, showing(short(2, 2)));
+    await openPlan();
+    expect(
+      screen.getByText("2 stints y 1 parada para 2 vueltas."),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("img", {
+        name: "Línea de tiempo: 2 stints y 1 parada en 2 vueltas",
+      }),
+    ).toBeTruthy();
+    const rows = within(screen.getByRole("list", { name: "Stints y paradas" }))
+      .getAllByRole("listitem")
+      .map((row) => row.textContent ?? "");
+    expect(rows[0]).toContain("Vuelta 1");
+    expect(rows[0]).not.toContain("Vueltas");
+    expect(rows[0]).toContain("1 vuelta");
+    expect(rows[0]).not.toContain("1 vueltas");
+  });
+
+  it("asks for one lap as «la vuelta»", async () => {
+    mount("ready", undefined, (view) => {
+      if (view.form) view.form.inputs.raceLaps = "1";
+      return view;
+    });
+    await openPlan();
+    expect(
+      screen.getByText(/Vantare reparte la vuelta en stints/),
+    ).toBeTruthy();
+    expect(document.body.textContent).not.toContain("1 vueltas");
+  });
+});
+
+// ---- the Fuji scenes tell one story ----
+
+it("the Fuji scene has a header that fits its plan", async () => {
+  mount("plannedFuji");
+  await openPlan();
+  expect(heading("Plan calculado")).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "Fuji 6 Horas" })).toBeTruthy();
+  expect(
+    screen.getByText("Hypercar · Fuji Speedway · 360 min · 236 vueltas"),
+  ).toBeTruthy();
+  expect(screen.getByText(/Plan · estrategia «Seco»/)).toBeTruthy();
+  const figures = screen.getByRole("list", { name: "Cifras del plan" });
+  expect(
+    within(figures).getByText("Vueltas").closest("li")?.textContent,
+  ).toContain("las que pediste");
+});
+
 // ---- the status line ----
 
 describe("announcements", () => {
@@ -960,9 +1218,31 @@ describe("Confirmar y calcular", () => {
     expect(tab("Carrera").getAttribute("aria-selected")).toBe("true");
   });
 
-  it("keeps the editor and what was written when the host refuses to calculate", async () => {
+  it("confirms the data first and calculates after, so cancelling the calculation keeps what was written", async () => {
+    const request = mount("calculating");
+    await openRace();
+    click("Editar carrera");
+    fill({ "Nombre de la carrera": "Copa Fuji", "Ritmo por vuelta": "91,5" });
+    click("Confirmar y calcular");
+    await screen.findByRole("button", { name: "Cancelar" });
+    expect(methods(request).filter((m) => m !== "strategy.view")).toEqual([
+      "strategy.open",
+      "strategy.confirm",
+      "strategy.compute",
+    ]);
+    click("Cancelar");
+    await screen.findByRole("heading", { name: "Sin calcular" });
+    fireEvent.click(tab("Carrera"));
+    // the host drops what a cancelled calculation was given; what was confirmed stays
+    expect(screen.getByRole("heading", { name: "Copa Fuji" })).toBeTruthy();
+    expect(screen.getByText("1:31,500 por vuelta")).toBeTruthy();
+    expect(screen.getByText("Sin guardar")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("keeps the editor and what was written when the host refuses to confirm", async () => {
     mount("calculating", (r) =>
-      r.method === "strategy.compute" ? { kind: "rejected" } : undefined,
+      r.method === "strategy.confirm" ? { kind: "rejected" } : undefined,
     );
     await openRace();
     click("Editar carrera");
@@ -975,12 +1255,32 @@ describe("Confirmar y calcular", () => {
     expect(tab("Carrera").getAttribute("aria-selected")).toBe("true");
   });
 
+  it("keeps the confirmed data and says so when the host refuses to calculate afterwards", async () => {
+    const request = mount("calculating", (r) =>
+      r.method === "strategy.compute" ? { kind: "rejected" } : undefined,
+    );
+    await openRace();
+    click("Editar carrera");
+    fill({ "Nombre de la carrera": "Copa Fuji" });
+    click("Confirmar y calcular");
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "No se ha podido completar la acción.",
+    );
+    expect(methods(request)).toContain("strategy.confirm");
+    // nothing is lost: the data are confirmed and the editor is closed
+    expect(screen.getByRole("heading", { name: "Copa Fuji" })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Cancelar edición" }),
+    ).toBeNull();
+    expect(screen.getByText("Sin guardar")).toBeTruthy();
+  });
+
   it("keeps the editor, with its draft, when the data changed outside the screen", async () => {
     const { seen, map } = watch();
     mount(
       "calculating",
       (r) => {
-        if (r.method !== "strategy.compute" || !seen.view) return;
+        if (r.method !== "strategy.confirm" || !seen.view) return;
         return {
           kind: "strategyConflict",
           current: { ...structuredClone(seen.view), revision: "b".repeat(64) },
@@ -996,6 +1296,30 @@ describe("Confirmar y calcular", () => {
       "Los datos de la carrera han cambiado fuera de esta pantalla. Revisa lo que has escrito y vuelve a confirmar.",
     );
     expect(field("Nombre de la carrera").value).toBe("Mi nombre");
+    expect(tab("Carrera").getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("says the data changed outside when the conflict comes after confirming, at the calculation", async () => {
+    const { seen, map } = watch();
+    const request = mount(
+      "calculating",
+      (r) => {
+        if (r.method !== "strategy.compute" || !seen.view) return;
+        return {
+          kind: "strategyConflict",
+          current: { ...structuredClone(seen.view), revision: "b".repeat(64) },
+        };
+      },
+      map,
+    );
+    await openRace();
+    click("Editar carrera");
+    fill({ "Nombre de la carrera": "Mi nombre" });
+    click("Confirmar y calcular");
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "Los datos de la carrera han cambiado fuera de esta pantalla. Vuelve a calcular el plan.",
+    );
+    expect(methods(request)).toContain("strategy.confirm");
     expect(tab("Carrera").getAttribute("aria-selected")).toBe("true");
   });
 

@@ -512,6 +512,10 @@
   align-items: center;
   gap: var(--space-5);
 }
+/* The title takes focus by script after "Revisar datos"; it is not a control. */
+.strategy-race-head > :nth-child(2) > h2:focus-visible {
+  outline: none;
+}
 .strategy-race-head > :nth-child(2) {
   flex: 1;
   overflow-wrap: anywhere;

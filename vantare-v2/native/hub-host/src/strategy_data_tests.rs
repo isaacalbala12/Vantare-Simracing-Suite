@@ -385,6 +385,39 @@ fn the_same_inputs_to_compute_change_nothing_in_the_form() {
     assert_eq!(view.revision, draft.revision, "the document is the same bytes");
 }
 
+// The host writes what a calculation was given only when it collects a valid result.
+// Cancelling drops the result, so the data given to `compute` are NOT kept: the
+// screen has to confirm them first if cancelling must not lose them.
+#[test]
+fn cancelling_a_calculation_keeps_none_of_the_form_it_was_given() {
+    let root = Root::new();
+    let mut state = root.state();
+    let before = create_with_inputs(&mut state, "Fuji");
+    let mut other = form_of(&before).clone();
+    other.fields.name = "Typed and cancelled".into();
+    other.inputs.race_laps = "12".into();
+    let started = state
+        .compute(
+            before.active_event_id.as_deref().unwrap(),
+            before.active_strategy_id.as_deref().unwrap(),
+            &before.revision,
+            &other,
+        )
+        .unwrap();
+    assert_eq!(started.plan.state, StrategyPlanState::Calculating);
+    let id = started.plan.compute_id.unwrap();
+    let cancelled = state.cancel_calculation(id).unwrap();
+    assert_eq!(cancelled.plan.state, StrategyPlanState::Uncalculated);
+    // the worker may still end; its result is discarded
+    state.test_join_calculation();
+    let after = state.view();
+    assert_eq!(after.plan.state, StrategyPlanState::Uncalculated);
+    assert_eq!(after.form, before.form, "the typed values are gone");
+    assert_eq!(after.dirty, before.dirty);
+    assert_eq!(after.revision, before.revision);
+    assert_eq!(after.events, before.events);
+}
+
 #[test]
 fn the_form_follows_create_confirm_and_compute() {
     let root = Root::new();

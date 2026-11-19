@@ -1,3 +1,12 @@
+const timeText = {
+  lessThanMinute: "menos de un minuto",
+  hours: (n: number) => `${n} ${n === 1 ? "hora" : "horas"}`,
+  minutes: (n: number) => `${n} ${n === 1 ? "minuto" : "minutos"}`,
+  stops: (n: number) =>
+    n === 0 ? "sin paradas" : `${n} ${n === 1 ? "parada" : "paradas"}`,
+  stints: (n: number) => `${n} ${n === 1 ? "stint" : "stints"}`,
+};
+
 export const strategy = {
   symbols: { more: "⋯", add: "+", flag: "⚑", next: "›" },
   returnToCollection: "← Tus estrategias",
@@ -216,7 +225,7 @@ export const strategy = {
       sub: "Aún no hay plan para esta estrategia.",
       title: "Calcula tu plan",
       detail: (laps: string) =>
-        `Vantare reparte ${laps ? `las ${laps} vueltas` : "las vueltas"} en stints y decide en qué vuelta parar y cuánto cargar en cada parada, con los datos de la pestaña Carrera.`,
+        `Vantare reparte ${laps === "1" ? "la vuelta" : laps ? `las ${laps} vueltas` : "las vueltas"} en stints y decide en qué vuelta parar y cuánto cargar en cada parada, con los datos de la pestaña Carrera.`,
     },
     changed: {
       heading: "Datos cambiados",
@@ -316,12 +325,18 @@ export const strategy = {
     },
     full: "Carrera completa",
     timeline: (stints: number, stops: number, laps: number) =>
-      `Línea de tiempo: ${stints} stints y ${stops} ${stops === 1 ? "parada" : "paradas"} en ${lapsWord(laps)}`,
+      `Línea de tiempo: ${timeText.stints(stints)} y ${timeText.stops(stops)} en ${lapsWord(laps)}`,
     tooLong: "Este plan tiene demasiadas paradas para dibujarlo.",
+    unreadable: {
+      title: "No se puede saber cómo va el cálculo",
+      detail:
+        "No hemos podido leer el resultado. Puedes volver a intentarlo o cancelar el cálculo.",
+    },
     list: "Stints y paradas",
     stint: (n: number) => `Stint ${n}`,
     stop: (n: number) => `Parada ${n}`,
-    lapsRange: (from: number, to: number) => `Vueltas ${from}–${to}`,
+    lapsRange: (from: number, to: number) =>
+      from === to ? `Vuelta ${from}` : `Vueltas ${from}–${to}`,
     lap: (n: number) => `Vuelta ${n}`,
     lapCount: (n: number) => lapsWord(n),
     leaves: (load: string) => `sale con ${load}`,
@@ -340,14 +355,7 @@ export const strategy = {
       unfinished: "No se pudo completar el cálculo del plan.",
       noSolution: "Ningún plan termina la carrera con estos datos.",
     },
-    time: {
-      lessThanMinute: "menos de un minuto",
-      hours: (n: number) => `${n} ${n === 1 ? "hora" : "horas"}`,
-      minutes: (n: number) => `${n} ${n === 1 ? "minuto" : "minutos"}`,
-      stops: (n: number) =>
-        n === 0 ? "sin paradas" : `${n} ${n === 1 ? "parada" : "paradas"}`,
-      stints: (n: number) => `${n} ${n === 1 ? "stint" : "stints"}`,
-    },
+    time: timeText,
   },
 };
 

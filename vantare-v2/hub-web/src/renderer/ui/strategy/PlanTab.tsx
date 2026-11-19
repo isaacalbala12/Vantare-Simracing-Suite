@@ -30,6 +30,9 @@ export type PlanActions = {
   pending: boolean;
   calculate: () => void;
   cancel: () => void;
+  // the screen gave up asking the host how the calculation goes
+  unreadable: boolean;
+  readAgain: () => void;
   // to the Carrera tab; with a field, the editor opens with that field marked
   review: (field: StrategyField | null) => void;
 };
@@ -387,6 +390,23 @@ export function PlanTab({
               {t.cancel}
             </Button>
           </div>
+          {actions.unreadable && (
+            <div className="strategy-notice" data-tone="error" role="alert">
+              <span className="strategy-icon">
+                <Icon name="alert" />
+              </span>
+              <div>
+                <strong>{t.unreadable.title}</strong>
+                <p>{t.unreadable.detail}</p>
+                <div className="strategy-actions">
+                  <Button variant="primary" onClick={actions.readAgain}>
+                    <Icon name="refresh" />
+                    {t.retry}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
           <div className="strategy-skeleton" aria-hidden="true">
             <ul>
               {[

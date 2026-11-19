@@ -203,6 +203,52 @@ function fujiPlan(unproven: boolean): StrategyPlanView {
   };
 }
 
+// QA: the document of Opus' Fuji case, so the header of the race fits its plan
+// (236 laps in 360 minutes). Only the Fuji scenes use it.
+function fujiDocument(view: StrategyView): StrategyView {
+  const next = structuredClone(view);
+  const [event] = next.events;
+  if (event) {
+    event.name = "Fuji 6 Horas";
+    event.class = "Hypercar";
+    event.track = "Fuji Speedway";
+    event.strategies = event.strategies.map((variant, index) =>
+      index === 0 ? { ...variant, name: "Seco" } : variant,
+    );
+  }
+  if (next.form) {
+    Object.assign(next.form.fields, {
+      name: "Fuji 6 Horas",
+      class: "Hypercar",
+      track: "Fuji Speedway",
+      durationMinutes: "360",
+      fuelCapacityLiters: "82.0",
+      pitTransitSeconds: "25.0",
+      driverName: "Isaac Albalá",
+      driverInitials: "IA",
+      variantName: "Seco",
+    });
+    Object.assign(next.form.inputs, {
+      basePaceSeconds: "90.472",
+      fuelPerLapLiters: "1.83",
+      raceLaps: "236",
+      veCapacityPercent: "100",
+      vePerLapPercent: "2.316",
+      tyreLifeLaps: "43",
+      degradationSeconds: "0",
+      refuelRate: "4",
+      veRate: "2.5",
+      tyreServiceSeconds: "30",
+      formationSeconds: "0",
+      fuelStep: "1",
+      veStep: "1",
+      reserveLaps: "0.8",
+      serviceMode: "parallel",
+    });
+  }
+  return next;
+}
+
 // The edited schedule of a plan, kept like the host keeps it: the stop laps,
 // the plan they started from and whether they are recalculated.
 interface Editing {
@@ -380,6 +426,7 @@ export function create(context: MockContext): MockHandler {
               ? opening
               : "empty",
           );
+  if (scenario.startsWith("plannedFuji")) saved = fujiDocument(saved);
   let current = structuredClone(saved);
   // The entries of each variant written in this session (create, confirm and a
   // calculation), as the host keeps them in the document; the others are the

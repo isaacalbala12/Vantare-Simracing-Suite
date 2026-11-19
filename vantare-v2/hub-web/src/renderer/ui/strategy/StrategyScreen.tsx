@@ -39,13 +39,17 @@ type Selection = { eventId: string; strategyId: string };
 type Notice = "importedLegacy" | "recovered";
 
 export function StrategyScreen({ client }: { client: StrategyClient }) {
-  const { view, error, pending, act, clearError } = useStrategy(client);
+  const { view, error, pending, pollFailed, retryPoll, act, clearError } =
+    useStrategy(client);
   const [screen, setScreen] = useState<"collection" | "wizard" | "race">(
     "collection",
   );
   const [tab, setTab] = useState("race");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Draft>();
+  // the button that sent us to Carrera is gone: its title takes the focus
+  const [focusRaceTitle, setFocusRaceTitle] = useState(false);
+  const raceTitle = useRef<HTMLHeadingElement>(null);
   const [confirmConflict, setConfirmConflict] = useState<HostError>();
   const [announcement, setAnnouncement] = useState("");
   const [dismissed, setDismissed] = useState<Notice>();
@@ -96,6 +100,13 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     }
   }, [plan, editing]);
 
+  useEffect(() => {
+    if (focusRaceTitle && tab === "race" && raceTitle.current) {
+      raceTitle.current.focus();
+      setFocusRaceTitle(false);
+    }
+  }, [focusRaceTitle, tab]);
+
   function closeEditor() {
     clearError();
     setDraft(undefined);
@@ -108,14 +119,29 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
       setAnnouncement("");
       setDraft({ form: view.form, field });
       setEditing(true);
-    }
+    } else setFocusRaceTitle(true);
   }
   // Starts the calculation with this form. Returns whether the host took it;
   // when it did, the screen moves to the plan. On a conflict the host's view
   // replaces ours and the editor, if open, keeps what the user wrote.
-  async function calculate(form: StrategyComputeForm) {
+  // With `confirmFirst` (the form comes from the editor) the data are confirmed
+  // before the calculation starts: the host drops what a cancelled calculation
+  // was given, so cancelling must not be able to lose what was written.
+  async function calculate(form: StrategyComputeForm, confirmFirst = false) {
     if (!active || !variant) return false;
     setAnnouncement("");
+    if (confirmFirst) {
+      const confirmed = await strategyConfirm(act, active.id, variant.id, form);
+      if (!confirmed) return false;
+      if (!("value" in confirmed)) {
+        if (confirmed.error.kind === "strategyConflict")
+          setConfirmConflict(confirmed.error);
+        return false;
+      }
+      // confirmed: nothing written is at risk any more
+      setDraft(undefined);
+      setEditing(false);
+    }
     const result = await strategyCompute(act, active.id, variant.id, form);
     if (!result) return false;
     if ("value" in result) {
@@ -378,7 +404,9 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                 {t.returnToCollection}
               </Button>
               <div>
-                <h2>{active.name}</h2>
+                <h2 ref={raceTitle} tabIndex={-1}>
+                  {active.name}
+                </h2>
                 <p>
                   {[
                     active.class,
@@ -427,7 +455,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                   cancel={closeEditor}
                   clearError={clearError}
                   confirm={confirm}
-                  calculate={calculate}
+                  calculate={(form) => calculate(form, true)}
                 />
               )}
               {tab === "plan" && (
@@ -441,6 +469,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                     pending,
                     calculate: () => view.form && void calculate(view.form),
                     cancel: () => void strategyCancel(act, view.plan),
+                    unreadable: pollFailed,
+                    readAgain: retryPoll,
                     review,
                   }}
                 />

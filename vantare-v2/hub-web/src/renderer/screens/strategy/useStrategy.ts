@@ -22,6 +22,9 @@ export type StrategyAction =
 // How often the screen asks the host for the end of a calculation. The host
 // only moves a calculation on when asked, and never pushes the result.
 export const calculationPollMs = 250;
+// Read errors in a row the screen puts up with while it asks; then it stops
+// and lets the person retry or cancel.
+export const calculationPollFailures = 3;
 type Result = { value: StrategyView } | { error: HostError };
 
 async function send(
@@ -63,6 +66,8 @@ export function useStrategy(client: StrategyClient) {
   const [view, setView] = useState<StrategyView>();
   const [error, setError] = useState<HostError>();
   const [pending, setPending] = useState(false);
+  // the reads of a running calculation failed too often in a row
+  const [pollFailed, setPollFailed] = useState(false);
   const current = useRef<StrategyView | undefined>(undefined);
   const running = useRef<object | undefined>(undefined);
   const session = useRef<object | undefined>(undefined);
@@ -96,10 +101,15 @@ export function useStrategy(client: StrategyClient) {
   // answer is used only if nothing else replaced the view meanwhile.
   const calculating = view?.plan.state === "calculating";
   const computeId = view?.plan.computeId;
+  // a failure to read belongs to the calculation it happened in
+  useEffect(() => {
+    if (!calculating) setPollFailed(false);
+  }, [calculating]);
   useEffect(() => {
     // a calculation always has its id; a new one restarts the loop
-    if (!calculating || computeId == null) return;
+    if (!calculating || computeId == null || pollFailed) return;
     const token = session.current;
+    let failures = 0;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let stopped = false;
     async function poll() {
@@ -109,17 +119,22 @@ export function useStrategy(client: StrategyClient) {
         if (stopped || session.current !== token) return;
         if (current.current === asked) {
           if ("error" in read) {
-            setError(read.error);
-            return;
-          }
-          const fresh = read.value;
-          if (
-            fresh.revision !== asked?.revision ||
-            fresh.plan.state !== "calculating" ||
-            fresh.plan.computeId !== asked.plan.computeId
-          ) {
-            current.current = fresh;
-            setView(fresh);
+            // a transient error is asked again at the usual pace, up to the limit
+            if (++failures >= calculationPollFailures) {
+              setPollFailed(true);
+              return;
+            }
+          } else {
+            failures = 0;
+            const fresh = read.value;
+            if (
+              fresh.revision !== asked?.revision ||
+              fresh.plan.state !== "calculating" ||
+              fresh.plan.computeId !== asked.plan.computeId
+            ) {
+              current.current = fresh;
+              setView(fresh);
+            }
           }
         }
       }
@@ -130,7 +145,7 @@ export function useStrategy(client: StrategyClient) {
       stopped = true;
       clearTimeout(timer);
     };
-  }, [calculating, computeId, client]);
+  }, [calculating, computeId, client, pollFailed]);
 
   async function act(action: StrategyAction): Promise<Result | undefined> {
     if (!current.current || running.current || !session.current) return;
@@ -167,5 +182,13 @@ export function useStrategy(client: StrategyClient) {
       setError(result.error);
     return result;
   }
-  return { view, error, pending, act, clearError: () => setError(undefined) };
+  return {
+    view,
+    error,
+    pending,
+    pollFailed,
+    retryPoll: () => setPollFailed(false),
+    act,
+    clearError: () => setError(undefined),
+  };
 }

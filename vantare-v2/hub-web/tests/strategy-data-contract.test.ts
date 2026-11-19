@@ -886,3 +886,55 @@ it("the error strategyInvalidInput carries a field of the form or null, nothing 
   expect(isError({ ...error, field: 3 })).toBe(false);
   expect(isError({ ...error, field: null, extra: 1 })).toBe(false);
 });
+
+// ---- review of #2678 ----
+
+it("with several bad entries the mock names the field the host names", () => {
+  // the order of `ManualField::ALL` in the host: the laps come before the pace,
+  // and a text that is not a number beats a limit of the crate
+  const cases: [string, Partial<StrategySolverFields>, string][] = [
+    ["laps and pace texts", { basePaceSeconds: "x", raceLaps: "y" }, "raceLaps"],
+    [
+      "text late, limit early",
+      { basePaceSeconds: "0", serviceMode: "turbo", reserveLaps: "z" },
+      "reserveLaps",
+    ],
+  ];
+  for (const [case_, change, field] of cases) {
+    const host = session("strategy-ready");
+    const opened = host.open();
+    expect(
+      host.failure(
+        confirmation(opened, { inputs: { ...changed, ...change } }),
+      ),
+      case_,
+    ).toEqual({ kind: "strategyInvalidInput", field });
+  }
+});
+
+it("confirm and compute name the same field for the two scalars that live in fields", () => {
+  const cases: [string, Partial<typeof fields>, string][] = [
+    ["tank text", { fuelCapacityLiters: "lleno" }, "fuelCapacityLiters"],
+    ["tank negative", { fuelCapacityLiters: "-5" }, "fuelCapacityLiters"],
+    ["pit text", { pitTransitSeconds: "x" }, "pitTransitSeconds"],
+    ["pit negative", { pitTransitSeconds: "-1" }, "pitTransitSeconds"],
+  ];
+  for (const [case_, change, field] of cases) {
+    const host = session("strategy-ready");
+    const opened = host.open();
+    const form = { fields: { ...fields, ...change }, inputs: changed };
+    expect(
+      host.failure(confirmation(opened, {}, form)),
+      `confirm: ${case_}`,
+    ).toEqual({ kind: "strategyInvalidInput", field });
+    host.send({
+      method: "strategy.compute",
+      eventId: opened.activeEventId,
+      strategyId: opened.activeStrategyId,
+      revision: opened.revision,
+      form,
+    } as never);
+    const { plan } = host.view({ method: "strategy.view" });
+    expect(plan.errorField, `compute: ${case_}`).toBe(field);
+  }
+});

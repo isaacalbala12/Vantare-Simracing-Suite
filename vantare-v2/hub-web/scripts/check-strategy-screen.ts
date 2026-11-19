@@ -6,6 +6,13 @@ import type { Locator, Page } from "playwright-core";
 import type { HostToUi, UiToHost } from "../src/contract/generated/contract";
 import { until } from "./wait-for";
 
+// Comprobar y capturar son cosas distintas: `verify` (axe, desbordamiento,
+// foco, conducta) corre SIEMPRE; los PNG solo se escriben si se pasa
+// `evidence` (carpeta). `web-a11y.ts` la pasa solo con STRATEGY_SHOTS=1:
+//   STRATEGY_SHOTS=1 bun scripts/web-a11y.ts   -> test-results/web/strategy/
+// (o VANTARE_HUB_EVIDENCE=<carpeta> para otra raíz). Ninguna captura se usa
+// como aserción (no hay comparación de píxeles).
+
 type Scheme = "dark" | "light";
 const scenes = {
   col: "ready",
@@ -888,7 +895,8 @@ export async function checkStrategyScreen(
     await page.close();
   }
 
-  if (evidence) {
+  // Recorrido a 125 % con todas sus comprobaciones; el PNG solo bajo demanda.
+  {
     await Promise.all(
       (["light", "dark"] as const).map(async (scheme) => {
         const page = await parent.context().newPage();
@@ -909,9 +917,10 @@ export async function checkStrategyScreen(
           const shot = async (name: string) => {
             await verify(page, name, scheme, width);
             const suffix = scheme === "dark" ? "oscuro" : "claro";
-            await page.screenshot({
-              path: resolve(evidence, `zoom125-${name}-${suffix}.png`),
-            });
+            if (evidence)
+              await page.screenshot({
+                path: resolve(evidence, `zoom125-${name}-${suffix}.png`),
+              });
           };
           await shot("carrera");
           await editRace(page, shot);

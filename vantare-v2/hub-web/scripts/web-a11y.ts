@@ -247,7 +247,10 @@ try {
     checkStrategyScreen(
       page,
       server.resolvedUrls?.local[0] ?? "",
-      resolve(evidence, "strategy"),
+      // Capturas solo bajo demanda (#2682): STRATEGY_SHOTS=1.
+      process.env.STRATEGY_SHOTS === "1"
+        ? resolve(evidence, "strategy")
+        : undefined,
     ),
   );
   await timed("checkWorkshopScreen", () =>

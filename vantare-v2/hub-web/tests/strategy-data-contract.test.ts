@@ -447,6 +447,8 @@ it("every reply of the mock passes the strict validator, with and without a form
     "strategy-ready",
     "strategy-noInputs",
     "strategy-planned",
+    "strategy-plannedFuji",
+    "strategy-plannedFujiPartial",
     "strategy-recovered",
     "strategy-protected",
     "strategy-importedLegacy",
@@ -455,6 +457,45 @@ it("every reply of the mock passes the strict validator, with and without a form
     const reply = host.send({ method: "strategy.open" });
     if (reply?.kind !== "response") throw Error(scene);
     expect(isReply(reply.result as unknown as Loose), scene).toBe(true);
+  }
+});
+
+// The QA scenes of the Plan tab end a calculation in the way their name says,
+// and every view they send passes the strict validator.
+it.each([
+  ["strategy-calculating", "calculating"],
+  ["strategy-computeFailed", "error"],
+  ["strategy-computeInvalid", "error"],
+  ["strategy-reasonNoFeasiblePlan", "calculated"],
+])("%s calculates up to %s with valid replies", (scene, state) => {
+  const host = session(scene);
+  const opened = host.open();
+  if (!opened.form) throw Error("form");
+  const started = host.send({
+    method: "strategy.compute",
+    eventId: opened.activeEventId,
+    strategyId: opened.activeStrategyId,
+    revision: opened.revision,
+    form: opened.form,
+  });
+  if (started?.kind !== "response") throw Error(scene);
+  expect(isReply(started.result as unknown as Loose), scene).toBe(true);
+  // the host moves a calculation on only when it is asked for the view
+  const asked = host.send({ method: "strategy.view" });
+  if (asked?.kind !== "response") throw Error(scene);
+  expect(isReply(asked.result as unknown as Loose), scene).toBe(true);
+  const { plan } = (asked.result as { value: StrategyView }).value;
+  expect(plan.state).toBe(state);
+  if (scene === "strategy-computeFailed") expect(plan.error).toBe("failed");
+  if (scene === "strategy-computeInvalid")
+    expect(plan.errorField).toBe("raceLaps");
+  // it never ends: the same answer again, until it is cancelled
+  if (state === "calculating") {
+    const again = host.send({ method: "strategy.view" });
+    if (again?.kind !== "response") throw Error(scene);
+    expect((again.result as { value: StrategyView }).value.plan.state).toBe(
+      "calculating",
+    );
   }
 });
 

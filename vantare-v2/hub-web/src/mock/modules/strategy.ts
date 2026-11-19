@@ -139,6 +139,70 @@ function reasonPlan(reason: StrategyReason): StrategyPlanView {
   return structuredClone(plan) as StrategyPlanView;
 }
 
+// QA: the plan of Opus' Fuji case (236 laps, 6 stints, 5 stops), to see a plan
+// of a real size. Its figures were worked out by hand in the design, not by the solver.
+function fujiPlan(unproven: boolean): StrategyPlanView {
+  const stops = [43, 85, 127, 170, 212];
+  const loads = [
+    [78, 99],
+    [77, 97],
+    [77, 98],
+    [79, 99],
+    [76, 96],
+  ];
+  const stints = [...stops, 236].map((toLap, index) => ({
+    fromLap: (stops[index - 1] ?? 0) + 1,
+    toLap,
+  }));
+  return {
+    state: unproven ? "partial" : "calculated",
+    computeId: 1,
+    error: null,
+    errorField: null,
+    result: {
+      certificate: unproven ? "not_proven" : "proven",
+      degraded: false,
+      reason: unproven ? "searchBudgetExhausted" : null,
+      steps: { fuelLiters: 1, vePercent: 1 },
+      metrics: {
+        totalSeconds: 21664,
+        laps: 236,
+        pitCount: 5,
+        fuelReserveRealLaps: 1.14,
+        fuelReserveRequiredLaps: 0.8,
+      },
+      timeline: {
+        pilot: "Isaac",
+        basePaceSeconds: 90.472,
+        fuelStartLiters: 82,
+        fuelFinishLiters: 2.1,
+        veStartPercent: 100,
+        veFinishPercent: 4,
+        stints,
+        pits: stops.map((lap, index) => ({
+          lap,
+          fuelLiters: loads[index][0],
+          vePercent: loads[index][1],
+          changeTyres: true,
+          service: "parallel" as const,
+        })),
+      },
+    },
+    edit: {
+      stints,
+      stops: stops.map((lap, index) => ({
+        lap,
+        minLap: (stops[index - 1] ?? 0) + 1,
+        maxLap: (stops[index + 1] ?? 236) - 1,
+        fuelLiters: loads[index][0],
+        vePercent: loads[index][1],
+      })),
+      canReset: false,
+      error: null,
+    },
+  };
+}
+
 // The edited schedule of a plan, kept like the host keeps it: the stop laps,
 // the plan they started from and whether they are recalculated.
 interface Editing {
@@ -299,6 +363,8 @@ export function create(context: MockContext): MockHandler {
     "invalidInputs",
     "confirmRejected",
     "planned",
+    "calculating",
+    "compute",
   ].some((prefix) => scenario.startsWith(prefix))
     ? "ready"
     : scenario;
@@ -583,12 +649,20 @@ export function create(context: MockContext): MockHandler {
       recalculating = undefined;
       restore();
       opened = true;
-      if (scenario === "planned") {
-        // QA: a document with its plan already calculated and editable
-        current.plan = {
-          ...calculation("calculated"),
-          computeId: ++computeSequence,
-        };
+      if (scenario.startsWith("planned")) {
+        // QA: a document with its plan already calculated and editable; the
+        // Fuji scenes have the size of a real race
+        current.plan =
+          scenario === "plannedFuji" || scenario === "plannedFujiPartial"
+            ? fujiPlan(scenario === "plannedFujiPartial")
+            : {
+                ...calculation("calculated"),
+                computeId: ++computeSequence,
+              };
+        computeSequence = Math.max(
+          computeSequence,
+          current.plan.computeId ?? 0,
+        );
         editing = startEditing(current.plan);
       }
     }
@@ -758,8 +832,18 @@ export function create(context: MockContext): MockHandler {
         editing.error = null;
       }
       current.plan = editedPlan(editing, finished);
-    } else if (request.method === "strategy.view" && pending) {
-      const { id, valid, fields, inputs } = pending;
+    } else if (
+      request.method === "strategy.view" &&
+      pending &&
+      // QA: this calculation never ends until it is cancelled
+      scenario !== "calculating"
+    ) {
+      const { id, fields, inputs } = pending;
+      // QA: the calculation of these scenes ends rejecting an input or failing
+      const valid =
+        pending.valid &&
+        scenario !== "computeInvalid" &&
+        scenario !== "computeFailed";
       pending = undefined;
       if (valid) {
         // a calculation confirms its inputs, whatever it finds (the host keeps no plan)
@@ -789,7 +873,9 @@ export function create(context: MockContext): MockHandler {
       current.plan = {
         ...(valid && reason
           ? reasonPlan(reason)
-          : calculation(valid ? "calculated" : "error")),
+          : scenario === "computeFailed"
+            ? { ...noPlan, state: "error", error: "failed" }
+            : calculation(valid ? "calculated" : "error")),
         computeId: id,
       };
       editing = valid ? startEditing(current.plan) : undefined;

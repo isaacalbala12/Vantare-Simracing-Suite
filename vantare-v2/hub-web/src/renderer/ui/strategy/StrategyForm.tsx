@@ -8,7 +8,7 @@ import { strategy as t } from "../../i18n/strategy";
 // have no control: the manual calculation only supports the dry mode.
 export type Field = keyof typeof t.labels;
 type Values = Record<Field | "team" | "variantMode", string>;
-type Errors = Partial<Record<Field, string>>;
+export type Errors = Partial<Record<Field, string>>;
 
 export const initial: Values = {
   track: "",
@@ -207,9 +207,10 @@ export function SummaryRows({
   );
 }
 
-export function useStrategyForm(initialValues: Values) {
+// `rejected` marks fields from the start: the calculation did not accept them.
+export function useStrategyForm(initialValues: Values, rejected?: Errors) {
   const [values, setValues] = useState(initialValues);
-  const [errors, setErrors] = useState<Errors>({});
+  const [errors, setErrors] = useState<Errors>(rejected ?? {});
 
   const focusErrors = useCallback(
     (node: HTMLDivElement | null) => node?.focus(),

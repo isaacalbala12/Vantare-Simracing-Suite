@@ -5,7 +5,10 @@ import {
   useRef,
   useState,
 } from "react";
-import type { StrategyComputeForm } from "../../../contract/generated/strategy";
+import type {
+  StrategyComputeForm,
+  StrategyField,
+} from "../../../contract/generated/strategy";
 import { Icon } from "../../assets/icons/Icon";
 import { strategy as t } from "../../i18n/strategy";
 import { Button } from "../Button";
@@ -195,22 +198,33 @@ function summary(form: StrategyComputeForm) {
   ] as const;
 }
 
+// What the editor opens with after a calculation refused an input: the form
+// that was sent and the field to mark.
+export type Draft = { form: StrategyComputeForm; field: StrategyField };
+
+type EditorActions = {
+  pending: boolean;
+  cancel: () => void;
+  clearError: () => void;
+  confirm: (form: StrategyComputeForm) => Promise<boolean>;
+  calculate: (form: StrategyComputeForm) => Promise<boolean>;
+};
+
 export function RaceTab({
   form,
   editing,
+  draft,
   pending,
   edit,
   cancel,
   clearError,
   confirm,
-}: {
+  calculate,
+}: EditorActions & {
   form: StrategyComputeForm | null;
   editing: boolean;
-  pending: boolean;
+  draft?: Draft;
   edit: () => void;
-  cancel: () => void;
-  clearError: () => void;
-  confirm: (form: StrategyComputeForm) => Promise<boolean>;
 }) {
   const restore = useRef<number | undefined>(undefined);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
@@ -225,10 +239,12 @@ export function RaceTab({
     return (
       <RaceEditor
         form={form}
+        draft={draft}
         pending={pending}
         cancel={cancel}
         clearError={clearError}
         confirm={confirm}
+        calculate={calculate}
       />
     );
   return (
@@ -266,43 +282,66 @@ export function RaceTab({
 
 function RaceEditor({
   form,
+  draft,
   pending,
   cancel,
   clearError,
   confirm,
-}: {
-  form: StrategyComputeForm;
-  pending: boolean;
-  cancel: () => void;
-  clearError: () => void;
-  confirm: (form: StrategyComputeForm) => Promise<boolean>;
-}) {
-  const submit = useRef<HTMLButtonElement>(null);
-  const [failures, setFailures] = useState(0);
-  // after a failed confirmation the focus goes back to the confirm button
+  calculate,
+}: EditorActions & { form: StrategyComputeForm; draft?: Draft }) {
+  const confirmButton = useRef<HTMLButtonElement>(null);
+  const calculateButton = useRef<HTMLButtonElement>(null);
+  const [failures, setFailures] = useState<{
+    count: number;
+    last: "confirm" | "calculate";
+  }>({ count: 0, last: "confirm" });
+  // after a failed confirmation the focus goes back to the button that was used
   useEffect(() => {
-    if (failures) submit.current?.focus();
+    if (failures.count)
+      (failures.last === "confirm"
+        ? confirmButton
+        : calculateButton
+      ).current?.focus();
   }, [failures]);
   const original = formValues(form);
-  const { v, field, errorSummary, validate } = useStrategyForm(original);
+  // a field the calculation refused starts marked; one with no control is said apart
+  const refused = draft && editable.includes(draft.field as Field);
+  const { v, id, field, errorSummary, validate } = useStrategyForm(
+    formValues(draft?.form ?? form),
+    refused ? { [draft.field as Field]: t.calc.rejected.inField } : undefined,
+  );
+  useEffect(() => {
+    if (refused)
+      document
+        .getElementById(`${id}-${draft.field}`)
+        ?.scrollIntoView?.({ block: "center" });
+  }, [refused, draft, id]);
   const focusTitle = useCallback(
     (node: HTMLHeadingElement | null) => node?.focus(),
     [],
   );
   const estimate = lapEstimate(v.durationMinutes, v.basePaceSeconds);
   const changes = editable.filter((key) => v[key] !== original[key]).length;
+  // Validates and sends; a failure keeps the editor, with what was written.
+  function send(
+    action: (form: StrategyComputeForm) => Promise<boolean>,
+    used: "confirm" | "calculate",
+  ) {
+    if (pending) return;
+    clearError();
+    if (validate(editable))
+      void action(toForm(v, form)).then((done) => {
+        if (!done)
+          setFailures((last) => ({ count: last.count + 1, last: used }));
+      });
+  }
   return (
     <form
       className="strategy-race-editor"
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        if (pending) return;
-        clearError();
-        if (validate(editable))
-          void confirm(toForm(v, form)).then((done) => {
-            if (!done) setFailures((count) => count + 1);
-          });
+        send(confirm, "confirm");
       }}
     >
       <div className="strategy-race-editor-body">
@@ -315,6 +354,11 @@ function RaceEditor({
             <p>{t.editingDetail}</p>
           </div>
         </div>
+        {draft && !refused && (
+          <div className="strategy-notice" data-tone="error" role="alert">
+            {t.calc.rejected.general}
+          </div>
+        )}
         {errorSummary}
         {sections.map(([title, fields]) => (
           <fieldset key={title} disabled={pending}>
@@ -343,9 +387,19 @@ function RaceEditor({
         >
           {t.cancelEdit}
         </Button>
-        <Button ref={submit} type="submit" variant="primary" disabled={pending}>
+        <Button ref={confirmButton} type="submit" disabled={pending}>
           <Icon name="check" />
           {t.confirm}
+        </Button>
+        <Button
+          ref={calculateButton}
+          type="button"
+          variant="primary"
+          disabled={pending}
+          onClick={() => send(calculate, "calculate")}
+        >
+          <Icon name="play" />
+          {t.calc.confirmAndCalculate}
         </Button>
       </div>
     </form>

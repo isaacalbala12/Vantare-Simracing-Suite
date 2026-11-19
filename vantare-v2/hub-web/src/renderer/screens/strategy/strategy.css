@@ -405,10 +405,19 @@
   font-weight: 650;
 }
 .strategy-field small {
+  text-decoration: none;
   color: var(--text-3);
 }
 .strategy-field small[data-error="true"] {
-  color: var(--accent-bright);
+  display: flex;
+  gap: var(--space-1);
+  align-items: flex-start;
+  color: color-mix(in srgb, var(--err) 45%, var(--text-1));
+}
+.strategy-field small[data-error="true"] :where(svg) {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
 }
 
 .strategy-input {
@@ -422,7 +431,14 @@
   background: var(--surface-panel);
 }
 .strategy-input:has(input[aria-invalid="true"]) {
-  border-color: var(--accent-bright);
+  border-color: color-mix(in srgb, var(--err) 45%, var(--text-1));
+}
+.strategy-input:has(:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -4px;
+}
+.strategy-input input:focus-visible {
+  outline: none;
 }
 .strategy-input input {
   width: 100%;
@@ -435,6 +451,10 @@
   white-space: nowrap;
 }
 
+.strategy-service > .strategy-legend {
+  margin-bottom: var(--space-2);
+  font-weight: 650;
+}
 .strategy-manual,
 .strategy-pilot,
 .strategy-service label {
@@ -473,6 +493,16 @@
   font-weight: 650;
   padding-block: var(--space-2);
 }
+.strategy-race-cards .strategy-review-head svg {
+  width: var(--space-5);
+  height: var(--space-5);
+}
+
+.strategy-notice.strategy-edit-notice > svg {
+  flex: none;
+  color: var(--accent-bright);
+}
+
 .strategy-advanced:not([open]) summary svg {
   rotate: -90deg;
 }
@@ -516,5 +546,98 @@
   .strategy-row-data,
   .strategy-row > :last-child {
     display: none;
+  }
+}
+
+.strategy-race[data-editing="true"] {
+  flex: 1;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.strategy-race[data-editing="true"] > [role="tabpanel"],
+.strategy-race-editor {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.strategy-race-editor {
+  flex: 1;
+  gap: var(--space-5);
+}
+
+.strategy-race-editor-body {
+  display: grid;
+  align-content: start;
+  gap: var(--space-6);
+  min-height: 0;
+  overflow: auto;
+}
+
+.strategy-race-editor fieldset {
+  min-width: 0;
+}
+
+.strategy-race-editor legend {
+  margin-bottom: var(--space-2);
+  font-weight: 650;
+}
+
+.strategy-race-editor .strategy-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.strategy-race-footer {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.strategy-race-footer > button:first-child {
+  margin-inline-end: 0;
+}
+
+.strategy-edit-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.strategy-edit-notice h3 {
+  width: fit-content;
+}
+/* The title takes focus by script so it is announced; it is not a control. */
+.strategy-edit-notice h3:focus-visible {
+  outline: none;
+}
+
+.strategy-race-cards {
+  align-items: stretch;
+}
+
+.strategy-race-cards h3 {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.strategy-race-editor .strategy-lap-estimate {
+  font-size: var(--text-small);
+}
+
+@container (width < 760px) {
+  .strategy-race-editor .strategy-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (width < 480px) {
+  .strategy-race-cards,
+  .strategy-race-editor .strategy-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .strategy-race-editor .strategy-field[data-wide="true"] {
+    grid-column: auto;
   }
 }

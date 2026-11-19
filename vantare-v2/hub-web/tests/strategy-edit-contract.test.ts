@@ -1,8 +1,7 @@
 import { expect, it } from "vitest";
-import corpus from "../src/contract/generated/corpus/strategy.json";
 import { isRequest } from "../src/contract/modules/strategy";
 import { createMockHost } from "../src/mock/host";
-import { requestOf, requests } from "./strategy-corpus";
+import { requestOf } from "./strategy-corpus";
 
 const sample = requestOf("strategy.create");
 if (sample?.method !== "strategy.create" || !sample.fields)

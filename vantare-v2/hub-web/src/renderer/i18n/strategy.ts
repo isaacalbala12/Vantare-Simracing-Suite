@@ -52,6 +52,8 @@ export const strategy = {
   openOther: "Abrir otro archivo…",
   discard: "Descartar cambios",
   conflict: "No se ha guardado: el archivo ha cambiado fuera de esta pantalla.",
+  confirmConflict:
+    "Los datos de la carrera han cambiado fuera de esta pantalla. Revisa lo que has escrito y vuelve a confirmar.",
   saved: "Guardado.",
   created: "Carrera creada.",
   loading: "Abriendo estrategias…",
@@ -101,6 +103,26 @@ export const strategy = {
   unsaved: "Si cierras sin guardar, la carrera se pierde.",
   create: "Crear carrera",
   edit: "Editar",
+  editing: "Editando los datos de la carrera",
+  editingDetail:
+    "Los cambios no cuentan hasta que pulses «Confirmar datos». Mientras haya datos sin confirmar no puedes guardar el archivo ni cambiar de carrera.",
+  cancelEdit: "Cancelar edición",
+  confirm: "Confirmar datos",
+  confirmed: "Datos confirmados.",
+  unconfirmed: (count: number) =>
+    count === 1 ? "1 dato sin confirmar" : `${count} datos sin confirmar`,
+  noForm: "No se pueden mostrar los datos de esta carrera.",
+  lapEstimate: (estimate: string) =>
+    `Vueltas ≈ duración ÷ ritmo: unas ${estimate} vueltas. El plan usa las vueltas que indiques.`,
+  before: (value: string) => `Antes: ${value}`,
+  driverAndStrategy: "Piloto y estrategia",
+  noFormation: "No hay",
+  noWear: "sin desgaste",
+  noLimit: "sin límite",
+  together: "Todo a la vez",
+  loads: (fuel: string, energy: string) =>
+    `de ${fuel} L en ${fuel} L · de ${energy} % en ${energy} %`,
+  perLap: (time: string) => `${time} por vuelta`,
   editBlock: (block: string) => `Editar ${block.toLowerCase()}`,
   yourRace: "Tu carrera",
   summaryHelp: "Se guarda al crear la carrera en el último paso.",
@@ -117,6 +139,7 @@ export const strategy = {
     "Los campos marcados están vacíos o no son válidos. No se ha guardado nada a medias.",
   required: "Completa este campo.",
   length: "Acorta este texto.",
+  control: "No uses saltos de línea ni caracteres invisibles.",
   positive: "Tiene que ser mayor que 0.",
   integer: "Escribe un número entero mayor que 0.",
   range: "Escribe un número dentro del intervalo indicado.",
@@ -147,6 +170,7 @@ export const strategy = {
     basePaceSeconds: "Ritmo por vuelta",
     variantName: "Nombre de esta estrategia",
     variantNote: "Nota",
+    serviceMode: "En la parada",
   },
   help: {
     startAt: "Fecha y hora de inicio",
@@ -166,6 +190,7 @@ export const strategy = {
     combo: "Circuito · clase",
     duration: "Duración · vueltas",
     laps: "Vueltas",
+    lap: "vuelta",
     fuel: "Depósito · consumo",
     energy: "Energía virtual",
     tyres: "Neumáticos",
@@ -173,6 +198,7 @@ export const strategy = {
     service: "Repostaje · recarga",
     wheels: "Ruedas",
     pace: "Ritmo",
+    loads: "Cargas",
   },
   optional: "Opcional",
 };

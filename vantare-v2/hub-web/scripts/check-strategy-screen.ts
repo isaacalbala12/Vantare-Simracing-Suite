@@ -168,6 +168,8 @@ async function verify(
         document.querySelector(".v-shell-main"),
         node,
         node.querySelector(".strategy-wizard-body"),
+        node.querySelector(".strategy-race"),
+        node.querySelector(".strategy-race-editor-body"),
       ].every((panel) => !panel || panel.scrollWidth <= panel.clientWidth + 1),
     ),
     true,
@@ -215,6 +217,9 @@ async function verify(
     !/[a-z]:[\\/]|\\\\|(^|\s)\/(?:[^\s]+\/)+/im.test(text),
     `path displayed: ${scene}`,
   );
+  // The editor was just audited in this layout. The focus exercise checks
+  // the ring and border directly without a second axe pass over the same form.
+  if (scene === "carrera-foco" || scene === "carrera-editar-fin") return;
   const { violations } = await new AxeBuilder({ page })
     .include(".strategy-screen")
     .include('[role="menu"][aria-label="Archivo"]')
@@ -227,6 +232,95 @@ async function verify(
     })),
     [],
     `Estrategia/${scene}/${scheme}/${width}`,
+  );
+}
+
+async function editRace(page: Page, shot: (name: string) => Promise<void>) {
+  await page
+    .getByRole("button", { name: "Editar carrera", exact: true })
+    .press("Enter");
+  // The title takes programmatic focus so a screen reader announces it, but it
+  // is not a control: it keeps tabindex -1 and draws no focus ring.
+  const title = page.getByRole("heading", {
+    name: "Editando los datos de la carrera",
+  });
+  assert(await title.evaluate((node) => node === document.activeElement));
+  assert.equal(await title.getAttribute("tabindex"), "-1");
+  assert.equal(
+    await title.evaluate((node) => getComputedStyle(node).outlineStyle),
+    "none",
+  );
+  await shot("carrera-editar");
+  const body = page.locator(".strategy-race-editor-body");
+  await body.evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await shot("carrera-editar-fin");
+  await body.evaluate((node) => {
+    node.scrollTop = 0;
+  });
+
+  const deposit = page.getByRole("textbox", { name: "Depósito", exact: true });
+  const date = page.getByRole("textbox", { name: "Salida", exact: true });
+  assert.equal(
+    await page
+      .getByText("Fecha y hora de inicio", { exact: true })
+      .evaluate(
+        (node) =>
+          !!node.closest("a, [role=link]") ||
+          getComputedStyle(node).textDecorationLine !== "none",
+      ),
+    false,
+  );
+  await date.press("Tab");
+  assert(
+    await page
+      .getByRole("textbox", { name: "Duración", exact: true })
+      .evaluate(
+        (node) =>
+          node === document.activeElement && node.matches(":focus-visible"),
+      ),
+  );
+  const depositDecoration = () =>
+    deposit.evaluate((node) => {
+      if (!node.parentElement) throw new Error("Missing field frame");
+      const style = getComputedStyle(node.parentElement);
+      return {
+        border: style.borderColor,
+        outline: style.outlineStyle,
+        width: style.outlineWidth,
+      };
+    });
+  const clean = await depositDecoration();
+  await deposit.fill("85");
+  assert.equal(await deposit.getAttribute("aria-invalid"), null);
+  assert(await deposit.evaluate((node) => node.matches(":focus-visible")));
+  const focused = await depositDecoration();
+  assert.equal(focused.border, clean.border);
+  assert.equal(focused.outline, "solid");
+  assert(Number.parseFloat(focused.width) >= 1, "visible field focus outline");
+  await shot("carrera-foco");
+
+  await deposit.fill("");
+  await button(page, "Confirmar datos").press("Enter");
+  const alert = page.getByRole("alert");
+  await alert.getByText("Revisa 1 dato antes de continuar").waitFor();
+  assert.equal(await deposit.getAttribute("aria-invalid"), "true");
+  const invalid = await depositDecoration();
+  assert.notEqual(invalid.border, focused.border);
+  assert.equal(invalid.outline, "none");
+  await page
+    .locator(".strategy-field [data-error=true]")
+    .scrollIntoViewIfNeeded();
+  await shot("carrera-error");
+  await button(page, "Cancelar edición").press("Enter");
+  assert(
+    await page
+      .getByRole("button", { name: "Editar carrera", exact: true })
+      .evaluate(
+        (node) =>
+          node.matches(":focus-visible") && document.activeElement === node,
+      ),
   );
 }
 
@@ -250,6 +344,7 @@ async function exercise(
     if (
       evidence &&
       (width === 1440 ||
+        name.startsWith("carrera") ||
         (scheme === "dark" && ["col", "as-reglas"].includes(name)))
     )
       await page.screenshot({
@@ -302,6 +397,7 @@ async function exercise(
   await button(page, "Continuar").click();
   await page.getByRole("tab", { name: "Carrera", exact: true }).waitFor();
   await saveShot("carrera");
+  await editRace(page, saveShot);
 
   await collection(page, base, "ready");
   await chooseWizard(page);
@@ -391,6 +487,40 @@ export async function checkStrategyScreen(
     assert.equal(await page.locator(".strategy-screen").count(), 0);
   } finally {
     await page.close();
+  }
+
+  if (evidence) {
+    await Promise.all(
+      (["light", "dark"] as const).map(async (scheme) => {
+        const page = await parent.context().newPage();
+        try {
+          const width = 1600;
+          await page.setViewportSize({ width, height: 900 });
+          await setup(page, scheme, 125);
+          await collection(page, base, "ready");
+          await until(
+            () =>
+              page.evaluate(
+                () => document.documentElement.style.zoom === "1.25",
+              ),
+            5000,
+            "Strategy zoom 125%",
+          );
+          await button(page, "Continuar").click();
+          const shot = async (name: string) => {
+            await verify(page, name, scheme, width);
+            const suffix = scheme === "dark" ? "oscuro" : "claro";
+            await page.screenshot({
+              path: resolve(evidence, `zoom125-${name}-${suffix}.png`),
+            });
+          };
+          await shot("carrera");
+          await editRace(page, shot);
+        } finally {
+          await page.close();
+        }
+      }),
+    );
   }
 
   for (const [scheme, zoom, folded] of [

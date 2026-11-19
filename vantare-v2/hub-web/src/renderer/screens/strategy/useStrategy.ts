@@ -119,5 +119,5 @@ export function useStrategy(client: StrategyClient) {
       setError(result.error);
     return result;
   }
-  return { view, error, pending, act };
+  return { view, error, pending, act, clearError: () => setError(undefined) };
 }

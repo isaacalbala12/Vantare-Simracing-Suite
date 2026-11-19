@@ -1,5 +1,6 @@
 import { Menu } from "@base-ui/react/menu";
 import { useEffect, useState } from "react";
+import type { HostError } from "../../../contract/generated/contract";
 import type {
   StrategyComputeForm,
   StrategyEventSummary,
@@ -7,6 +8,7 @@ import type {
 } from "../../../contract/generated/strategy";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { strategy as t } from "../../i18n/strategy";
+import { strategyConfirm } from "../../screens/strategy/strategyConfirm";
 import { strategyCreate } from "../../screens/strategy/strategyCreate";
 import {
   fileActions,
@@ -15,6 +17,7 @@ import {
 } from "../../screens/strategy/useStrategy";
 import { Button } from "../Button";
 import { Select } from "../Forms";
+import { RaceTab, raceLength } from "./RaceTab";
 import { Wizard } from "./Wizard";
 
 const tabs = [
@@ -22,15 +25,19 @@ const tabs = [
   { id: "plan", etiqueta: t.plan, visible: true },
 ];
 
+const editingTabs = [tabs[0], { ...tabs[1], ariaDisabled: true }];
+
 type Selection = { eventId: string; strategyId: string };
 type Notice = "importedLegacy" | "recovered";
 
 export function StrategyScreen({ client }: { client: StrategyClient }) {
-  const { view, error, pending, act } = useStrategy(client);
+  const { view, error, pending, act, clearError } = useStrategy(client);
   const [screen, setScreen] = useState<"collection" | "wizard" | "race">(
     "collection",
   );
   const [tab, setTab] = useState("race");
+  const [editing, setEditing] = useState(false);
+  const [confirmConflict, setConfirmConflict] = useState<HostError>();
   const [announcement, setAnnouncement] = useState("");
   const [dismissed, setDismissed] = useState<Notice>();
   const [blocked, setBlocked] = useState<Selection>();
@@ -38,9 +45,36 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
   const variant = active?.strategies.find(
     ({ id }) => id === view?.activeStrategyId,
   );
-  const actions = view && fileActions(view);
+  const actions = view && fileActions(view, editing);
   const showRace = screen === "race" && !!active && !!variant;
   const conflict = error?.kind === "strategyConflict";
+  const editConflict = conflict && error === confirmConflict;
+  const hasForm = !!view?.form;
+  // The form can vanish under the editor (another view, another session): the
+  // draft goes with it, and nothing stays locked.
+  useEffect(() => {
+    if (editing && !hasForm) {
+      setEditing(false);
+      clearError();
+    }
+  }, [editing, hasForm, clearError]);
+
+  // Returns whether the data were confirmed. On a conflict the host's view
+  // replaces ours but the editor stays open with what the user wrote.
+  async function confirm(form: StrategyComputeForm) {
+    if (!active || !variant) return false;
+    setAnnouncement("");
+    const result = await strategyConfirm(act, active.id, variant.id, form);
+    if (!result) return false;
+    if ("value" in result) {
+      setEditing(false);
+      setAnnouncement(t.confirmed);
+      return true;
+    }
+    if (result.error.kind === "strategyConflict")
+      setConfirmConflict(result.error);
+    return false;
+  }
 
   async function save() {
     setAnnouncement("");
@@ -169,7 +203,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
       <SectionChrome
         title={t.title}
         rail={false}
-        tabs={showRace ? tabs : undefined}
+        tabs={showRace ? (editing ? editingTabs : tabs) : undefined}
         activeTab={tab}
         onTabChange={setTab}
       />
@@ -194,6 +228,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
             </Button>
             <Menu.Root modal={false}>
               <Menu.Trigger
+                disabled={editing || pending}
                 aria-label={t.more}
                 className="v-button v-button--neutral v-button--sm"
               >
@@ -236,11 +271,18 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
         )}
         <div
           role="status"
-          className={conflict ? "strategy-notice" : "v-sr-only"}
+          className={
+            conflict && !editConflict ? "strategy-notice" : "v-sr-only"
+          }
           data-tone="error"
         >
-          {conflict ? t.conflict : announcement}
+          {conflict && !editConflict ? t.conflict : announcement}
         </div>
+        {editConflict && (
+          <div className="strategy-notice" data-tone="error" role="alert">
+            {t.confirmConflict}
+          </div>
+        )}
         {fileError && (
           <div className="strategy-notice" data-tone="error" role="alert">
             {fileError}
@@ -253,11 +295,12 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
             create={(form) => void create(form)}
           />
         ) : showRace && active && variant && view ? (
-          <div className="strategy-race">
+          <div className="strategy-race" data-editing={editing}>
             <div className="strategy-race-head">
               <Button
                 size="sm"
                 variant="ghost"
+                disabled={editing || pending}
                 onClick={() => setScreen("collection")}
               >
                 {t.returnToCollection}
@@ -265,9 +308,13 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
               <div>
                 <h2>{active.name}</h2>
                 <p>
-                  {active.class}
-                  {" · "}
-                  {active.track}
+                  {[
+                    active.class,
+                    active.track,
+                    view.form && raceLength(view.form),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </div>
               {active.strategies.length > 1 ? (
@@ -279,6 +326,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                     value: id,
                   }))}
                   pending={pending}
+                  disabled={editing}
                   onChange={(strategyId) =>
                     void select({ eventId: active.id, strategyId }, view)
                   }
@@ -288,7 +336,29 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
               )}
             </div>
             {dirtyNotice}
-            <SectionPanel activeTab={tab}>{null}</SectionPanel>
+            <SectionPanel activeTab={tab}>
+              {tab === "race" && (
+                <RaceTab
+                  // the draft belongs to one strategy: another one starts clean
+                  key={`${active.id}/${variant.id}`}
+                  form={view.form}
+                  editing={editing}
+                  pending={pending}
+                  edit={() => {
+                    setBlocked(undefined);
+                    clearError();
+                    setAnnouncement("");
+                    setEditing(true);
+                  }}
+                  cancel={() => {
+                    clearError();
+                    setEditing(false);
+                  }}
+                  clearError={clearError}
+                  confirm={confirm}
+                />
+              )}
+            </SectionPanel>
           </div>
         ) : view ? (
           <div className="strategy-collection">

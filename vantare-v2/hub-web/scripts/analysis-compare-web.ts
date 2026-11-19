@@ -2,13 +2,13 @@ import assert from "node:assert/strict";
 import { access, mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import AxeBuilder from "@axe-core/playwright";
 import { chromium, type Locator, type Page } from "playwright-core";
 import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
 import { analysisText as at } from "../src/renderer/i18n/analysis.es.ts";
 import { comparisonText as t } from "../src/renderer/i18n/comparison.es.ts";
 import { t as shellText } from "../src/renderer/i18n/es.ts";
 import { writeAnalysisSheet } from "./analysis-sheet.ts";
+import { axeClassic } from "./axe-classic.ts";
 import { press, visible } from "./wait-for.ts";
 import { webQaPreview } from "./web-qa.ts";
 
@@ -641,13 +641,8 @@ export async function checkAnalysisComparison(
             true,
             "A/B captions must occupy and center in the selector",
           );
-        // Modo clásico de axe: mismas reglas y mismo contexto, pero el análisis
-        // corre dentro de la página sin el viaje de resultados parciales de
-        // AxeBuilder (~0,45 s menos por escena). No hay iframes en estas escenas.
-        const report = await new AxeBuilder({ page })
-          .setLegacyMode(true)
-          .include(".v-shell")
-          .analyze();
+        // Axe clásico (ver axe-classic.ts): falla si el contexto tiene iframes.
+        const report = await axeClassic(page, [".v-shell"]);
         results.push({ name, violations: report.violations });
         await writeFile(
           resolve(output, `${name}.axe.json`),

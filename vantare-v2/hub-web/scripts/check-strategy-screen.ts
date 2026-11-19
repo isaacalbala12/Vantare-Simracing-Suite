@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
-import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "playwright-core";
 import type { HostToUi, UiToHost } from "../src/contract/generated/contract";
-import { press, until, visible } from "./wait-for";
+import { axeClassic } from "./axe-classic";
+import { press, pressKey, until, visible } from "./wait-for";
 
 // Comprobar y capturar son cosas distintas: `verify` (axe, desbordamiento,
 // foco, conducta) corre SIEMPRE; los PNG solo se escriben si se pasa
@@ -28,8 +28,11 @@ function button(page: Page, name: string) {
   return page.getByRole("button", { name, exact: true });
 }
 async function fill(page: Page, fields: Record<string, string>) {
-  for (const [name, value] of Object.entries(fields))
-    await page.getByRole("textbox", { name, exact: true }).fill(value);
+  for (const [name, value] of Object.entries(fields)) {
+    const field = page.getByRole("textbox", { name, exact: true });
+    await visible(field);
+    await field.fill(value);
+  }
 }
 
 async function setup(page: Page, scheme: Scheme, zoom: number) {
@@ -90,7 +93,7 @@ async function navigate(
 ) {
   await page.goto(`${base}?escena=${scene}${conflict ? "&conflict" : ""}`);
   const sidebar = page.locator(".v-sidebar");
-  await sidebar.waitFor();
+  await visible(sidebar);
   if (
     await sidebar.evaluate((node) =>
       node.classList.contains("v-sidebar--collapsed"),
@@ -106,7 +109,7 @@ async function navigate(
       "strategy sidebar expanded",
     );
   }
-  await page.getByRole("button", { name: /^(Estrategia|Strategy)/ }).click();
+  await press(page.getByRole("button", { name: /^(Estrategia|Strategy)/ }));
 }
 async function collection(
   page: Page,
@@ -115,12 +118,13 @@ async function collection(
   conflict = false,
 ) {
   await navigate(page, base, `strategy-${scene}`, conflict);
-  await page.getByRole("heading", { name: "Tus estrategias" }).waitFor();
+  await visible(page.getByRole("heading", { name: "Tus estrategias" }));
 }
 async function chooseWizard(page: Page) {
-  await page
-    .getByRole("button", { name: /^(Nueva estrategia|Empezar)$/ })
-    .press("Enter");
+  await pressKey(
+    page.getByRole("button", { name: /^(Nueva estrategia|Empezar)$/ }),
+    "Enter",
+  );
 }
 async function combination(page: Page) {
   await fill(page, { Circuito: "Fuji Speedway", "Clase o coche": "Hypercar" });
@@ -137,7 +141,7 @@ async function rules(page: Page) {
     "Vueltas que vas a dar": "236",
     "Consumo por vuelta": "1,830",
   });
-  await page.getByText("Neumáticos y boxes", { exact: true }).click();
+  await press(page.getByText("Neumáticos y boxes", { exact: true }));
   await fill(page, {
     "Vida del neumático": "43",
     "Tránsito por boxes": "25",
@@ -155,7 +159,7 @@ async function pilot(page: Page) {
 }
 async function createRace(page: Page) {
   await chooseWizard(page);
-  const next = () => button(page, "Continuar").click();
+  const next = () => press(button(page, "Continuar"));
   await next();
   await combination(page);
   await next();
@@ -164,8 +168,8 @@ async function createRace(page: Page) {
   await pilot(page);
   await next();
   await fill(page, { "Nombre de esta estrategia": "Seco" });
-  await button(page, "Crear carrera").click();
-  await page.getByRole("tab", { name: "Carrera", exact: true }).waitFor();
+  await press(button(page, "Crear carrera"));
+  await visible(page.getByRole("tab", { name: "Carrera", exact: true }));
 }
 
 async function verify(
@@ -245,12 +249,16 @@ async function verify(
     ].includes(scene)
   )
     return;
-  const { violations } = await new AxeBuilder({ page })
-    .include(".strategy-screen")
-    .include('[role="menu"][aria-label="Archivo"]')
-    .include('[role="menu"][aria-label="Más acciones del plan aceptado"]')
-    .exclude('[data-base-ui-focus-guard][aria-hidden="true"]')
-    .analyze();
+  // Axe clásico (ver axe-classic.ts): falla si el contexto tiene iframes.
+  const { violations } = await axeClassic(
+    page,
+    [
+      ".strategy-screen",
+      '[role="menu"][aria-label="Archivo"]',
+      '[role="menu"][aria-label="Más acciones del plan aceptado"]',
+    ],
+    ['[data-base-ui-focus-guard][aria-hidden="true"]'],
+  );
   assert.deepEqual(
     violations.map(({ id, nodes }) => ({
       id,
@@ -262,9 +270,10 @@ async function verify(
 }
 
 async function editRace(page: Page, shot: (name: string) => Promise<void>) {
-  await page
-    .getByRole("button", { name: "Editar carrera", exact: true })
-    .press("Enter");
+  await pressKey(
+    page.getByRole("button", { name: "Editar carrera", exact: true }),
+    "Enter",
+  );
   // The title takes programmatic focus so a screen reader announces it, but it
   // is not a control: it keeps tabindex -1 and draws no focus ring.
   const title = page.getByRole("heading", {
@@ -328,9 +337,9 @@ async function editRace(page: Page, shot: (name: string) => Promise<void>) {
   await shot("carrera-foco");
 
   await deposit.fill("");
-  await button(page, "Confirmar datos").press("Enter");
+  await pressKey(button(page, "Confirmar datos"), "Enter");
   const alert = page.getByRole("alert");
-  await alert.getByText("Revisa 1 dato antes de continuar").waitFor();
+  await visible(alert.getByText("Revisa 1 dato antes de continuar"));
   assert.equal(await deposit.getAttribute("aria-invalid"), "true");
   const invalid = await depositDecoration();
   assert.notEqual(invalid.border, focused.border);
@@ -339,7 +348,7 @@ async function editRace(page: Page, shot: (name: string) => Promise<void>) {
     .locator(".strategy-field [data-error=true]")
     .scrollIntoViewIfNeeded();
   await shot("carrera-error");
-  await button(page, "Cancelar edición").press("Enter");
+  await pressKey(button(page, "Cancelar edición"), "Enter");
   assert(
     await page
       .getByRole("button", { name: "Editar carrera", exact: true })
@@ -352,8 +361,8 @@ async function editRace(page: Page, shot: (name: string) => Promise<void>) {
 
 async function openPlan(page: Page, base: string, scene: string) {
   await collection(page, base, scene);
-  await button(page, "Continuar").click();
-  await page.getByRole("tab", { name: "Plan", exact: true }).click();
+  await press(button(page, "Continuar"));
+  await press(page.getByRole("tab", { name: "Plan", exact: true }));
 }
 async function focusVisible(locator: Locator) {
   assert(
@@ -430,13 +439,13 @@ async function planStates(
   };
 
   await ready("ready");
-  await page.getByRole("heading", { name: "Calcula tu plan" }).waitFor();
+  await visible(page.getByRole("heading", { name: "Calcula tu plan" }));
   await noEditing("plan-sin");
   await saveShot("plan-sin");
 
   await ready("calculating");
-  await button(page, "Calcular plan").press("Enter");
-  await page.getByRole("heading", { name: "Calculando…" }).waitFor();
+  await pressKey(button(page, "Calcular plan"), "Enter");
+  await visible(page.getByRole("heading", { name: "Calculando…" }));
   assert.equal(
     await page.locator(".strategy-screen").getByRole("status").textContent(),
     "Calculando el plan.",
@@ -445,7 +454,7 @@ async function planStates(
   await focusVisible(button(page, "Cancelar"));
   await saveShot("plan-calc");
   await page.keyboard.press("Enter");
-  await page.getByRole("heading", { name: "Sin calcular" }).waitFor();
+  await visible(page.getByRole("heading", { name: "Sin calcular" }));
   // the heading takes the focus the cancelled calculation left
   assert(
     await page.evaluate(() => document.activeElement?.tagName === "H2"),
@@ -453,7 +462,7 @@ async function planStates(
   );
 
   await ready("plannedFuji");
-  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
+  await visible(page.getByRole("heading", { name: "Plan calculado" }));
   await summaryOnly("plan-ok");
   await checkTimeline(page, "plan-ok");
   assert.equal(
@@ -470,42 +479,43 @@ async function planStates(
   await saveShot("plan-ok-fin");
 
   await ready("plannedFujiPartial");
-  await page
-    .getByText("Plan válido, pero sin garantía de que sea el más rápido")
-    .waitFor();
+  await visible(
+    page.getByText("Plan válido, pero sin garantía de que sea el más rápido"),
+  );
   await summaryOnly("plan-parcial");
   await saveShot("plan-parcial");
 
   await adjustStates(page, ready, saveShot);
 
   await ready("computeFailed");
-  await button(page, "Calcular plan").press("Enter");
-  await page.getByRole("alert").waitFor();
+  await pressKey(button(page, "Calcular plan"), "Enter");
+  await visible(page.getByRole("alert"));
   await saveShot("plan-error");
 
   await ready("reasonNoFeasiblePlan");
-  await button(page, "Calcular plan").press("Enter");
-  await page
-    .getByRole("heading", {
+  await pressKey(button(page, "Calcular plan"), "Enter");
+  await visible(
+    page.getByRole("heading", {
       name: "Ningún plan termina la carrera con estos datos",
-    })
-    .waitFor();
+    }),
+  );
   await saveShot("plan-nosol");
 
   // the plan the mock really calculates (3 laps), checked but not photographed
   await ready("planned");
-  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
+  await visible(page.getByRole("heading", { name: "Plan calculado" }));
   await checkTimeline(page, "plan-mock");
   await verify(page, "plan-mock", scheme, width);
 
   // a calculation that refuses an input leads back to the marked field
   await openPlan(page, base, "computeInvalid");
-  await page.getByRole("tab", { name: "Carrera", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Editar carrera", exact: true })
-    .press("Enter");
+  await press(page.getByRole("tab", { name: "Carrera", exact: true }));
+  await pressKey(
+    page.getByRole("button", { name: "Editar carrera", exact: true }),
+    "Enter",
+  );
   await fill(page, { "Nombre de la carrera": "Copa Fuji" });
-  await button(page, "Confirmar y calcular").press("Enter");
+  await pressKey(button(page, "Confirmar y calcular"), "Enter");
   const laps = page.getByRole("textbox", {
     name: "Vueltas que vas a dar",
     exact: true,
@@ -532,13 +542,13 @@ async function carreraWithPlan(
   saveShot: (name: string) => Promise<void>,
 ) {
   await collection(page, base, "plannedFuji");
-  await button(page, "Continuar").click();
-  await page
-    .getByText("Calculado · 6:01:04 · 5 paradas", { exact: true })
-    .waitFor();
+  await press(button(page, "Continuar"));
+  await visible(
+    page.getByText("Calculado · 6:01:04 · 5 paradas", { exact: true }),
+  );
   await saveShot("carrera-plan");
-  await button(page, "Ver plan").press("Enter");
-  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
+  await pressKey(button(page, "Ver plan"), "Enter");
+  await visible(page.getByRole("heading", { name: "Plan calculado" }));
 }
 
 const rangeOf = (page: Page) =>
@@ -570,15 +580,15 @@ async function adjustStates(
     { exact: true },
   );
   const modified = () =>
-    page.getByRole("heading", { name: "Plan modificado" }).waitFor();
+    visible(page.getByRole("heading", { name: "Plan modificado" }));
   const status = () =>
     page.locator(".strategy-screen").getByRole("status").textContent();
 
   // stints: radios with arrows, the slider with keys, a typed lap and the mouse
   await ready("plannedFuji");
-  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
-  await button(page, "Ajustar stints").click();
-  await page.getByRole("heading", { name: "Ajustar stints" }).waitFor();
+  await visible(page.getByRole("heading", { name: "Plan calculado" }));
+  await press(button(page, "Ajustar stints"));
+  await visible(page.getByRole("heading", { name: "Ajustar stints" }));
   assert.equal(await notSaved.count(), 1);
   await page.getByRole("radio", { name: "Stint 1, 43 vueltas" }).focus();
   await page.keyboard.press("ArrowRight");
@@ -639,9 +649,9 @@ async function adjustStates(
 
   // stops: the stop that moves, the plan that is modified and the way out
   await ready("plannedFuji");
-  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
-  await button(page, "Ajustar paradas").click();
-  await page.getByRole("heading", { name: "Ajustar paradas" }).waitFor();
+  await visible(page.getByRole("heading", { name: "Plan calculado" }));
+  await press(button(page, "Ajustar paradas"));
+  await visible(page.getByRole("heading", { name: "Ajustar paradas" }));
   await page.getByRole("radio", { name: "Parada 1, vuelta 43" }).focus();
   await page.keyboard.press("ArrowRight");
   const later = button(page, "+ 1 vuelta");
@@ -660,9 +670,9 @@ async function adjustStates(
   assert.equal(await notSaved.count(), 1);
   assert.equal(await fileState(), "saved");
   await saveShot("plan-pend");
-  await button(page, "Resumen").click();
+  await press(button(page, "Resumen"));
   assert.equal(await notSaved.count(), 1);
-  await button(page, "Restablecer").click();
+  await press(button(page, "Restablecer"));
   await page
     .getByText("Ajustes restablecidos.", { exact: true })
     .waitFor({ state: "attached" });
@@ -678,17 +688,17 @@ async function adjustStates(
   // a recalculated plan is a proposal, in the summary and in Carrera. The
   // first stop goes one lap earlier: the solver has a plan for that calendar (and
   // not for the second stop one lap later), and does not prove it.
-  await button(page, "Ajustar paradas").click();
+  await press(button(page, "Ajustar paradas"));
   await page.getByRole("radio", { name: "Parada 1, vuelta 43" }).focus();
-  await button(page, "− 1 vuelta").press("Enter");
+  await pressKey(button(page, "− 1 vuelta"), "Enter");
   await modified();
-  await button(page, "Recalcular").press("Enter");
+  await pressKey(button(page, "Recalcular"), "Enter");
   await page
     .getByText("Plan recalculado sin garantía de ser el más rápido.", {
       exact: true,
     })
     .waitFor({ state: "attached" });
-  await button(page, "Resumen").click();
+  await press(button(page, "Resumen"));
   const proposal = page.getByText(
     "Es una propuesta: no se guarda en el archivo hasta que la aceptes.",
     { exact: true },
@@ -702,41 +712,41 @@ async function adjustStates(
   assert.equal(await fileState(), "saved");
   assert.equal(await page.getByRole("alert").count(), 0);
   await saveShot("plan-recalculado");
-  await page.getByRole("tab", { name: "Carrera", exact: true }).click();
-  await page
-    .getByText("Calculado · 6:01:06 · 5 paradas", { exact: true })
-    .waitFor();
+  await press(page.getByRole("tab", { name: "Carrera", exact: true }));
+  await visible(
+    page.getByText("Calculado · 6:01:06 · 5 paradas", { exact: true }),
+  );
   assert.equal(await proposal.count(), 1);
   await saveShot("carrera-plan-recalculado");
 
   // a recalculation: the plan stays on view while it runs
   await ready("plannedFujiRecalculating");
-  await button(page, "Ajustar paradas").click();
-  await button(page, "+ 1 vuelta").press("Enter");
+  await press(button(page, "Ajustar paradas"));
+  await pressKey(button(page, "+ 1 vuelta"), "Enter");
   await modified();
-  await button(page, "Recalcular").press("Enter");
-  await page.getByRole("heading", { name: "Recalculando…" }).waitFor();
+  await pressKey(button(page, "Recalcular"), "Enter");
+  await visible(page.getByRole("heading", { name: "Recalculando…" }));
   assert.equal(await status(), "Recalculando el plan.");
   await page.keyboard.press("Tab");
   await saveShot("plan-recalculando");
-  await button(page, "Cancelar").press("Enter");
+  await pressKey(button(page, "Cancelar"), "Enter");
   await modified();
 
   // a recalculation that fails, and a plan with no schedule
   await ready("plannedFujiNotPreserved");
-  await button(page, "Ajustar paradas").click();
-  await button(page, "+ 1 vuelta").press("Enter");
+  await press(button(page, "Ajustar paradas"));
+  await pressKey(button(page, "+ 1 vuelta"), "Enter");
   await modified();
-  await button(page, "Recalcular").press("Enter");
-  await page.getByRole("alert").waitFor();
+  await pressKey(button(page, "Recalcular"), "Enter");
+  await visible(page.getByRole("alert"));
   assert.equal(await button(page, "Recalcular").isEnabled(), true);
   await saveShot("plan-edit-error");
 
   await ready("plannedFujiNoEdit");
-  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
-  await page
-    .getByText("Este plan no se puede ajustar a mano.", { exact: true })
-    .waitFor();
+  await visible(page.getByRole("heading", { name: "Plan calculado" }));
+  await visible(
+    page.getByText("Este plan no se puede ajustar a mano.", { exact: true }),
+  );
   assert.equal(
     await page.getByRole("group", { name: "Vista del plan" }).count(),
     0,
@@ -780,19 +790,19 @@ async function exercise(
     await collection(page, base, scene, name === "col-conflicto");
     if (name === "col-sucio" || name === "col-conflicto") {
       await createRace(page);
-      await button(page, "← Tus estrategias").click();
+      await press(button(page, "← Tus estrategias"));
       if (name === "col-sucio") {
-        await page.getByRole("button", { name: /Practice/ }).click();
-        await page.getByRole("alert").waitFor();
-        await button(page, "Más acciones de archivo").press("ArrowDown");
-        await page.getByRole("menu").waitFor();
+        await press(page.getByRole("button", { name: /Practice/ }));
+        await visible(page.getByRole("alert"));
+        await pressKey(button(page, "Más acciones de archivo"), "ArrowDown");
+        await visible(page.getByRole("menu"));
       } else {
         await page.keyboard.press("Control+s");
-        await page
-          .getByText(
+        await visible(
+          page.getByText(
             "No se ha guardado: el archivo ha cambiado fuera de esta pantalla.",
-          )
-          .waitFor();
+          ),
+        );
       }
     }
     await saveShot(name);
@@ -816,8 +826,8 @@ async function exercise(
     }
   }
   await collection(page, base, "ready");
-  await button(page, "Continuar").click();
-  await page.getByRole("tab", { name: "Carrera", exact: true }).waitFor();
+  await press(button(page, "Continuar"));
+  await visible(page.getByRole("tab", { name: "Carrera", exact: true }));
   await saveShot("carrera");
   await editRace(page, saveShot);
   await planStates(page, base, scheme, width, saveShot);
@@ -833,16 +843,17 @@ async function exercise(
 
     await saveShot(name);
   }
-  const next = () => button(page, "Continuar").click();
+  const next = () => press(button(page, "Continuar"));
   assert(
     await page.evaluate(() =>
       document.activeElement?.matches("h2:focus-visible"),
     ),
   );
-  await page
-    .locator(".strategy-wizard-head")
-    .getByRole("button", { name: "Tus estrategias", exact: true })
-    .waitFor();
+  await visible(
+    page
+      .locator(".strategy-wizard-head")
+      .getByRole("button", { name: "Tus estrategias", exact: true }),
+  );
   assert.equal(
     await page.locator(".strategy-wizard-head").getByRole("button").count(),
     1,
@@ -912,10 +923,11 @@ export async function checkStrategyScreen(
   const page = await newPage();
   try {
     await navigate(page, base, "proximamente-base");
-    await page
-      .locator(".v-upcoming")
-      .getByRole("heading", { name: "Estrategia", exact: true, level: 1 })
-      .waitFor();
+    await visible(
+      page
+        .locator(".v-upcoming")
+        .getByRole("heading", { name: "Estrategia", exact: true, level: 1 }),
+    );
     assert.equal(await page.locator(".strategy-screen").count(), 0);
   } finally {
     await page.close();
@@ -934,7 +946,7 @@ export async function checkStrategyScreen(
           5000,
           "Strategy zoom 125%",
         );
-        await button(page, "Continuar").click();
+        await press(button(page, "Continuar"));
         const shot = async (name: string) => {
           await verify(page, name, scheme, width);
           const suffix = scheme === "dark" ? "oscuro" : "claro";
@@ -967,7 +979,7 @@ export async function checkStrategyScreen(
       if (folded) {
         if (!(await page.locator(".v-sidebar--collapsed").count()))
           await page.keyboard.press("Control+b");
-        await page.locator(".v-sidebar--collapsed").waitFor();
+        await visible(page.locator(".v-sidebar--collapsed"));
       } else {
         await until(
           () =>
@@ -984,9 +996,9 @@ export async function checkStrategyScreen(
           path: resolve(evidence, `${prefix}-col-${suffix}.png`),
         });
       await chooseWizard(page);
-      await button(page, "Continuar").click();
+      await press(button(page, "Continuar"));
       await combination(page);
-      await button(page, "Continuar").click();
+      await press(button(page, "Continuar"));
       await rules(page);
       await page.locator(".strategy-wizard-body").evaluate((node) => {
         node.scrollTop = 0;
@@ -1195,7 +1207,7 @@ async function newProposalStates(
   await shot("a-nueva");
   if (zoomed) {
     // the question that replaces the accepted plan, at this zoom too
-    await button(page, "Aceptar propuesta").press("Enter");
+    await pressKey(button(page, "Aceptar propuesta"), "Enter");
     await visible(
       page.getByRole("group", {
         name: "¿Sustituir tu plan aceptado por esta propuesta?",
@@ -1211,7 +1223,7 @@ async function newProposalStates(
     node.scrollTop = 0;
   });
   // replacing asks in the same place, moves the focus and goes back to the button
-  await button(page, "Aceptar propuesta").press("Enter");
+  await pressKey(button(page, "Aceptar propuesta"), "Enter");
   const question = page.getByRole("group", {
     name: "¿Sustituir tu plan aceptado por esta propuesta?",
   });
@@ -1244,7 +1256,7 @@ async function newProposalStates(
     "focus returns to Aceptar propuesta",
   );
   await visible(card);
-  await button(page, "Aceptar propuesta").press("Enter");
+  await pressKey(button(page, "Aceptar propuesta"), "Enter");
   await visible(question);
   await press(button(page, "Sustituir plan aceptado"));
   await visible(page.getByRole("heading", { name: "Plan aceptado" }));
@@ -1328,7 +1340,7 @@ async function staleStates(
   await visible(button(page, "Volver al plan aceptado"));
   await visible(button(page, "Aceptar propuesta"));
   await shot("a-desact-nueva-igual");
-  await button(page, "Aceptar propuesta").press("Enter");
+  await pressKey(button(page, "Aceptar propuesta"), "Enter");
   await visible(page.getByRole("heading", { name: "Plan aceptado" }));
   assert.equal(await planStatus(page), "Plan aceptado.");
   assert.equal(await stateTag(page), "Aceptado");
@@ -1342,16 +1354,16 @@ async function unsavedQuestions(page: Page, base: string, shot: Shot) {
   await visible(page.getByRole("heading", { name: "Plan aceptado" }));
   await press(button(page, "Ajustar paradas"));
   await page.getByRole("radio", { name: "Parada 1, vuelta 43" }).focus();
-  await button(page, "− 1 vuelta").press("Enter");
+  await pressKey(button(page, "− 1 vuelta"), "Enter");
   await visible(page.getByRole("heading", { name: "Plan modificado" }));
-  await button(page, "Recalcular").press("Enter");
+  await pressKey(button(page, "Recalcular"), "Enter");
   await page
     .getByText("Plan recalculado sin garantía de ser el más rápido.", {
       exact: true,
     })
     .waitFor({ state: "attached" });
   await press(button(page, "Resumen"));
-  await button(page, "Aceptar propuesta").press("Enter");
+  await pressKey(button(page, "Aceptar propuesta"), "Enter");
   const replace = page.getByRole("group", {
     name: "¿Sustituir tu plan aceptado por esta propuesta?",
   });
@@ -1383,7 +1395,7 @@ async function carreraAcceptStates(
 ) {
   const carrera = async (scene: string, title: RegExp) => {
     await collection(page, base, scene);
-    await button(page, "Continuar").click();
+    await press(button(page, "Continuar"));
     await visible(page.locator(".strategy-plan-card"));
     await visible(page.getByText(title));
     if (zoomed)
@@ -1414,7 +1426,7 @@ async function carreraAcceptStates(
   );
   await shot("c-desactualizado");
   // the card leads to the plan
-  await button(page, "Ver plan").press("Enter");
+  await pressKey(button(page, "Ver plan"), "Enter");
   await visible(page.getByRole("heading", { name: "Plan aceptado" }));
 }
 

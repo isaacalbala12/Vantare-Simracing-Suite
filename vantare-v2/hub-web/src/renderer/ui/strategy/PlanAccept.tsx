@@ -7,6 +7,7 @@ import {
   acceptedDay,
   acceptedOn,
   changeLine,
+  compareUnreachable,
   differenceText,
   planSummary,
   type Tag,
@@ -103,8 +104,11 @@ export function CompareCard({
   const outdated = accepted.state !== "accepted";
   // a tick only while the plan is up to date; an outdated one is a warning, and
   // a plan that no longer reaches the finish is the strong one
-  const unreachable = accepted.state === "staleUnreachable";
-  const tone = unreachable ? "error" : outdated ? "warn" : undefined;
+  const unreachable =
+    accepted.state === "staleUnreachable"
+      ? compareUnreachable(accepted.unreachable)
+      : null;
+  const tone = unreachable?.strong ? "error" : outdated ? "warn" : undefined;
   const shown = accepted.changes.slice(0, shownChanges);
   return (
     <section
@@ -116,7 +120,9 @@ export function CompareCard({
         data-tone={tone}
         aria-hidden="true"
       >
-        <Icon name={unreachable ? "alert" : outdated ? "warn" : "check"} />
+        <Icon
+          name={unreachable?.strong ? "alert" : outdated ? "warn" : "check"}
+        />
       </span>
       <div>
         <strong id={`${id}-title`}>{c.title}</strong>
@@ -137,11 +143,7 @@ export function CompareCard({
             ))}
           </ul>
         )}
-        {unreachable && accepted.unreachable && (
-          <p>
-            {c.unreachableHint} {unreachableText(accepted.unreachable)}
-          </p>
-        )}
+        {unreachable && <p>{unreachable.text}</p>}
         {outdated && <p>{c.outdatedHint}</p>}
       </div>
       <Button size="sm" variant="ghost" disabled={pending} onClick={back}>

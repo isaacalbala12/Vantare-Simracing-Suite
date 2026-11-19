@@ -1104,38 +1104,88 @@ describe("the card of an outdated accepted plan next to a proposal", () => {
     expect(card.textContent).not.toContain("ya no llega a meta");
   });
 
-  it("is a strong warning and says the old plan no longer reaches the finish", async () => {
+  // What the card says follows WHY the plan is unreachable: only two causes say
+  // the plan does not reach the finish; the others must not say it.
+  const causes = [
+    {
+      cause: "resourceExhausted",
+      strong: true,
+      says: (lap: number | null) =>
+        lap === null
+          ? "Se quedaría sin combustible, energía o neumáticos antes de llegar a meta."
+          : `Se quedaría sin combustible, energía o neumáticos en la vuelta ${lap}.`,
+    },
+    {
+      cause: "scheduleMismatch",
+      strong: true,
+      says: () => "El plan ya no cubre las vueltas de la carrera.",
+    },
+    {
+      cause: "reserveNotMet",
+      strong: false,
+      says: () => "Llega a meta, pero sin la reserva que pides.",
+    },
+    {
+      cause: "other",
+      strong: false,
+      says: () =>
+        "No hemos podido comprobar si llega a meta con los datos nuevos.",
+    },
+  ] as const;
+  const withCause = (
+    cause: (typeof causes)[number]["cause"],
+    failLap: number | null,
+  ) =>
     mount("acceptedFujiNew", undefined, (view) => {
       const next = structuredClone(view);
       if (next.plan.accepted) {
         next.plan.accepted.state = "staleUnreachable";
-        next.plan.accepted.unreachable = {
-          cause: "resourceExhausted",
-          failLap: null,
-        };
+        next.plan.accepted.unreachable = { cause, failLap };
         next.plan.accepted.changes = [
           { field: "fuelPerLapLiters", before: "1,83", after: "1,85" },
         ];
       }
       return next;
     });
-    await openPlan();
-    const card = screen.getByRole("region", {
+
+  for (const { cause, strong, says } of causes)
+    for (const failLap of [null, 170])
+      it(`says ${strong ? "that the old plan no longer reaches the finish" : "only what is known"} for «${cause}» (lap ${failLap ?? "unknown"})`, async () => {
+        withCause(cause, failLap);
+        await openPlan();
+        const card = screen.getByRole("region", {
+          name: "Ya tienes un plan aceptado",
+        });
+        const icon = cardIcon();
+        expect(icon?.getAttribute("data-tone")).toBe(strong ? "error" : "warn");
+        expect(drawn(icon)).toBe(strong ? alertCircle : triangle);
+        expect(card.textContent).toContain(says(failLap));
+        if (strong)
+          expect(card.textContent).toContain(
+            "el plan aceptado ya no llega a meta.",
+          );
+        else expect(card.textContent).not.toContain("ya no llega a meta");
+        // never says and denies in the same breath
+        expect(card.textContent).not.toMatch(
+          /ya no llega a meta\. (No hemos|Llegaría)/,
+        );
+        expect(card.textContent).toContain(
+          "Si aceptas esta propuesta, esta pasa a ser tu plan aceptado.",
+        );
+        // still one live region, and the stale notice of the lone plan is not here
+        expect(screen.getAllByRole("status")).toHaveLength(1);
+        expect(screen.queryByRole("alert")).toBeNull();
+      });
+
+  it("is the same card when the proposal comes from «Calcular con los datos nuevos»", async () => {
+    mount("acceptedFujiUnreachable");
+    await openPlan("Plan aceptado");
+    click("Calcular con los datos nuevos");
+    const card = await screen.findByRole("region", {
       name: "Ya tienes un plan aceptado",
     });
-    const icon = cardIcon();
-    expect(icon?.getAttribute("data-tone")).toBe("error");
-    expect(drawn(icon)).toBe(alertCircle);
-    expect(card.textContent).toContain("no llega a meta");
-    expect(card.textContent).toContain(
-      "Se quedaría sin combustible, energía o neumáticos antes de llegar a meta.",
-    );
-    expect(card.textContent).toContain(
-      "Si aceptas esta propuesta, esta pasa a ser tu plan aceptado.",
-    );
-    // still one live region, and the stale notice of the lone plan is not here
-    expect(screen.getAllByRole("status")).toHaveLength(1);
-    expect(screen.queryByRole("alert")).toBeNull();
+    expect(cardIcon()?.getAttribute("data-tone")).toBe("error");
+    expect(card.textContent).toContain("el plan aceptado ya no llega a meta.");
   });
 });
 

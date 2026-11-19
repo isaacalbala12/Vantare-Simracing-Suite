@@ -557,8 +557,11 @@ export const strategy = {
         outdatedHint:
           "Los datos de la carrera han cambiado desde que lo aceptaste. Si aceptas esta propuesta, esta pasa a ser tu plan aceptado.",
         // the accepted plan no longer reaches the finish with the new data
-        unreachableHint:
-          "Con los datos nuevos, el plan aceptado ya no llega a meta.",
+        unreachable: {
+          // only for the causes that say the plan does not reach the finish
+          lead: "Con los datos nuevos, el plan aceptado ya no llega a meta.",
+          reserveNotMet: "Llega a meta, pero sin la reserva que pides.",
+        },
         slower: (amount: string) => `${amount} más lenta`,
         faster: (amount: string) => `${amount} más rápida`,
         same: "misma duración",

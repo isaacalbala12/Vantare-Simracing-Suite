@@ -423,6 +423,32 @@ export function unreachableText(unreachable: StrategyUnreachable) {
   }
 }
 
+// What the card of the accepted plan next to a proposal says of a plan that
+// cannot be kept. Only two causes say the plan does not reach the finish; the
+// reserve says it does, and an unknown cause says nothing is known: the strong
+// tone and the words «ya no llega a meta» are for the first two only.
+export function compareUnreachable(unreachable: StrategyUnreachable | null): {
+  strong: boolean;
+  text: string;
+} {
+  const c = t.accept.compare.unreachable;
+  switch (unreachable?.cause) {
+    case "resourceExhausted":
+    case "scheduleMismatch":
+      return {
+        strong: true,
+        text: `${c.lead} ${unreachableText(unreachable)}`,
+      };
+    case "reserveNotMet":
+      return { strong: false, text: c.reserveNotMet };
+    default:
+      return {
+        strong: false,
+        text: unreachableText({ cause: "other", failLap: null }),
+      };
+  }
+}
+
 export function acceptedTag(accepted: StrategyAcceptedView): Tag {
   const tags = t.accept.tags;
   switch (accepted.state) {

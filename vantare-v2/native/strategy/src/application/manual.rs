@@ -357,8 +357,10 @@ impl ManualEvent {
         {
             // only what the form cannot edit blocks: the scalars of what was stored are
             // not checked, since the form being sent replaces them (a negative step
-            // saved before steps were checked must not lock the event for good)
-            if previous.event_rules.min_pit_stops.is_some()
+            // saved before steps were checked must not lock the event for good); a
+            // version other than this one is kept, never degraded to it
+            if previous.contract_version != "strategy.solver.v2"
+                || previous.event_rules.min_pit_stops.is_some()
                 || previous.event_rules.max_pit_stops.is_some()
                 || !previous.event_rules.required_windows.is_empty()
                 || !previous.event_rules.extra.is_empty()
@@ -607,6 +609,23 @@ mod tests {
         // a form that is still wrong is refused for what it holds
         assert!(stored.prepare(&mut doc, 0, 0).is_err());
         assert_eq!(stored.input_field(), Some(InputField::VeStep));
+    }
+
+    /// What a newer version stored is kept, not replaced by a version-2 input.
+    #[test]
+    fn a_stored_input_of_another_version_is_not_overwritten() {
+        let form = form();
+        let mut input = form.to_input().expect("input");
+        input.contract_version = "strategy.solver.v3".into();
+        let mut doc = document(&form);
+        doc.put(
+            "/events/0/strategies/0/overrides",
+            &json!({"nativeScalarInput": input}),
+        )
+        .expect("stored input of a future version");
+        let before = doc.bytes().to_vec();
+        assert!(form.prepare(&mut doc, 0, 0).is_err());
+        assert_eq!(doc.bytes(), before);
     }
 
     #[test]

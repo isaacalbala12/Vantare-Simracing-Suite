@@ -365,7 +365,7 @@ function validForm(fields: StrategyFields, creating: boolean): boolean {
 
 // What the host says of the entries the crate checks, as `compute` and `confirm`
 // do: first the text that is not a number, in the order of `ManualField::ALL`
-// (the 13 fields up to the pace, then the inputs), and then the scalar the crate
+// (the three numeric fields — duration, tank, pit transit — then the inputs), and then the scalar the crate
 // refuses, in its own order (laps, positive pace and rates, the other numbers not
 // negative, a whole tyre life, VE capacity up to 100, a known service mode, no
 // negative step). The tank and the pit transit live in `fields`: without them

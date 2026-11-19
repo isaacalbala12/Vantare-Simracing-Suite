@@ -1805,3 +1805,23 @@ fn with_several_bad_entries_a_text_that_is_not_a_number_goes_first_in_the_order_
         );
     }
 }
+
+#[test]
+fn a_stored_input_of_another_version_is_neither_confirmed_over_nor_computed_over() {
+    let root = Root::new();
+    stored_with(&root, |event| {
+        event["strategies"][0]["overrides"]["nativeScalarInput"]["contractVersion"] =
+            serde_json::json!("strategy.solver.v3");
+    });
+    let mut state = root.state();
+    let opened = state.open().unwrap();
+    let bytes = document_bytes(&state);
+    assert_eq!(
+        confirm_with(&mut state, &opened, &distinct_fields(), Some(&distinct_inputs())),
+        Err(HostError::StrategyInvalidInput { field: None })
+    );
+    let form = StrategyComputeForm { fields: distinct_fields(), inputs: distinct_inputs() };
+    let (error, field) = compute_verdict(&mut state, &opened, &form);
+    assert_eq!((error, field), (Some(StrategyPlanError::InvalidInput), None));
+    assert_eq!(document_bytes(&state), bytes);
+}

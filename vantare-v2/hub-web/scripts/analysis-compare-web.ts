@@ -9,6 +9,7 @@ import { analysisText as at } from "../src/renderer/i18n/analysis.es.ts";
 import { comparisonText as t } from "../src/renderer/i18n/comparison.es.ts";
 import { t as shellText } from "../src/renderer/i18n/es.ts";
 import { writeAnalysisSheet } from "./analysis-sheet.ts";
+import { press, visible } from "./wait-for.ts";
 import { webQaPreview } from "./web-qa.ts";
 
 async function lossTextContrast(loss: Locator) {
@@ -120,27 +121,26 @@ export async function checkAnalysisComparison(
           ? "compare"
           : `compare-${scene === "zoom-loading" ? "loading" : scene}`;
         await page.goto(`${base}?escena=analysis-qa-${fixture}`);
-        await page
-          .getByRole("tab", { name: at.recordings, exact: true })
-          .waitFor();
+        await visible(
+          page.getByRole("tab", { name: at.recordings, exact: true }),
+        );
         if (theme === "light") {
-          await page
-            .getByRole("button", {
+          await press(
+            page.getByRole("button", {
               name: "Cambiar tema claro u oscuro",
               exact: true,
-            })
-            .click();
+            }),
+          );
           await page.waitForFunction(
             () => document.documentElement.dataset.scheme === "light",
           );
         }
-        await page
-          .getByRole("button", { name: /Circuito sin identificar/ })
-          .nth(1)
-          .click();
-        await page.getByText(at.technical, { exact: true }).waitFor();
-        await page
-          .getByRole("button", {
+        await press(
+          page.getByRole("button", { name: /Circuito sin identificar/ }).nth(1),
+        );
+        await visible(page.getByText(at.technical, { exact: true }));
+        await press(
+          page.getByRole("button", {
             name: t.select(
               t.a,
               scene === "rail"
@@ -150,17 +150,17 @@ export async function checkAnalysisComparison(
                   : 9,
             ),
             exact: true,
-          })
-          .click();
-        await page
-          .getByRole("button", {
+          }),
+        );
+        await press(
+          page.getByRole("button", {
             name: t.select(
               t.b,
               scene === "rail" ? 9 : scene === "gaps-b" ? 5 : 7,
             ),
             exact: true,
-          })
-          .click();
+          }),
+        );
         const selectedB = page.getByRole("button", {
           name: t.select(
             t.b,
@@ -197,9 +197,9 @@ export async function checkAnalysisComparison(
           "Hover must preserve the selected B mark",
         );
         if (scene !== "selection") {
-          await page
-            .getByRole("button", { name: t.compare, exact: true })
-            .click();
+          await press(
+            page.getByRole("button", { name: t.compare, exact: true }),
+          );
           if (
             [
               "rail",
@@ -220,13 +220,13 @@ export async function checkAnalysisComparison(
               "loading",
             ].includes(scene)
           ) {
-            await page
-              .getByRole("img", { name: t.speed, exact: true })
-              .waitFor();
+            await visible(
+              page.getByRole("img", { name: t.speed, exact: true }),
+            );
             if (scene === "time" || scene.endsWith("-time"))
-              await page
-                .getByRole("button", { name: t.time, exact: true })
-                .click();
+              await press(
+                page.getByRole("button", { name: t.time, exact: true }),
+              );
             const railToggle = page.locator(".v-titlebar").getByRole("button", {
               name: shellText("shell.railToggle"),
               exact: true,
@@ -234,7 +234,7 @@ export async function checkAnalysisComparison(
             if (scene === "rail" || scene.startsWith("zoom")) {
               if ((await railToggle.getAttribute("aria-expanded")) === "false")
                 await railToggle.click();
-              await page.locator(".v-an-change").first().waitFor();
+              await visible(page.locator(".v-an-change").first());
             }
             if (scene.startsWith("zoom")) {
               assert.equal(await page.locator(".v-an-change").count(), 3);
@@ -249,7 +249,7 @@ export async function checkAnalysisComparison(
                 )) > 0,
                 true,
               );
-              await page.getByRole("button", { name: t.whole }).waitFor();
+              await visible(page.getByRole("button", { name: t.whole }));
               if (scene !== "zoom-time")
                 assert.equal(
                   await slider.evaluate(
@@ -287,12 +287,12 @@ export async function checkAnalysisComparison(
                 el.getAttribute("max"),
               ]);
             if (scene === "loading" || scene === "zoom-loading") {
-              await page
-                .getByRole("button", { name: t.swap, exact: true })
-                .click();
-              await page
-                .getByRole("status", { name: t.updating, exact: true })
-                .waitFor();
+              await press(
+                page.getByRole("button", { name: t.swap, exact: true }),
+              );
+              await visible(
+                page.getByRole("status", { name: t.updating, exact: true }),
+              );
               assert.equal(
                 await page
                   .locator(".v-an-traces")
@@ -362,9 +362,9 @@ export async function checkAnalysisComparison(
               );
             }
           } else if (scene === "initial-loading")
-            await page
-              .getByRole("status", { name: t.loading, exact: true })
-              .waitFor();
+            await visible(
+              page.getByRole("status", { name: t.loading, exact: true }),
+            );
           else {
             const title = {
               error: t.incomparable,
@@ -373,9 +373,9 @@ export async function checkAnalysisComparison(
               changed: at.changedTitle,
               large: at.largeTitle,
             }[scene as "error"];
-            await page
-              .getByRole("heading", { name: title, exact: true })
-              .waitFor();
+            await visible(
+              page.getByRole("heading", { name: title, exact: true }),
+            );
           }
         }
         await page.evaluate(async () => {
@@ -641,7 +641,11 @@ export async function checkAnalysisComparison(
             true,
             "A/B captions must occupy and center in the selector",
           );
+        // Modo clásico de axe: mismas reglas y mismo contexto, pero el análisis
+        // corre dentro de la página sin el viaje de resultados parciales de
+        // AxeBuilder (~0,45 s menos por escena). No hay iframes en estas escenas.
         const report = await new AxeBuilder({ page })
+          .setLegacyMode(true)
           .include(".v-shell")
           .analyze();
         results.push({ name, violations: report.violations });
@@ -649,7 +653,9 @@ export async function checkAnalysisComparison(
           resolve(output, `${name}.axe.json`),
           JSON.stringify(report, null, 2),
         );
-        await page.screenshot({ path: resolve(output, `${name}.png`) });
+        // Las capturas solo hacen falta para la hoja con maquetas o si se piden.
+        if (references || process.env.ANALYSIS_SHOTS === "1")
+          await page.screenshot({ path: resolve(output, `${name}.png`) });
         assert.deepEqual(report.violations, [], `${name}: axe violations`);
         if (scene === "cursor" && width === 1280) {
           const loss = page.locator(".v-an-compare-loss:visible").first();

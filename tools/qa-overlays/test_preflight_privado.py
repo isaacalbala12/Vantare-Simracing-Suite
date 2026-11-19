@@ -41,11 +41,11 @@ class PrivateMaterialTests(unittest.TestCase):
             output.writestr("bin/vantare-qa-license.exe", "fake executable")
             output.writestr("manifiesto.json", '{"key_id":"qa-a1b2c3d4"}')
         expected = hashlib.sha256(archive.read_bytes()).hexdigest()
-        verify_kit_zip(archive, expected)
+        verify_kit_zip(archive, expected, self.patterns)
         with zipfile.ZipFile(archive, "a") as output:
             output.writestr("qa-license/example/random.txt", "innocent contents")
         with self.assertRaises(PrivateMaterial):
-            verify_kit_zip(archive, expected)
+            verify_kit_zip(archive, expected, self.patterns)
 
     def test_container_signatures_reject_renamed_gzip_tar_7z_and_zip(self):
         tar = io.BytesIO()
@@ -160,7 +160,7 @@ class PrivateMaterialTests(unittest.TestCase):
 
         with patch.object(preflight_privado.zipfile, "ZipFile", append_then_open):
             with self.assertRaisesRegex(PrivateMaterial, "cambió durante el preflight"):
-                verify_kit_zip(archive, expected)
+                verify_kit_zip(archive, expected, self.patterns)
 
     def test_zip_replaced_in_place_between_hash_and_open_is_rejected(self):
         archive = self.root / "kit.zip"
@@ -182,7 +182,7 @@ class PrivateMaterialTests(unittest.TestCase):
 
         with patch.object(preflight_privado.zipfile, "ZipFile", replace_then_open):
             with self.assertRaisesRegex(PrivateMaterial, "cambió durante el preflight"):
-                verify_kit_zip(archive, expected)
+                verify_kit_zip(archive, expected, self.patterns)
 
     def test_scan_reverifies_the_approved_zip_before_skipping_it(self):
         archive = self.root / "kit.zip"
@@ -211,11 +211,18 @@ class AlternateStreamTests(unittest.TestCase):
         self.root = Path(temp.name)
 
     def add_stream(self, path, name="oculto", payload="cualquier cosa que no es la clave"):
+        data = payload.encode("ascii") if isinstance(payload, str) else payload
         try:
-            with open(f"{path}:{name}", "w", encoding="ascii") as hidden:
-                hidden.write(payload)
+            with open(f"{path}:{name}", "wb") as hidden:
+                hidden.write(data)
         except OSError as error:
             self.fail(f"El volumen temporal debe ser NTFS con soporte de ADS: {error}")
+
+    def build_zip(self):
+        archive = self.root / "kit.zip"
+        with zipfile.ZipFile(archive, "w") as output:
+            output.writestr("bin/vantare-qa-license.exe", "fake executable")
+        return archive, hashlib.sha256(archive.read_bytes()).hexdigest()
 
     @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
     def test_alternate_stream_in_staging_file_is_rejected(self):
@@ -241,7 +248,7 @@ class AlternateStreamTests(unittest.TestCase):
         expected = hashlib.sha256(archive.read_bytes()).hexdigest()
         self.add_stream(archive)
         with self.assertRaises(PrivateMaterial):
-            verify_kit_zip(archive, expected)
+            verify_kit_zip(archive, expected, self.patterns)
 
     @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
     def test_alternate_stream_on_a_directory_is_rejected(self):
@@ -252,36 +259,105 @@ class AlternateStreamTests(unittest.TestCase):
             scan(folder, self.patterns)
 
     @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
-    def test_zone_identifier_on_the_approved_zip_is_allowed(self):
-        archive = self.root / "kit.zip"
-        with zipfile.ZipFile(archive, "w") as output:
-            output.writestr("bin/vantare-qa-license.exe", "fake executable")
-        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
-        self.add_stream(archive, "Zone.Identifier",
-                        "[ZoneTransfer]\r\nZoneId=3\r\n" + "x" * 80)
-        verify_kit_zip(archive, expected)
-        scan(archive, self.patterns, (archive.resolve(), expected))
+    def test_zone_identifier_with_valid_content_is_allowed(self):
+        for content in (
+                "[ZoneTransfer]\r\nZoneId=3\r\n",
+                "[ZoneTransfer]\r\nZoneId=3\r\nReferrerUrl=https://example.test/x\r\n"
+                "HostUrl=https://example.test/kit.zip\r\n"):
+            with self.subTest(content=content[:24]):
+                archive, expected = self.build_zip()
+                self.add_stream(archive, "Zone.Identifier", content)
+                verify_kit_zip(archive, expected, self.patterns)
+                scan(archive, self.patterns, (archive.resolve(), expected))
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_lowercase_zone_identifier_name_is_allowed(self):
+        archive, expected = self.build_zip()
+        self.add_stream(archive, "zone.identifier", "[ZoneTransfer]\r\nZoneId=3\r\n")
+        verify_kit_zip(archive, expected, self.patterns)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_zone_identifier_with_private_key_material_is_rejected(self):
+        key = b"qa-a1b2c3d4" + self.seed
+        for form, payload in (("raw", key),
+                              ("hex", key.hex().encode("ascii")),
+                              ("base64", base64.b64encode(key))):
+            with self.subTest(form=form):
+                archive, expected = self.build_zip()
+                content = b"[ZoneTransfer]\r\nZoneId=3\r\nHostUrl=" + payload + b"\r\n"
+                self.add_stream(archive, "Zone.Identifier", content)
+                with self.assertRaises(PrivateMaterial):
+                    verify_kit_zip(archive, expected, self.patterns)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_zone_identifier_at_the_size_limit_is_allowed(self):
+        archive, expected = self.build_zip()
+        prefix = "[ZoneTransfer]\r\nZoneId=3\r\nHostUrl="
+        content = prefix + "x" * (1024 - len(prefix) - 2) + "\r\n"
+        self.assertEqual(len(content), 1024)
+        self.add_stream(archive, "Zone.Identifier", content)
+        verify_kit_zip(archive, expected, self.patterns)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_zone_identifier_over_the_size_limit_is_rejected(self):
+        archive, expected = self.build_zip()
+        prefix = "[ZoneTransfer]\r\nZoneId=3\r\nHostUrl="
+        content = prefix + "x" * (1025 - len(prefix) - 2) + "\r\n"
+        self.assertEqual(len(content), 1025)
+        self.add_stream(archive, "Zone.Identifier", content)
+        with self.assertRaises(PrivateMaterial):
+            verify_kit_zip(archive, expected, self.patterns)
 
     @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
     def test_large_zone_identifier_on_the_approved_zip_is_rejected(self):
-        archive = self.root / "kit.zip"
-        with zipfile.ZipFile(archive, "w") as output:
-            output.writestr("bin/vantare-qa-license.exe", "fake executable")
-        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+        archive, expected = self.build_zip()
         self.add_stream(archive, "Zone.Identifier", "x" * 5000)
         with self.assertRaises(PrivateMaterial):
-            verify_kit_zip(archive, expected)
+            verify_kit_zip(archive, expected, self.patterns)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_zone_identifier_with_invalid_format_is_rejected(self):
+        for content in (b"ZoneId=3\r\n",
+                        b"[ZoneTransfer]\r\nZoneId=3\x00\r\n",
+                        b"[ZoneTransfer]\nZoneId=3\n",
+                        b"[ZoneTransfer]\r\nZone Id=3\r\n"):
+            with self.subTest(content=content[:24]):
+                archive, expected = self.build_zip()
+                self.add_stream(archive, "Zone.Identifier", content)
+                with self.assertRaises(PrivateMaterial):
+                    verify_kit_zip(archive, expected, self.patterns)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_zone_identifier_lookalike_names_are_rejected(self):
+        for name in ("Zone.Identifier2", "ZONE.IDENTIFIER2"):
+            with self.subTest(name=name):
+                archive, expected = self.build_zip()
+                self.add_stream(archive, name, "[ZoneTransfer]\r\nZoneId=3\r\n")
+                with self.assertRaises(PrivateMaterial):
+                    verify_kit_zip(archive, expected, self.patterns)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_unreadable_zone_identifier_stream_is_rejected(self):
+        archive, expected = self.build_zip()
+        self.add_stream(archive, "Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n")
+        real_open = open
+
+        def denied(file, *arguments, **keywords):
+            if str(file).casefold().endswith(":zone.identifier"):
+                raise PermissionError("denied")
+            return real_open(file, *arguments, **keywords)
+
+        with patch("builtins.open", denied):
+            with self.assertRaises(PrivateMaterial):
+                verify_kit_zip(archive, expected, self.patterns)
 
     @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
     def test_other_extra_stream_alongside_zone_identifier_is_rejected(self):
-        archive = self.root / "kit.zip"
-        with zipfile.ZipFile(archive, "w") as output:
-            output.writestr("bin/vantare-qa-license.exe", "fake executable")
-        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+        archive, expected = self.build_zip()
         self.add_stream(archive, "Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n")
         self.add_stream(archive, "oculto")
         with self.assertRaises(PrivateMaterial):
-            verify_kit_zip(archive, expected)
+            verify_kit_zip(archive, expected, self.patterns)
 
     @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
     def test_zone_identifier_on_a_staging_file_is_rejected(self):
@@ -303,6 +379,15 @@ class AlternateStreamTests(unittest.TestCase):
             with self.subTest(code=code), \
                     patch.object(preflight_privado, "_FIND_FIRST_STREAM", lambda *arguments: invalid), \
                     patch.object(preflight_privado.ctypes, "get_last_error", lambda: code):
+                preflight_privado.reject_alternate_streams(target)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_non_eof_find_next_stream_error_is_rejected(self):
+        target = self.root / "datos.bin"
+        target.write_bytes(b"limpio")
+        with patch.object(preflight_privado, "_FIND_NEXT_STREAM", lambda *arguments: 0), \
+                patch.object(preflight_privado.ctypes, "get_last_error", lambda: 5):
+            with self.assertRaisesRegex(PrivateMaterial, "enumerar"):
                 preflight_privado.reject_alternate_streams(target)
 
     @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")

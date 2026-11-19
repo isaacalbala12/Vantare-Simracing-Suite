@@ -144,23 +144,55 @@ class PrivateMaterialTests(unittest.TestCase):
             with self.assertRaises(PrivateMaterial):
                 scan(target, self.patterns)
 
-    def test_zip_replaced_between_hash_and_open_is_rejected(self):
+    def test_zip_appended_between_hash_and_open_is_rejected(self):
         archive = self.root / "kit.zip"
         with zipfile.ZipFile(archive, "w") as output:
             output.writestr("bin/vantare-qa-license.exe", "fake executable")
         expected = hashlib.sha256(archive.read_bytes()).hexdigest()
         real_zip_file = zipfile.ZipFile
 
-        def replace_then_open(file, *args, **kwargs):
+        def append_then_open(file, *args, **kwargs):
             # The same handle is reused, so only the before/after fstat can
             # detect that the verified bytes are no longer the consumed ones.
             with open(archive, "ab") as extra:
                 extra.write(b"tampered after hashing")
             return real_zip_file(file, *args, **kwargs)
 
-        with patch.object(preflight_privado.zipfile, "ZipFile", replace_then_open):
-            with self.assertRaises(PrivateMaterial):
+        with patch.object(preflight_privado.zipfile, "ZipFile", append_then_open):
+            with self.assertRaisesRegex(PrivateMaterial, "cambió durante el preflight"):
                 verify_kit_zip(archive, expected)
+
+    def test_zip_replaced_in_place_between_hash_and_open_is_rejected(self):
+        archive = self.root / "kit.zip"
+        with zipfile.ZipFile(archive, "w") as output:
+            output.writestr("bin/vantare-qa-license.exe", "fake executable")
+        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+        inner = io.BytesIO()
+        with zipfile.ZipFile(inner, "w") as output:
+            output.writestr("otro.bin", "otro contenido mucho mas largo " * 40)
+        replacement = inner.getvalue()
+        real_zip_file = zipfile.ZipFile
+
+        def replace_then_open(file, *args, **kwargs):
+            # Same path and same open handle, different valid ZIP inside.
+            with open(archive, "r+b") as target:
+                target.truncate(0)
+                target.write(replacement)
+            return real_zip_file(file, *args, **kwargs)
+
+        with patch.object(preflight_privado.zipfile, "ZipFile", replace_then_open):
+            with self.assertRaisesRegex(PrivateMaterial, "cambió durante el preflight"):
+                verify_kit_zip(archive, expected)
+
+    def test_scan_reverifies_the_approved_zip_before_skipping_it(self):
+        archive = self.root / "kit.zip"
+        with zipfile.ZipFile(archive, "w") as output:
+            output.writestr("bin/vantare-qa-license.exe", "fake executable")
+        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+        approved = (archive.resolve(), expected)
+        scan(archive, self.patterns, approved)
+        with self.assertRaises(PrivateMaterial):
+            scan(archive, self.patterns, (archive.resolve(), "0" * 64))
 
     def test_clean_file_without_alternate_streams_is_allowed(self):
         target = self.root / "datos.json"
@@ -178,12 +210,12 @@ class AlternateStreamTests(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)
 
-    def add_stream(self, path, name="oculto"):
+    def add_stream(self, path, name="oculto", payload="cualquier cosa que no es la clave"):
         try:
             with open(f"{path}:{name}", "w", encoding="ascii") as hidden:
-                hidden.write("cualquier cosa que no es la clave")
+                hidden.write(payload)
         except OSError as error:
-            self.skipTest(f"Alternate data streams not available: {error}")
+            self.fail(f"El volumen temporal debe ser NTFS con soporte de ADS: {error}")
 
     @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
     def test_alternate_stream_in_staging_file_is_rejected(self):
@@ -211,6 +243,78 @@ class AlternateStreamTests(unittest.TestCase):
         with self.assertRaises(PrivateMaterial):
             verify_kit_zip(archive, expected)
 
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_alternate_stream_on_a_directory_is_rejected(self):
+        folder = self.root / "evidencia"
+        folder.mkdir()
+        self.add_stream(folder)
+        with self.assertRaises(PrivateMaterial):
+            scan(folder, self.patterns)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_zone_identifier_on_the_approved_zip_is_allowed(self):
+        archive = self.root / "kit.zip"
+        with zipfile.ZipFile(archive, "w") as output:
+            output.writestr("bin/vantare-qa-license.exe", "fake executable")
+        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+        self.add_stream(archive, "Zone.Identifier",
+                        "[ZoneTransfer]\r\nZoneId=3\r\n" + "x" * 80)
+        verify_kit_zip(archive, expected)
+        scan(archive, self.patterns, (archive.resolve(), expected))
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_large_zone_identifier_on_the_approved_zip_is_rejected(self):
+        archive = self.root / "kit.zip"
+        with zipfile.ZipFile(archive, "w") as output:
+            output.writestr("bin/vantare-qa-license.exe", "fake executable")
+        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+        self.add_stream(archive, "Zone.Identifier", "x" * 5000)
+        with self.assertRaises(PrivateMaterial):
+            verify_kit_zip(archive, expected)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_other_extra_stream_alongside_zone_identifier_is_rejected(self):
+        archive = self.root / "kit.zip"
+        with zipfile.ZipFile(archive, "w") as output:
+            output.writestr("bin/vantare-qa-license.exe", "fake executable")
+        expected = hashlib.sha256(archive.read_bytes()).hexdigest()
+        self.add_stream(archive, "Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n")
+        self.add_stream(archive, "oculto")
+        with self.assertRaises(PrivateMaterial):
+            verify_kit_zip(archive, expected)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_zone_identifier_on_a_staging_file_is_rejected(self):
+        target = self.root / "datos.json"
+        target.write_text('{"value":1}', encoding="utf8")
+        self.add_stream(target, "Zone.Identifier", "[ZoneTransfer]\r\nZoneId=3\r\n")
+        with self.assertRaises(PrivateMaterial):
+            scan(target, self.patterns)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_tolerated_stream_enumeration_errors_do_not_block_the_scan(self):
+        target = self.root / "datos.bin"
+        target.write_bytes(b"limpio")
+        invalid = preflight_privado._INVALID_HANDLE
+        for code in (preflight_privado.ERROR_INVALID_FUNCTION,
+                     preflight_privado.ERROR_FILE_NOT_FOUND,
+                     preflight_privado.ERROR_PATH_NOT_FOUND,
+                     preflight_privado.ERROR_HANDLE_EOF):
+            with self.subTest(code=code), \
+                    patch.object(preflight_privado, "_FIND_FIRST_STREAM", lambda *arguments: invalid), \
+                    patch.object(preflight_privado.ctypes, "get_last_error", lambda: code):
+                preflight_privado.reject_alternate_streams(target)
+
+    @unittest.skipUnless(WINDOWS, "NTFS alternate data streams need Windows")
+    def test_any_other_stream_enumeration_error_is_rejected(self):
+        target = self.root / "datos.bin"
+        target.write_bytes(b"limpio")
+        invalid = preflight_privado._INVALID_HANDLE
+        with patch.object(preflight_privado, "_FIND_FIRST_STREAM", lambda *arguments: invalid), \
+                patch.object(preflight_privado.ctypes, "get_last_error", lambda: 5):
+            with self.assertRaises(PrivateMaterial):
+                preflight_privado.reject_alternate_streams(target)
+
     def test_plain_file_without_streams_passes(self):
         target = self.root / "datos.bin"
         target.write_bytes(b"limpio")
@@ -233,9 +337,11 @@ class ShortSignatureTests(unittest.TestCase):
         scan(path, self.patterns)
 
     @staticmethod
-    def newc_header(name=b"TRAILER!!!\0", size=0):
+    def newc_header(name=b"TRAILER!!!\0", size=0, upper=False):
         fields = (0, 0o100644, 0, 0, 1, 0, size, 0, 0, 0, 0, len(name), 0)
-        return b"070701" + b"".join(f"{value:08x}".encode("ascii") for value in fields) + name
+        digits = "08X" if upper else "08x"
+        return (b"070701" + b"".join(f"{value:{digits}}".encode("ascii") for value in fields)
+                + name)
 
     @staticmethod
     def cab_header():
@@ -259,12 +365,17 @@ class ShortSignatureTests(unittest.TestCase):
         payloads = {
             "bzip2": bz2.compress(b"payload" * 40),
             "cpio-newc": self.newc_header(),
+            "cpio-newc-upper": self.newc_header(upper=True),
             "cab": self.cab_header(),
         }
         for name, payload in payloads.items():
             with self.subTest(container=name):
                 with self.assertRaisesRegex(PrivateMaterial, "Contenedor"):
                     self.scan_bytes(payload)
+
+    def test_uppercase_cpio_newc_header_is_recognized(self):
+        header = self.newc_header(upper=True)
+        self.assertTrue(preflight_privado.is_container(header, len(header)))
 
     def test_short_binary_without_a_valid_header_is_still_rejected(self):
         for payload in (b"BZh\x00\x02\x03", b"070701\x00\x01\x02", b"MSCF\x00\x01"):
@@ -333,7 +444,7 @@ class ConsoleContractTests(unittest.TestCase):
             with open(f"{log}:oculto", "w", encoding="ascii") as hidden:
                 hidden.write("contenido oculto")
         except OSError as error:
-            self.skipTest(f"Alternate data streams not available: {error}")
+            self.fail(f"El volumen temporal debe ser NTFS con soporte de ADS: {error}")
         code, stdout, stderr = self.run_cli(archive, expected)
         self.assert_failed_closed(code, stdout, stderr)
         self.assertNotIn("oculto", stderr)

@@ -888,7 +888,6 @@ export async function checkStrategyScreen(
   if (evidence) await mkdir(evidence, { recursive: true });
   // The hour of «Aceptado el … a las …» is the machine's: these pages use
   // Madrid's, so the checks and the captures do not depend on where they run.
-  // (The context goes with the browser, which the caller closes.)
   const browser = parent.context().browser();
   const context = browser
     ? await browser.newContext({ timezoneId: "Europe/Madrid" })
@@ -1001,6 +1000,8 @@ export async function checkStrategyScreen(
       await page.close();
     }
   }
+  // the context of Madrid's hour was ours: it goes with the check
+  if (browser) await context.close();
 }
 
 // ---- Aceptar la propuesta (E5b) ----
@@ -1305,6 +1306,73 @@ async function staleStates(
   );
   assert.doesNotMatch(said, /en la vuelta \d/);
   await shot("a-desact-imposible");
+  if (zoomed) return;
+  // the data changed and the new proposal has the same stops: it is a proposal
+  // (its own certificate and figures), the outdated plan is shown apart, and it
+  // can be accepted, which brings the plan up to date
+  await openAcceptedPlan(
+    page,
+    base,
+    "acceptedFujiStaleSame",
+    "Plan calculado",
+    false,
+  );
+  assert.equal(await stateTag(page), "Propuesta");
+  assert.equal(await page.getByText("datos antiguos").count(), 0);
+  await visible(
+    page.getByText("Comprobado: es el plan más rápido con estos datos"),
+  );
+  await visible(
+    page.getByRole("region", { name: "Ya tienes un plan aceptado" }),
+  );
+  await visible(button(page, "Volver al plan aceptado"));
+  await visible(button(page, "Aceptar propuesta"));
+  await shot("a-desact-nueva-igual");
+  await button(page, "Aceptar propuesta").press("Enter");
+  await visible(page.getByRole("heading", { name: "Plan aceptado" }));
+  assert.equal(await planStatus(page), "Plan aceptado.");
+  assert.equal(await stateTag(page), "Aceptado");
+}
+
+// The question tells the truth about «Descartar cambios»: it goes back to the
+// file, so it brings a plan back only if the file holds it.
+async function unsavedQuestions(page: Page, base: string, shot: Shot) {
+  await openAcceptedPlan(page, base, "plannedFuji", "Plan calculado", false);
+  await press(button(page, "Aceptar propuesta"));
+  await visible(page.getByRole("heading", { name: "Plan aceptado" }));
+  await press(button(page, "Ajustar paradas"));
+  await page.getByRole("radio", { name: "Parada 1, vuelta 43" }).focus();
+  await button(page, "− 1 vuelta").press("Enter");
+  await visible(page.getByRole("heading", { name: "Plan modificado" }));
+  await button(page, "Recalcular").press("Enter");
+  await page
+    .getByText("Plan recalculado sin garantía de ser el más rápido.", {
+      exact: true,
+    })
+    .waitFor({ state: "attached" });
+  await press(button(page, "Resumen"));
+  await button(page, "Aceptar propuesta").press("Enter");
+  const replace = page.getByRole("group", {
+    name: "¿Sustituir tu plan aceptado por esta propuesta?",
+  });
+  await visible(replace);
+  const lost =
+    "se pierde y no se puede recuperar: todavía no está guardado en el archivo.";
+  assert.match((await replace.textContent()) ?? "", new RegExp(lost));
+  assert.doesNotMatch((await replace.textContent()) ?? "", /Descartar cambios/);
+  await shot("a-sustituir-singuardar");
+  await page.keyboard.press("Escape");
+  await press(button(page, "Volver al plan aceptado"));
+  await visible(page.getByRole("heading", { name: "Plan aceptado" }));
+  const menu = button(page, "Más acciones del plan aceptado");
+  await menu.press("ArrowDown");
+  await visible(page.getByRole("menuitem", { name: /Quitar plan aceptado/ }));
+  await page.keyboard.press("Enter");
+  const remove = page.getByRole("group", { name: "¿Quitar el plan aceptado?" });
+  await visible(remove);
+  assert.match((await remove.textContent()) ?? "", new RegExp(lost));
+  assert.doesNotMatch((await remove.textContent()) ?? "", /Descartar cambios/);
+  await shot("a-quitar-singuardar");
 }
 
 async function carreraAcceptStates(
@@ -1377,6 +1445,7 @@ async function acceptStates(
 ) {
   await proposalStates(page, base, shot, zoomed);
   if (!zoomed) await acceptedStates(page, base, shot);
+  if (!zoomed) await unsavedQuestions(page, base, shot);
   await newProposalStates(page, base, shot, zoomed);
   await staleStates(page, base, shot, zoomed);
   await carreraAcceptStates(page, base, shot, zoomed);

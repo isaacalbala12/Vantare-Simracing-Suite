@@ -220,9 +220,26 @@ export function isProposalOnView(plan: StrategyPlanView) {
   );
 }
 
-// The proposal on view is the plan already accepted (same stints and stops).
+// The proposal on view is the plan already accepted: same stints and stops, and
+// the entries it was calculated from are the ones of now. The host compares the
+// calendar only (not the time), so after a change of data that leaves the stops
+// where they were `compare.same` is true while the accepted plan is still outdated:
+// that proposal is a new one (`isOutdatedSame`), not the accepted plan.
 export function isAcceptedOnView(plan: StrategyPlanView) {
-  return isProposalOnView(plan) && plan.accepted?.compare?.same === true;
+  return (
+    isProposalOnView(plan) &&
+    plan.accepted?.compare?.same === true &&
+    plan.accepted.state === "accepted"
+  );
+}
+
+// The proposal on view has the stops of an accepted plan that is outdated.
+export function isOutdatedSame(plan: StrategyPlanView) {
+  return (
+    isProposalOnView(plan) &&
+    plan.accepted?.compare?.same === true &&
+    plan.accepted.state !== "accepted"
+  );
 }
 
 // The proposal on view is not the plan accepted before.
@@ -364,6 +381,7 @@ export function changeValue(field: StrategyField, text: string) {
     return Number.isNaN(date.getTime()) ? value : dateTime.format(date);
   }
   const unit = units[field];
+  if (unit === "vueltas" && number === 1) return "1 vuelta";
   return unit && Number.isFinite(number)
     ? `${upToThree.format(number)} ${unit}`
     : value;
@@ -451,6 +469,15 @@ export function planCard(plan: StrategyPlanView): CardText | null {
   const difference = differsFromAccepted(plan)
     ? differenceText(accepted?.compare ?? null)
     : null;
+  // same stops as an accepted plan that is outdated: it brings it up to date
+  if (isOutdatedSame(plan))
+    return {
+      tag: { tone: "neutral", text: t.accept.tags.proposal },
+      title: c.done(duration, stops),
+      certificate,
+      notes: [{ tone: "warn", text: c.outdatedSame }],
+      accept: false,
+    };
   return {
     tag: { tone: "neutral", text: t.accept.tags.proposal },
     title: c.done(duration, stops),
@@ -486,7 +513,9 @@ function acceptedCard(accepted: StrategyAcceptedView): CardText {
             changeValue(first.field, first.before),
             changeValue(first.field, first.after),
           )
-      : c.changedMany(accepted.changes.length);
+      : accepted.changes.length === 0
+        ? c.changedUnknown
+        : c.changedMany(accepted.changes.length);
   return {
     tag,
     title: c.acceptedOutdated(duration, stops),

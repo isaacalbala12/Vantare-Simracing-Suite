@@ -27,6 +27,7 @@ import {
   editSummary,
   isAcceptedOnly,
   isAcceptedOnView,
+  isOutdatedSame,
   lapTime,
   load,
   movedStops,
@@ -422,7 +423,10 @@ function Result({
   const onView = !only && isAcceptedOnView(plan);
   const showsAccepted = !!accepted && (only || onView);
   const outdated = showsAccepted && accepted.state !== "accepted";
-  const other = !only && differsFromAccepted(plan);
+  // another proposal than the accepted plan (it has other stops), or one with its
+  // stops that still brings an outdated plan up to date
+  const differs = !only && differsFromAccepted(plan);
+  const other = differs || (!only && isOutdatedSame(plan));
   const acceptable = !only && canAccept(plan);
   const [confirm, setConfirm] = useState<"replace" | "remove" | null>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -434,16 +438,19 @@ function Result({
   // the question goes when what it asks about is no longer there
   const asks =
     view === "summary" &&
-    ((confirm === "replace" && other) ||
+    ((confirm === "replace" && differs) ||
       (confirm === "remove" && showsAccepted));
   useEffect(() => {
     if (confirm && !asks) setConfirm(null);
   }, [confirm, asks]);
   useEffect(() => {
     if (asks) cancelRef.current?.focus();
-    else if (restore.current) {
-      (restore.current === "accept" ? acceptRef : menuRef).current?.focus();
+    else {
+      if (restore.current)
+        (restore.current === "accept" ? acceptRef : menuRef).current?.focus();
       restore.current = null;
+      // however the question closed (Cancelar, Confirmar or because it no longer
+      // applies), the menu may give the focus back again next time
       skipFocus.current = false;
     }
   }, [asks]);
@@ -490,6 +497,16 @@ function Result({
       {t.adjust.reset}
     </Button>
   );
+  // the proposal has no plan: the accepted one must still be within reach
+  const backToAccepted = !only && accepted && (
+    <Button
+      variant="ghost"
+      disabled={actions.pending}
+      onClick={acceptance.showAccepted}
+    >
+      {strategy.calc.accept.compare.back}
+    </Button>
+  );
   if (result.certificate === "no_solution")
     return (
       <>
@@ -506,6 +523,7 @@ function Result({
           details={[...certificateNotice(result).details, t.noSolution.hint]}
         >
           {reset}
+          {backToAccepted}
           <Button variant="primary" onClick={() => actions.review(null)}>
             <Icon name="pencil" />
             {t.review}
@@ -526,6 +544,7 @@ function Result({
         <Notice result={result} />
         <div className="strategy-actions">
           {reset}
+          {backToAccepted}
           <Button variant="primary" onClick={() => actions.review(null)}>
             <Icon name="pencil" />
             {t.review}
@@ -564,7 +583,9 @@ function Result({
           ref={acceptRef}
           variant="primary"
           disabled={actions.pending}
-          onClick={() => (other ? setConfirm("replace") : acceptance.accept())}
+          onClick={() =>
+            differs ? setConfirm("replace") : acceptance.accept()
+          }
         >
           <Icon name="check" />
           {strategy.calc.accept.action}
@@ -678,6 +699,7 @@ function Result({
             <ConfirmCard
               kind={confirm === "replace" ? "replace" : "remove"}
               summary={planSummary(accepted.result)}
+              saved={accepted.saved}
               cancelRef={cancelRef}
               cancel={cancelQuestion}
               confirm={confirmQuestion}
@@ -964,6 +986,15 @@ export function PlanTab({
                     </Button>
                     {review}
                   </>
+                )}
+                {plan.accepted && (
+                  <Button
+                    variant="ghost"
+                    disabled={actions.pending}
+                    onClick={actions.acceptance.showAccepted}
+                  >
+                    {strategy.calc.accept.compare.back}
+                  </Button>
                 )}
               </div>
             </div>

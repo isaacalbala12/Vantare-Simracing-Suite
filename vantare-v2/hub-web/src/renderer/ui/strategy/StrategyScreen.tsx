@@ -260,12 +260,15 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
   async function acceptPlan() {
     if (!view) return;
     setAnnouncement("");
-    const replaces = view.plan.accepted !== null;
+    // Accepting the same stops again (the data changed and the plan stayed) brings
+    // the plan up to date: nothing is replaced. «Deshacer» only follows the first.
+    const had = view.plan.accepted;
+    const replaces = had !== null && had.compare?.same !== true;
     const result = await strategyAccept(act, view.plan);
     if (!result) return;
     planAnswered(result);
     if ("value" in result) {
-      setFirstAccept(!replaces);
+      setFirstAccept(had === null);
       setAnnouncement(
         replaces ? t.calc.announce.replaced : t.calc.announce.accepted,
       );

@@ -15,6 +15,7 @@ import {
 import { Button } from "../Button";
 
 const t = strategy.calc.accept;
+const shownChanges = 6;
 
 // What the host says of the accepted plan, in the words of the screen: the
 // state tag, the line under the certificate, the comparison with a new proposal,
@@ -97,6 +98,10 @@ export function CompareCard({
 }) {
   const id = useId();
   const c = t.compare;
+  // the plan accepted is outdated: say what changed, and that accepting this
+  // proposal brings it up to date
+  const outdated = accepted.state !== "accepted";
+  const shown = accepted.changes.slice(0, shownChanges);
   return (
     <section
       className="strategy-card strategy-compare"
@@ -117,6 +122,14 @@ export function CompareCard({
           </span>
           <span>{proposal}</span>
         </p>
+        {outdated && shown.length > 0 && (
+          <ul className="strategy-changes" aria-label={t.stale.changes}>
+            {shown.map((change) => (
+              <li key={change.field}>{changeLine(change)}</li>
+            ))}
+          </ul>
+        )}
+        {outdated && <p>{c.outdatedHint}</p>}
       </div>
       <Button size="sm" variant="ghost" disabled={pending} onClick={back}>
         {c.back}
@@ -129,6 +142,7 @@ export function proposalLine(accepted: StrategyAcceptedView, summary: string) {
   return strategy.calc.accept.compare.proposal(
     summary,
     differenceText(accepted.compare),
+    accepted.compare?.same === true,
   );
 }
 
@@ -137,6 +151,7 @@ export function proposalLine(accepted: StrategyAcceptedView, summary: string) {
 export function ConfirmCard({
   kind,
   summary,
+  saved,
   cancelRef,
   cancel,
   confirm,
@@ -144,6 +159,8 @@ export function ConfirmCard({
 }: {
   kind: "replace" | "remove";
   summary: string;
+  // the file holds the plan: «Descartar cambios» brings it back
+  saved: boolean;
   cancelRef: Ref<HTMLButtonElement>;
   cancel: () => void;
   confirm: () => void;
@@ -177,7 +194,9 @@ export function ConfirmCard({
           {replace ? c.replaceTitle : c.removeTitle}
         </strong>
         <p id={`${id}-detail`}>
-          {replace ? c.replaceDetail(summary) : c.removeDetail(summary)}
+          {replace
+            ? c.replaceDetail(summary, saved)
+            : c.removeDetail(summary, saved)}
         </p>
       </div>
       <div className="strategy-actions">
@@ -197,8 +216,6 @@ export function ConfirmCard({
     </fieldset>
   );
 }
-
-const shownChanges = 6;
 
 // The accepted plan of data that changed: which ones, what the plan can still
 // do and the way out. With no lap from the host, the cause is all that is said.

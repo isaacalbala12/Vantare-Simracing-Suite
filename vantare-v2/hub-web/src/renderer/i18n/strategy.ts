@@ -479,6 +479,9 @@ export const strategy = {
         `Has cambiado ${count} datos desde que aceptaste el plan.`,
       changedHidden: (label: string) =>
         `Has cambiado «${label}» desde que aceptaste el plan.`,
+      outdatedSame:
+        "Tu plan aceptado está desactualizado; esta propuesta lo pone al día.",
+      changedUnknown: "Han cambiado datos desde que aceptaste el plan.",
       staleReaches:
         "Con los datos nuevos sigue llegando a meta, pero puede que ya no sea el más rápido.",
       staleRecalculate: "Calcula de nuevo y acepta la nueva propuesta.",
@@ -549,8 +552,11 @@ export const strategy = {
         title: "Ya tienes un plan aceptado",
         accepted: (summary: string, day: string, outdated: boolean) =>
           `Plan aceptado: ${summary}${outdated ? " · desactualizado" : ""} · aceptado el ${day}`,
-        proposal: (summary: string, difference: string) =>
-          `Esta propuesta: ${summary}${difference ? ` · ${difference}` : ""}`,
+        proposal: (summary: string, difference: string, sameStops = false) =>
+          `Esta propuesta: ${summary}${sameStops ? " · mismas paradas" : ""}${difference ? ` · ${difference}` : ""}`,
+        // the plan accepted is outdated and the proposal has its stops
+        outdatedHint:
+          "Los datos de la carrera han cambiado desde que lo aceptaste. Si aceptas esta propuesta, el plan aceptado pasa a ser este.",
         slower: (amount: string) => `${amount} más lenta`,
         faster: (amount: string) => `${amount} más rápida`,
         same: "misma duración",
@@ -561,12 +567,18 @@ export const strategy = {
       },
       confirm: {
         replaceTitle: "¿Sustituir tu plan aceptado por esta propuesta?",
-        replaceDetail: (summary: string) =>
-          `El plan aceptado de ahora (${summary}) se pierde cuando guardes el archivo. Hasta entonces, «Descartar cambios» lo recupera.`,
+        // «Descartar cambios» goes back to the FILE: it brings the plan back only
+        // when the file holds it
+        replaceDetail: (summary: string, saved: boolean) =>
+          saved
+            ? `El plan aceptado de ahora (${summary}) se pierde cuando guardes el archivo. Hasta entonces, «Descartar cambios» lo recupera.`
+            : `El plan aceptado de ahora (${summary}) se pierde y no se puede recuperar: todavía no está guardado en el archivo.`,
         replace: "Sustituir plan aceptado",
         removeTitle: "¿Quitar el plan aceptado?",
-        removeDetail: (summary: string) =>
-          `El plan aceptado (${summary}) se pierde cuando guardes el archivo. Hasta entonces, «Descartar cambios» lo recupera.`,
+        removeDetail: (summary: string, saved: boolean) =>
+          saved
+            ? `El plan aceptado (${summary}) se pierde cuando guardes el archivo. Hasta entonces, «Descartar cambios» lo recupera.`
+            : `El plan aceptado (${summary}) se pierde y no se puede recuperar: todavía no está guardado en el archivo.`,
         remove: "Quitar plan aceptado",
         cancel: "Cancelar",
       },

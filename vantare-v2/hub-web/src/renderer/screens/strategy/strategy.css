@@ -1568,6 +1568,14 @@
   border-color: color-mix(in srgb, var(--warn) 60%, var(--line-2));
 }
 
+.strategy-card.strategy-compare .strategy-changes {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-small);
+  color: var(--text-2);
+}
+
 .strategy-compare .strategy-actions {
   margin: 0;
   justify-content: flex-end;

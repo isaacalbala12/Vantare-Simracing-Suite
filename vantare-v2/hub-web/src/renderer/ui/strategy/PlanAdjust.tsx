@@ -1,4 +1,5 @@
 import {
+  type ComponentProps,
   type CSSProperties,
   type ReactNode,
   useEffect,
@@ -8,16 +9,15 @@ import {
 } from "react";
 import type {
   StrategyEditView,
+  StrategyServiceSteps,
   StrategyTimeline,
 } from "../../../contract/generated/strategy";
 import { strategy } from "../../i18n/strategy";
-import {
-  addedLoad,
-  liters,
-  load,
-  percent,
-} from "../../screens/strategy/planText";
+import { amounts } from "../../i18n/strategyAmounts";
+import { addedLoad, load } from "../../screens/strategy/planText";
+import { pitTime, stopIsFixed } from "../../screens/strategy/stopAmounts";
 import { Button } from "../Button";
+import { type AmountActions, PinMark, StopAmounts } from "./StopAmounts";
 
 const t = strategy.calc;
 const a = t.adjust;
@@ -29,13 +29,13 @@ export type EditActions = {
   moveStop: (index: number, delta: -1 | 1) => Promise<boolean | undefined>;
   recalculate: () => void;
   reset: () => void;
-};
+} & AmountActions;
 
 type Choice = { label: string; text: ReactNode };
 
 // A group of radio buttons: the arrows walk through them and the selection
 // follows the focus, as the browser does for radios that share a name.
-function Choices({
+export function Choices({
   label,
   choices,
   value,
@@ -70,16 +70,19 @@ function Metric({
   label,
   value,
   previous,
+  note,
 }: {
   label: string;
   value: string;
   previous: boolean;
+  note?: string;
 }) {
   return (
     <div className="strategy-metric" data-stale={previous || undefined}>
       <span>{label}</span>
       {previous && <em>{a.previous}</em>}
       <b>{value}</b>
+      {note && <small>{note}</small>}
     </div>
   );
 }
@@ -331,7 +334,11 @@ export function StopEditor({
   busy,
   locked,
   stale,
+  steps,
+  finish,
   move,
+  set,
+  clear,
 }: {
   edit: StrategyEditView;
   // the plan the stops come from: their amounts, tyres and service
@@ -343,7 +350,13 @@ export function StopEditor({
   locked: boolean;
   // the amounts are those of the plan before the edit
   stale: boolean;
+  steps: StrategyServiceSteps;
+  // how the plan finishes against the automatic one, when the host has both
+  finish?: ComponentProps<typeof StopAmounts>["finish"];
   move: EditActions["moveStop"];
+  set: EditActions["setStopService"];
+  // back to automatic everywhere, offered when something is fixed
+  clear?: () => void;
 }) {
   const id = useId();
   const stop = edit.stops[index];
@@ -374,11 +387,12 @@ export function StopEditor({
           value={index}
           onChange={onSelect}
           choices={edit.stops.map((item, position) => ({
-            label: `${t.stop(position + 1)}, ${t.lap(item.lap).toLowerCase()}`,
+            label: `${t.stop(position + 1)}, ${t.lap(item.lap).toLowerCase()}${stopIsFixed(item) ? `, ${amounts.pinnedStop}` : ""}`,
             text: (
               <>
                 <b>{position + 1}</b>
                 {` v. ${item.lap}`}
+                {stopIsFixed(item) && <PinMark />}
               </>
             ),
           }))}
@@ -386,16 +400,6 @@ export function StopEditor({
       </div>
       <div className="strategy-editor-columns">
         <div className="strategy-metrics">
-          <Metric
-            label={a.stops.fuel}
-            value={pit.fuelLiters > 0 ? `+${liters(pit.fuelLiters)}` : t.noLoad}
-            previous={stale}
-          />
-          <Metric
-            label={a.stops.energy}
-            value={pit.vePercent > 0 ? `+${percent(pit.vePercent)}` : t.noLoad}
-            previous={stale}
-          />
           <Metric
             label={a.stops.tyres}
             value={pit.changeTyres ? a.stops.freshTyres : a.stops.sameTyres}
@@ -405,6 +409,16 @@ export function StopEditor({
             label={a.stops.service}
             value={t.services[pit.service]}
             previous={stale}
+          />
+          <Metric
+            label={amounts.pitTime}
+            value={pitTime(stop.pitSeconds)}
+            previous={false}
+            note={
+              pit.pitSeconds !== stop.pitSeconds
+                ? amounts.pitBefore(pitTime(pit.pitSeconds))
+                : undefined
+            }
           />
         </div>
         <div className="strategy-mover">
@@ -433,9 +447,26 @@ export function StopEditor({
                   : a.stops.atLast}
             </p>
           )}
-          <p className="strategy-help">{a.stops.amounts}</p>
         </div>
       </div>
+      <StopAmounts
+        key={index}
+        edit={edit}
+        index={index}
+        steps={steps}
+        stale={stale}
+        locked={locked}
+        finish={finish}
+        set={set}
+      />
+      {clear && (
+        <div className="strategy-actions">
+          <Button size="sm" variant="ghost" disabled={locked} onClick={clear}>
+            {amounts.clear}
+          </Button>
+        </div>
+      )}
+      <p className="strategy-help">{amounts.foot}</p>
     </div>
   );
 }

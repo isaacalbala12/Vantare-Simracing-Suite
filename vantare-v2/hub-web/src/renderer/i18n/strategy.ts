@@ -379,6 +379,9 @@ export const strategy = {
         title: "Cambios pendientes de recalcular",
         detail:
           "Las cifras de abajo son del plan anterior. Recalcula para actualizar tiempos y cargas y comprobar que el plan sigue siendo posible. «Restablecer» vuelve al último plan válido.",
+        // with amounts fixed by hand: what recalculating does with them
+        fixed:
+          "Las cifras de abajo son del plan anterior. Al recalcular, Vantare respeta lo que fijaste y decide el resto.",
         accept: "Recalcula para poder aceptar el plan.",
       },
       recalculating: {
@@ -438,10 +441,8 @@ export const strategy = {
       },
       stops: {
         heading: "Ajustar paradas",
-        sub: "Adelanta o retrasa una parada vuelta a vuelta.",
+        sub: "Mueve una parada o fija a mano lo que se carga en ella.",
         pick: "Elige la parada",
-        fuel: "Combustible",
-        energy: "Energía virtual",
         tyres: "Neumáticos",
         service: "En la parada",
         freshTyres: "Nuevos",
@@ -458,8 +459,6 @@ export const strategy = {
           "No se puede retrasar más: el stint siguiente se quedaría sin vueltas.",
         pinned:
           "Esta parada no se puede mover: los stints vecinos se quedarían sin vueltas.",
-        amounts:
-          "El combustible, la energía y las ruedas de cada parada los decide el cálculo; aquí solo se elige la vuelta.",
       },
     },
     card: {

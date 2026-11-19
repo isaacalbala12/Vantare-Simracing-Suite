@@ -16,6 +16,7 @@ import type {
 } from "../../../contract/generated/strategy";
 import { Icon } from "../../assets/icons/Icon";
 import { strategy } from "../../i18n/strategy";
+import { amounts } from "../../i18n/strategyAmounts";
 import {
   acceptedTag,
   addedLoad,
@@ -31,6 +32,7 @@ import {
   lapTime,
   load,
   movedStops,
+  pinnedCount,
   planSubtitle,
   planSummary,
   reserveFigure,
@@ -39,7 +41,15 @@ import {
   type Tag,
   tyresNote,
 } from "../../screens/strategy/planText";
+import {
+  automaticGap,
+  finishFigures,
+  fixedStops,
+  fixedSummary,
+  stopIsFixed,
+} from "../../screens/strategy/stopAmounts";
 import { Button } from "../Button";
+import { FixedNoPlan } from "./FixedNoPlan";
 import {
   AcceptedLine,
   AcceptedMenu,
@@ -53,6 +63,7 @@ import {
 import { type EditActions, StintEditor, StopEditor } from "./PlanAdjust";
 import { type ExportActions, ExportMenu, ExportNotice } from "./PlanExport";
 import { PlanTimeline, type TimelineMark } from "./PlanTimeline";
+import { AgainCard, PinnedTag, SlowerLine } from "./StopAmounts";
 
 const t = strategy.calc;
 
@@ -182,13 +193,16 @@ function Figures({
   stale,
   staleLabel,
   durationText,
+  fixedCount = 0,
 }: {
   result: StrategyCalculationView;
   form: StrategyComputeForm | null;
   stale: boolean;
   staleLabel: string;
-  // what the duration says of the accepted plan, when this is another proposal
+  // what the duration says of the accepted plan, or of the automatic one
   durationText?: string;
+  // the stops of the plan that carry an amount fixed by hand
+  fixedCount?: number;
 }) {
   const { metrics, timeline } = result;
   if (!metrics) return null;
@@ -213,7 +227,13 @@ function Figures({
       <Figure
         label={f.stops}
         value={String(metrics.pitCount)}
-        note={timeline ? tyresNote(timeline.pits) : undefined}
+        note={
+          fixedCount > 0
+            ? amounts.figure.fixedStops(fixedCount)
+            : timeline
+              ? tyresNote(timeline.pits)
+              : undefined
+        }
         stale={stale}
         staleLabel={staleLabel}
       />
@@ -273,6 +293,12 @@ function Legs({
                 <span>{t.services[pit.service]}</span>
                 <span>
                   {`${addedLoad(pit)} · ${pit.changeTyres ? t.freshTyres : t.sameTyres}`}
+                  {(pit.pinned.fuelLiters || pit.pinned.vePercent) && (
+                    <>
+                      {" "}
+                      <PinnedTag />
+                    </>
+                  )}
                 </span>
               </li>
             )}
@@ -341,6 +367,7 @@ function EditNotices({
   edited: boolean;
   recalculating: boolean;
 }) {
+  const fixed = fixedStops(edit) > 0;
   // The host keeps the failure of the last attempt until the plan is edited
   // again: not shown while a new attempt runs, so a second failure is a new alert.
   const failed = !recalculating && edit.error && t.adjust.errors[edit.error];
@@ -357,7 +384,11 @@ function EditNotices({
           </span>
           <div>
             <strong>{t.adjust.pending.title}</strong>
-            <p>{t.adjust.pending.detail}</p>
+            <p>
+              {fixed
+                ? `${t.adjust.pending.fixed} ${amounts.pending}`
+                : t.adjust.pending.detail}
+            </p>
             <p>{t.adjust.pending.accept}</p>
             <p>{t.adjust.notSaved}</p>
           </div>
@@ -375,6 +406,22 @@ function EditNotices({
         </div>
       )}
     </>
+  );
+}
+
+function Recalculating({ actions }: { actions: PlanActions }) {
+  return (
+    <div className="strategy-card strategy-calculating" data-recalculating="">
+      <span className="strategy-spinner" aria-hidden="true" />
+      <div>
+        <strong>{t.adjust.recalculating.title}</strong>
+        <p>{t.adjust.recalculating.detail}</p>
+      </div>
+      <Button disabled={actions.pending} onClick={actions.cancel}>
+        <Icon name="x" />
+        {t.cancel}
+      </Button>
+    </div>
   );
 }
 
@@ -431,6 +478,43 @@ function Result({
   const other = differs || (!only && isOutdatedSame(plan));
   const acceptable = !only && canAccept(plan);
   const [confirm, setConfirm] = useState<"replace" | "remove" | null>(null);
+  // «Calcular de nuevo» throws away what was fixed by hand: it asks before
+  const fixedCount = fixedStops(edit);
+  const [askAgain, setAskAgain] = useState(false);
+  const againRef = useRef<HTMLButtonElement>(null);
+  const againCancel = useRef<HTMLButtonElement>(null);
+  const backToAgain = useRef(false);
+  const mustAsk = !only && !edited && !recalculating && fixedCount > 0;
+  const asking = askAgain && mustAsk;
+  useEffect(() => {
+    if (askAgain && !mustAsk) setAskAgain(false);
+  }, [askAgain, mustAsk]);
+  useEffect(() => {
+    if (asking) againCancel.current?.focus();
+    else if (backToAgain.current) {
+      backToAgain.current = false;
+      againRef.current?.focus();
+    }
+  }, [asking]);
+  // the fixed «no plan» screen was on view (see `fixedNoPlan`)
+  const keptFixed = useRef(false);
+  // Going back to automatic takes away the button that was pressed: the focus goes to
+  // Recalcular, which is what comes next.
+  const recalcRef = useRef<HTMLButtonElement>(null);
+  const [focusRecalc, setFocusRecalc] = useState(false);
+  useEffect(() => {
+    if (!focusRecalc || !recalcRef.current) return;
+    setFocusRecalc(false);
+    recalcRef.current.focus();
+  }, [focusRecalc]);
+  const clearAll = async () => {
+    const answer = await actions.edit.clearStopServices();
+    if (answer) setFocusRecalc(true);
+  };
+  const backToAutomatic = async (stop: number) => {
+    const answer = await actions.edit.setStopService(stop, null, null);
+    if (answer && "value" in answer) setFocusRecalc(true);
+  };
   const cancelRef = useRef<HTMLButtonElement>(null);
   const acceptRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLButtonElement>(null);
@@ -483,6 +567,14 @@ function Result({
       ? undefined
       : { kind: view === "stops" ? "stop" : "stint", index };
   const shown = timeline ? scheduleTimeline(timeline, edit) : null;
+  // slower than the automatic plan, when the host gave its figures
+  const gap = fixedCount > 0 ? automaticGap(result, edit?.automatic) : null;
+  // the stops with something fixed: the edit says it, a plan with no edit has its own marks
+  const pinned = edit
+    ? edit.stops.map(stopIsFixed)
+    : timeline?.pits.map(
+        ({ pinned: marks }) => marks.fuelLiters || marks.vePercent,
+      );
   const proposal = timeline?.pits.map((pit) => pit.lap) ?? [];
   const moves = movedStops(timeline, edit);
   // The notice of the export goes away, or tries again, and the focus stays on the
@@ -496,11 +588,29 @@ function Result({
     exporting.retry();
     exportRef.current?.focus();
   };
+  // «Calcular de nuevo» throws away what was fixed: the question is the same wherever
+  // the button is (the plan, or a calculation that did not finish)
+  const askCard = asking && (
+    <AgainCard
+      stops={fixedCount}
+      cancelRef={againCancel}
+      cancel={() => {
+        backToAgain.current = true;
+        setAskAgain(false);
+      }}
+      confirm={() => {
+        setAskAgain(false);
+        actions.calculate();
+      }}
+      pending={actions.pending}
+    />
+  );
   const again = (
     <Button
+      ref={againRef}
       variant="ghost"
       disabled={!actions.canCalculate || actions.pending}
-      onClick={actions.calculate}
+      onClick={mustAsk ? () => setAskAgain(true) : actions.calculate}
     >
       <Icon name="refresh" />
       {t.again}
@@ -521,6 +631,55 @@ function Result({
       {strategy.calc.accept.compare.back}
     </Button>
   );
+  // The screen of «no plan with what you fixed» stays while the person edits it, even
+  // once nothing is fixed any more (they went back to automatic), but a plan that
+  // never had anything fixed is the plain «no plan» one.
+  const noPlan = result.certificate === "no_solution" && !!edit;
+  const fixedNoPlan =
+    noPlan &&
+    (edit.cause !== null || fixedCount > 0 || (edited && keptFixed.current));
+  useEffect(() => {
+    if (!noPlan) keptFixed.current = false;
+    else if (edit?.cause != null || fixedCount > 0) keptFixed.current = true;
+  });
+  if (fixedNoPlan && edit)
+    return (
+      <>
+        <Heading
+          state={state}
+          name={name}
+          title={amounts.noPlan.heading}
+          sub={amounts.noPlan.sub}
+          actions={
+            recalculating ? undefined : (
+              <>
+                {reset}
+                {edited && (
+                  <Button
+                    ref={recalcRef}
+                    variant="primary"
+                    onClick={() => setWantsRecalculation(true)}
+                  >
+                    <Icon name="refresh" />
+                    {t.adjust.recalculate}
+                  </Button>
+                )}
+              </>
+            )
+          }
+        />
+        {recalculating && <Recalculating actions={actions} />}
+        <EditNotices edit={edit} edited={false} recalculating={recalculating} />
+        <FixedNoPlan
+          edit={edit}
+          steps={result.steps}
+          edited={edited}
+          locked={recalculating}
+          set={actions.edit.setStopService}
+          back={backToAutomatic}
+        />
+      </>
+    );
   if (result.certificate === "no_solution")
     return (
       <>
@@ -553,8 +712,9 @@ function Result({
           name={name}
           title={t.unfinished.heading}
           sub={t.unfinished.sub}
-          actions={again}
+          actions={asking ? undefined : again}
         />
+        {askCard}
         <Notice result={result} />
         <div className="strategy-actions">
           {reset}
@@ -569,7 +729,12 @@ function Result({
   const [title, sub] = recalculating
     ? [t.adjust.recalculating.heading, t.adjust.recalculating.sub]
     : edited
-      ? [t.adjust.modified, editSummary(moves)]
+      ? [
+          t.adjust.modified,
+          moves.length > 0
+            ? [editSummary(moves), fixedSummary(edit)].filter(Boolean).join(" ")
+            : fixedSummary(edit) || editSummary(moves),
+        ]
       : view === "stints"
         ? [t.adjust.stints.heading, t.adjust.stints.sub]
         : view === "stops"
@@ -583,7 +748,11 @@ function Result({
   const headActions = recalculating ? undefined : edited ? (
     <>
       {reset}
-      <Button variant="primary" onClick={() => setWantsRecalculation(true)}>
+      <Button
+        ref={recalcRef}
+        variant="primary"
+        onClick={() => setWantsRecalculation(true)}
+      >
         <Icon name="refresh" />
         {t.adjust.recalculate}
       </Button>
@@ -643,22 +812,7 @@ function Result({
         retry={retryExport}
         dismiss={closeExport}
       />
-      {recalculating && (
-        <div
-          className="strategy-card strategy-calculating"
-          data-recalculating=""
-        >
-          <span className="strategy-spinner" aria-hidden="true" />
-          <div>
-            <strong>{t.adjust.recalculating.title}</strong>
-            <p>{t.adjust.recalculating.detail}</p>
-          </div>
-          <Button disabled={actions.pending} onClick={actions.cancel}>
-            <Icon name="x" />
-            {t.cancel}
-          </Button>
-        </div>
-      )}
+      {recalculating && <Recalculating actions={actions} />}
       {actions.unreadable && recalculating && (
         <div className="strategy-notice" data-tone="error" role="alert">
           <span className="strategy-icon">
@@ -676,6 +830,7 @@ function Result({
           </div>
         </div>
       )}
+      {askCard}
       {edit && (
         <EditNotices
           edit={edit}
@@ -697,6 +852,13 @@ function Result({
         ) : (
           <Notice result={result} />
         ))}
+      {!edited && !recalculating && view === "summary" && gap && (
+        <SlowerLine
+          text={amounts.slower(gap.text, gap.automatic)}
+          clear={() => void clearAll()}
+          disabled={actions.pending}
+        />
+      )}
       {!edited && !recalculating && view === "summary" && (
         <>
           {acceptable && !other && (
@@ -743,8 +905,11 @@ function Result({
           durationText={
             other && view === "summary"
               ? durationNote(accepted?.compare ?? null)
-              : undefined
+              : gap
+                ? amounts.figure.slower(gap.text)
+                : undefined
           }
+          fixedCount={pinnedCount(timeline)}
         />
       )}
       {shown ? (
@@ -766,6 +931,7 @@ function Result({
               timeline={shown}
               selected={mark}
               proposal={proposal}
+              pinned={pinned}
             />
           </section>
           {view === "stints" && edit && (
@@ -797,7 +963,15 @@ function Result({
                 busy={actions.pending}
                 locked={recalculating}
                 stale={edited || recalculating}
+                steps={result.steps}
+                finish={
+                  !edited && index === stops - 1 && timeline
+                    ? finishFigures(timeline, edit.automatic)
+                    : undefined
+                }
                 move={actions.edit.moveStop}
+                set={actions.edit.setStopService}
+                clear={fixedCount > 0 ? () => void clearAll() : undefined}
               />
               {!edited && <p className="strategy-help">{t.adjust.notSaved}</p>}
             </>

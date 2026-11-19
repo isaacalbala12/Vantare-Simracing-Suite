@@ -1,5 +1,6 @@
 import type { StrategyTimeline } from "../../../contract/generated/strategy";
 import { strategy } from "../../i18n/strategy";
+import { PinMark } from "./StopAmounts";
 
 const t = strategy.calc;
 // 4 decimals of a percentage: finer than a pixel on any screen
@@ -24,10 +25,13 @@ export function PlanTimeline({
   timeline,
   selected,
   proposal,
+  pinned,
 }: {
   timeline: StrategyTimeline;
   selected?: TimelineMark;
   proposal?: readonly number[];
+  // the stops with an amount fixed by hand
+  pinned?: readonly boolean[];
 }) {
   const { stints, pits } = timeline;
   const total = stints[stints.length - 1]?.toLap ?? 0;
@@ -70,7 +74,10 @@ export function PlanTimeline({
             style={{ left: share(pit.lap, total) }}
           >
             <i />
-            <span>{`P${index + 1}`}</span>
+            <span>
+              {`P${index + 1}`}
+              {pinned?.[index] && <PinMark />}
+            </span>
           </div>
         ))}
         {pits.map((pit, index) => {

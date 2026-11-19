@@ -50,3 +50,30 @@ export function strategyResetEdit(act: Act, plan: StrategyPlanView) {
     ? undefined
     : act({ method: "strategy.resetEdit", computeId: plan.computeId });
 }
+
+// Fixing by hand what a stop loads. The request says how the whole stop stays:
+// both amounts, and `null` for the one the calculation decides. The host
+// validates at once and, if it refuses an amount, changes nothing.
+export function strategySetStopService(
+  act: Act,
+  plan: StrategyPlanView,
+  index: number,
+  fuelLiters: number | null,
+  vePercent: number | null,
+) {
+  return plan.computeId === null
+    ? undefined
+    : act({
+        method: "strategy.setStopService",
+        computeId: plan.computeId,
+        index,
+        fuelLiters,
+        vePercent,
+      });
+}
+
+export function strategyClearStopServices(act: Act, plan: StrategyPlanView) {
+  return plan.computeId === null
+    ? undefined
+    : act({ method: "strategy.clearStopServices", computeId: plan.computeId });
+}

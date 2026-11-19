@@ -681,6 +681,8 @@ function recalculated(
   editing: Editing,
   computeId: number,
   fuji: boolean,
+  // QA: a Fuji scene where the search does prove the plan with what is fixed
+  proven = false,
 ): StrategyPlanView {
   const plan = structuredClone(editing.base);
   const edit = editView(editing);
@@ -713,9 +715,11 @@ function recalculated(
         ),
       0,
     );
-    plan.state = "partial";
-    plan.result.certificate = "not_proven";
-    plan.result.reason = "searchBudgetExhausted";
+    if (!(proven && moved === 0)) {
+      plan.state = "partial";
+      plan.result.certificate = "not_proven";
+      plan.result.reason = "searchBudgetExhausted";
+    }
     plan.result.metrics.totalSeconds += 2 * moved;
   }
   return { ...plan, computeId, edit };
@@ -1801,7 +1805,12 @@ export function create(context: MockContext): MockHandler {
           stop: unreachableStop(stopLimits(editing)) ?? 0,
         };
       } else {
-        const done = recalculated(editing, finished, fuji);
+        const done = recalculated(
+          editing,
+          finished,
+          fuji,
+          scenario === "plannedFujiFixedProven",
+        );
         const automatic = figures(done);
         if (!somethingFixed(editing.fixed) && automatic)
           editing.automatic = { laps: [...editing.laps], figures: automatic };

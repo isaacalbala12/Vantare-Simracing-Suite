@@ -1,0 +1,246 @@
+/* Combustible y energía a mano por parada (E5g): las filas de «Ajustar paradas».
+   Solo tokens del Hub; el aspecto sigue al de los ajustes de stints y paradas. */
+
+.strategy-pin {
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  margin-inline: var(--space-1);
+  vertical-align: -0.125em;
+  color: var(--accent-bright);
+}
+
+.strategy-fixed-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-body, inherit);
+  font-size: var(--text-micro);
+  font-weight: 650;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-1);
+  white-space: nowrap;
+}
+
+.strategy-fixed-tag > .strategy-pin {
+  margin-inline: 0;
+}
+
+.strategy-amounts {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--line-2);
+}
+
+.strategy-amount {
+  display: grid;
+  grid-template-columns:
+    minmax(7rem, 0.8fr) auto minmax(11rem, 1.1fr)
+    minmax(0, 2fr);
+  align-items: start;
+  gap: var(--space-3) var(--space-5);
+  padding-block: var(--space-4);
+  border-bottom: 1px solid var(--line-2);
+}
+
+.strategy-amount[data-unused] {
+  grid-template-columns: minmax(7rem, 0.8fr) minmax(0, 3fr);
+  align-items: center;
+}
+
+.strategy-amount-unused {
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--text-3);
+}
+
+.strategy-amount-name {
+  display: grid;
+  gap: var(--space-1);
+  font-weight: 650;
+}
+
+/* Automático | A mano: dos radios que se ven como un selector de dos tramos */
+.strategy-amount-mode {
+  display: inline-flex;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.strategy-amount-mode:disabled {
+  opacity: 0.6;
+}
+
+.strategy-amount-mode > label {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  min-height: calc(var(--control-h) - var(--space-3));
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-small);
+  color: var(--text-2);
+  white-space: nowrap;
+}
+
+.strategy-amount-mode > label:hover {
+  color: var(--text-1);
+}
+
+.strategy-amount-mode input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.strategy-amount-mode > label:has(:checked) {
+  background: var(--surface-3);
+  font-weight: 650;
+  color: var(--text-1);
+}
+
+.strategy-amount[data-fixed] .strategy-amount-mode > label:has(:checked) {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-panel));
+}
+
+.strategy-amount-mode > label:has(:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.strategy-amount-value {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.strategy-amount-value > :where(b, small) {
+  grid-column: 1 / -1;
+}
+
+.strategy-amount-value > :where(em) {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  font-size: var(--text-micro);
+  font-style: normal;
+  color: var(--text-2);
+}
+
+.strategy-amount-value > :where(b) {
+  font-variant-numeric: tabular-nums;
+}
+
+.strategy-amount-value > :where(small) {
+  font-size: var(--text-small);
+  color: var(--text-3);
+}
+
+.strategy-amount-stepper {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.strategy-amount-stepper .strategy-input {
+  width: 9rem;
+}
+
+.strategy-amount-stepper .strategy-input input {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.strategy-amount-help {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.strategy-amount-help > .strategy-help {
+  margin: 0;
+}
+
+.strategy-amount-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: var(--text-small);
+  color: var(--text-1);
+}
+
+.strategy-amount-note > svg {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+}
+
+.strategy-amount-note[data-tone="warn"] {
+  background: color-mix(in srgb, var(--warn) 12%, var(--bg-window));
+}
+
+.strategy-amount-note[data-tone="warn"] > svg {
+  color: var(--warn-text, var(--warn));
+}
+
+.strategy-amount-note[data-tone="error"] {
+  background: color-mix(in srgb, var(--err) 15%, var(--bg-window));
+}
+
+.strategy-amount-note[data-tone="error"] > svg {
+  color: color-mix(in srgb, var(--err) 45%, var(--text-1));
+}
+
+/* «Lo que fijaste hace el plan 2,0 s más lento…» */
+.strategy-slower {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+}
+
+.strategy-slower > p {
+  flex: 1 1 18rem;
+  margin: 0;
+}
+
+.strategy-slower > .strategy-icon {
+  display: inline-flex;
+  color: var(--warn-text, var(--warn));
+}
+
+.strategy-timeline .strategy-stop > span {
+  white-space: nowrap;
+}
+
+.strategy-timeline .strategy-stop .strategy-pin {
+  margin-inline-start: var(--space-1);
+}
+
+@container (width < 760px) {
+  .strategy-amount {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .strategy-amount-value,
+  .strategy-amount-help {
+    grid-column: 1 / -1;
+  }
+}

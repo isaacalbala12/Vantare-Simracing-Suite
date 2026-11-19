@@ -11,7 +11,9 @@ import type {
 } from "../../../contract/generated/strategy";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { strategy as t } from "../../i18n/strategy";
+import { amounts } from "../../i18n/strategyAmounts";
 import { planAnnouncement } from "../../screens/strategy/planText";
+import { amountText, limitLines } from "../../screens/strategy/stopAmounts";
 import {
   strategyAccept,
   strategyShowAccepted,
@@ -24,10 +26,12 @@ import {
 import { strategyConfirm } from "../../screens/strategy/strategyConfirm";
 import { strategyCreate } from "../../screens/strategy/strategyCreate";
 import {
+  strategyClearStopServices,
   strategyMoveBoundary,
   strategyMoveStop,
   strategyRecalculate,
   strategyResetEdit,
+  strategySetStopService,
 } from "../../screens/strategy/strategyEdit";
 import {
   type ExportState,
@@ -289,6 +293,61 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     if ("value" in result) announceMove(result.value.plan, index);
     return "value" in result;
   }
+  // Fixing what a stop loads. The host validates at once: a refusal is shown by
+  // the box it belongs to (`role="alert"`), changes nothing and says nothing here.
+  async function setStopService(
+    index: number,
+    fuelLiters: number | null,
+    vePercent: number | null,
+  ) {
+    if (!view) return undefined;
+    setAnnouncement("");
+    const result = await strategySetStopService(
+      act,
+      view.plan,
+      index,
+      fuelLiters,
+      vePercent,
+    );
+    if (!result) return undefined;
+    planAnswered(result);
+    if ("value" in result) {
+      // every amount of the stop that changed (going back to automatic can be both)
+      const before = view.plan.edit?.stops[index]?.fixed;
+      const limits = result.value.plan.edit?.stops[index]?.limits;
+      const said = (["fuel", "ve"] as const).flatMap((amount) => {
+        const was = amount === "fuel" ? before?.fuelLiters : before?.vePercent;
+        const value = amount === "fuel" ? fuelLiters : vePercent;
+        if (was === value) return [];
+        if (value === null)
+          return [amounts.announce.automatic(index + 1, amount)];
+        // what the host now says of the amount: it may leave no plan
+        const issue =
+          limits?.kind === "exact"
+            ? limitLines(amount, limits[amount], value).issue
+            : null;
+        return [
+          amounts.announce.fixed(
+            index + 1,
+            amount,
+            `${amountText(value)} ${amounts.unit[amount]}`,
+          ),
+          ...(issue ? [issue] : []),
+        ];
+      });
+      if (said.length > 0) setAnnouncement(said.join(" "));
+    }
+    return result;
+  }
+  async function clearStopServices() {
+    if (!view) return false;
+    setAnnouncement("");
+    const result = await strategyClearStopServices(act, view.plan);
+    planAnswered(result);
+    const taken = !!result && "value" in result;
+    if (taken) setAnnouncement(amounts.announce.cleared);
+    return taken;
+  }
   // Accepting, removing and showing the accepted plan act on the plan on view,
   // so a conflict is a conflict of the plan, not of the file.
   async function acceptPlan() {
@@ -502,9 +561,11 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     </div>
   );
   // In Carrera there are no Recalcular or Restablecer: it says where they are.
+  // a refused amount is the alert of its own box, not one of the file
   const fileError =
     error &&
     !conflict &&
+    error.kind !== "strategyInvalidStopService" &&
     (error.kind === "strategyEditPending" && showRace && tab === "race"
       ? t.calc.adjust.pendingFromRace
       : error.kind in t.errors
@@ -698,6 +759,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                       moveStop,
                       recalculate: () => void recalculate(),
                       reset: () => void resetEdit(),
+                      setStopService,
+                      clearStopServices,
                     },
                     acceptance: {
                       accept: () => void acceptPlan(),

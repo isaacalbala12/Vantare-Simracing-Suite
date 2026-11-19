@@ -1,23 +1,16 @@
 use super::*;
-use std::{
-    fs,
-    path::PathBuf,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::{fs, path::PathBuf};
 struct Root(PathBuf);
 impl Root {
     fn new() -> Self {
-        static NEXT: AtomicU64 = AtomicU64::new(0);
         let base = std::env::var_os("VANTARE_HUB_QA_ROOT").map_or_else(
             || std::env::temp_dir().join("vantare-hub-settings"),
             PathBuf::from,
         );
-        let root = base.join(format!(
-            "{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
-        fs::create_dir_all(&root).expect("QA root");
+        // Random name + exclusive creation: a leftover from a killed run never leaks state in.
+        let root = base.join(vantare_services::random_id().expect("QA entropy"));
+        fs::create_dir_all(&base).expect("QA base");
+        fs::create_dir(&root).expect("QA root");
         Self(root)
     }
     fn settings(&self) -> Settings {

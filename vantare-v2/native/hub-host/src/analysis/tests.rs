@@ -1,17 +1,17 @@
 #![allow(clippy::unwrap_used)]
 use super::*;
-use std::sync::atomic::AtomicU64;
-static NEXT: AtomicU64 = AtomicU64::new(0);
 struct Directory(PathBuf);
 impl Directory {
     fn new() -> Self {
-        let p = fs::canonicalize(std::env::temp_dir())
-            .unwrap()
-            .join(format!(
-                "host-analysis-{}-{}",
-                std::process::id(),
-                NEXT.fetch_add(1, Ordering::Relaxed)
-            ));
+        Self::in_base(&fs::canonicalize(std::env::temp_dir()).unwrap())
+    }
+    /// Unique per call: random name and exclusive creation, never the PID, so a stale
+    /// directory from a killed run cannot collide.
+    fn in_base(base: &Path) -> Self {
+        let p = base.join(format!(
+            "host-analysis-{}",
+            vantare_services::random_id().unwrap()
+        ));
         fs::create_dir(&p).unwrap();
         Self(p)
     }
@@ -23,6 +23,22 @@ impl Drop for Directory {
     fn drop(&mut self) {
         fs::remove_dir_all(&self.0).unwrap();
     }
+}
+#[test]
+fn directories_ignore_stale_pid_named_leftovers() {
+    let base = Directory::new();
+    let pid = std::process::id();
+    // What an earlier killed run left behind under the old PID-based names.
+    for n in 0..3 {
+        fs::create_dir(base.0.join(format!("host-analysis-{pid}-{n}"))).unwrap();
+    }
+    let first = Directory::in_base(&base.0);
+    let second = Directory::in_base(&base.0);
+    assert_ne!(first.0, second.0);
+    let (first_path, second_path) = (first.0.clone(), second.0.clone());
+    drop((first, second));
+    assert!(!first_path.exists() && !second_path.exists());
+    assert!(base.0.join(format!("host-analysis-{pid}-0")).exists());
 }
 fn cancel() -> Cancel {
     Arc::new(AtomicBool::new(false))

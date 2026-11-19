@@ -3,13 +3,16 @@ import argparse
 import copy
 import hashlib
 import json
+import re
 import shutil
 import subprocess
+import zipfile
 from pathlib import Path
 
 
 SOURCE_SHA = "fb2e2e520be96b59066e2a69c3899cf9842a0752"
 PRESENTMON_SHA = "b2a706bc6ad475749e3b7e3409263aa1e6906d45bdcf993f6dbc0f660188f1af"
+CORPUS_SHA = "c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c"
 # Tamaños son orientativos del plan; se exige igualdad del tamaño real de ambos PNG.
 # No se redimensiona la salida para superar el diff.
 SCENES = {
@@ -127,9 +130,46 @@ def prefixes(count):
     return sorted({value for value in (1, 3, 10, 121, 197, count) if value <= count})
 
 
-def prepare(repo, output, binary_directory, presentmon=None, corpus=None, inventory=None, *, visual_sha=None):
+def seal_measurement(output, destination):
+    output, destination = Path(output).resolve(), Path(destination).resolve()
+    if destination.is_relative_to(output):
+        raise ValueError("El ZIP y el recibo deben quedar fuera del árbol del kit")
+    receipt_path = destination.with_suffix(".receipt.json")
+    if receipt_path.exists():
+        raise FileExistsError(receipt_path)
+    manifest_path = output / "manifiesto.json"
+    manifest_bytes = manifest_path.read_bytes()
+    manifest = json.loads(manifest_bytes)
+    if manifest["scope"] != "measurement-qa":
+        raise ValueError("El recibo de medición requiere un kit de medición QA")
+    paths = {row["path"]: row["sha256"] for row in manifest["files"]}
+    for raw in paths:
+        relative = Path(raw)
+        file = output / relative
+        if (relative.is_absolute() or ".." in relative.parts or not file.resolve().is_relative_to(output)
+                or digest(file) != paths[raw]):
+            raise ValueError(f"Input del ZIP no coincide con el manifiesto: {raw}")
+    with zipfile.ZipFile(destination, "x", compression=zipfile.ZIP_DEFLATED) as bundle:
+        bundle.writestr("manifiesto.json", manifest_bytes)
+        for relative in sorted(paths):
+            bundle.write(output / relative, relative)
+    with receipt_path.open("x", encoding="utf-8") as stream:
+        json.dump({"schema": 1, "zip": destination.name, "zip_sha256": digest(destination),
+                   "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(), "source_sha": manifest["source_sha"],
+                   "run_id": manifest["ci_artifact"]["run_id"],
+                   "ci_receipt_sha256": manifest["ci_artifact"]["receipt_sha256"],
+                   "qa_license": manifest["qa_license"], "external_corpus": manifest["external_corpus"]},
+                  stream, ensure_ascii=False, indent=2)
+        stream.write("\n")
+    return receipt_path
+
+
+def prepare(repo, output, binary_directory, presentmon=None, corpus=None, inventory=None, *, visual_sha=None,
+            measurement_sha=None):
     repo, output = Path(repo), Path(output)
-    source_sha = visual_sha or SOURCE_SHA
+    if visual_sha and measurement_sha:
+        raise ValueError("Elegir un solo alcance para la tanda")
+    source_sha = visual_sha or measurement_sha or SOURCE_SHA
     visual = visual_sha is not None
     if subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip() != source_sha:
         raise ValueError("Base distinta del SHA congelado")
@@ -163,25 +203,39 @@ def prepare(repo, output, binary_directory, presentmon=None, corpus=None, invent
         required += ["lifecycle.exe"]
     else:
         required += ["vantare-core.exe", "vantare-services.exe"]
+    if measurement_sha:
+        required += ["lifecycle.exe", "vantare-qa-license.exe"]
     for name in required:
         build = by_name[name.removesuffix(".exe")]
         source_ok = build["source_sha"] == source_sha
-        if not visual and name == "vantare.exe" and build.get("origin") == "GitHub Actions 44006217558":
+        if not (visual or measurement_sha) and name == "vantare.exe" and build.get("origin") == "GitHub Actions 44006217558":
             source_ok = build["source_sha"] == "8358fdae1a03dda5ac7c47bc8721c5c0c0e1fd0c"
         if not source_ok or build["sha256"] != digest(Path(binary_directory) / name):
             raise ValueError("Binario sin procedencia/hash del SHA congelado")
         shutil.copyfile(Path(binary_directory) / name, output / "bin" / name)
     if not visual and "paint-stats" not in by_name["vantare-core"]["features"]:
         raise ValueError("El núcleo necesita la instrumentación existente paint-stats para QPC real")
-    if visual:
+    if visual or measurement_sha:
         receipt = Path(binary_directory).parent / "ci-binarios.json"
         ci = json.loads(receipt.read_text(encoding="utf-8-sig"))
         builds = [by_name[name.removesuffix(".exe")] for name in required]
         if ci["source_sha"] != source_sha or any(str(row.get("run_id")) != str(ci["run_id"]) for row in builds):
-            raise ValueError("Los binarios visuales deben venir de un solo run del SHA congelado")
+            raise ValueError("Los binarios deben venir de un solo run del SHA congelado")
         ci_hashes = {row["file"]: row["sha256"] for row in ci["files"]}
         if any(ci_hashes.get(name) != by_name[name.removesuffix(".exe")]["sha256"] for name in required):
             raise ValueError("Hashes del kit no coinciden con el recibo original de CI")
+        if measurement_sha:
+            core, cli = by_name["vantare-core"], by_name["vantare-qa-license"]
+            key_id, registry_sha = core["license_key_id"], core["license_registry_sha256"]
+            if (not re.fullmatch(r"qa-[a-f0-9]{8}", key_id) or not re.fullmatch(r"[a-f0-9]{64}", registry_sha)
+                    or ci["license_public_keys_configured"] is not True
+                    or ci["core_features"] != ["paint-stats", "qa-license"]
+                    or core["features"] != "paint-stats,qa-license" or cli["features"] != "qa-license"
+                    or ci["license_key_id"] != key_id or ci["license_registry_sha256"] != registry_sha
+                    or ci["qa_license_cli_sha256"] != cli["sha256"]):
+                raise ValueError("Licencia QA no coincide con la importación verificada")
+            manifest["qa_license"] = {"key_id": key_id, "registry_sha256": registry_sha,
+                                      "core_sha256": core["sha256"], "cli_sha256": cli["sha256"]}
         shutil.copyfile(receipt, output / "ci-binarios.json")
         write_json(output / "binarios.json", {"source_sha": source_sha, "run_id": ci["run_id"], "files": builds})
         manifest["ci_artifact"] = {"run_id": ci["run_id"], "name": "qa-kit-" + source_sha,
@@ -208,10 +262,14 @@ def prepare(repo, output, binary_directory, presentmon=None, corpus=None, invent
     else:
         if digest(presentmon) != PRESENTMON_SHA:
             raise ValueError("PresentMon no coincide con digest oficial fijado")
-        if digest(corpus) != "c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c":
+        if digest(corpus) != CORPUS_SHA:
             raise ValueError("Corpus distinto del inventariado")
         shutil.copyfile(presentmon, output / "bin/PresentMon-2.6.0-x64.exe")
-        shutil.copyfile(corpus, output / "inputs/lmu47-high-rate-60s.tar.gz")
+        if measurement_sha:
+            manifest["scope"] = "measurement-qa"
+            manifest["external_corpus"] = {"name": "lmu47-high-rate-60s.tar.gz", "sha256": CORPUS_SHA}
+        else:
+            shutil.copyfile(corpus, output / "inputs/lmu47-high-rate-60s.tar.gz")
         shutil.copyfile(inventory, output / "inputs/INVENTARIO-LMU47-HISTORICO.md")
     # Redist ya verificado del kit histórico, cuando se proporcione junto a los exe.
     for dll in Path(binary_directory).glob("*.dll"):
@@ -313,7 +371,12 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     for arg in ("repo", "output", "binary-directory"):
         p.add_argument("--" + arg, required=True)
-    for arg in ("presentmon", "corpus", "inventory", "visual-sha"):
+    for arg in ("presentmon", "corpus", "inventory", "visual-sha", "measurement-sha", "zip"):
         p.add_argument("--" + arg)
     a = p.parse_args()
-    prepare(a.repo, a.output, a.binary_directory, a.presentmon, a.corpus, a.inventory, visual_sha=a.visual_sha)
+    if a.zip and not a.measurement_sha:
+        p.error("--zip requiere --measurement-sha")
+    prepare(a.repo, a.output, a.binary_directory, a.presentmon, a.corpus, a.inventory,
+            visual_sha=a.visual_sha, measurement_sha=a.measurement_sha)
+    if a.zip:
+        print(seal_measurement(a.output, a.zip))

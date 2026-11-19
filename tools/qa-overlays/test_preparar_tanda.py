@@ -2,6 +2,7 @@
 import json
 import unittest
 import tempfile
+import zipfile
 from pathlib import Path
 from unittest.mock import patch
 import preparar_tanda as packaging
@@ -9,6 +10,62 @@ from preparar_tanda import SCENES, photos, prefixes, looks, specifications
 
 
 class InputsTests(unittest.TestCase):
+    def test_measurement_kit_and_external_receipt_bind_the_ci_binaries_and_corpus(self):
+        repo = Path(__file__).resolve().parents[2]
+        sha = "a" * 40
+        key_id = "qa-01234567"
+        registry_hash = "b" * 64
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binaries = root / "bin"
+            binaries.mkdir()
+            names = ("vantare-overlays-rune", "vantare-overlays", "vantare-core", "vantare-services",
+                     "vantare", "lifecycle", "vantare-qa-license")
+            rows = []
+            for name in names:
+                path = binaries / (name + ".exe")
+                path.write_bytes(name.encode())
+                rows.append({"name": name, "file": path.name, "source_sha": sha, "run_id": 123,
+                             "size": path.stat().st_size, "sha256": packaging.digest(path), "features": ""})
+            core, cli = rows[2], rows[-1]
+            core.update(features="paint-stats,qa-license", license_public_keys_configured=True,
+                        license_key_id=key_id, license_registry_sha256=registry_hash)
+            cli["features"] = "qa-license"
+            ci = {"source_sha": sha, "run_id": "123", "license_public_keys_configured": True,
+                  "core_features": ["paint-stats", "qa-license"], "license_key_id": key_id,
+                  "license_registry_sha256": registry_hash, "qa_license_cli_sha256": cli["sha256"],
+                  "files": [{k: row[k] for k in ("file", "sha256", "size")} for row in rows]}
+            packaging.write_json(root / "binarios.json", rows)
+            packaging.write_json(root / "ci-binarios.json", ci)
+            pm, corpus, inventory = (root / name for name in ("pm.exe", "corpus.tar.gz", "inventory.md"))
+            for path in (pm, corpus, inventory):
+                path.write_bytes(path.name.encode())
+            output, archive = root / "output", root / "kit.zip"
+            fixture = next(packaging.specifications(repo))
+            with patch.object(packaging.subprocess, "check_output", return_value=sha + "\n"), \
+                 patch.object(packaging, "specifications", return_value=[fixture]), \
+                 patch.object(packaging, "PRESENTMON_SHA", packaging.digest(pm)), \
+                 patch.object(packaging, "CORPUS_SHA", packaging.digest(corpus)):
+                manifest = packaging.prepare(repo, output, binaries, pm, corpus, inventory, measurement_sha=sha)
+                receipt_path = packaging.seal_measurement(output, archive)
+                ci["license_key_id"] = "qa-00000000"
+                packaging.write_json(root / "ci-binarios.json", ci)
+                with self.assertRaisesRegex(ValueError, "Licencia QA"):
+                    packaging.prepare(repo, root / "rejected", binaries, pm, corpus, inventory, measurement_sha=sha)
+            self.assertEqual(manifest["scope"], "measurement-qa")
+            self.assertEqual(manifest["ci_artifact"]["receipt_sha256"], packaging.digest(output / "ci-binarios.json"))
+            self.assertEqual(manifest["qa_license"]["key_id"], key_id)
+            self.assertEqual(manifest["external_corpus"]["sha256"], packaging.digest(corpus))
+            with zipfile.ZipFile(archive) as bundle:
+                self.assertIn("bin/vantare-qa-license.exe", bundle.namelist())
+                self.assertFalse(any(name.endswith((".tar.gz", ".receipt.json")) for name in bundle.namelist()))
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+            self.assertEqual(receipt["zip_sha256"], packaging.digest(archive))
+            self.assertEqual(receipt["manifest_sha256"], packaging.digest(output / "manifiesto.json"))
+            self.assertEqual(receipt["ci_receipt_sha256"], manifest["ci_artifact"]["receipt_sha256"])
+            with self.assertRaises(FileExistsError):
+                packaging.seal_measurement(output, archive)
+
     def test_visual_package_only_needs_binaries_from_the_frozen_source(self):
         repo = Path(__file__).resolve().parents[2]
         with tempfile.TemporaryDirectory() as temporary:

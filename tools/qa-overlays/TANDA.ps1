@@ -15,6 +15,8 @@ param(
  [string]$DestinoServidor='D:/VantareServer/evidence/overlays-rune',
  [string]$ZipQA='',
  [string]$ZipSha256QA='',
+ [string]$ReciboPaqueteQA='',
+ [string]$CorpusQA='',
  [string]$KeyIdQA='',
  [string]$FingerprintQA='',
  [string]$CliSha256QA='',
@@ -43,6 +45,48 @@ function Resolve-TandaPath([string]$Root,[string]$Relative){
  if(-not $path.StartsWith($base,[StringComparison]::OrdinalIgnoreCase)){throw "Ruta fuera del kit: $Relative"}
  $path
 }
+function Assert-TandaPackageReceipt([string]$Root,$Manifest,[string]$Zip,[string]$ReceiptPath,[string]$Corpus){
+ if(-not $Zip -or -not $ReceiptPath -or -not $Corpus){throw 'QA_PACKAGE_RECEIPT: faltan ZIP, recibo externo o corpus'}
+ $base=[IO.Path]::TrimEndingDirectorySeparator([IO.Path]::GetFullPath($Root))+[IO.Path]::DirectorySeparatorChar
+ foreach($path in @($Zip,$ReceiptPath,$Corpus)){
+  if([IO.Path]::GetFullPath($path).StartsWith($base,[StringComparison]::OrdinalIgnoreCase)){throw 'QA_PACKAGE_RECEIPT: ZIP, recibo y corpus deben estar fuera del kit'}
+ }
+ $receipt=Read-TandaJson $ReceiptPath
+ if($receipt.schema -ne 1 -or $receipt.source_sha -cne $Manifest.source_sha -or
+    [string]$receipt.run_id -cne [string]$Manifest.ci_artifact.run_id -or $receipt.zip -cne [IO.Path]::GetFileName($Zip) -or
+    $receipt.ci_receipt_sha256 -cne $Manifest.ci_artifact.receipt_sha256){
+  throw 'QA_PACKAGE_RECEIPT: SHA, run o procedencia de CI distintos'
+ }
+ foreach($key in 'key_id','registry_sha256','core_sha256','cli_sha256'){
+  if($receipt.qa_license[$key] -cne $Manifest.qa_license[$key]){throw 'QA_PACKAGE_RECEIPT: licencia distinta'}
+ }
+ if($receipt.external_corpus.name -cne $Manifest.external_corpus.name -or
+    $receipt.external_corpus.sha256 -cne $Manifest.external_corpus.sha256){throw 'QA_PACKAGE_RECEIPT: corpus distinto'}
+ foreach($check in @(
+  @{path=$Zip;expected=$receipt.zip_sha256},
+  @{path=(Join-Path $Root 'manifiesto.json');expected=$receipt.manifest_sha256},
+  @{path=(Join-Path $Root 'ci-binarios.json');expected=$receipt.ci_receipt_sha256},
+  @{path=$Corpus;expected=$receipt.external_corpus.sha256}
+ )){
+  if($check.expected -cnotmatch '\A[a-f0-9]{64}\z' -or (Get-FileHash -LiteralPath $check.path -Algorithm SHA256).Hash -ine $check.expected){
+   throw 'QA_PACKAGE_RECEIPT: hash del ZIP, manifiesto, recibo CI o corpus distinto'
+  }
+ }
+ $archive=[IO.Compression.ZipFile]::OpenRead($Zip)
+ try{
+  foreach($pair in @(@('manifiesto.json',$receipt.manifest_sha256),@('ci-binarios.json',$receipt.ci_receipt_sha256))){
+   $entry=$archive.GetEntry($pair[0])
+   if(-not $entry){throw 'QA_PACKAGE_RECEIPT: el ZIP no contiene manifiesto o recibo CI'}
+   $stream=$entry.Open()
+   try{
+    if((Get-FileHash -InputStream $stream -Algorithm SHA256).Hash -ine $pair[1]){
+     throw 'QA_PACKAGE_RECEIPT: staging distinto del ZIP'
+    }
+   }finally{$stream.Dispose()}
+  }
+ }finally{$archive.Dispose()}
+ $receipt
+}
 function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
  $manifest=Read-TandaJson (Join-Path $Root 'manifiesto.json')
  if($manifest.schema -ne 1 -or $manifest.source_sha -notmatch '^[0-9a-f]{40}$'){throw 'Manifiesto sin schema/SHA válido'}
@@ -61,7 +105,12 @@ function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
  if($SoloVisual){
   $requiredFiles+=@('bin/lifecycle.exe','ci-binarios.json','binarios.json')
   if([string]$manifest.ci_artifact.run_id -notmatch '\A[1-9][0-9]*\z' -or $manifest.ci_artifact.name -cne ('qa-kit-'+$manifest.source_sha)){throw 'Procedencia CI visual inválida'}
- }else{$requiredFiles+=@('bin/lifecycle-harness.exe','bin/lifecycle-rune-tests.exe','bin/vantare-core.exe','bin/vantare-services.exe','bin/PresentMon-2.6.0-x64.exe')}
+ }else{
+  $requiredFiles+=@('bin/vantare-core.exe','bin/vantare-services.exe','bin/PresentMon-2.6.0-x64.exe')
+  if($manifest['scope'] -ceq 'measurement-qa'){
+   $requiredFiles+=@('bin/lifecycle.exe','bin/vantare-qa-license.exe','ci-binarios.json','binarios.json')
+  }else{$requiredFiles+=@('bin/lifecycle-harness.exe','bin/lifecycle-rune-tests.exe')}
+ }
  foreach($required in $requiredFiles){
   $path=Resolve-TandaPath $Root $required
   if(-not $seen.ContainsKey($path)){throw "Binario sin hash: $required"}
@@ -186,12 +235,14 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  $env:VANTARE_SIN_GRAFICOS='1'
  Assert-TandaPython $PythonExe
  $manifest=Assert-TandaInputs $Root -DryValidation
+ $qaKit=$manifest['scope'] -ceq 'measurement-qa'
+ $receipt=if($qaKit){Assert-TandaPackageReceipt $Root $manifest $ZipQA $ReciboPaqueteQA $CorpusQA}
  if(Test-Path -LiteralPath $Output){throw 'La salida del ensayo debe ser nueva'}
  $null=New-Item -ItemType Directory -Path $Output
  $env:VANTARE_SIN_GRAFICOS='1'
  $guard=Invoke-TandaProcess (Join-Path $Root 'bin/vantare-overlays-rune.exe') @('--capture-scene') (Join-Path $Output 'guard') 20
  if($guard.code -ne 6 -or $guard.stderr -notmatch '^GRAPHICS_DISABLED\b'){throw 'El binario no cumple el guard gráfico'}
- if(-not $SoloVisual){
+ if(-not $SoloVisual -and -not $qaKit){
   $list=Invoke-TandaProcess (Join-Path $Root 'bin/lifecycle-rune-tests.exe') @('--list','--ignored') (Join-Path $Output 'lifecycle-list') 20
   if($list.code -ne 0 -or @($list.stdout -split "`n"|Where-Object {$_ -match '^rune_[a-z_]+: test\s*$'}).Count -ne 4){throw 'No se enumeraron exactamente cuatro tests lifecycle, sin ejecutarlos'}
  }else{
@@ -210,7 +261,15 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  $csv=Invoke-TandaPython @('-m','unittest','discover','-s',(Join-Path $Root 'tools/qa-overlays'),'-p','test_*.py') (Join-Path $Output 'csv-falsos') 180
  if($csv.code -ne 0){throw 'Las regresiones de CSV falsos fallaron'}
  $result=@{source_sha=$manifest.source_sha;production_rights_configured=$manifest.production_rights_configured;guard_code=6;guard_token='GRAPHICS_DISABLED';input_hashes='PASS';captures=$manifest.captures.Count;measurements=$manifest.measurements.Count;gpu_executed=$false;shutdown_executed=$false;utc=[DateTime]::UtcNow.ToString('o')}
- if($SoloVisual){$result.ci_run_id=$manifest.ci_artifact.run_id;$result.lifecycle_executed=$false}
+ if($SoloVisual -or $qaKit){$result.ci_run_id=$manifest.ci_artifact.run_id;$result.lifecycle_executed=$false}
+ if($qaKit){
+  $result.zip_sha256=$receipt.zip_sha256
+  $result.manifest_sha256=$receipt.manifest_sha256
+  $result.ci_receipt_sha256=$receipt.ci_receipt_sha256
+  $result.license_key_id=$receipt.qa_license.key_id
+  $result.corpus_sha256=$receipt.external_corpus.sha256
+  $result.package_receipt_sha256=(Get-FileHash -LiteralPath $ReciboPaqueteQA -Algorithm SHA256).Hash.ToLowerInvariant()
+ }
  Write-TandaJson $result (Join-Path $Output 'ensayo.json')
 }
 function Start-TandaOwned([string]$Image,[string[]]$Arguments,[string]$Log,[hashtable]$Environment=@{}){
@@ -653,6 +712,12 @@ switch($Modo){
  'Validar' {if(-not $SoloVisual){Assert-TandaMachineRegistry};$null=Assert-TandaInputs $Kit; 'PASS: entradas/rutas/hashes/TSV'}
  'Ensayo' {if(-not $Salida){throw 'Falta -Salida nueva'};Invoke-TandaDryRun $Kit $Salida}
  'VerificarCustodiaQA' {
+  $manifest=Read-TandaJson (Join-Path $Kit 'manifiesto.json')
+  if($manifest['scope'] -ceq 'measurement-qa'){
+   $receipt=Assert-TandaPackageReceipt $Kit $manifest $ZipQA $ReciboPaqueteQA $CorpusQA
+   if($ZipSha256QA -or $KeyIdQA -cne $receipt.qa_license.key_id){throw 'QA_PACKAGE_RECEIPT: usar solo el recibo externo y el key_id fijado'}
+   $ZipSha256QA=$receipt.zip_sha256
+  }
   if($SoloVisual -or -not $ZipQA -or $ZipSha256QA -cnotmatch '\A[0-9a-f]{64}\z' -or -not $LogsQA.Count){
    throw 'Se requieren árbol de medición, ZIP, SHA-256 verificado del ZIP y logs del ensayo'
   }

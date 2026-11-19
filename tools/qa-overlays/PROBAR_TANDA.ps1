@@ -27,6 +27,39 @@ $case=@{id='relative-vantare';kind='relative';layout='inputs/case/layout.json';s
 $manifest=@{schema=1;source_sha=('a'*40);production_rights_configured=$true;presentmon=@{version='2.6.0';repository='GameTechDev/PresentMon'};captures=@($case);measurements=@(@{id='relative-replay-gpui';motor='gpui';state='replay';layout='inputs/case/settings.json'}) ;files=$files}
 Write-TandaJson $manifest (Join-Path $root 'manifiesto.json')
 $null=Assert-TandaInputs $root
+
+$sealed=Join-Path $root 'recibo-falso'
+$stage=Join-Path $sealed 'kit'
+$null=New-Item -ItemType Directory $stage
+$fakeManifest=Join-Path $stage 'manifiesto.json'
+$fakeCi=Join-Path $stage 'ci-binarios.json'
+$fakeCorpus=Join-Path $sealed 'corpus.tar.gz'
+Set-Content -LiteralPath $fakeManifest 'manifest fixture'
+Set-Content -LiteralPath $fakeCi 'CI fixture'
+Set-Content -LiteralPath $fakeCorpus 'corpus fixture'
+$fakeZip=Join-Path $sealed 'kit.zip'
+[IO.Compression.ZipFile]::CreateFromDirectory($stage,$fakeZip)
+$fakeReceipt=Join-Path $sealed 'kit.receipt.json'
+$binding=@{key_id='qa-01234567';registry_sha256='b'*64;core_sha256='c'*64;cli_sha256='d'*64}
+$corpus=@{name='corpus.tar.gz';sha256=(Get-FileHash -LiteralPath $fakeCorpus).Hash.ToLowerInvariant()}
+$sealedManifest=@{source_sha='a'*40;scope='measurement-qa';external_corpus=$corpus;qa_license=$binding;ci_artifact=@{
+ run_id='123';receipt_sha256=(Get-FileHash -LiteralPath $fakeCi).Hash.ToLowerInvariant()
+}}
+$record=@{schema=1;source_sha=$sealedManifest.source_sha;run_id='123';zip='kit.zip';qa_license=$binding;external_corpus=$corpus
+ zip_sha256=(Get-FileHash -LiteralPath $fakeZip).Hash.ToLowerInvariant()
+ manifest_sha256=(Get-FileHash -LiteralPath $fakeManifest).Hash.ToLowerInvariant();ci_receipt_sha256=$sealedManifest.ci_artifact.receipt_sha256
+}
+Write-TandaJson $record $fakeReceipt
+$valid=Assert-TandaPackageReceipt $stage $sealedManifest $fakeZip $fakeReceipt $fakeCorpus
+if($valid.zip_sha256 -cne $record.zip_sha256){throw 'Recibo válido no conservó el hash esperado'}
+foreach($changed in @($fakeCorpus,$fakeZip)){
+ $original=[IO.File]::ReadAllBytes($changed)
+ Add-Content -LiteralPath $changed 'mutated'
+ $reject=$false
+ try{$null=Assert-TandaPackageReceipt $stage $sealedManifest $fakeZip $fakeReceipt $fakeCorpus}catch{$reject=$_.Exception.Message -like 'QA_PACKAGE_RECEIPT*'}
+ [IO.File]::WriteAllBytes($changed,$original)
+ if(-not $reject){throw 'Input cambiado aceptado por el recibo QA'}
+}
 $png=Join-Path $sandbox 'header.png'
 [byte[]]$header=@(137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,2,248,0,0,0,192)
 [IO.File]::WriteAllBytes($png,$header)

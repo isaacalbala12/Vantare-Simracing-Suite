@@ -34,7 +34,8 @@ impl Drop for Root {
             .canonicalize()
             .expect("QA base");
         assert!(target.starts_with(&parent) && target != parent);
-        fs::remove_dir_all(target).expect("remove owned QA root");
+        // Best effort: a panic inside Drop would abort and hide the test failure.
+        let _ = fs::remove_dir_all(target);
     }
 }
 #[test]

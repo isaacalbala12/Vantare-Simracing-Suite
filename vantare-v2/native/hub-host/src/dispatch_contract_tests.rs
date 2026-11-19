@@ -156,7 +156,8 @@ impl Fixture {
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
-        std::fs::remove_dir_all(&self.0).expect("remove isolated QA data");
+        // Best effort: a panic inside Drop would abort and hide the test failure.
+        let _ = std::fs::remove_dir_all(&self.0);
     }
 }
 fn run_corpus(

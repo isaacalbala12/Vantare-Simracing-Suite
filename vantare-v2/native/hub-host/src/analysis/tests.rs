@@ -21,7 +21,8 @@ impl Directory {
 }
 impl Drop for Directory {
     fn drop(&mut self) {
-        fs::remove_dir_all(&self.0).unwrap();
+        // Best effort: a second panic inside Drop would abort and hide the real failure.
+        let _ = fs::remove_dir_all(&self.0);
     }
 }
 #[test]

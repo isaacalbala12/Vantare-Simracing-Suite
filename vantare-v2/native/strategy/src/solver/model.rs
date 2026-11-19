@@ -164,6 +164,14 @@ pub(super) struct ExtraRules {
     pub mandatory_compounds: Vec<String>,
 }
 
+/// Las ruedas con las que se rueda un tramo: su compuesto (vacío si la carrera
+/// no distingue compuestos) y las vueltas que ya llevan al empezarlo.
+#[derive(Clone, Copy)]
+pub(super) struct Mounted<'a> {
+    pub compound: &'a str,
+    pub age: u32,
+}
+
 #[derive(Clone)]
 pub(super) struct Model {
     pub input: Input,
@@ -438,6 +446,12 @@ impl Model {
         }
         Ok((fuel, ve))
     }
+    /// Evalúa un tramo de `laps` vueltas con las ruedas `tyres`.
+    ///
+    /// El desgaste de cada vuelta depende de la edad de las ruedas en esa
+    /// vuelta (#2691): la vuelta `k` del tramo se cuenta con la edad
+    /// `tyres.age + k`. Con ruedas nuevas (`age == 0`) son las cuentas de
+    /// siempre, que empezaban cada tramo desde la vuelta 1.
     pub fn stint(
         &self,
         start: u32,
@@ -445,8 +459,9 @@ impl Model {
         fuel: i64,
         driver: &str,
         level: &SavingLevel,
-        compound: &str,
+        tyres: Mounted,
     ) -> Result<Evaluation, String> {
+        let Mounted { compound, age } = tyres;
         let (used, _) = self.usage(start, 1, driver, level)?;
         let count = f64::from(laps);
         let mut eval = Evaluation {
@@ -459,13 +474,19 @@ impl Model {
             saving_seconds: count * level.time_cost_per_lap,
             ..Evaluation::default()
         };
+        if age > 0 {
+            // Cada vuelta del tramo pierde además lo que corresponde a las
+            // vueltas que ya llevaban las ruedas.
+            eval.degradation_seconds +=
+                count * f64::from(age) * self.input.degradation_per_lap_seconds.value;
+        }
         if !self.pace_points.is_empty() {
             eval.degradation_seconds = (1..=laps)
                 .map(|lap| {
                     super::tyres::sorted_curve_delta(
                         &self.pace_points,
                         self.input.degradation_per_lap_seconds.value,
-                        lap,
+                        age + lap,
                         self.pace_tail,
                     )
                 })
@@ -473,11 +494,16 @@ impl Model {
         }
         if let Some(cost) = self.tyres.compounds.get(compound) {
             eval.compound_seconds = count * cost.pace_delta_seconds;
-            eval.degradation_seconds = (1..=laps).map(|lap| cost.delta(lap)).sum();
+            eval.degradation_seconds = (1..=laps).map(|lap| cost.delta(age + lap)).sum();
         }
-        let (weather, degradation) =
-            self.weather
-                .adjustment(compound, &self.driver(driver)?.id, start, laps, &self.tyres);
+        let (weather, degradation) = self.weather.adjustment(
+            compound,
+            &self.driver(driver)?.id,
+            start,
+            laps,
+            age,
+            &self.tyres,
+        );
         eval.weather_seconds = weather;
         eval.degradation_seconds += degradation;
         if !self.weather.timeline.is_empty() {

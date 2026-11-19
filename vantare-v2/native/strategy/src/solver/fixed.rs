@@ -1,9 +1,10 @@
-//! Cantidades fijadas a mano por parada (#2690).
+//! Lo fijado a mano por parada: cantidades (#2690) y ruedas (#2691).
 //!
 //! Lo fijado restringe la búsqueda y el plan de respaldo: en una parada con una
-//! cantidad fijada solo se prueba esa cantidad. La posición en la lista es el
-//! número de parada (0 = primera). Una lista vacía, o con todo en `None`, deja
-//! el cálculo exactamente igual que sin lista.
+//! cantidad fijada solo se prueba esa cantidad, y con las ruedas fijadas solo
+//! se hace eso con ellas. La posición en la lista es el número de parada
+//! (0 = primera). Una lista vacía, o con todo en `None`, deja el cálculo
+//! exactamente igual que sin lista.
 use super::{Deserialize, Input, PitStop, Resource, Serialize, Value, budget, units};
 
 /// Lo que el usuario fija en una parada. `None`: lo decide el cálculo.
@@ -14,6 +15,13 @@ pub struct FixedStop {
     pub fuel_liters: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ve_percent: Option<f64>,
+    /// Qué se hace con las ruedas (#2691). `Some(true)`: se montan ruedas
+    /// nuevas. `Some(false)`: se sigue con las mismas; no se paga su cambio y
+    /// su edad sigue contando, para la vida máxima y para el desgaste. `None`:
+    /// lo de siempre: el cálculo escalar y el respaldo montan ruedas nuevas, y
+    /// con inventario físico de neumáticos elige la búsqueda.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change_tyres: Option<bool>,
 }
 
 impl FixedStop {
@@ -23,7 +31,11 @@ impl FixedStop {
         let same = |fixed: Option<f64>, planned: f64| {
             fixed.is_none_or(|fixed| units(fixed).ok() == units(planned).ok())
         };
-        same(self.fuel_liters, stop.fuel_liters) && same(self.ve_percent, stop.ve_percent)
+        same(self.fuel_liters, stop.fuel_liters)
+            && same(self.ve_percent, stop.ve_percent)
+            && self
+                .change_tyres
+                .is_none_or(|change| change == stop.change_tyres)
     }
 }
 
@@ -67,10 +79,19 @@ impl std::fmt::Display for InvalidFixedStop {
     }
 }
 
-/// Lo fijado, ya validado y en las unidades enteras del cálculo (millonésimas).
-/// Las paradas automáticas del final no se guardan: «sin nada fijado» es vacío.
+/// Lo fijado en una parada: combustible y energía en las unidades enteras del
+/// cálculo (millonésimas) y qué se hace con las ruedas.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct Stop {
+    fuel: Option<i64>,
+    ve: Option<i64>,
+    change_tyres: Option<bool>,
+}
+
+/// Lo fijado, ya validado. Las paradas automáticas del final no se guardan:
+/// «sin nada fijado» es vacío.
 #[derive(Clone, Debug, Default)]
-pub(super) struct Fixed(Vec<(Option<i64>, Option<i64>)>);
+pub(super) struct Fixed(Vec<Stop>);
 
 impl Fixed {
     pub fn new(
@@ -87,12 +108,13 @@ impl Fixed {
                     problem,
                 }
             };
-            amounts.push((
-                amount(fixed.fuel_liters, fuel).map_err(invalid(FixedResource::Fuel))?,
-                amount(fixed.ve_percent, ve).map_err(invalid(FixedResource::VirtualEnergy))?,
-            ));
+            amounts.push(Stop {
+                fuel: amount(fixed.fuel_liters, fuel).map_err(invalid(FixedResource::Fuel))?,
+                ve: amount(fixed.ve_percent, ve).map_err(invalid(FixedResource::VirtualEnergy))?,
+                change_tyres: fixed.change_tyres,
+            });
         }
-        while amounts.last() == Some(&(None, None)) {
+        while amounts.last() == Some(&Stop::default()) {
             amounts.pop();
         }
         Ok(Self(amounts))
@@ -104,7 +126,19 @@ impl Fixed {
 
     /// Combustible y energía fijados en la parada `stop`, en unidades del cálculo.
     pub fn at(&self, stop: usize) -> (Option<i64>, Option<i64>) {
-        self.0.get(stop).copied().unwrap_or_default()
+        self.0
+            .get(stop)
+            .map_or((None, None), |fixed| (fixed.fuel, fixed.ve))
+    }
+
+    /// Lo fijado para las ruedas en la parada `stop`; `None` si es automático.
+    pub fn tyres(&self, stop: usize) -> Option<bool> {
+        self.0.get(stop).and_then(|fixed| fixed.change_tyres)
+    }
+
+    /// Si en la parada `stop` está fijado seguir con las mismas ruedas.
+    pub fn keeps_tyres(&self, stop: usize) -> bool {
+        self.tyres(stop) == Some(false)
     }
 
     /// Paradas que un plan necesita para respetar lo fijado: hasta la última fijada.
@@ -117,7 +151,7 @@ impl Fixed {
         self.0
             .iter()
             .enumerate()
-            .filter(|(_, fixed)| **fixed != (None, None))
+            .filter(|(_, fixed)| **fixed != Stop::default())
             .map(|(stop, _)| stop)
     }
 

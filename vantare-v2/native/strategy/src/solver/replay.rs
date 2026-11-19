@@ -368,13 +368,16 @@ pub(super) fn replay_model(
             )?);
             return Ok(failed(result, decision, "resource_exhausted"));
         }
+        // El desgaste del tramo sigue desde la edad de las ruedas montadas: la
+        // misma edad que ya contaba para la vida máxima (#2691).
+        let mounted = super::tyres::mounted(&tyre, &tyre_usage, tyre_age);
         let mut eval = model.stint(
             lap + 1,
             requested.laps,
             f,
             &requested.driver,
             level,
-            &tyre.compound,
+            mounted,
         )?;
         if index + 1 == decision.stints.len() {
             result.final_lap_start_seconds = result.evaluation.total_seconds;
@@ -386,7 +389,7 @@ pub(super) fn replay_model(
                         f,
                         &requested.driver,
                         level,
-                        &tyre.compound,
+                        mounted,
                     )?
                     .total_seconds;
             }

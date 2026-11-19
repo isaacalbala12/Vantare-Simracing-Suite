@@ -239,12 +239,17 @@ impl WeatherModel {
                     .is_none_or(|cs| cs.iter().any(|c| c == compound))
             })
     }
+    /// Corrección de ritmo y de desgaste de un tramo por el clima de cada
+    /// vuelta. `tyre_age`: vueltas que ya llevan las ruedas al empezarlo; el
+    /// desgaste propio de un compuesto en un clima se mira con la edad de las
+    /// ruedas en esa vuelta, igual que el desgaste base al que corrige.
     pub fn adjustment(
         &self,
         compound: &str,
         driver: &str,
         start: u32,
         laps: u32,
+        tyre_age: u32,
         global: &super::tyres::TyreModel,
     ) -> (f64, f64) {
         let (mut pace, mut degradation) = (0.0, 0.0);
@@ -259,7 +264,8 @@ impl WeatherModel {
                     && let Some(base) = global.compounds.get(compound)
                 {
                     pace += cost.pace_delta_seconds - base.pace_delta_seconds;
-                    degradation += cost.delta(offset + 1) - base.delta(offset + 1);
+                    let age = tyre_age + offset + 1;
+                    degradation += cost.delta(age) - base.delta(age);
                 }
             }
         }

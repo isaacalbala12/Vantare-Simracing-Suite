@@ -5,12 +5,16 @@ import type {
 } from "../../contract/generated/contract";
 import corpus from "../../contract/generated/corpus/strategy.json";
 import type {
+  StrategyAcceptedMark,
+  StrategyAcceptedView,
+  StrategyChange,
   StrategyEditError,
   StrategyField,
   StrategyFields,
   StrategyPlanView,
   StrategyReason,
   StrategySolverFields,
+  StrategyUnreachableCause,
   StrategyView,
 } from "../../contract/generated/strategy";
 import { strategyReasons } from "../../contract/generated/strategy";
@@ -28,7 +32,6 @@ function sample(state: string): StrategyView {
   return structuredClone(value) as StrategyView;
 }
 
-type Form = NonNullable<StrategyView["form"]>;
 type Summary = StrategyView["events"][number];
 
 // The scene of an event that holds no confirmed inputs: the sample of the corpus.
@@ -119,7 +122,115 @@ const noPlan: StrategyPlanView = {
   error: null,
   errorField: null,
   edit: null,
+  accepted: null,
 };
+
+// What the document keeps of an accepted plan: when, the entries it was
+// calculated from (a copy) and the plan. The proof of the solver is not kept.
+interface AcceptedPlan {
+  acceptedAt: string;
+  entries: NonNullable<StrategyView["form"]>;
+  result: NonNullable<StrategyPlanView["result"]>;
+}
+// The mock has a fixed clock, so its scenes and captures do not change.
+const mockNow = "2026-11-19T18:42:00Z";
+// A change of these never makes a plan stale: they are labels.
+const labels: StrategyField[] = ["name", "variantName", "variantNote"];
+const numericFields: StrategyField[] = [
+  "durationMinutes",
+  "fuelCapacityLiters",
+  "pitTransitSeconds",
+  "basePaceSeconds",
+  "fuelPerLapLiters",
+  "raceLaps",
+  "veCapacityPercent",
+  "vePerLapPercent",
+  "tyreLifeLaps",
+  "degradationSeconds",
+  "refuelRate",
+  "veRate",
+  "tyreServiceSeconds",
+  "formationSeconds",
+  "fuelStep",
+  "veStep",
+  "reserveLaps",
+];
+const changeTextLimit = 64;
+
+// 1.83 and 1.830 are the same number; a text is compared as written.
+function sameEntry(field: StrategyField, before: string, after: string) {
+  if (numericFields.includes(field)) {
+    const [x, y] = [Number(before.trim()), Number(after.trim())];
+    if (before.trim() !== "" && after.trim() !== "" && !Number.isNaN(x + y))
+      return x === y;
+  }
+  return before.trim() === after.trim();
+}
+
+type Form = NonNullable<StrategyView["form"]>;
+
+function entriesOf(form: Form): [StrategyField, string][] {
+  return [...Object.entries(form.fields), ...Object.entries(form.inputs)] as [
+    StrategyField,
+    string,
+  ][];
+}
+
+// The entries that differ from the copy, in the order of the form.
+function changesOf(copy: Form, now: Form): StrategyChange[] {
+  const current = new Map(entriesOf(now));
+  const shown = (text: string) =>
+    new TextEncoder().encode(text).length <= changeTextLimit ? text : null;
+  return entriesOf(copy)
+    .filter(
+      ([field, before]) =>
+        !labels.includes(field) &&
+        !sameEntry(field, before, current.get(field) ?? ""),
+    )
+    .map(([field, before]) => ({
+      field,
+      before: shown(before),
+      after: shown(current.get(field) ?? ""),
+    }));
+}
+
+// The host replays the plan with the new data. The mock cannot: it says what
+// the replay would say in the cases a scene needs (a thirstier car, a reserve the
+// plan was not made for, another race length); every other change still reaches.
+function unreachableCause(
+  copy: Form,
+  now: Form,
+): StrategyUnreachableCause | null {
+  if (copy.inputs.raceLaps !== now.inputs.raceLaps) return "scheduleMismatch";
+  if (
+    Number(now.inputs.fuelPerLapLiters) > Number(copy.inputs.fuelPerLapLiters)
+  )
+    return "resourceExhausted";
+  if (Number(now.inputs.reserveLaps) > Number(copy.inputs.reserveLaps))
+    return "reserveNotMet";
+  return null;
+}
+
+function sameCalendar(
+  a: NonNullable<StrategyPlanView["result"]>,
+  b: NonNullable<StrategyPlanView["result"]>,
+) {
+  const [x, y] = [a.timeline, b.timeline];
+  return (
+    !!x &&
+    !!y &&
+    JSON.stringify(x.stints) === JSON.stringify(y.stints) &&
+    x.pits.length === y.pits.length &&
+    x.pits.every(
+      (pit, index) =>
+        pit.lap === y.pits[index].lap &&
+        pit.fuelLiters === y.pits[index].fuelLiters &&
+        pit.vePercent === y.pits[index].vePercent &&
+        pit.changeTyres === y.pits[index].changeTyres &&
+        pit.service === y.pits[index].service,
+    )
+  );
+}
 
 function calculation(state: "calculated" | "error"): StrategyPlanView {
   const plan = corpus.host.find(
@@ -160,6 +271,7 @@ function fujiPlan(unproven: boolean): StrategyPlanView {
     computeId: 1,
     error: null,
     errorField: null,
+    accepted: null,
     result: {
       certificate: unproven ? "not_proven" : "proven",
       degraded: false,
@@ -186,6 +298,8 @@ function fujiPlan(unproven: boolean): StrategyPlanView {
           vePercent: loads[index][1],
           changeTyres: true,
           service: "parallel" as const,
+          pitSeconds: 1 + index + 60,
+          pinned: { fuelLiters: false, vePercent: false, changeTyres: false },
         })),
       },
     },
@@ -306,6 +420,7 @@ function editedPlan(
     error: null,
     errorField: null,
     edit: editView(editing),
+    accepted: null,
   };
 }
 
@@ -499,6 +614,7 @@ export function create(context: MockContext): MockHandler {
     "invalidInputs",
     "confirmRejected",
     "planned",
+    "accepted",
     "calculating",
     "compute",
   ].some((prefix) => scenario.startsWith(prefix))
@@ -564,15 +680,96 @@ export function create(context: MockContext): MockHandler {
     );
     return event && variant ? formOf(event, variant) : null;
   }
+  // The accepted plan of each variant, in the draft and in the saved file.
+  let accepts: Record<string, AcceptedPlan> = {};
+  let savedAccepts: Record<string, AcceptedPlan> = {};
+  const activeKey = () =>
+    current.activeEventId && current.activeStrategyId
+      ? formKey(current.activeEventId, current.activeStrategyId)
+      : undefined;
+  // The accepted plan of the active variant as the view shows it, apart from the proposal.
+  function acceptedView(): StrategyAcceptedView | null {
+    const key = activeKey();
+    const kept = key ? accepts[key] : undefined;
+    const now = activeForm(current);
+    if (!key || !kept || !now) return null;
+    const changes = changesOf(kept.entries, now);
+    const cause = changes.length ? unreachableCause(kept.entries, now) : null;
+    const proposal = ["calculated", "partial", "edited"].includes(
+      current.plan.state,
+    )
+      ? current.plan.result
+      : null;
+    const total = (result: StrategyPlanView["result"]) =>
+      result?.metrics?.totalSeconds;
+    return {
+      state: !changes.length
+        ? "accepted"
+        : cause
+          ? "staleUnreachable"
+          : "stale",
+      acceptedAt: kept.acceptedAt,
+      saved: JSON.stringify(savedAccepts[key]) === JSON.stringify(kept),
+      result: structuredClone(kept.result),
+      changes,
+      // the lap of the failure comes with the solver crate (E5e)
+      unreachable: cause ? { cause, failLap: null } : null,
+      compare:
+        proposal && total(proposal) !== undefined
+          ? {
+              same: sameCalendar(kept.result, proposal),
+              deltaSeconds: (total(proposal) ?? 0) - (total(kept.result) ?? 0),
+            }
+          : null,
+    };
+  }
+  // The view as the host answers it: the plan with its accepted plan, and the
+  // mark of every event.
+  function shown(): StrategyView {
+    const view = structuredClone(current);
+    view.plan = { ...view.plan, accepted: acceptedView() };
+    view.events = view.events.map((event) => {
+      const marks = event.strategies
+        .map((variant) => {
+          const kept = accepts[formKey(event.id, variant.id)];
+          const now = formOf(event, variant);
+          return kept
+            ? changesOf(kept.entries, now).length
+              ? "stale"
+              : "accepted"
+            : "none";
+        })
+        .filter((mark) => mark !== "none");
+      const acceptedPlan: StrategyAcceptedMark = marks.includes("stale")
+        ? "stale"
+        : marks.length
+          ? "accepted"
+          : "none";
+      return { ...event, acceptedPlan };
+    });
+    return view;
+  }
   function commit() {
     saved = structuredClone({ ...current, plan: noPlan });
     savedForms = structuredClone(forms);
+    savedAccepts = structuredClone(accepts);
   }
   function restore() {
     current = structuredClone(saved);
     forms = structuredClone(savedForms);
+    accepts = structuredClone(savedAccepts);
+  }
+  // Changes the document without touching the plan on screen (accepting or removing).
+  function touch() {
+    current = {
+      ...current,
+      revision: (++sequence).toString(16).padStart(64, "0"),
+      state: "ready",
+      dirty: true,
+    };
   }
   let opened = false;
+  let seeded = false;
   let sequence = 0;
   let computeSequence = 0;
   let pending:
@@ -619,6 +816,7 @@ export function create(context: MockContext): MockHandler {
         drivers: 1,
         strategies: [{ id: "variant-1", name: "Base" }],
         hasInputs: true,
+        acceptedPlan: "none" as const,
       },
     ];
     view.activeEventId = "event-9";
@@ -634,7 +832,7 @@ export function create(context: MockContext): MockHandler {
     if (mode === "saveAs" && current.state === "protected")
       return { kind: "protected" };
     if (revision !== current.revision)
-      return { kind: "strategyConflict", current: structuredClone(current) };
+      return { kind: "strategyConflict", current: shown() };
     if (mode === "open") {
       if (pending || recalculating !== undefined) return { kind: "busy" };
       if (current.dirty) return { kind: "strategyDirty" };
@@ -658,7 +856,7 @@ export function create(context: MockContext): MockHandler {
     const respond = (): HostToUi => ({
       kind: "response",
       id,
-      result: { method: "strategy.pickFile", value: structuredClone(current) },
+      result: { method: "strategy.pickFile", value: shown() },
     });
     if (name === null) return respond();
     const sceneError = (
@@ -718,7 +916,7 @@ export function create(context: MockContext): MockHandler {
       return {
         kind: "failure",
         id: message.id,
-        error: { kind: "strategyConflict", current: structuredClone(current) },
+        error: { kind: "strategyConflict", current: shown() },
       };
     const name = message.path.split(/[\\/]/).pop() ?? "";
     return finishPick(message.id, held.mode, name || null);
@@ -760,6 +958,9 @@ export function create(context: MockContext): MockHandler {
       request.method !== "strategy.resetEdit" &&
       request.method !== "strategy.save" &&
       request.method !== "strategy.pickFile" &&
+      request.method !== "strategy.accept" &&
+      request.method !== "strategy.unaccept" &&
+      request.method !== "strategy.showAccepted" &&
       request.method !== "strategy.discard"
     )
       return undefined;
@@ -785,6 +986,22 @@ export function create(context: MockContext): MockHandler {
       pending = undefined;
       editing = undefined;
       recalculating = undefined;
+      // QA: a file that already holds an accepted plan (saved), as it was
+      // calculated, or from entries that have changed since
+      if (scenario.startsWith("accepted") && !seeded) {
+        seeded = true;
+        const key = activeKey();
+        const form = activeForm(saved);
+        const result = calculation("calculated").result;
+        if (key && form && result) {
+          const entries = structuredClone(form);
+          if (scenario === "acceptedStale")
+            entries.inputs.basePaceSeconds = "90";
+          if (scenario === "acceptedUnreachable")
+            entries.inputs.fuelPerLapLiters = "1.5";
+          savedAccepts[key] = { acceptedAt: mockNow, entries, result };
+        }
+      }
       restore();
       opened = true;
       if (scenario.startsWith("planned")) {
@@ -823,7 +1040,7 @@ export function create(context: MockContext): MockHandler {
       return {
         kind: "response",
         id,
-        result: { method: request.method, value: structuredClone(current) },
+        result: { method: request.method, value: shown() },
       };
     }
     if ("revision" in request) {
@@ -835,13 +1052,14 @@ export function create(context: MockContext): MockHandler {
         return failure({ kind: "strategyDirty" });
       if (
         request.method !== "strategy.discard" &&
+        request.method !== "strategy.showAccepted" &&
         current.state === "protected"
       )
         return failure({ kind: "protected" });
       if (request.revision !== current.revision)
         return failure({
           kind: "strategyConflict",
-          current: structuredClone(current),
+          current: shown(),
         });
     }
 
@@ -855,7 +1073,7 @@ export function create(context: MockContext): MockHandler {
       if (request.computeId !== current.plan.computeId)
         return failure({
           kind: "strategyConflict",
-          current: structuredClone(current),
+          current: shown(),
         });
       // the host answers a recalculation of a plan with no schedule `rejected`,
       // and the other three with the current view
@@ -864,7 +1082,7 @@ export function create(context: MockContext): MockHandler {
           ? failure({ kind: "rejected" })
           : failure({
               kind: "strategyConflict",
-              current: structuredClone(current),
+              current: shown(),
             });
       if (request.method === "strategy.resetEdit") {
         recalculating = undefined;
@@ -909,7 +1127,7 @@ export function create(context: MockContext): MockHandler {
       return {
         kind: "response",
         id,
-        result: { method: request.method, value: structuredClone(current) },
+        result: { method: request.method, value: shown() },
       };
     }
     if (request.method === "strategy.compute") {
@@ -1025,6 +1243,48 @@ export function create(context: MockContext): MockHandler {
       if (!valid && field) current.plan.errorField = field;
       editing = valid ? startEditing(current.plan) : undefined;
     }
+    if (request.method === "strategy.accept") {
+      // another or an old plan, or none: the caller restarts from this view
+      if (request.computeId !== current.plan.computeId)
+        return failure({ kind: "strategyConflict", current: shown() });
+      if (recalculating !== undefined || pending)
+        return failure({ kind: "busy" });
+      if (editing?.pending) return failure({ kind: "strategyEditPending" });
+      const key = activeKey();
+      const form = activeForm(current);
+      const result = current.plan.result;
+      if (
+        !key ||
+        !form ||
+        !["calculated", "partial"].includes(current.plan.state) ||
+        !result?.metrics ||
+        !result.timeline ||
+        !["proven", "not_proven"].includes(result.certificate ?? "")
+      )
+        return failure({ kind: "strategyNotAcceptable" });
+      accepts[key] = {
+        acceptedAt: mockNow,
+        entries: form,
+        result: structuredClone(result),
+      };
+      // the plan on screen stays; the document is «Sin guardar»
+      touch();
+    } else if (request.method === "strategy.unaccept") {
+      const key = activeKey();
+      if (!key || !accepts[key])
+        return failure({ kind: "strategyNoAcceptedPlan" });
+      delete accepts[key];
+      touch();
+    } else if (request.method === "strategy.showAccepted") {
+      const key = activeKey();
+      if (!key || !accepts[key])
+        return failure({ kind: "strategyNoAcceptedPlan" });
+      // the proposal goes; the document does not change
+      pending = undefined;
+      editing = undefined;
+      recalculating = undefined;
+      current.plan = noPlan;
+    }
     if (request.method === "strategy.create") {
       const { fields, inputs } = request;
       if (
@@ -1060,6 +1320,7 @@ export function create(context: MockContext): MockHandler {
           { id: "variant-1", name: fields.variantName.trim() || "Base" },
         ],
         hasInputs: inputs !== null,
+        acceptedPlan: "none" as const,
       };
       forms[formKey(event.id, "variant-1")] = {
         fields: hostFields(fields),
@@ -1160,7 +1421,7 @@ export function create(context: MockContext): MockHandler {
     return {
       kind: "response",
       id,
-      result: { method: request.method, value: structuredClone(current) },
+      result: { method: request.method, value: shown() },
     };
   };
 }

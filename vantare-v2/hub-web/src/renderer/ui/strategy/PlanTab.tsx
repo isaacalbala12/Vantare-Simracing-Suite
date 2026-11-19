@@ -354,6 +354,8 @@ function Result({
   const [unsettled, setUnsettled] = useState(false);
   const [wantsRecalculation, setWantsRecalculation] = useState(false);
   const settle = useCallback((now: boolean) => setUnsettled(now), []);
+  // a lap the host refused takes with it the press that was waiting for it
+  const dropPress = useCallback(() => setWantsRecalculation(false), []);
   const recalculate = actions.edit.recalculate;
   const isEdited = plan.state === "edited";
   useEffect(() => {
@@ -549,6 +551,7 @@ function Result({
                 stale={edited || recalculating}
                 move={actions.edit.moveBoundary}
                 onUnsettled={settle}
+                onRefused={dropPress}
               />
               {!edited && <p className="strategy-help">{t.adjust.notSaved}</p>}
             </>

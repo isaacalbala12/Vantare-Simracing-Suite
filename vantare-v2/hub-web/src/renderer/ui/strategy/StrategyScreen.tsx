@@ -247,8 +247,11 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     setAnnouncement("");
     try {
       await whenIdle();
+      // only a plan that is still adjusted can be recalculated: the host would
+      // refuse the rest, and asking would wipe the error that explains why
       const plan = peek()?.plan;
-      if (plan) planAnswered(await strategyRecalculate(act, plan));
+      if (plan?.state === "edited")
+        planAnswered(await strategyRecalculate(act, plan));
     } finally {
       recalculating.current = false;
     }

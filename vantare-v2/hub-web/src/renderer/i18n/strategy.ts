@@ -426,7 +426,7 @@ export const strategy = {
           drag: "Cada stint conserva al menos 1 vuelta.",
         },
         pinned:
-          "Este final de stint no se puede mover: los stints de sus lados se quedarían sin vueltas.",
+          "Este final de stint no se puede mover: los stints vecinos se quedarían sin vueltas.",
         last: "El último stint termina con la carrera. Para cambiarlo, mueve el final del stint anterior.",
       },
       stops: {
@@ -450,7 +450,7 @@ export const strategy = {
         atLast:
           "No se puede retrasar más: el stint siguiente se quedaría sin vueltas.",
         pinned:
-          "Esta parada no se puede mover: los stints de sus lados se quedarían sin vueltas.",
+          "Esta parada no se puede mover: los stints vecinos se quedarían sin vueltas.",
         amounts:
           "El combustible, la energía y las ruedas de cada parada los decide el cálculo; aquí solo se elige la vuelta.",
       },

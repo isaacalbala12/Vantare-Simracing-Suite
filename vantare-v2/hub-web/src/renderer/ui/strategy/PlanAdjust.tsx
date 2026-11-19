@@ -95,12 +95,15 @@ function useBoundaryTarget(
   lap: number | undefined,
   busy: boolean,
   move: EditActions["moveBoundary"],
+  onRefused: () => void,
 ) {
   const [target, setTarget] = useState<number>();
   const [settled, setSettled] = useState(0);
   const inFlight = useRef(false);
   const latest = useRef(move);
   latest.current = move;
+  const refused = useRef(onRefused);
+  refused.current = onRefused;
   // biome-ignore lint/correctness/useExhaustiveDependencies: another stint starts clean
   useEffect(() => setTarget(undefined), [index]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: `settled` wakes the effect after an answer
@@ -116,6 +119,7 @@ function useBoundaryTarget(
       inFlight.current = false;
       // not taken: the end of the running action wakes the effect again
       if (taken === undefined) return;
+      if (taken === false) refused.current();
       setTarget((now) => (now === sent ? undefined : now));
       setSettled((count) => count + 1);
     });
@@ -134,6 +138,7 @@ export function StintEditor({
   stale,
   move,
   onUnsettled,
+  onRefused,
 }: {
   edit: StrategyEditView;
   // the timeline as edited, and the laps of the stops in the calculated plan
@@ -148,11 +153,19 @@ export function StintEditor({
   move: EditActions["moveBoundary"];
   // a lap typed or moved that the host has not answered yet
   onUnsettled: (unsettled: boolean) => void;
+  // the host refused the lap: what was waiting for it must not go on
+  onRefused: () => void;
 }) {
   const id = useId();
   const stint = edit.stints[index];
   const stop = edit.stops[index];
-  const [target, setTarget] = useBoundaryTarget(index, stop?.lap, busy, move);
+  const [target, setTarget] = useBoundaryTarget(
+    index,
+    stop?.lap,
+    busy,
+    move,
+    onRefused,
+  );
   const [draft, setDraft] = useState<string>();
   const unsettled = target !== undefined || draft !== undefined;
   useEffect(() => onUnsettled(unsettled), [unsettled, onUnsettled]);

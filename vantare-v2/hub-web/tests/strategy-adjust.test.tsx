@@ -918,8 +918,12 @@ describe("a conflict on the plan", () => {
 // ---- the failure of a recalculation is not shown while it recalculates ----
 
 // The host does not answer `strategy.view` until it is released.
-function mountGated(scene: string, held: Request["method"]) {
-  const base = clientFor(scene);
+function mountGated(
+  scene: string,
+  held: Request["method"],
+  override?: (request: Request) => HostError | undefined,
+) {
+  const base = clientFor(scene, override);
   let release = () => {};
   let gate: Promise<void> | undefined;
   const request = Object.assign(
@@ -1016,7 +1020,7 @@ describe("an end of stint with no lap to move to", () => {
     expect(slider().disabled).toBe(true);
     expect(lap().disabled).toBe(true);
     const reason =
-      "Este final de stint no se puede mover: los stints de sus lados se quedarían sin vueltas.";
+      "Este final de stint no se puede mover: los stints vecinos se quedarían sin vueltas.";
     expect(screen.getByText(reason)).toBeTruthy();
     const described = slider().getAttribute("aria-describedby");
     expect(
@@ -1094,6 +1098,74 @@ describe("Recalcular right after typing a lap", () => {
       );
     expect(order).toEqual(["move 90", "move 100", "recalculate"]);
     expect(screen.getAllByRole("status")).toHaveLength(1);
+  });
+
+  it("is not sent when the move it follows is refused: the error of the move stays", async () => {
+    let refuse = false;
+    const { request, hold, release } = mountGated(
+      "plannedFuji",
+      "strategy.moveBoundary",
+      (sent) =>
+        refuse && sent.method === "strategy.moveBoundary"
+          ? { kind: "rejected" }
+          : undefined,
+    );
+    await stints();
+    await moveSecondBoundary();
+    refuse = true;
+    hold();
+    fireEvent.change(lap(), { target: { value: "100" } });
+    fireEvent.blur(lap());
+    click("Recalcular");
+    await waitFor(() =>
+      expect(calls(request, "strategy.moveBoundary")).toHaveLength(2),
+    );
+    release();
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("No se ha podido completar la acción.");
+    // the press is dropped with the move: nothing is asked of the host, and the
+    // error is not wiped by a request that cannot work
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(calls(request, "strategy.recalculate")).toHaveLength(0);
+    expect(screen.getByRole("alert")).toBe(alert);
+    // the plan keeps its adjustment and Recalcular still works with a new press
+    expect(slider().value).toBe("90");
+    click("Recalcular");
+    await waitFor(() => expect(status()).toContain("Plan recalculado"));
+    expect(calls(request, "strategy.recalculate")).toHaveLength(1);
+  });
+
+  it("is not sent when the move ends in a conflict: it says the plan changed and shows it", async () => {
+    let current: StrategyView | undefined;
+    const { request, hold, release } = mountGated(
+      "plannedFuji",
+      "strategy.moveBoundary",
+      (sent) =>
+        current && sent.method === "strategy.moveBoundary"
+          ? { kind: "strategyConflict", current }
+          : undefined,
+    );
+    await stints();
+    await moveSecondBoundary();
+    const latest = structuredClone(await lastView(request));
+    latest.plan.state = "calculated";
+    latest.plan.computeId = 9;
+    current = latest;
+    hold();
+    fireEvent.change(lap(), { target: { value: "100" } });
+    fireEvent.blur(lap());
+    click("Recalcular");
+    await waitFor(() =>
+      expect(calls(request, "strategy.moveBoundary")).toHaveLength(2),
+    );
+    release();
+    await waitFor(() =>
+      expect(status()).toBe("El plan ha cambiado. Te mostramos el actual."),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(calls(request, "strategy.recalculate")).toHaveLength(0);
+    expect(status()).toBe("El plan ha cambiado. Te mostramos el actual.");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("does not send twice when pressed twice meanwhile", async () => {

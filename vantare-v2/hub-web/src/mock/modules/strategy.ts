@@ -1312,6 +1312,12 @@ export function create(context: MockContext): MockHandler {
     ) {
       if (request.revision !== current.revision)
         return failure({ kind: "strategyConflict", current: shown() });
+      // the host checks the calculation the proposal names before anything else
+      if (
+        request.target.kind === "proposal" &&
+        current.plan.computeId !== request.target.computeId
+      )
+        return failure({ kind: "strategyConflict", current: shown() });
       if (fault === "exportBusy") return failure({ kind: "busy" });
       if (fault === "nothingToExport")
         return failure({ kind: "strategyNothingToExport" });

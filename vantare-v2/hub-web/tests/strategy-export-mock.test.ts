@@ -268,3 +268,21 @@ it("plays the faults of the export on the accepted plan of Opus' Fuji case too",
     }).result.value.text,
   ).toMatch(/^PLAN ACEPTADO · /);
 });
+
+it("answers the conflict of another calculation before busy or nothing to export, as the host does", () => {
+  for (const scene of ["exportBusy", "nothingToExport"]) {
+    const { send, value } = planned(`strategy-${scene}`);
+    for (const method of ["strategy.export", "strategy.exportFile"]) {
+      const refused = send({
+        method,
+        revision: value.revision,
+        target: { kind: "proposal", computeId: value.plan.computeId + 1 },
+      });
+      expect(isHostMessage(refused)).toBe(true);
+      expect(refused).toMatchObject({
+        kind: "failure",
+        error: { kind: "strategyConflict" },
+      });
+    }
+  }
+});

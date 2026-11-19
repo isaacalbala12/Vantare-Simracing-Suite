@@ -687,7 +687,7 @@ export const strategy = {
         },
         busy: {
           detail:
-            "Vantare está ocupado un momento. Espera un momento y vuelve a intentarlo.",
+            "Vantare está ocupado. Espera un momento y vuelve a intentarlo.",
           retry: "Volver a intentarlo",
         },
         strategyEditPending: {

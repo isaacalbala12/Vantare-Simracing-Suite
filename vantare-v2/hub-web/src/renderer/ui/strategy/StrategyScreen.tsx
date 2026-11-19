@@ -133,10 +133,18 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     if (said) setAnnouncement(said);
   }, [plan]);
   // The notice of an export is about the plan that was exported: it goes when the
-  // plan on view is another (a new calculation, an acceptance, the host's view). The
-  // window to save is still open, so that one stays until it answers.
+  // plan on view is another (a new calculation, an acceptance, the host's view) and
+  // when it is the plan of another strategy or file or the collection is on view: the
+  // target of an accepted plan is always the same words. The window to save is still
+  // open, so that one stays until it answers.
   const target = plan ? exportTarget(plan) : null;
-  const targetKey = JSON.stringify(target);
+  const targetKey = JSON.stringify([
+    target,
+    view?.activeEventId,
+    view?.activeStrategyId,
+    view?.file?.name,
+    showRace,
+  ]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: only when the target changes
   useEffect(() => {
     setExported((now) => (now.status === "waiting" ? now : exportIdle));
@@ -329,7 +337,9 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
       via === "file" ? "strategy.exportFile" : "strategy.export",
       target,
     );
-    // nothing was sent (another action was running): back to what it was
+    // nothing was sent (another action was running): back to what it was. The
+    // buttons are not offered while an action runs, so the screen cannot get here;
+    // were it to, it would also clear the «waiting» of an export still open.
     if (!result) return setExported(exportIdle);
     const say = t.calc.export.announce;
     if ("copied" in result) {

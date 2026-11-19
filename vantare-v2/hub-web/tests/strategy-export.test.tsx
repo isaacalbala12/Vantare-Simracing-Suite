@@ -448,7 +448,7 @@ describe("saving as a spreadsheet", () => {
     ],
     [
       "busy",
-      "Vantare está ocupado un momento. Espera un momento y vuelve a intentarlo.",
+      "Vantare está ocupado. Espera un momento y vuelve a intentarlo.",
       "Volver a intentarlo",
     ],
     [
@@ -591,6 +591,108 @@ describe("when the plan of the host is another one", () => {
     await screen.findByRole("heading", { name: "Plan calculado" });
     const view = await lastView(request);
     await open(user);
+    await user.click(await screen.findByRole("menuitem", { name: asText }));
+    await screen.findByText("Copiado");
+    expect(calls(request, "strategy.export")).toEqual([
+      {
+        method: "strategy.export",
+        revision: view.revision,
+        target: { kind: "proposal", computeId: view.plan.computeId },
+      },
+    ]);
+  });
+});
+
+// ---- another strategy, another file: nothing of the last try goes with the user ----
+
+describe("the notice of an export belongs to the strategy it was about", () => {
+  it("is gone in another strategy with an accepted plan, so its retry can never export that plan", async () => {
+    const user = userEvent.setup();
+    const request = mount("acceptedFujiList", {
+      override: failWith("strategy.exportFile", { kind: "strategyFileInUse" }),
+    });
+    await screen.findByRole("heading", { name: "Tus estrategias" });
+    await user.click(screen.getByRole("button", { name: /Fuji 6 Horas/ }));
+    fireEvent.click(tab("Plan"));
+    await screen.findByRole("heading", { name: "Plan aceptado" });
+    await open(user);
+    await user.click(await screen.findByRole("menuitem", { name: asFile }));
+    const alert = await screen.findByRole("alert");
+    expect(
+      within(alert).getByRole("button", { name: "Volver a intentarlo" }),
+    ).toBeTruthy();
+    // the other strategy has an accepted plan too: its target is the very same
+    await user.click(button("← Tus estrategias"));
+    await user.click(screen.getByRole("button", { name: /Le Mans 24 Horas/ }));
+    fireEvent.click(tab("Plan"));
+    await screen.findByRole("heading", { name: "Plan aceptado" });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(maybe("Volver a intentarlo")).toBeNull();
+    expect(maybe("Cerrar aviso")).toBeNull();
+    // and the button exports what is on view now, with its own revision
+    const before = calls(request, "strategy.exportFile").length;
+    await open(user);
+    await user.click(await screen.findByRole("menuitem", { name: asFile }));
+    await screen.findByRole("alert");
+    expect(calls(request, "strategy.exportFile")).toHaveLength(before + 1);
+  });
+
+  it("is gone when the person goes back to the collection and returns to the same strategy", async () => {
+    const user = userEvent.setup();
+    mount("acceptedFuji");
+    await screen.findByRole("heading", { name: "Tus estrategias" });
+    await user.click(button("Continuar"));
+    fireEvent.click(tab("Plan"));
+    await screen.findByRole("heading", { name: "Plan aceptado" });
+    await open(user);
+    await user.click(await screen.findByRole("menuitem", { name: asFile }));
+    await screen.findByText("Plan exportado");
+    await user.click(button("← Tus estrategias"));
+    await user.click(button("Continuar"));
+    fireEvent.click(tab("Plan"));
+    await screen.findByRole("heading", { name: "Plan aceptado" });
+    expect(screen.queryByText("Plan exportado")).toBeNull();
+  });
+});
+
+// ---- what is on view decides which plan is exported ----
+
+describe("which plan is exported", () => {
+  it("asks for the accepted plan when the proposal that was just accepted is on view", async () => {
+    const user = userEvent.setup();
+    const request = mount("plannedFuji");
+    await openPlan();
+    await user.click(button("Aceptar propuesta"));
+    await screen.findByRole("heading", { name: "Plan aceptado" });
+    const view = await lastView(request);
+    // the proposal is still on view, and it is the accepted plan
+    expect(view.plan.result).not.toBeNull();
+    expect(view.plan.accepted?.compare?.same).toBe(true);
+    await open(user);
+    await user.click(await screen.findByRole("menuitem", { name: asText }));
+    await screen.findByText("Copiado");
+    expect(calls(request, "strategy.export")).toEqual([
+      {
+        method: "strategy.export",
+        revision: view.revision,
+        target: { kind: "accepted" },
+      },
+    ]);
+  });
+
+  it("asks for the proposal, with its id, when the accepted plan is outdated and the proposal has its stops", async () => {
+    const user = userEvent.setup();
+    const request = mount("acceptedFujiStaleSame");
+    await openPlan();
+    const view = await lastView(request);
+    // «datos antiguos»: the accepted plan is outdated and the proposal is another one
+    expect(view.plan.accepted?.state).not.toBe("accepted");
+    expect(view.plan.accepted?.compare?.same).toBe(true);
+    await open(user);
+    // it is a proposal, and the menu says so
+    expect(
+      within(screen.getByRole("menu")).getByText(/propuesta sin aceptar/),
+    ).toBeTruthy();
     await user.click(await screen.findByRole("menuitem", { name: asText }));
     await screen.findByText("Copiado");
     expect(calls(request, "strategy.export")).toEqual([

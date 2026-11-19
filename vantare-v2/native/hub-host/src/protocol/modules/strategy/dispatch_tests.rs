@@ -1052,7 +1052,7 @@ fn a_licence_refresh_on_the_same_account_keeps_the_dirty_draft_and_the_calculati
 }
 
 #[test]
-fn invalid_input_names_its_field_only_when_one_field_is_to_blame() {
+fn invalid_input_names_the_field_to_blame_for_a_text_or_a_limit() {
     use crate::strategy::{StrategyField, StrategyPlanError, StrategyPlanState};
     let fixture = Fixture::new();
     let mut session = fixture.session();
@@ -1063,7 +1063,7 @@ fn invalid_input_names_its_field_only_when_one_field_is_to_blame() {
     semantic.base_pace_seconds = "0".into();
     for (inputs, field) in [
         (bad_number, Some(StrategyField::RaceLaps)),
-        (semantic, None),
+        (semantic, Some(StrategyField::BasePaceSeconds)),
     ] {
         assert!(matches!(
             request(&mut session, &compute_with(&saved, inputs)),
@@ -2131,7 +2131,9 @@ fn confirm_with_inputs_answers_the_view_with_them_and_a_failure_keeps_the_draft(
         confirm(&mut session, zero),
         HostToUi::Failure {
             id: 9,
-            error: HostError::Rejected
+            error: HostError::StrategyInvalidInput {
+                field: Some(crate::strategy::StrategyField::RaceLaps)
+            }
         }
     );
     assert_eq!(view_strategy(&mut session), saved);

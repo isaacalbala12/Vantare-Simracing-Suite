@@ -1,7 +1,7 @@
 //! Manual form values and atomic document edits, independent of the UI.
 use crate::{
     document::{Document, new_event},
-    solver::{Budget, Discretization, Formation, Input, PitCost, Rules, Scalar},
+    solver::{Budget, Discretization, Formation, Input, InputField, PitCost, Rules, Scalar},
 };
 use serde_json::{Value, json};
 use std::ops::{Index, IndexMut};
@@ -116,6 +116,19 @@ impl ManualEvent {
     }
 
     pub fn to_input(&self) -> Result<Input, String> {
+        let input = self.build_input()?;
+        input.validate()?;
+        Ok(input)
+    }
+
+    /// The scalar that makes `to_input` fail when the texts are numbers but one
+    /// of them is out of range; `None` when the texts do not build an input or the
+    /// failure is no single scalar.
+    pub fn input_field(&self) -> Option<InputField> {
+        self.build_input().ok()?.validate_field().err()?.field
+    }
+
+    fn build_input(&self) -> Result<Input, String> {
         let race = self
             .race_laps
             .trim()
@@ -158,7 +171,6 @@ impl ManualEvent {
             virtual_energy_reserve: Value::Null,
             extra: std::collections::BTreeMap::new(),
         };
-        input.validate()?;
         Ok(input)
     }
 

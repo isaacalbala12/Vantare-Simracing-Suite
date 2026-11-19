@@ -448,7 +448,8 @@ impl State {
             .map_or_else(|| Document::empty(now).map_err(|_| HostError::Io), Ok)?;
         let event = manual.append(&mut next).map_err(|_| HostError::Rejected)?;
         if inputs.is_some() {
-            confirm_inputs(&manual, &mut next, event, 0)?;
+            // `create` names no field: it has no plan of the selection to put it in
+            confirm_inputs(&manual, &mut next, event, 0).map_err(|_| HostError::Rejected)?;
         }
         self.set_draft(next)
     }
@@ -461,8 +462,9 @@ impl State {
     /// revision (`rejected`), an outdated one (`strategyConflict`), no document,
     /// event or variant (`rejected`), changes pending in another event
     /// (`strategyDirty`), a text out of range in the 13 fields or the 15 inputs
-    /// (`strategyInvalidText`) and the checks of the crate (`rejected`: a zero
-    /// pace, laps, steps, service mode, a variant that is not `dry`...).
+    /// (`strategyInvalidText`) and the checks of the crate (`strategyInvalidInput`
+    /// with the field `compute` names for the same form, or none: a zero pace,
+    /// laps, steps, service mode, a variant that is not `dry`...).
     ///
     /// `inputs: None` confirms the fields only and keeps the stored inputs. With
     /// `inputs` they replace the stored ones as a whole (they are not merged), in a
@@ -487,15 +489,16 @@ impl State {
             return Err(HostError::StrategyDirty);
         }
         let mut next = doc.clone();
-        match inputs {
-            Some(inputs) => {
-                let manual = calculation::manual_with(fields, inputs)?;
-                confirm_inputs(&manual, &mut next, event, variant)?;
-            }
-            None => fields
-                .manual()?
-                .confirm(&mut next, event, variant)
-                .map_err(|_| HostError::Rejected)?,
+        if let Some(inputs) = inputs {
+            let manual = calculation::manual_with(fields, inputs)?;
+            confirm_inputs(&manual, &mut next, event, variant)?;
+        } else {
+            let manual = fields.manual()?;
+            manual.confirm(&mut next, event, variant).map_err(|_| {
+                HostError::StrategyInvalidInput {
+                    field: calculation::invalid_field(&manual, false),
+                }
+            })?;
         }
         self.set_draft(next)
     }
@@ -776,17 +779,19 @@ impl State {
 }
 /// The confirmation `compute` makes, without the calculation: the fields and the
 /// inputs of the variant, with the checks of the crate. Written to `next`, which
-/// the caller keeps as a draft of its own so a failure changes nothing.
+/// the caller keeps as a draft of its own so a failure changes nothing. A refusal
+/// of the crate is `strategyInvalidInput` with the field `compute` would name.
 fn confirm_inputs(
     manual: &ManualEvent,
     next: &mut Document,
     event: usize,
     variant: usize,
 ) -> Result<(), HostError> {
-    let input = manual
-        .prepare(next, event, variant)
-        .map_err(|_| HostError::Rejected)?;
-    application::prepare_manual(input).map_err(|_| HostError::Rejected)?;
+    let refused = |_| HostError::StrategyInvalidInput {
+        field: calculation::invalid_field(manual, true),
+    };
+    let input = manual.prepare(next, event, variant).map_err(refused)?;
+    application::prepare_manual(input).map_err(refused)?;
     Ok(())
 }
 fn indices(doc: &Document, event_id: &str, strategy_id: &str) -> Result<(usize, usize), HostError> {

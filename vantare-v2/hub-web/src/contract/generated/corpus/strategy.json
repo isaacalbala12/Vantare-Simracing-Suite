@@ -770,6 +770,22 @@
     },
     {
       "error": {
+        "field": "basePaceSeconds",
+        "kind": "strategyInvalidInput"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "field": null,
+        "kind": "strategyInvalidInput"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
         "kind": "strategyFileUnavailable"
       },
       "id": 1,

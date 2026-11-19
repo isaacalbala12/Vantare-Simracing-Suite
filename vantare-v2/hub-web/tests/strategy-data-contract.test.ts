@@ -740,21 +740,34 @@ it("confirm with inputs that do not validate changes nothing, not even the field
   const opened = host.open();
   const bad = (change: Partial<StrategySolverFields>) =>
     confirmation(opened, { inputs: { ...changed, ...change } });
-  for (const [case_, request] of Object.entries({
-    "zero pace": bad({ basePaceSeconds: "0" }),
-    "pace text": bad({ basePaceSeconds: "NaN" }),
-    "laps text": bad({ raceLaps: "diez" }),
-    "zero laps": bad({ raceLaps: "0" }),
-    "fraction laps": bad({ raceLaps: "2.5" }),
-    "negative fuel": bad({ fuelPerLapLiters: "-1" }),
-    "empty step": bad({ fuelStep: "" }),
-    "unknown mode": bad({ serviceMode: "other" }),
-    "not dry": confirmation(opened, {
-      fields: { ...fields, name: "Other", variantMode: "wet" },
-    }),
-    "no name": confirmation(opened, { fields: { ...fields, name: "" } }),
-  })) {
-    expect(host.failure(request), case_).toEqual({ kind: "rejected" });
+  // the host says `strategyInvalidInput` with the field it blames, or none
+  const refused = (field: string | null) => ({
+    kind: "strategyInvalidInput",
+    field,
+  });
+  const cases: Record<string, [unknown, string | null]> = {
+    "zero pace": [bad({ basePaceSeconds: "0" }), "basePaceSeconds"],
+    "pace text": [bad({ basePaceSeconds: "NaN" }), "basePaceSeconds"],
+    "laps text": [bad({ raceLaps: "diez" }), "raceLaps"],
+    "zero laps": [bad({ raceLaps: "0" }), "raceLaps"],
+    "fraction laps": [bad({ raceLaps: "2.5" }), "raceLaps"],
+    "negative fuel": [bad({ fuelPerLapLiters: "-1" }), "fuelPerLapLiters"],
+    "empty step": [bad({ fuelStep: "" }), "fuelStep"],
+    "negative step": [bad({ veStep: "-1" }), "veStep"],
+    "unknown mode": [bad({ serviceMode: "other" }), "serviceMode"],
+    "not dry": [
+      confirmation(opened, {
+        fields: { ...fields, name: "Other", variantMode: "wet" },
+      }),
+      null,
+    ],
+    "no name": [
+      confirmation(opened, { fields: { ...fields, name: "" } }),
+      null,
+    ],
+  };
+  for (const [case_, [request, field]] of Object.entries(cases)) {
+    expect(host.failure(request), case_).toEqual(refused(field));
     expect(host.view({ method: "strategy.view" }), case_).toEqual(opened);
   }
   // over a draft, the draft is what stays
@@ -763,7 +776,7 @@ it("confirm with inputs that do not validate changes nothing, not even the field
     host.failure(
       confirmation(draft, { inputs: { ...changed, raceLaps: "0" } }),
     ),
-  ).toEqual({ kind: "rejected" });
+  ).toEqual({ kind: "strategyInvalidInput", field: "raceLaps" });
   expect(host.view({ method: "strategy.view" })).toEqual(draft);
 });
 
@@ -809,8 +822,67 @@ it("confirm with inputs keeps the usual guards, in the order of the host", () =>
 it("the QA scene refuses every confirm with inputs and still takes the one without", () => {
   const host = session("strategy-confirmRejected");
   const opened = host.open();
-  expect(host.failure(confirmation(opened))).toEqual({ kind: "rejected" });
+  expect(host.failure(confirmation(opened))).toEqual({
+    kind: "strategyInvalidInput",
+    field: "raceLaps",
+  });
   expect(host.view({ method: "strategy.view" })).toEqual(opened);
   const kept = host.view(confirmation(opened, { inputs: null }));
   expect(kept.dirty).toBe(true);
+});
+
+// ---- confirm answers like compute (#2677) ----
+
+// The cases of `confirm_names_the_same_field_as_compute_for_every_scalar` in the
+// host (strategy_data_tests.rs): one input turned bad and the field both name.
+const scalarCases: [string, Partial<StrategySolverFields>, string][] = [
+  ["zero pace", { basePaceSeconds: "0" }, "basePaceSeconds"],
+  ["negative pace", { basePaceSeconds: "-3" }, "basePaceSeconds"],
+  ["text pace", { basePaceSeconds: "rápido" }, "basePaceSeconds"],
+  ["zero laps", { raceLaps: "0" }, "raceLaps"],
+  ["too many laps", { raceLaps: "100001" }, "raceLaps"],
+  ["zero refuel rate", { refuelRate: "0" }, "refuelRate"],
+  ["zero VE rate", { veRate: "0" }, "veRate"],
+  ["negative fuel per lap", { fuelPerLapLiters: "-1" }, "fuelPerLapLiters"],
+  ["VE capacity over 100", { veCapacityPercent: "101" }, "veCapacityPercent"],
+  ["negative VE per lap", { vePerLapPercent: "-1" }, "vePerLapPercent"],
+  ["tyre life not whole", { tyreLifeLaps: "10.5" }, "tyreLifeLaps"],
+  ["negative degradation", { degradationSeconds: "-1" }, "degradationSeconds"],
+  ["negative tyre service", { tyreServiceSeconds: "-1" }, "tyreServiceSeconds"],
+  ["negative formation", { formationSeconds: "-1" }, "formationSeconds"],
+  ["negative fuel step", { fuelStep: "-1" }, "fuelStep"],
+  ["negative VE step", { veStep: "-1" }, "veStep"],
+  ["unknown service mode", { serviceMode: "turbo" }, "serviceMode"],
+];
+
+it("confirm and compute name the same field for every scalar the host refuses", () => {
+  for (const [case_, change, field] of scalarCases) {
+    const host = session("strategy-ready");
+    const opened = host.open();
+    const form = { fields, inputs: { ...changed, ...change } };
+    expect(
+      host.failure(confirmation(opened, {}, form)),
+      `confirm: ${case_}`,
+    ).toEqual({ kind: "strategyInvalidInput", field });
+    host.send({
+      method: "strategy.compute",
+      eventId: opened.activeEventId,
+      strategyId: opened.activeStrategyId,
+      revision: opened.revision,
+      form,
+    } as never);
+    const { plan } = host.view({ method: "strategy.view" });
+    expect(plan.error, `compute: ${case_}`).toBe("invalidInput");
+    expect(plan.errorField, `compute: ${case_}`).toBe(field);
+  }
+});
+
+it("the error strategyInvalidInput carries a field of the form or null, nothing else", () => {
+  const error = { kind: "strategyInvalidInput" };
+  expect(isError({ ...error, field: "basePaceSeconds" })).toBe(true);
+  expect(isError({ ...error, field: null })).toBe(true);
+  expect(isError(error), "the key is required").toBe(false);
+  expect(isError({ ...error, field: "price" })).toBe(false);
+  expect(isError({ ...error, field: 3 })).toBe(false);
+  expect(isError({ ...error, field: null, extra: 1 })).toBe(false);
 });

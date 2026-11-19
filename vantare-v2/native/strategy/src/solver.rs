@@ -153,71 +153,148 @@ fn populated(value: &Value) -> bool {
     }
 }
 
+/// The scalar an invalid input is about, when one scalar is to blame.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum InputField {
+    RaceLaps,
+    BasePace,
+    PitTransit,
+    RefuelRate,
+    VeRate,
+    TyreService,
+    Formation,
+    FuelCapacity,
+    VeCapacity,
+    TyreLife,
+    FuelPerLap,
+    VePerLap,
+    Degradation,
+    FuelStep,
+    VeStep,
+    ServiceMode,
+}
+
+/// Why `Input::validate_field` rejected an input: the message `validate` gives,
+/// unchanged, and the scalar behind it. `field` is `None` when no single scalar
+/// is (event rules, windows, budget, dimensions the solver does not take).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InvalidInput {
+    pub field: Option<InputField>,
+    pub message: String,
+}
+
+impl InvalidInput {
+    fn general(message: impl Into<String>) -> Self {
+        Self {
+            field: None,
+            message: message.into(),
+        }
+    }
+    fn at(field: InputField) -> impl FnOnce(String) -> Self {
+        move |message| Self {
+            field: Some(field),
+            message,
+        }
+    }
+}
+
 impl Input {
     pub fn validate(&self) -> Result<(), String> {
+        self.validate_field().map_err(|invalid| invalid.message)
+    }
+
+    /// `validate` with the scalar behind a rejection. With dimensions beyond the
+    /// scalar ones the checks of the model run and no scalar is named.
+    pub fn validate_field(&self) -> Result<(), InvalidInput> {
         if search::needs_extended(self) {
-            return model::Model::new(&budget::effective(self).0).map(|_| ());
+            return model::Model::new(&budget::effective(self).0)
+                .map(|_| ())
+                .map_err(InvalidInput::general);
         }
         self.validate_scalars()
     }
-    fn validate_scalars(&self) -> Result<(), String> {
-        if self.contract_version != "strategy.solver.v2"
-            || self.race_laps == 0
-            || self.race_laps > 100_000
-        {
-            return Err("invalid_input: versión o raceLaps".into());
+    fn validate_scalars(&self) -> Result<(), InvalidInput> {
+        if self.race_laps == 0 || self.race_laps > 100_000 {
+            return Err(InvalidInput::at(InputField::RaceLaps)(
+                "invalid_input: versión o raceLaps".into(),
+            ));
+        }
+        if self.contract_version != "strategy.solver.v2" {
+            return Err(InvalidInput::general("invalid_input: versión o raceLaps"));
         }
         for (field, value) in &self.extra {
             if populated(value) {
-                return Err(format!("unsupported_native_dimension: {field}"));
+                return Err(InvalidInput::general(format!(
+                    "unsupported_native_dimension: {field}"
+                )));
             }
         }
         for (field, value) in &self.event_rules.extra {
             if populated(value) {
-                return Err(format!("unsupported_native_dimension: eventRules.{field}"));
+                return Err(InvalidInput::general(format!(
+                    "unsupported_native_dimension: eventRules.{field}"
+                )));
             }
         }
-        for scalar in [
-            &self.base_lap_seconds,
-            &self.pit_cost.refuel_rate_l_per_s,
-            &self.pit_cost.ve_rate_p_per_s,
+        for (scalar, field) in [
+            (&self.base_lap_seconds, InputField::BasePace),
+            (&self.pit_cost.refuel_rate_l_per_s, InputField::RefuelRate),
+            (&self.pit_cost.ve_rate_p_per_s, InputField::VeRate),
         ] {
-            scalar.validate(false)?;
+            scalar.validate(false).map_err(InvalidInput::at(field))?;
         }
-        for scalar in [
-            &self.pit_cost.transit_seconds,
-            &self.pit_cost.tyre_seconds,
-            &self.formation.seconds,
-            &self.fuel_capacity_liters,
-            &self.ve_capacity_percent,
-            &self.tyre_life_laps,
-            &self.fuel_per_lap_liters,
-            &self.ve_per_lap_percent,
-            &self.degradation_per_lap_seconds,
+        for (scalar, field) in [
+            (&self.pit_cost.transit_seconds, InputField::PitTransit),
+            (&self.pit_cost.tyre_seconds, InputField::TyreService),
+            (&self.formation.seconds, InputField::Formation),
+            (&self.fuel_capacity_liters, InputField::FuelCapacity),
+            (&self.ve_capacity_percent, InputField::VeCapacity),
+            (&self.tyre_life_laps, InputField::TyreLife),
+            (&self.fuel_per_lap_liters, InputField::FuelPerLap),
+            (&self.ve_per_lap_percent, InputField::VePerLap),
+            (&self.degradation_per_lap_seconds, InputField::Degradation),
         ] {
-            scalar.validate(true)?;
+            scalar.validate(true).map_err(InvalidInput::at(field))?;
         }
-        if self.ve_capacity_percent.value > 100.0
-            || self.tyre_life_laps.value > 100_000.0
-            || self.tyre_life_laps.value.fract() != 0.0
-        {
-            return Err("invalid_input: capacidad VE o vida neumático".into());
+        let capacity_or_life = "invalid_input: capacidad VE o vida neumático";
+        if self.ve_capacity_percent.value > 100.0 {
+            return Err(InvalidInput::at(InputField::VeCapacity)(
+                capacity_or_life.into(),
+            ));
+        }
+        if self.tyre_life_laps.value > 100_000.0 || self.tyre_life_laps.value.fract() != 0.0 {
+            return Err(InvalidInput::at(InputField::TyreLife)(
+                capacity_or_life.into(),
+            ));
         }
         if !["parallel", "sequential"].contains(&self.pit_cost.service_mode.as_str()) {
-            return Err("invalid_input: serviceMode".into());
+            return Err(InvalidInput::at(InputField::ServiceMode)(
+                "invalid_input: serviceMode".into(),
+            ));
+        }
+        // a zero step lets the grid choose one; a negative or unreadable one is no step
+        for (step, field) in [
+            (self.discretization.fuel_liters, InputField::FuelStep),
+            (self.discretization.ve_percent, InputField::VeStep),
+        ] {
+            if !step.is_finite() || step < 0.0 {
+                return Err(InvalidInput::at(field)(
+                    "invalid_input: paso de servicio fuera de rango".into(),
+                ));
+            }
         }
         if self.budget.p95_millis == 0 {
-            return Err("invalid_input: budget.p95Millis".into());
+            return Err(InvalidInput::general("invalid_input: budget.p95Millis"));
         }
         if self.event_rules.required_windows.len() > 64 {
-            return Err("invalid_input: demasiadas ventanas".into());
+            return Err(InvalidInput::general("invalid_input: demasiadas ventanas"));
         }
         for window in &self.event_rules.required_windows {
             if window.from_lap == 0
                 || window.from_lap > window.to_lap
                 || window.to_lap >= self.race_laps
             {
-                return Err("invalid_input: ventana boxes".into());
+                return Err(InvalidInput::general("invalid_input: ventana boxes"));
             }
         }
         if let (Some(min), Some(max)) = (
@@ -225,7 +302,7 @@ impl Input {
             self.event_rules.max_pit_stops,
         ) && min > max
         {
-            return Err("invalid_input: rango de paradas".into());
+            return Err(InvalidInput::general("invalid_input: rango de paradas"));
         }
         Ok(())
     }

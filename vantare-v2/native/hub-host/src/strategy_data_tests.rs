@@ -1400,6 +1400,7 @@ fn confirm_with_the_form_a_creation_with_inputs_gave_changes_nothing() {
 type Case = (&'static str, StrategyFields, StrategySolverFields, HostError);
 
 fn invalid_cases() -> Vec<Case> {
+    use StrategyField as F;
     let good = distinct_fields();
     let bad = |change: fn(&mut StrategySolverFields)| {
         let mut value = distinct_inputs();
@@ -1410,7 +1411,6 @@ fn invalid_cases() -> Vec<Case> {
     let rejected = |name, form: &StrategyFields, solver, field| -> Case {
         (name, form.clone(), solver, HostError::StrategyInvalidInput { field })
     };
-    use StrategyField as F;
     let text = |name, form: StrategyFields, solver| -> Case {
         (name, form, solver, HostError::StrategyInvalidText)
     };
@@ -1565,7 +1565,10 @@ fn confirm_with_inputs_on_an_event_the_solver_cannot_take_is_rejected_and_change
     // answer as compute, and the document stays as it was
     let root = Root::new();
     stored_with(&root, |event| {
-        let driver = event["drivers"][0].clone();
+        let mut driver = event["drivers"][0].clone();
+        // a second driver of its own: a copy with the same id is no valid document
+        driver["id"] = serde_json::json!("driver-2");
+        driver["order"] = serde_json::json!(1);
         event["drivers"].as_array_mut().unwrap().push(driver);
     });
     let mut reopened = root.state();
@@ -1597,7 +1600,9 @@ fn compute_verdict(
 }
 
 /// One entry of the form turned bad, and the field both answers must name.
-fn scalar_cases() -> Vec<(&'static str, StrategySolverFields, Option<StrategyField>)> {
+type ScalarCase = (&'static str, StrategySolverFields, Option<StrategyField>);
+
+fn scalar_cases() -> Vec<ScalarCase> {
     use StrategyField as F;
     let change = |apply: fn(&mut StrategySolverFields)| {
         let mut value = distinct_inputs();
@@ -1644,13 +1649,15 @@ fn confirm_names_the_same_field_as_compute_for_every_scalar() {
     }
 }
 
+type FieldCase = (&'static str, fn(&mut StrategyFields), Option<StrategyField>);
+
 #[test]
 fn confirm_without_inputs_points_only_at_the_fields_it_confirms() {
     let root = Root::new();
     let mut state = root.state();
     let saved = saved_with(&mut state);
     let bytes = document_bytes(&state);
-    let cases: [(&str, fn(&mut StrategyFields), Option<StrategyField>); 4] = [
+    let cases: [FieldCase; 4] = [
         ("duration", |f| f.duration_minutes = "mucho".into(), Some(StrategyField::DurationMinutes)),
         ("tank", |f| f.fuel_capacity_liters = "lleno".into(), Some(StrategyField::FuelCapacityLiters)),
         ("pit", |f| f.pit_transit_seconds = "x".into(), Some(StrategyField::PitTransitSeconds)),

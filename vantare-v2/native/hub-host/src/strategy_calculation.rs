@@ -18,6 +18,7 @@ use std::{
 use ts_rs::TS;
 use vantare_strategy::{
     application::{self, Fallback, ManualEvent, ManualField, SourceStatus},
+    solver::InputField,
     document::Document,
     solver::{self, GreedyRefusal, Input, OptimalityStatus, SolverOutcome},
 };
@@ -152,6 +153,30 @@ macro_rules! strategy_fields {
             }
         }
     };
+}
+
+/// The one place a scalar of the crate becomes a field of the form.
+impl From<InputField> for StrategyField {
+    fn from(field: InputField) -> Self {
+        match field {
+            InputField::RaceLaps => Self::RaceLaps,
+            InputField::BasePace => Self::BasePaceSeconds,
+            InputField::PitTransit => Self::PitTransitSeconds,
+            InputField::RefuelRate => Self::RefuelRate,
+            InputField::VeRate => Self::VeRate,
+            InputField::TyreService => Self::TyreServiceSeconds,
+            InputField::Formation => Self::FormationSeconds,
+            InputField::FuelCapacity => Self::FuelCapacityLiters,
+            InputField::VeCapacity => Self::VeCapacityPercent,
+            InputField::TyreLife => Self::TyreLifeLaps,
+            InputField::FuelPerLap => Self::FuelPerLapLiters,
+            InputField::VePerLap => Self::VePerLapPercent,
+            InputField::Degradation => Self::DegradationSeconds,
+            InputField::FuelStep => Self::FuelStep,
+            InputField::VeStep => Self::VeStep,
+            InputField::ServiceMode => Self::ServiceMode,
+        }
+    }
 }
 
 strategy_fields!(
@@ -684,7 +709,7 @@ pub(super) fn run(
 ) -> Work {
     let invalid = |_| Failure {
         error: StrategyPlanError::InvalidInput,
-        field: invalid_field(manual),
+        field: invalid_field(manual, true),
     };
     let input = manual
         .prepare(&mut document, event, variant)
@@ -701,11 +726,18 @@ pub(super) fn run(
     Ok((document, view, editing))
 }
 
-/// The first form field whose text is not a number or a whole number as required.
-/// Semantic limits (a zero pace, a tank smaller than a lap) involve no single
-/// field and report none.
-fn invalid_field(manual: &ManualEvent) -> Option<StrategyField> {
-    ManualField::ALL.iter().copied().find_map(|field| {
+/// The form field behind a refusal of the crate: the first whose text is not a
+/// number or a whole number as required, and then the scalar the crate itself
+/// names (a zero pace, a negative step...). The rules are the crate's: none is
+/// copied here. `inputs: false` looks only at the 13 fields (a confirmation with
+/// no `inputs` leaves the stored ones alone). Anything else involves no single
+/// field and reports none.
+pub(super) fn invalid_field(manual: &ManualEvent, inputs: bool) -> Option<StrategyField> {
+    let not_a_number = ManualField::ALL
+        .iter()
+        .copied()
+        .filter(|field| inputs || !field.is_scalar())
+        .find_map(|field| {
         let text = manual[field].trim();
         let bad = match field {
             ManualField::RaceLaps | ManualField::DurationMinutes => text.parse::<u32>().is_err(),
@@ -727,6 +759,12 @@ fn invalid_field(manual: &ManualEvent) -> Option<StrategyField> {
             _ => false,
         };
         bad.then(|| field.into())
+        });
+    not_a_number.or_else(|| {
+        inputs
+            .then(|| manual.input_field())
+            .flatten()
+            .map(StrategyField::from)
     })
 }
 

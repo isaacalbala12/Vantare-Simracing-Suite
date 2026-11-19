@@ -183,6 +183,10 @@ pub(crate) fn corpus() -> serde_json::Value {
             HostError::StrategyEditPending,
             HostError::StrategyImportFailed,
             HostError::StrategyInvalidText,
+            HostError::StrategyInvalidInput {
+                field: Some(crate::strategy::StrategyField::BasePaceSeconds),
+            },
+            HostError::StrategyInvalidInput { field: None },
             HostError::StrategyFileUnavailable,
             HostError::StrategyFileTooLarge,
             HostError::StrategyTargetExists,

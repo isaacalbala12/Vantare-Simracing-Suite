@@ -6,6 +6,7 @@ import type {
 import corpus from "../../contract/generated/corpus/strategy.json";
 import type {
   StrategyEditError,
+  StrategyField,
   StrategyFields,
   StrategyPlanView,
   StrategyReason,
@@ -362,32 +363,66 @@ function validForm(fields: StrategyFields, creating: boolean): boolean {
   );
 }
 
-// What the host checks in the 15 inputs, as compute does: whole laps, positive
-// pace and rates, the other numbers not negative, a known service mode.
+// What the host says of the 15 inputs, as `compute` and `confirm` do: the first
+// text that is not a number (in the order of the form), then the scalar the crate
+// refuses (laps, positive pace and rates, the other numbers not negative, a whole
+// tyre life, VE capacity up to 100, a known service mode, no negative step).
+// `undefined`: nothing refused.
+function refusedInput(inputs: StrategySolverFields): StrategyField | undefined {
+  const textual: [StrategyField, string][] = [
+    ["basePaceSeconds", inputs.basePaceSeconds],
+    ["fuelPerLapLiters", inputs.fuelPerLapLiters],
+    ["raceLaps", inputs.raceLaps],
+    ["veCapacityPercent", inputs.veCapacityPercent],
+    ["vePerLapPercent", inputs.vePerLapPercent],
+    ["tyreLifeLaps", inputs.tyreLifeLaps],
+    ["degradationSeconds", inputs.degradationSeconds],
+    ["refuelRate", inputs.refuelRate],
+    ["veRate", inputs.veRate],
+    ["tyreServiceSeconds", inputs.tyreServiceSeconds],
+    ["formationSeconds", inputs.formationSeconds],
+    ["fuelStep", inputs.fuelStep],
+    ["veStep", inputs.veStep],
+    ["reserveLaps", inputs.reserveLaps],
+  ];
+  for (const [field, text] of textual)
+    if (
+      field === "raceLaps"
+        ? !/^[+]?[0-9]+$/.test(text.trim()) || Number(text) > 0xffffffff
+        : !validNumber(text, -Infinity)
+    )
+      return field;
+  const value = (text: string) => Number(text);
+  const laps = value(inputs.raceLaps);
+  if (laps < 1 || laps > 100000) return "raceLaps";
+  if (value(inputs.basePaceSeconds) <= 0) return "basePaceSeconds";
+  if (value(inputs.refuelRate) <= 0) return "refuelRate";
+  if (value(inputs.veRate) <= 0) return "veRate";
+  for (const field of [
+    "tyreServiceSeconds",
+    "formationSeconds",
+    "veCapacityPercent",
+    "tyreLifeLaps",
+    "fuelPerLapLiters",
+    "vePerLapPercent",
+    "degradationSeconds",
+  ] as const)
+    if (value(inputs[field]) < 0) return field;
+  if (value(inputs.veCapacityPercent) > 100) return "veCapacityPercent";
+  if (
+    value(inputs.tyreLifeLaps) > 100000 ||
+    !Number.isInteger(value(inputs.tyreLifeLaps))
+  )
+    return "tyreLifeLaps";
+  if (!["parallel", "sequential"].includes(inputs.serviceMode.trim()))
+    return "serviceMode";
+  if (value(inputs.fuelStep) < 0) return "fuelStep";
+  if (value(inputs.veStep) < 0) return "veStep";
+  return undefined;
+}
+
 function validInputs(inputs: StrategySolverFields): boolean {
-  const number = (value: string, minimum: number, positive = false) =>
-    validNumber(value, positive ? Number.MIN_VALUE : minimum);
-  return (
-    /^[+]?[0-9]+$/.test(inputs.raceLaps.trim()) &&
-    Number(inputs.raceLaps) >= 1 &&
-    Number(inputs.raceLaps) <= 100000 &&
-    number(inputs.basePaceSeconds, 0, true) &&
-    number(inputs.refuelRate, 0, true) &&
-    number(inputs.veRate, 0, true) &&
-    number(inputs.fuelPerLapLiters, 0) &&
-    number(inputs.veCapacityPercent, 0) &&
-    Number(inputs.veCapacityPercent) <= 100 &&
-    number(inputs.vePerLapPercent, 0) &&
-    number(inputs.tyreLifeLaps, 0) &&
-    Number.isInteger(Number(inputs.tyreLifeLaps)) &&
-    number(inputs.degradationSeconds, 0) &&
-    number(inputs.tyreServiceSeconds, 0) &&
-    number(inputs.formationSeconds, 0) &&
-    number(inputs.fuelStep, 0) &&
-    number(inputs.veStep, 0) &&
-    number(inputs.reserveLaps, 0) &&
-    ["parallel", "sequential"].includes(inputs.serviceMode.trim())
-  );
+  return refusedInput(inputs) === undefined;
 }
 
 export function create(context: MockContext): MockHandler {
@@ -491,6 +526,7 @@ export function create(context: MockContext): MockHandler {
         fields: StrategyFields;
         inputs: StrategySolverFields;
         valid: boolean;
+        field?: StrategyField;
       }
     | undefined;
   let editing: Editing | undefined;
@@ -834,10 +870,8 @@ export function create(context: MockContext): MockHandler {
         id: ++computeSequence,
         fields,
         inputs,
-        valid:
-          validForm(fields, false) &&
-          validNumber(inputs.basePaceSeconds, Number.MIN_VALUE) &&
-          validNumber(inputs.fuelPerLapLiters, Number.MIN_VALUE),
+        valid: validForm(fields, false) && validInputs(inputs),
+        field: refusedInput(inputs),
       };
       editing = undefined; // accepted: the old schedule goes with the old plan
       current.plan = { ...noPlan, state: "calculating", computeId: pending.id };
@@ -885,7 +919,7 @@ export function create(context: MockContext): MockHandler {
       // QA: this calculation never ends until it is cancelled
       scenario !== "calculating"
     ) {
-      const { id, fields, inputs } = pending;
+      const { id, fields, inputs, field } = pending;
       // QA: the calculation of these scenes ends rejecting an input or failing
       const valid =
         pending.valid &&
@@ -925,6 +959,8 @@ export function create(context: MockContext): MockHandler {
             : calculation(valid ? "calculated" : "error")),
         computeId: id,
       };
+      // a real refusal names its field; the QA scene keeps the sample's
+      if (!valid && field) current.plan.errorField = field;
       editing = valid ? startEditing(current.plan) : undefined;
     }
     if (request.method === "strategy.create") {
@@ -1001,16 +1037,18 @@ export function create(context: MockContext): MockHandler {
       if (request.method === "strategy.confirm") {
         if (!active && current.dirty) return failure({ kind: "strategyDirty" });
         const { fields, inputs } = request;
-        if (!validForm(fields, false)) return failure({ kind: "rejected" });
-        // inputs given: the same checks as create (and compute), all or nothing;
-        // QA: the host refuses every confirmation with inputs
-        if (
-          inputs &&
-          (scenario === "confirmRejected" ||
-            !validInputs(inputs) ||
-            fields.variantMode.trim() !== "dry")
-        )
-          return failure({ kind: "rejected" });
+        // the crate refuses the data: the field to blame, or none
+        if (!validForm(fields, false))
+          return failure({ kind: "strategyInvalidInput", field: null });
+        // inputs given: the same checks as compute, all or nothing and with its
+        // field; QA: the host refuses every confirmation with inputs
+        if (inputs) {
+          const field =
+            scenario === "confirmRejected" ? "raceLaps" : refusedInput(inputs);
+          if (field) return failure({ kind: "strategyInvalidInput", field });
+          if (fields.variantMode.trim() !== "dry")
+            return failure({ kind: "strategyInvalidInput", field: null });
+        }
         const events = structuredClone(current.events);
         const updated = events[index];
         updated.name = fields.name.trim();

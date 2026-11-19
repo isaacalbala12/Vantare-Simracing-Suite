@@ -516,6 +516,11 @@ export function isError(value: Record<string, unknown>): boolean {
     ])
   )
     return exact(value, ["kind"]);
+  if (value.kind === "strategyInvalidInput")
+    return (
+      exact(value, ["kind", "field"]) &&
+      (value.field === null || oneOf(value.field, strategyFields))
+    );
   return (
     value.kind === "strategyConflict" &&
     exact(value, ["kind", "current"]) &&

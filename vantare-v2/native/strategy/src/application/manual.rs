@@ -1,7 +1,7 @@
 //! Manual form values and atomic document edits, independent of the UI.
 use crate::{
     document::{Document, new_event},
-    solver::{Budget, Discretization, Formation, Input, PitCost, Rules, Scalar},
+    solver::{Budget, Discretization, Formation, Input, InputField, PitCost, Rules, Scalar},
 };
 use serde_json::{Value, json};
 use std::ops::{Index, IndexMut};
@@ -116,6 +116,19 @@ impl ManualEvent {
     }
 
     pub fn to_input(&self) -> Result<Input, String> {
+        let input = self.build_input()?;
+        input.validate()?;
+        Ok(input)
+    }
+
+    /// The scalar that makes `to_input` fail when the texts are numbers but one
+    /// of them is out of range; `None` when the texts do not build an input or the
+    /// failure is no single scalar.
+    pub fn input_field(&self) -> Option<InputField> {
+        self.build_input().ok()?.validate_field().err()?.field
+    }
+
+    fn build_input(&self) -> Result<Input, String> {
         let race = self
             .race_laps
             .trim()
@@ -158,7 +171,6 @@ impl ManualEvent {
             virtual_energy_reserve: Value::Null,
             extra: std::collections::BTreeMap::new(),
         };
-        input.validate()?;
         Ok(input)
     }
 
@@ -343,8 +355,12 @@ impl ManualEvent {
         if let Ok(previous) =
             serde_json::from_value::<Input>(variant["overrides"]["nativeScalarInput"].clone())
         {
-            previous.validate()?;
-            if previous.event_rules.min_pit_stops.is_some()
+            // only what the form cannot edit blocks: the scalars of what was stored are
+            // not checked, since the form being sent replaces them (a negative step
+            // saved before steps were checked must not lock the event for good); a
+            // version other than this one is kept, never degraded to it
+            if previous.contract_version != "strategy.solver.v2"
+                || previous.event_rules.min_pit_stops.is_some()
                 || previous.event_rules.max_pit_stops.is_some()
                 || !previous.event_rules.required_windows.is_empty()
                 || !previous.event_rules.extra.is_empty()
@@ -482,6 +498,7 @@ pub fn select_event(doc: &mut Document, event: usize, variant: usize) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::solver::InputField;
 
     fn form() -> ManualEvent {
         ManualEvent {
@@ -570,6 +587,47 @@ mod tests {
         }
     }
 
+    /// A document saved before steps were checked may hold a negative one in its
+    /// stored inputs. That must not block the form that corrects it.
+    #[test]
+    fn a_stored_negative_step_does_not_block_the_corrected_form() {
+        let mut stored = form();
+        stored.ve_step = "-1".into();
+        let input = stored.build_input().expect("parses");
+        assert!(input.validate().is_err(), "the step is out of range");
+        let mut doc = document(&form());
+        doc.put(
+            "/events/0/strategies/0/overrides",
+            &json!({"nativeScalarInput": input}),
+        )
+        .expect("stored negative step");
+        let corrected = form();
+        let prepared = corrected.prepare(&mut doc, 0, 0).expect("corrected form");
+        assert!((prepared.discretization.ve_percent - 1.0).abs() < f64::EPSILON);
+        let read = ManualEvent::read(&doc, 0, 0);
+        assert_eq!(read.ve_step, "1");
+        // a form that is still wrong is refused for what it holds
+        assert!(stored.prepare(&mut doc, 0, 0).is_err());
+        assert_eq!(stored.input_field(), Some(InputField::VeStep));
+    }
+
+    /// What a newer version stored is kept, not replaced by a version-2 input.
+    #[test]
+    fn a_stored_input_of_another_version_is_not_overwritten() {
+        let form = form();
+        let mut input = form.to_input().expect("input");
+        input.contract_version = "strategy.solver.v3".into();
+        let mut doc = document(&form);
+        doc.put(
+            "/events/0/strategies/0/overrides",
+            &json!({"nativeScalarInput": input}),
+        )
+        .expect("stored input of a future version");
+        let before = doc.bytes().to_vec();
+        assert!(form.prepare(&mut doc, 0, 0).is_err());
+        assert_eq!(doc.bytes(), before);
+    }
+
     #[test]
     fn unsupported_dimensions_are_retained_instead_of_replaced_by_scalar_input() {
         let form = form();
@@ -640,5 +698,74 @@ mod tests {
             parse_number("0").expect("explicit zero").to_bits(),
             0.0_f64.to_bits()
         );
+    }
+
+    /// Every scalar the crate rejects names its field; the message is the one
+    /// `validate` always gave.
+    #[test]
+    fn each_rejected_scalar_names_its_field() {
+        let cases = [
+            (Field::RaceLaps, "0", InputField::RaceLaps),
+            (Field::RaceLaps, "100001", InputField::RaceLaps),
+            (Field::BasePaceSeconds, "0", InputField::BasePace),
+            (Field::BasePaceSeconds, "-1", InputField::BasePace),
+            (Field::RefuelRate, "0", InputField::RefuelRate),
+            (Field::VeRate, "0", InputField::VeRate),
+            (Field::FuelCapacityLiters, "-1", InputField::FuelCapacity),
+            (Field::PitTransitSeconds, "-1", InputField::PitTransit),
+            (Field::FuelPerLapLiters, "-1", InputField::FuelPerLap),
+            (Field::VeCapacityPercent, "-1", InputField::VeCapacity),
+            (Field::VeCapacityPercent, "101", InputField::VeCapacity),
+            (Field::VePerLapPercent, "-1", InputField::VePerLap),
+            (Field::TyreLifeLaps, "-1", InputField::TyreLife),
+            (Field::TyreLifeLaps, "100001", InputField::TyreLife),
+            (Field::TyreLifeLaps, "10.5", InputField::TyreLife),
+            (Field::DegradationSeconds, "-1", InputField::Degradation),
+            (Field::TyreServiceSeconds, "-1", InputField::TyreService),
+            (Field::FormationSeconds, "-1", InputField::Formation),
+            (Field::FuelStep, "-1", InputField::FuelStep),
+            (Field::VeStep, "-1", InputField::VeStep),
+            (Field::ServiceMode, "turbo", InputField::ServiceMode),
+        ];
+        for (field, text, expected) in cases {
+            let mut form = form();
+            form[field] = text.into();
+            assert_eq!(form.input_field(), Some(expected), "{field:?} {text}");
+            let message = form.to_input().expect_err("rejected");
+            // `validate` keeps its text; the field comes alongside it
+            let input = form.build_input().expect("parses");
+            let invalid = input.validate_field().expect_err("rejected");
+            assert_eq!(invalid.field, Some(expected));
+            assert_eq!(invalid.message, message);
+            assert_eq!(input.validate().expect_err("rejected"), message);
+        }
+    }
+
+    #[test]
+    fn what_the_crate_accepts_or_cannot_pin_to_a_scalar_names_no_field() {
+        // valid, including a zero step (the grid chooses it) and a tank smaller
+        // than a lap (the search finds no plan; it is not an invalid entry)
+        for (field, text) in [
+            (Field::FuelStep, "0"),
+            (Field::VeStep, "0"),
+            (Field::FuelCapacityLiters, "1"),
+            (Field::FuelCapacityLiters, "1000"),
+        ] {
+            let mut form = form();
+            form[field] = text.into();
+            assert_eq!(form.input_field(), None, "{field:?} {text}");
+            form.to_input().expect("valid");
+        }
+        // text that is not a number never builds an input: no scalar to blame
+        let mut bad = form();
+        bad.base_pace_seconds = "abc".into();
+        assert_eq!(bad.input_field(), None);
+        // a rule across several fields is not one scalar
+        let mut input = form().to_input().expect("input");
+        input.event_rules.min_pit_stops = Some(2);
+        input.event_rules.max_pit_stops = Some(1);
+        let invalid = input.validate_field().expect_err("range");
+        assert_eq!(invalid.field, None);
+        assert_eq!(input.validate().expect_err("range"), invalid.message);
     }
 }

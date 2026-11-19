@@ -483,7 +483,7 @@ it("edits every confirmable value and offers no control for team or variant mode
     ).toBe(false);
 });
 
-it("sends the saved variant mode untouched and shows a generic error when the host rejects it", async () => {
+it("sends the saved variant mode untouched and says the calculation did not accept the data when the host refuses it", async () => {
   // The mock applies the host rule: with inputs, any mode other than dry is rejected.
   const request = mount("ready", undefined, false, (view) => {
     if (view.form) view.form.fields.variantMode = "wet";
@@ -494,7 +494,7 @@ it("sends the saved variant mode untouched and shows a generic error when the ho
   fill({ "Nombre de la carrera": "Copa Fuji" });
   click("Confirmar datos");
   expect((await screen.findByRole("alert")).textContent).toBe(
-    "No se ha podido completar la acción.",
+    "El cálculo no ha aceptado los datos. Revísalos.",
   );
   expect(
     request.mock.calls.find(([r]) => r.method === "strategy.confirm")?.[0],

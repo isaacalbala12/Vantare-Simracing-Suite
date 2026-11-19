@@ -6,6 +6,7 @@ import type {
 import corpus from "../../contract/generated/corpus/strategy.json";
 import type {
   StrategyEditError,
+  StrategyField,
   StrategyFields,
   StrategyPlanView,
   StrategyReason,
@@ -382,32 +383,101 @@ function validForm(fields: StrategyFields, creating: boolean): boolean {
   );
 }
 
-// What the host checks in the 15 inputs, as compute does: whole laps, positive
-// pace and rates, the other numbers not negative, a known service mode.
+// What the host says of the entries the crate checks, as `compute` and `confirm`
+// do: first the text that is not a number, in the order of `ManualField::ALL`
+// (the three numeric fields — duration, tank, pit transit — then the inputs), and then the scalar the crate
+// refuses, in its own order (laps, positive pace and rates, the other numbers not
+// negative, a whole tyre life, VE capacity up to 100, a known service mode, no
+// negative step). The tank and the pit transit live in `fields`: without them
+// (`create`'s loose checks) only the inputs are looked at. `undefined`: nothing
+// refused.
+function refusedInput(
+  inputs: StrategySolverFields,
+  fields?: StrategyFields,
+): StrategyField | undefined {
+  const own: [StrategyField, string][] = fields
+    ? [
+        ["durationMinutes", fields.durationMinutes],
+        ["fuelCapacityLiters", fields.fuelCapacityLiters],
+        ["pitTransitSeconds", fields.pitTransitSeconds],
+      ]
+    : [];
+  const textual: [StrategyField, string][] = [
+    ...own,
+    ["raceLaps", inputs.raceLaps],
+    ["basePaceSeconds", inputs.basePaceSeconds],
+    ["fuelPerLapLiters", inputs.fuelPerLapLiters],
+    ["veCapacityPercent", inputs.veCapacityPercent],
+    ["vePerLapPercent", inputs.vePerLapPercent],
+    ["tyreLifeLaps", inputs.tyreLifeLaps],
+    ["degradationSeconds", inputs.degradationSeconds],
+    ["refuelRate", inputs.refuelRate],
+    ["veRate", inputs.veRate],
+    ["tyreServiceSeconds", inputs.tyreServiceSeconds],
+    ["formationSeconds", inputs.formationSeconds],
+    ["fuelStep", inputs.fuelStep],
+    ["veStep", inputs.veStep],
+    ["reserveLaps", inputs.reserveLaps],
+  ];
+  for (const [field, text] of textual)
+    if (
+      field === "raceLaps" || field === "durationMinutes"
+        ? !/^[+]?[0-9]+$/.test(text.trim()) || Number(text) > 0xffffffff
+        : !validNumber(text, -Infinity)
+    )
+      return field;
+  const value = (text: string) => Number(text);
+  const laps = value(inputs.raceLaps);
+  if (laps < 1 || laps > 100000) return "raceLaps";
+  if (value(inputs.basePaceSeconds) <= 0) return "basePaceSeconds";
+  if (value(inputs.refuelRate) <= 0) return "refuelRate";
+  if (value(inputs.veRate) <= 0) return "veRate";
+  // the tank and the pit transit stand where the crate checks them
+  const pit: [StrategyField, string][] = fields
+    ? [["pitTransitSeconds", fields.pitTransitSeconds]]
+    : [];
+  const tank: [StrategyField, string][] = fields
+    ? [["fuelCapacityLiters", fields.fuelCapacityLiters]]
+    : [];
+  const notNegative: [StrategyField, string][] = [
+    ...pit,
+    ["tyreServiceSeconds", inputs.tyreServiceSeconds],
+    ["formationSeconds", inputs.formationSeconds],
+    ...tank,
+    ["veCapacityPercent", inputs.veCapacityPercent],
+    ["tyreLifeLaps", inputs.tyreLifeLaps],
+    ["fuelPerLapLiters", inputs.fuelPerLapLiters],
+    ["vePerLapPercent", inputs.vePerLapPercent],
+    ["degradationSeconds", inputs.degradationSeconds],
+  ];
+  for (const [field, text] of notNegative) if (value(text) < 0) return field;
+  if (value(inputs.veCapacityPercent) > 100) return "veCapacityPercent";
+  if (
+    value(inputs.tyreLifeLaps) > 100000 ||
+    !Number.isInteger(value(inputs.tyreLifeLaps))
+  )
+    return "tyreLifeLaps";
+  if (!["parallel", "sequential"].includes(inputs.serviceMode.trim()))
+    return "serviceMode";
+  if (value(inputs.fuelStep) < 0) return "fuelStep";
+  if (value(inputs.veStep) < 0) return "veStep";
+  return undefined;
+}
+
+// The texts of the 13 fields that are not numbers, as the host names them when
+// it confirms with no inputs.
+function refusedOwn(fields: StrategyFields): StrategyField | undefined {
+  if (!/^[+]?[0-9]+$/.test(fields.durationMinutes.trim()))
+    return "durationMinutes";
+  if (!validNumber(fields.fuelCapacityLiters, -Infinity))
+    return "fuelCapacityLiters";
+  if (!validNumber(fields.pitTransitSeconds, -Infinity))
+    return "pitTransitSeconds";
+  return undefined;
+}
+
 function validInputs(inputs: StrategySolverFields): boolean {
-  const number = (value: string, minimum: number, positive = false) =>
-    validNumber(value, positive ? Number.MIN_VALUE : minimum);
-  return (
-    /^[+]?[0-9]+$/.test(inputs.raceLaps.trim()) &&
-    Number(inputs.raceLaps) >= 1 &&
-    Number(inputs.raceLaps) <= 100000 &&
-    number(inputs.basePaceSeconds, 0, true) &&
-    number(inputs.refuelRate, 0, true) &&
-    number(inputs.veRate, 0, true) &&
-    number(inputs.fuelPerLapLiters, 0) &&
-    number(inputs.veCapacityPercent, 0) &&
-    Number(inputs.veCapacityPercent) <= 100 &&
-    number(inputs.vePerLapPercent, 0) &&
-    number(inputs.tyreLifeLaps, 0) &&
-    Number.isInteger(Number(inputs.tyreLifeLaps)) &&
-    number(inputs.degradationSeconds, 0) &&
-    number(inputs.tyreServiceSeconds, 0) &&
-    number(inputs.formationSeconds, 0) &&
-    number(inputs.fuelStep, 0) &&
-    number(inputs.veStep, 0) &&
-    number(inputs.reserveLaps, 0) &&
-    ["parallel", "sequential"].includes(inputs.serviceMode.trim())
-  );
+  return refusedInput(inputs) === undefined;
 }
 
 export function create(context: MockContext): MockHandler {
@@ -511,6 +581,7 @@ export function create(context: MockContext): MockHandler {
         fields: StrategyFields;
         inputs: StrategySolverFields;
         valid: boolean;
+        field?: StrategyField;
       }
     | undefined;
   let editing: Editing | undefined;
@@ -855,10 +926,8 @@ export function create(context: MockContext): MockHandler {
         id: ++computeSequence,
         fields,
         inputs,
-        valid:
-          validForm(fields, false) &&
-          validNumber(inputs.basePaceSeconds, Number.MIN_VALUE) &&
-          validNumber(inputs.fuelPerLapLiters, Number.MIN_VALUE),
+        valid: validForm(fields, false) && validInputs(inputs),
+        field: refusedInput(inputs, fields),
       };
       editing = undefined; // accepted: the old schedule goes with the old plan
       current.plan = { ...noPlan, state: "calculating", computeId: pending.id };
@@ -912,7 +981,7 @@ export function create(context: MockContext): MockHandler {
       // QA: this calculation never ends until it is cancelled
       scenario !== "calculating"
     ) {
-      const { id, fields, inputs } = pending;
+      const { id, fields, inputs, field } = pending;
       // QA: the calculation of these scenes ends rejecting an input or failing
       const valid =
         pending.valid &&
@@ -952,6 +1021,8 @@ export function create(context: MockContext): MockHandler {
             : calculation(valid ? "calculated" : "error")),
         computeId: id,
       };
+      // a real refusal names its field; the QA scene keeps the sample's
+      if (!valid && field) current.plan.errorField = field;
       editing = valid ? startEditing(current.plan) : undefined;
     }
     if (request.method === "strategy.create") {
@@ -1028,16 +1099,21 @@ export function create(context: MockContext): MockHandler {
       if (request.method === "strategy.confirm") {
         if (!active && current.dirty) return failure({ kind: "strategyDirty" });
         const { fields, inputs } = request;
-        if (!validForm(fields, false)) return failure({ kind: "rejected" });
-        // inputs given: the same checks as create (and compute), all or nothing;
-        // QA: the host refuses every confirmation with inputs
+        // the crate refuses the data: the field to blame, or none. With inputs
+        // the checks are compute's, all or nothing and with its field (QA: the
+        // host refuses every confirmation with inputs); without them only the
+        // texts of the fields it confirms can name one.
+        const field = inputs
+          ? scenario === "confirmRejected"
+            ? "raceLaps"
+            : refusedInput(inputs, fields)
+          : refusedOwn(fields);
+        if (field) return failure({ kind: "strategyInvalidInput", field });
         if (
-          inputs &&
-          (scenario === "confirmRejected" ||
-            !validInputs(inputs) ||
-            fields.variantMode.trim() !== "dry")
+          !validForm(fields, false) ||
+          (inputs && fields.variantMode.trim() !== "dry")
         )
-          return failure({ kind: "rejected" });
+          return failure({ kind: "strategyInvalidInput", field: null });
         const events = structuredClone(current.events);
         const updated = events[index];
         updated.name = fields.name.trim();

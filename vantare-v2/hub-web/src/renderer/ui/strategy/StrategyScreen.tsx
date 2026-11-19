@@ -64,6 +64,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
   const [tab, setTab] = useState("race");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Draft>();
+  // each refusal of the host remounts the editor, so it starts marked again
+  const [refusals, setRefusals] = useState(0);
   // the button that sent us to Carrera is gone: its title takes the focus
   const [focusRaceTitle, setFocusRaceTitle] = useState(false);
   const raceTitle = useRef<HTMLHeadingElement>(null);
@@ -147,6 +149,20 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
       setEditing(true);
     } else setFocusRaceTitle(true);
   }
+  // The host refused the data of a confirmation. With a field, the editor opens
+  // (or starts again) with what was written and that field marked; with none, it
+  // stays as it is and the notice says the calculation did not accept the data.
+  function refuse(
+    form: StrategyComputeForm,
+    error: { kind: string; field?: StrategyField | null },
+  ) {
+    if (error.kind !== "strategyInvalidInput" || !error.field) return;
+    clearError();
+    setDraft({ form, field: error.field });
+    setRefusals((count) => count + 1);
+    setEditing(true);
+    setTab("race");
+  }
   // Starts the calculation with this form. Returns whether the host took it;
   // when it did, the screen moves to the plan. On a conflict the host's view
   // replaces ours and the editor, if open, keeps what the user wrote.
@@ -162,6 +178,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
       if (!("value" in confirmed)) {
         if (confirmed.error.kind === "strategyConflict")
           setConfirmConflict(confirmed.error);
+        else refuse(form, confirmed.error);
         return false;
       }
       // confirmed: nothing written is at risk any more
@@ -197,6 +214,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     }
     if (result.error.kind === "strategyConflict")
       setConfirmConflict(result.error);
+    else refuse(form, result.error);
     return false;
   }
 
@@ -530,7 +548,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
               {tab === "race" && (
                 <RaceTab
                   // the draft belongs to one strategy: another one starts clean
-                  key={`${active.id}/${variant.id}`}
+                  key={`${active.id}/${variant.id}/${refusals}`}
                   form={view.form}
                   editing={editing}
                   draft={draft}

@@ -1342,7 +1342,47 @@ describe("the mark of a recalculated plan", () => {
   });
 
   it("goes when another strategy is chosen, and does not come back with its plan", async () => {
-    mount("plannedFuji");
+    // The other variant shows no inputs of its own and the host refuses to
+    // calculate them empty: its calculation is sent with the inputs one needs.
+    const base = clientFor("plannedFuji");
+    const request = Object.assign(
+      vi.fn(async (next: Request) =>
+        base(
+          next.method === "strategy.compute" && next.form.inputs.raceLaps === ""
+            ? {
+                ...next,
+                form: {
+                  ...next.form,
+                  inputs: {
+                    basePaceSeconds: next.form.inputs.basePaceSeconds || "90",
+                    fuelPerLapLiters: next.form.inputs.fuelPerLapLiters || "2",
+                    raceLaps: "20",
+                    veCapacityPercent: "100",
+                    vePerLapPercent: "3",
+                    tyreLifeLaps: "30",
+                    degradationSeconds: "0",
+                    refuelRate: "2",
+                    veRate: "5",
+                    tyreServiceSeconds: "15",
+                    formationSeconds: "0",
+                    fuelStep: "1",
+                    veStep: "1",
+                    reserveLaps: "0",
+                    serviceMode: "parallel",
+                  },
+                },
+              }
+            : next,
+        ),
+      ),
+      { host: base.host },
+    );
+    render(
+      <SectionChromeProvider>
+        <SectionTabsSlot />
+        <StrategyScreen client={{ request }} />
+      </SectionChromeProvider>,
+    );
     await recalculated();
     click("Resumen");
     expect(screen.getAllByText(trial)).toHaveLength(1);

@@ -1309,6 +1309,52 @@ describe("Confirmar y calcular", () => {
     expect(second.form.fields.name).toBe("Copa Fuji");
   });
 
+  it("keeps the editor open with what was written and the field marked when the host refuses the confirmation", async () => {
+    const request = mount("calculating", (r) =>
+      r.method === "strategy.confirm"
+        ? { kind: "strategyInvalidInput", field: "raceLaps" }
+        : undefined,
+    );
+    await openRace();
+    click("Editar carrera");
+    fill({ "Nombre de la carrera": "Copa Fuji", "Ritmo por vuelta": "91,5" });
+    click("Confirmar y calcular");
+    await markedRaceLaps();
+    expect(tab("Carrera").getAttribute("aria-selected")).toBe("true");
+    expect(field("Nombre de la carrera").value).toBe("Copa Fuji");
+    expect(field("Ritmo por vuelta").value).toBe("91,5");
+    expect(screen.getByRole("alert").textContent).toContain("Revisa 1 dato");
+    expect(methods(request)).not.toContain("strategy.compute");
+    // the same with the button that only confirms
+    click("Confirmar datos");
+    await waitFor(() =>
+      expect(
+        request.mock.calls.filter(([r]) => r.method === "strategy.confirm"),
+      ).toHaveLength(2),
+    );
+    await markedRaceLaps();
+    expect(field("Nombre de la carrera").value).toBe("Copa Fuji");
+  });
+
+  it("says the calculation did not accept the data when the host names no field", async () => {
+    mount("calculating", (r) =>
+      r.method === "strategy.confirm"
+        ? { kind: "strategyInvalidInput", field: null }
+        : undefined,
+    );
+    await openRace();
+    click("Editar carrera");
+    fill({ "Nombre de la carrera": "Copa Fuji" });
+    click("Confirmar y calcular");
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "El cálculo no ha aceptado los datos. Revísalos.",
+    );
+    expect(field("Nombre de la carrera").value).toBe("Copa Fuji");
+    expect(
+      screen.getByRole("button", { name: "Cancelar edición" }),
+    ).toBeTruthy();
+  });
+
   it("also goes to the marked field when Calcular plan is used with the saved data", async () => {
     mount("computeInvalid");
     await openPlan();

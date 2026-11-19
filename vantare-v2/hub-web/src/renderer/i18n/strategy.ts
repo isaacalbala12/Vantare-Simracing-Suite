@@ -76,6 +76,7 @@ export const strategy = {
       "Tienes ajustes del plan sin recalcular. Recalcula o restablece antes de continuar.",
     strategyInvalidText:
       "No se han podido usar esos datos. Revisa lo que has escrito.",
+    strategyInvalidInput: "El cálculo no ha aceptado los datos. Revísalos.",
     strategyImportFailed: "No hemos podido traer los datos del Hub anterior.",
     busy: "El archivo está ocupado. Vuelve a intentarlo.",
     other: "No se ha podido completar la acción.",

@@ -177,6 +177,11 @@ pub enum HostError {
     StrategyEditPending,
     StrategyImportFailed,
     StrategyInvalidText,
+    /// The checks of the calculation refused the data of `strategy.confirm`: the
+    /// form field to blame, or `null` when it is not one field. Nothing was kept.
+    StrategyInvalidInput {
+        field: Option<crate::strategy::StrategyField>,
+    },
     /// The chosen file cannot be read or written.
     StrategyFileUnavailable,
     /// The chosen file is over the 12 MiB limit of a document.

@@ -324,7 +324,7 @@ fn confirmation_keeps_unknown_bytes_and_discard_reloads_the_saved_document() {
     form.variant_mode = "invalid".into();
     assert_eq!(
         state.confirm("event-1", "variant-1", &before.revision, &form, None),
-        Err(HostError::Rejected)
+        Err(HostError::StrategyInvalidInput { field: None })
     );
     assert_eq!(state.view(), before);
     form.variant_mode = "dry".into();

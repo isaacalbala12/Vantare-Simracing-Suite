@@ -210,7 +210,9 @@ impl Model {
         let mut scalar = input.clone();
         scalar.extra.clear();
         scalar.event_rules.extra.clear();
-        scalar.validate_scalars()?;
+        scalar
+            .validate_scalars()
+            .map_err(|invalid| invalid.message)?;
         for (initial, capacity) in [
             (&dims.initial_fuel_liters, scalar.fuel_capacity_liters.value),
             (&dims.initial_ve_percent, scalar.ve_capacity_percent.value),

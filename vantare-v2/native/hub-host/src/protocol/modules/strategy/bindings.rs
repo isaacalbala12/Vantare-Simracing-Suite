@@ -817,9 +817,6 @@ fn reason_samples(dirty: &StrategyView) -> Vec<HostToUi> {
     ]
 }
 
-/// A three-stint plan whose boundaries moved (`edited`), the same plan while it
-/// recalculates (`calculating`), a recalculation that failed, and the infeasible answer.
-#[allow(clippy::too_many_lines)] // One flat list of wire samples.
 /// The limits of the only stop of the one-stop samples, with nothing fixed.
 fn single_stop_limits() -> StrategyStopLimits {
     let limits = || StrategyAmountLimits::Used {
@@ -840,6 +837,10 @@ fn single_stop_limits() -> StrategyStopLimits {
     }
 }
 
+/// A three-stint plan whose boundaries moved (`edited`), the same plan while it
+/// recalculates (`calculating`), a recalculation that failed, and the infeasible
+/// answer; and the same plan with an amount fixed by hand in its second stop:
+/// inside its limits, outside them in each way, recalculated, and without a plan.
 #[allow(clippy::too_many_lines)] // One flat list of wire samples.
 fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
     let pit = |lap, fuel: i64, pinned: bool| StrategyPit {

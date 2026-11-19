@@ -12,8 +12,9 @@ import type {
 } from "../../../contract/generated/strategy";
 import { Icon } from "../../assets/icons/Icon";
 import { strategy as t } from "../../i18n/strategy";
-import { isTrialPlan, planCard } from "../../screens/strategy/planText";
+import { changedFields, planCard } from "../../screens/strategy/planText";
 import { Button } from "../Button";
+import { StateTag } from "./PlanAccept";
 import {
   decimal,
   type Field,
@@ -118,18 +119,20 @@ function summary(form: StrategyComputeForm) {
       t.race,
       "flag",
       [
-        [l.name, v.name],
-        [l.combo, join(v.track, v.class)],
-        [l.duration, raceLength(form)],
+        [l.name, v.name, ["name"]],
+        [l.combo, join(v.track, v.class), ["track", "class"]],
+        [l.duration, raceLength(form), ["durationMinutes", "raceLaps"]],
         [
           t.labels.startAt,
           Number.isNaN(start.getTime()) ? v.startAt : dateTime.format(start),
+          ["startAt"],
         ],
         [
           t.labels.formationSeconds,
           v.formationSeconds === "0"
             ? t.noFormation
             : withUnit(v.formationSeconds, "s"),
+          ["formationSeconds"],
         ],
       ],
     ],
@@ -143,6 +146,7 @@ function summary(form: StrategyComputeForm) {
             withUnit(v.fuelCapacityLiters, "L"),
             withUnit(v.fuelPerLapLiters, "L/v"),
           ),
+          ["fuelCapacityLiters", "fuelPerLapLiters"],
         ],
         [
           l.energy,
@@ -150,8 +154,9 @@ function summary(form: StrategyComputeForm) {
             withUnit(v.veCapacityPercent, "%"),
             withUnit(v.vePerLapPercent, "%/v"),
           ),
+          ["veCapacityPercent", "vePerLapPercent"],
         ],
-        [t.labels.reserveLaps, lapCount(v.reserveLaps)],
+        [t.labels.reserveLaps, lapCount(v.reserveLaps), ["reserveLaps"]],
         [
           l.tyres,
           join(
@@ -160,6 +165,7 @@ function summary(form: StrategyComputeForm) {
               ? t.noWear
               : withUnit(v.degradationSeconds, "s/vuelta"),
           ),
+          ["tyreLifeLaps", "degradationSeconds"],
         ],
       ],
     ],
@@ -167,13 +173,18 @@ function summary(form: StrategyComputeForm) {
       t.pits,
       "gear",
       [
-        [l.transit, withUnit(v.pitTransitSeconds, "s")],
+        [l.transit, withUnit(v.pitTransitSeconds, "s"), ["pitTransitSeconds"]],
         [
           l.service,
           join(withUnit(v.refuelRate, "L/s"), withUnit(v.veRate, "%/s")),
+          ["refuelRate", "veRate"],
         ],
-        [l.wheels, withUnit(v.tyreServiceSeconds, "s")],
-        [l.loads, v.fuelStep && v.veStep ? t.loads(v.fuelStep, v.veStep) : ""],
+        [l.wheels, withUnit(v.tyreServiceSeconds, "s"), ["tyreServiceSeconds"]],
+        [
+          l.loads,
+          v.fuelStep && v.veStep ? t.loads(v.fuelStep, v.veStep) : "",
+          ["fuelStep", "veStep"],
+        ],
         [
           t.service,
           v.serviceMode === "parallel"
@@ -181,6 +192,7 @@ function summary(form: StrategyComputeForm) {
             : v.serviceMode === "sequential"
               ? t.sequential
               : "",
+          ["serviceMode"],
         ],
       ],
     ],
@@ -193,8 +205,9 @@ function summary(form: StrategyComputeForm) {
           v.driverName && v.driverInitials
             ? `${v.driverName} (${v.driverInitials})`
             : v.driverName || v.driverInitials,
+          ["driverName", "driverInitials"],
         ],
-        [l.pace, pace ? t.perLap(pace) : ""],
+        [l.pace, pace ? t.perLap(pace) : "", ["basePaceSeconds"]],
       ],
     ],
   ] as const;
@@ -215,7 +228,7 @@ type EditorActions = {
 export function RaceTab({
   form,
   plan,
-  trial,
+  accept,
   viewPlan,
   editing,
   draft,
@@ -229,8 +242,8 @@ export function RaceTab({
   form: StrategyComputeForm | null;
   // the plan, to say in a card what it is; `viewPlan` goes to the Plan tab
   plan: StrategyPlanView;
-  // the plan is a recalculation of this session, not the file's
-  trial: boolean;
+  // accepts the proposal of the card; resolves when the host has answered
+  accept: () => Promise<void>;
   viewPlan: () => void;
   editing: boolean;
   draft?: Draft;
@@ -238,6 +251,15 @@ export function RaceTab({
 }) {
   const restore = useRef<number | undefined>(undefined);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  const view = useRef<HTMLButtonElement>(null);
+  // after accepting from the card, the focus waits for the button to be enabled again
+  const [refocus, setRefocus] = useState(false);
+  useEffect(() => {
+    if (refocus && !pending) {
+      view.current?.focus();
+      setRefocus(false);
+    }
+  }, [refocus, pending]);
   useLayoutEffect(() => {
     if (!editing && restore.current !== undefined) {
       buttons.current[restore.current]?.focus();
@@ -258,25 +280,56 @@ export function RaceTab({
       />
     );
   const card = planCard(plan);
+  const changed = changedFields(plan);
   return (
     <div className="strategy-grid strategy-grid-two strategy-race-cards">
       {card && (
-        <section className="strategy-card strategy-plan-card">
+        <section
+          className="strategy-card strategy-plan-card"
+          data-tone={card.tag?.tone === "error" ? "error" : undefined}
+        >
           <div>
-            <div className="strategy-kicker">{t.calc.card.eyebrow}</div>
+            <div className="strategy-kicker">
+              {t.calc.card.eyebrow}
+              {card.tag && (
+                <>
+                  <span aria-hidden="true">{" · "}</span>
+                  <StateTag tag={card.tag} />
+                </>
+              )}
+            </div>
             <h3>{card.title}</h3>
             {card.certificate && <p>{card.certificate}</p>}
-            {isTrialPlan(plan, trial) && (
-              <p className="strategy-trial">
-                <Icon name="info" />
-                {t.calc.adjust.trial}
+            {card.notes.map((note) => (
+              <p
+                key={note.text}
+                className="strategy-line"
+                data-tone={note.tone === "warn" ? "warn" : undefined}
+              >
+                <Icon name={note.tone === "warn" ? "warn" : "info"} />
+                <span>{note.text}</span>
               </p>
+            ))}
+          </div>
+          <div className="strategy-actions">
+            <Button ref={view} disabled={pending} onClick={viewPlan}>
+              {t.calc.card.view}
+              <Icon name="right" />
+            </Button>
+            {card.accept && (
+              <Button
+                variant="primary"
+                disabled={pending}
+                onClick={() =>
+                  // the button goes with the acceptance: the focus stays on the card
+                  void accept().then(() => setRefocus(true))
+                }
+              >
+                <Icon name="check" />
+                {t.calc.accept.action}
+              </Button>
             )}
           </div>
-          <Button disabled={pending} onClick={viewPlan}>
-            {t.calc.card.view}
-            <Icon name="right" />
-          </Button>
         </section>
       )}
       {summary(form).map(([title, icon, rows], index) => (
@@ -303,7 +356,7 @@ export function RaceTab({
               {t.edit}
             </Button>
           </div>
-          <SummaryRows rows={rows} />
+          <SummaryRows rows={rows} changed={changed} />
         </section>
       ))}
     </div>

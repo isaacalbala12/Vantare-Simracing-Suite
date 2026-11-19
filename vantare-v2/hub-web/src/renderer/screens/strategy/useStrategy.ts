@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HostError } from "../../../contract/generated/contract";
 import type {
-  StrategyPlanState,
   StrategyReply,
   StrategyRequest,
   StrategyView,
@@ -69,13 +68,6 @@ export function useStrategy(client: StrategyClient) {
   const [pending, setPending] = useState(false);
   // the reads of a running calculation failed too often in a row
   const [pollFailed, setPollFailed] = useState(false);
-  // The plan on view is the result of a recalculation of this session. The host
-  // does not say it: a plan with adjustments is never written to the file, so
-  // it is only this screen that knows the plan it shows is not the file's.
-  const [recalculated, setRecalculated] = useState(false);
-  const seen = useRef<{ state: StrategyPlanState; hadResult: boolean }>(
-    undefined,
-  );
   const current = useRef<StrategyView | undefined>(undefined);
   const running = useRef<object | undefined>(undefined);
   const session = useRef<object | undefined>(undefined);
@@ -90,11 +82,9 @@ export function useStrategy(client: StrategyClient) {
     current.current = undefined;
     running.current = undefined;
     wake();
-    seen.current = undefined;
     setPending(false);
     setView(undefined);
     setError(undefined);
-    setRecalculated(false);
     void (async () => {
       // View also lets a reopened screen resume an already-open dirty document.
       const read = await send(client, { method: "strategy.view" });
@@ -163,29 +153,6 @@ export function useStrategy(client: StrategyClient) {
     };
   }, [calculating, computeId, client, pollFailed]);
 
-  // The mark follows the plan: set when a recalculation ends well, gone as soon
-  // as the host has no plan on view (a new calculation, another strategy or
-  // file, another account). What the host keeps, the mark keeps.
-  const plan = view?.plan;
-  useEffect(() => {
-    if (!plan) {
-      seen.current = undefined;
-      setRecalculated(false);
-      return;
-    }
-    const before = seen.current;
-    seen.current = { state: plan.state, hadResult: plan.result !== null };
-    if (plan.result === null) setRecalculated(false);
-    else if (before?.state === "calculating") {
-      if (!before.hadResult) setRecalculated(false);
-      else if (
-        (plan.state === "calculated" || plan.state === "partial") &&
-        plan.result.metrics
-      )
-        setRecalculated(true);
-    }
-  }, [plan]);
-
   // Resolves when no action is running: what is pressed meanwhile can follow it.
   function whenIdle(): Promise<void> {
     return running.current
@@ -237,7 +204,6 @@ export function useStrategy(client: StrategyClient) {
     pending,
     pollFailed,
     retryPoll: () => setPollFailed(false),
-    recalculated,
     whenIdle,
     // the last view the host sent, before the screen has drawn it
     peek: () => current.current,

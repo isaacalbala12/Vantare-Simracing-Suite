@@ -1,5 +1,8 @@
 import { useCallback, useId, useState } from "react";
-import type { StrategyComputeForm } from "../../../contract/generated/strategy";
+import type {
+  StrategyComputeForm,
+  StrategyField,
+} from "../../../contract/generated/strategy";
 import { strategyLimits } from "../../../contract/generated/strategy";
 import { Icon } from "../../assets/icons/Icon";
 import { strategy as t } from "../../i18n/strategy";
@@ -190,17 +193,27 @@ export function formValues(form: StrategyComputeForm): Values {
   return values;
 }
 
+// A row can name the fields its value is made of; the ones in `changed` are
+// marked: they are the data that changed since the plan was accepted.
 export function SummaryRows({
   rows,
+  changed,
 }: {
-  rows: readonly (readonly [string, string])[];
+  rows: readonly (readonly [string, string, (readonly StrategyField[])?])[];
+  changed?: ReadonlySet<StrategyField>;
 }) {
   return (
     <dl className="strategy-summary-rows">
-      {rows.map(([label, value]) => (
+      {rows.map(([label, value, fields]) => (
         <div key={label}>
           <dt>{label}</dt>
-          <dd>{value || "—"}</dd>
+          <dd>
+            {value && fields?.some((field) => changed?.has(field)) ? (
+              <mark className="strategy-changed">{value}</mark>
+            ) : (
+              value || "—"
+            )}
+          </dd>
         </div>
       ))}
     </dl>

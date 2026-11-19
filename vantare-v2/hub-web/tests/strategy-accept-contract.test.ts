@@ -547,3 +547,127 @@ it("never puts a path on the wire", () => {
   expect(text).not.toMatch(/[A-Za-z]:\\\\/);
   expect(text).not.toContain('"path":"/');
 });
+
+// ---- the Fuji scenes of the screen (E5b): the size of a real race ----
+
+it("opens the Fuji case with its plan accepted, outdated or not reaching the finish", () => {
+  const fuji = opened("strategy-acceptedFuji").value;
+  expect(fuji.plan).toMatchObject({
+    state: "uncalculated",
+    result: null,
+    accepted: {
+      state: "accepted",
+      saved: true,
+      changes: [],
+      unreachable: null,
+      compare: null,
+    },
+  });
+  expect(fuji.plan.accepted.result.metrics).toMatchObject({
+    totalSeconds: 21664,
+    laps: 236,
+    pitCount: 5,
+  });
+  expect(fuji.events[0]).toMatchObject({
+    name: "Fuji 6 Horas",
+    acceptedPlan: "accepted",
+  });
+  const stale = opened("strategy-acceptedFujiStale").value;
+  expect(stale.plan.accepted).toMatchObject({
+    state: "stale",
+    unreachable: null,
+    changes: [{ field: "basePaceSeconds", before: "90.472", after: "90.9" }],
+  });
+  expect(stale.events[0].acceptedPlan).toBe("stale");
+  const unreachable = opened("strategy-acceptedFujiUnreachable").value;
+  expect(unreachable.plan.accepted).toMatchObject({
+    state: "staleUnreachable",
+    unreachable: { cause: "resourceExhausted", failLap: null },
+    changes: [{ field: "fuelPerLapLiters", before: "1.83", after: "1.85" }],
+  });
+  const partial = opened("strategy-acceptedFujiPartial").value;
+  expect(partial.plan.accepted).toMatchObject({
+    state: "accepted",
+    result: { certificate: "not_proven", reason: "searchBudgetExhausted" },
+  });
+  for (const view of [fuji, stale, unreachable, partial])
+    expect(isReply({ method: "strategy.open", value: view })).toBe(true);
+});
+
+it("has a new proposal two seconds slower than the plan accepted, and says what it is", () => {
+  const { value } = opened("strategy-acceptedFujiNew");
+  expect(value.plan).toMatchObject({
+    state: "partial",
+    accepted: {
+      state: "accepted",
+      saved: true,
+      compare: { same: false, deltaSeconds: 2 },
+    },
+  });
+  expect(value.plan.result.timeline.pits[0].lap).toBe(42);
+  expect(value.plan.edit.stops[0].lap).toBe(42);
+  expect(isReply({ method: "strategy.open", value })).toBe(true);
+});
+
+it("lists the events of a collection with a plan accepted, an outdated one and none", () => {
+  const { value } = opened("strategy-acceptedFujiList");
+  expect(
+    value.events.map((event: Json) => [event.name, event.acceptedPlan]),
+  ).toEqual([
+    ["Fuji 6 Horas", "stale"],
+    ["Le Mans 24 Horas", "accepted"],
+    ["Sprint de Spa", "none"],
+  ]);
+  expect(isReply({ method: "strategy.open", value })).toBe(true);
+});
+
+it("accepts a proposal that is not the accepted one in place of it, and the discard brings it back", () => {
+  const { send, value } = opened("strategy-acceptedFujiNew");
+  const done = send({
+    method: "strategy.accept",
+    revision: value.revision,
+    computeId: value.plan.computeId,
+  }).result.value;
+  expect(done.dirty).toBe(true);
+  expect(done.plan.accepted).toMatchObject({
+    saved: false,
+    compare: { same: true, deltaSeconds: 0 },
+    result: { metrics: { totalSeconds: 21666 } },
+  });
+  const back = send({
+    method: "strategy.discard",
+    revision: done.revision,
+  }).result.value;
+  expect(back.plan.accepted.result.metrics.totalSeconds).toBe(21664);
+  expect(back.plan.accepted.saved).toBe(true);
+});
+
+it("has a new proposal with the same calendar next to an outdated accepted plan", () => {
+  const { value } = opened("strategy-acceptedFujiStaleSame");
+  // the host compares the calendar only: same stops, so `same`; but the entries
+  // the plan was calculated from have changed, so it is still outdated
+  expect(value.plan).toMatchObject({
+    state: "calculated",
+    accepted: {
+      state: "stale",
+      saved: true,
+      compare: { same: true, deltaSeconds: 101 },
+      changes: [{ field: "basePaceSeconds", before: "90.472", after: "90.9" }],
+    },
+  });
+  expect(isReply({ method: "strategy.open", value })).toBe(true);
+  // accepting it is allowed and brings the entries up to date
+  const { send, value: before } = opened("strategy-acceptedFujiStaleSame");
+  const done = send({
+    method: "strategy.accept",
+    revision: before.revision,
+    computeId: before.plan.computeId,
+  }).result.value;
+  expect(done.plan.accepted).toMatchObject({
+    state: "accepted",
+    saved: false,
+    changes: [],
+    compare: { same: true, deltaSeconds: 0 },
+  });
+  expect(done.events[0].acceptedPlan).toBe("accepted");
+});

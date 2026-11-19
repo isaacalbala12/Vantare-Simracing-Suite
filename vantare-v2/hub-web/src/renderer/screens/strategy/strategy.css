@@ -198,7 +198,7 @@
 .strategy-row {
   display: grid;
   width: 100%;
-  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 9ch) auto auto;
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto auto;
   align-items: center;
   gap: var(--space-4);
   padding: var(--space-3) var(--space-5);
@@ -547,8 +547,15 @@
   .strategy-row {
     grid-template-columns: auto minmax(0, 1fr) auto auto;
   }
-  .strategy-row-data,
   .strategy-row > :last-child {
+    display: none;
+  }
+  /* the state of the plan goes under the name instead of being lost */
+  .strategy-row-data:not(:empty) {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+  .strategy-row-data:empty {
     display: none;
   }
 }
@@ -1425,9 +1432,58 @@
   }
 }
 
-/* The plan on view was recalculated in this session: a quiet line, not an alert */
-.strategy-screen p.strategy-trial {
+/* The state of a plan (propuesta, aceptado, desactualizado, no llega a meta): a
+   pill next to the title. The text keeps the ink colour so it reads on any
+   background; the tone is in the border and the tint. */
+.strategy-plan-title {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.strategy-plan-title > :where(h2) {
+  margin: 0;
+}
+
+.strategy-state {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-1);
+  white-space: nowrap;
+}
+
+.strategy-state[data-tone="ok"] {
+  border-color: color-mix(in srgb, var(--ok) 65%, transparent);
+  background: color-mix(in srgb, var(--ok) 16%, var(--surface-1));
+}
+.strategy-state[data-tone="warn"] {
+  border-color: color-mix(in srgb, var(--warn) 65%, transparent);
+  background: color-mix(in srgb, var(--warn) 18%, var(--surface-1));
+}
+.strategy-state[data-tone="error"] {
+  border-color: color-mix(in srgb, var(--err) 65%, transparent);
+  background: color-mix(in srgb, var(--err) 16%, var(--surface-1));
+}
+
+.strategy-kicker .strategy-state {
+  margin-inline-start: var(--space-1);
+  vertical-align: middle;
+}
+
+/* What the plan says of itself in one line: is only a proposal, is accepted... */
+.strategy-screen p.strategy-line {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   margin: 0;
@@ -1435,11 +1491,137 @@
   color: var(--text-2);
 }
 
-.strategy-screen p.strategy-trial > svg {
+.strategy-screen p.strategy-line > svg {
   flex: none;
   color: var(--text-3);
 }
 
-.strategy-plan-card .strategy-trial {
+.strategy-screen p.strategy-line[data-tone="ok"] > svg {
+  color: var(--ok);
+}
+
+.strategy-screen p.strategy-line[data-tone="warn"] > svg {
+  color: var(--warn-text, var(--warn));
+}
+
+.strategy-screen p.strategy-line > span {
+  flex: 1 1 24ch;
+  min-width: 0;
+}
+
+.strategy-plan-card p.strategy-line {
   margin-top: var(--space-1);
+}
+
+.strategy-plan-card .strategy-actions {
+  margin: 0;
+}
+
+.strategy-race-cards .strategy-plan-card[data-tone="error"] {
+  border-color: color-mix(in srgb, var(--err) 50%, var(--line-2));
+  background: color-mix(in srgb, var(--err) 12%, var(--bg-window));
+}
+
+/* The accepted plan next to a new proposal, and the question before it is replaced */
+.strategy-card.strategy-compare {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) var(--space-5);
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-4) var(--space-6);
+}
+
+.strategy-compare > :where(div:not(.strategy-actions)) {
+  flex: 1 1 28ch;
+  min-width: 0;
+}
+
+.strategy-card.strategy-compare :where(p) {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-small);
+  color: var(--text-2);
+}
+
+.strategy-card.strategy-compare p > :where(span) {
+  display: block;
+}
+
+.strategy-compare-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--ok) 16%, var(--surface-1));
+  color: var(--ok);
+}
+
+.strategy-compare-icon[data-tone="warn"] {
+  background: color-mix(in srgb, var(--warn) 18%, var(--surface-1));
+  color: var(--warn-text, var(--warn));
+}
+
+.strategy-card.strategy-compare[data-tone="warn"] {
+  border-color: color-mix(in srgb, var(--warn) 60%, var(--line-2));
+}
+
+.strategy-card.strategy-compare .strategy-changes {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-small);
+  color: var(--text-2);
+}
+
+.strategy-compare .strategy-actions {
+  margin: 0;
+  justify-content: flex-end;
+}
+
+/* Data that changed since the plan was accepted */
+.strategy-plan .strategy-stale {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.strategy-stale > :where(div) {
+  min-width: 0;
+}
+
+.strategy-plan .strategy-stale .strategy-changes {
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-small);
+}
+
+.strategy-plan .strategy-stale :where(p) {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small);
+}
+
+.strategy-stale .strategy-actions {
+  margin-top: var(--space-4);
+}
+
+mark.strategy-changed {
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warn) 28%, transparent);
+  color: inherit;
+}
+
+.strategy-menu-item {
+  display: grid;
+  gap: var(--space-1);
+  text-align: start;
+}
+
+.strategy-menu-item > :where(small) {
+  color: var(--text-3);
+  font-size: var(--text-small);
 }

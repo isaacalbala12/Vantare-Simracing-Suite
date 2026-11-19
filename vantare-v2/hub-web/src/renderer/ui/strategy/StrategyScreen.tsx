@@ -13,6 +13,11 @@ import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { strategy as t } from "../../i18n/strategy";
 import { planAnnouncement } from "../../screens/strategy/planText";
 import {
+  strategyAccept,
+  strategyShowAccepted,
+  strategyUnaccept,
+} from "../../screens/strategy/strategyAccept";
+import {
   strategyCancel,
   strategyCompute,
 } from "../../screens/strategy/strategyCompute";
@@ -52,7 +57,6 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     pending,
     pollFailed,
     retryPoll,
-    recalculated,
     whenIdle,
     peek,
     act,
@@ -73,6 +77,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
   // the conflict answered to a move, a recalculation or a reset of the plan
   const [planConflict, setPlanConflict] = useState<HostError>();
   const [announcement, setAnnouncement] = useState("");
+  // the plan was just accepted for the first time: «Deshacer» is offered until saved
+  const [firstAccept, setFirstAccept] = useState(false);
   const [dismissed, setDismissed] = useState<Notice>();
   const [blocked, setBlocked] = useState<Selection>();
   const active = view?.events.find(({ id }) => id === view.activeEventId);
@@ -248,6 +254,42 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     planAnswered(result);
     if ("value" in result) announceMove(result.value.plan, index);
     return "value" in result;
+  }
+  // Accepting, removing and showing the accepted plan act on the plan on view,
+  // so a conflict is a conflict of the plan, not of the file.
+  async function acceptPlan() {
+    if (!view) return;
+    setAnnouncement("");
+    // Accepting the same stops again (the data changed and the plan stayed) brings
+    // the plan up to date: nothing is replaced. «Deshacer» only follows the first.
+    const had = view.plan.accepted;
+    const replaces = had !== null && had.compare?.same !== true;
+    const result = await strategyAccept(act, view.plan);
+    if (!result) return;
+    planAnswered(result);
+    if ("value" in result) {
+      setFirstAccept(had === null);
+      setAnnouncement(
+        replaces ? t.calc.announce.replaced : t.calc.announce.accepted,
+      );
+    }
+  }
+  async function removeAccepted() {
+    if (!view) return;
+    setAnnouncement("");
+    const result = await strategyUnaccept(act);
+    planAnswered(result);
+    if (result && "value" in result) {
+      setFirstAccept(false);
+      setAnnouncement(t.calc.announce.removed);
+    }
+  }
+  async function showAccepted() {
+    if (!view) return;
+    setAnnouncement("");
+    const result = await strategyShowAccepted(act);
+    planAnswered(result);
+    if (result && "value" in result) setAnnouncement(t.calc.announce.showing);
   }
   async function resetEdit() {
     if (!view) return;
@@ -554,7 +596,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                   draft={draft}
                   pending={pending}
                   plan={view.plan}
-                  trial={recalculated}
+                  accept={acceptPlan}
                   viewPlan={() => setTab("plan")}
                   edit={() => {
                     setBlocked(undefined);
@@ -573,7 +615,6 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                 <PlanTab
                   key={`${active.id}/${variant.id}`}
                   plan={view.plan}
-                  trial={recalculated}
                   form={view.form}
                   name={variant.name}
                   actions={{
@@ -589,6 +630,12 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                       moveStop,
                       recalculate: () => void recalculate(),
                       reset: () => void resetEdit(),
+                    },
+                    acceptance: {
+                      accept: () => void acceptPlan(),
+                      showAccepted: () => void showAccepted(),
+                      unaccept: () => void removeAccepted(),
+                      fresh: firstAccept && view.plan.accepted?.saved === false,
                     },
                   }}
                 />
@@ -711,11 +758,22 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                             <span>
                               {t.counts(event.drivers, event.strategies.length)}
                             </span>
-                            {/* Reserved for hasInputs once E4-datos lands. */}
-                            <span
-                              className="strategy-row-data"
-                              aria-hidden="true"
-                            />
+                            <span className="strategy-row-data">
+                              {event.acceptedPlan !== "none" && (
+                                <span
+                                  className="strategy-state"
+                                  data-tone={
+                                    event.acceptedPlan === "stale"
+                                      ? "warn"
+                                      : "ok"
+                                  }
+                                >
+                                  {event.acceptedPlan === "stale"
+                                    ? t.calc.accept.tags.stale
+                                    : t.calc.accept.rowAccepted}
+                                </span>
+                              )}
+                            </span>
                             <span>
                               {event.id === active?.id && (
                                 <span className="strategy-chip">

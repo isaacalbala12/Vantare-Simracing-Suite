@@ -2,6 +2,7 @@
    Solo tokens del Hub; el aspecto sigue al de los ajustes de stints y paradas. */
 
 .strategy-pin {
+  display: inline-block;
   flex: none;
   width: 1em;
   height: 1em;

@@ -1734,11 +1734,15 @@ async function amountStates(
     if (!evidence) return;
     // the shot starts at the timeline, so the editor is on it
     // (a plan with no plan has no timeline: the shot starts at the plan)
+    // (the summary and the plan with no plan start at the heading)
     const timeline = page.locator(".strategy-timeline-card");
-    await ((await timeline.count()) > 0
-      ? timeline
-      : page.locator(".strategy-plan")
-    ).evaluate((node) => node.scrollIntoView({ block: "start" }));
+    const fromHeading =
+      name === "m-recalculado" ||
+      name === "m-calcular" ||
+      (await timeline.count()) === 0;
+    await (fromHeading ? page.locator(".strategy-plan") : timeline).evaluate(
+      (node) => node.scrollIntoView({ block: "start" }),
+    );
     await page.screenshot({
       path: resolve(evidence, `${prefix}${name}-${suffix}.png`),
     });
@@ -1808,6 +1812,8 @@ async function amountStates(
   // m-error: it does not fit; nothing changes but the message
   const before = (await setStopRequests(page)).length;
   await typeAmount(fuel, "90");
+  // the refusal comes back before the next control is used
+  await visible(page.getByRole("alert"));
   const energy = await toManual(page, "Energía", 2);
   await typeAmount(energy, "103");
   await until(

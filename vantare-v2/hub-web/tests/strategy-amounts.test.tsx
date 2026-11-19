@@ -580,7 +580,7 @@ describe("a recalculation with something fixed", () => {
     await recalculated();
     expect(
       screen.getByText(
-        /Llegarás a meta con .* de energía \(con el automático, /,
+        "Llegarás a meta con 4 % de energía, igual que con el automático.",
       ),
     ).toBeTruthy();
   });

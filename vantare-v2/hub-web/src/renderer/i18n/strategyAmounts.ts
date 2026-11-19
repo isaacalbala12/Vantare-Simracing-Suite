@@ -115,7 +115,9 @@ export const amounts = {
   slower: (amount: string, automatic: string) =>
     `Lo que fijaste hace el plan ${amount} más lento que el plan automático (${automatic}).`,
   finish: (what: "fuel" | "ve", value: string, automatic: string) =>
-    `Llegarás a meta con ${value} de ${what === "fuel" ? "combustible" : "energía"} (con el automático, ${automatic}).`,
+    value === automatic
+      ? `Llegarás a meta con ${value} de ${what === "fuel" ? "combustible" : "energía"}, igual que con el automático.`
+      : `Llegarás a meta con ${value} de ${what === "fuel" ? "combustible" : "energía"} (con el automático, ${automatic}).`,
   noPlan: {
     heading: "Sin plan con lo que fijaste",
     sub: "Con las cantidades que fijaste no se puede terminar la carrera.",

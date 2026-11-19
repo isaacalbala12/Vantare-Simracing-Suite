@@ -1,3 +1,12 @@
+const timeText = {
+  lessThanMinute: "menos de un minuto",
+  hours: (n: number) => `${n} ${n === 1 ? "hora" : "horas"}`,
+  minutes: (n: number) => `${n} ${n === 1 ? "minuto" : "minutos"}`,
+  stops: (n: number) =>
+    n === 0 ? "sin paradas" : `${n} ${n === 1 ? "parada" : "paradas"}`,
+  stints: (n: number) => `${n} ${n === 1 ? "stint" : "stints"}`,
+};
+
 export const strategy = {
   symbols: { more: "⋯", add: "+", flag: "⚑", next: "›" },
   returnToCollection: "← Tus estrategias",
@@ -105,7 +114,7 @@ export const strategy = {
   edit: "Editar",
   editing: "Editando los datos de la carrera",
   editingDetail:
-    "Los cambios no cuentan hasta que pulses «Confirmar datos». Mientras haya datos sin confirmar no puedes guardar el archivo ni cambiar de carrera.",
+    "Los cambios no cuentan hasta que pulses «Confirmar datos» o «Confirmar y calcular». Mientras haya datos sin confirmar no puedes guardar el archivo ni cambiar de carrera.",
   cancelEdit: "Cancelar edición",
   confirm: "Confirmar datos",
   confirmed: "Datos confirmados.",
@@ -201,4 +210,155 @@ export const strategy = {
     loads: "Cargas",
   },
   optional: "Opcional",
+  calc: {
+    confirmAndCalculate: "Confirmar y calcular",
+    changedOutside:
+      "Los datos de la carrera han cambiado fuera de esta pantalla. Vuelve a calcular el plan.",
+    calculate: "Calcular plan",
+    again: "Calcular de nuevo",
+    retry: "Reintentar",
+    review: "Revisar datos",
+    cancel: "Cancelar",
+    eyebrow: (name: string) => `Plan · estrategia «${name}»`,
+    uncalculated: {
+      heading: "Sin calcular",
+      sub: "Aún no hay plan para esta estrategia.",
+      title: "Calcula tu plan",
+      detail: (laps: string) =>
+        `Vantare reparte ${laps === "1" ? "la vuelta" : laps ? `las ${laps} vueltas` : "las vueltas"} en stints y decide en qué vuelta parar y cuánto cargar en cada parada, con los datos de la pestaña Carrera.`,
+    },
+    changed: {
+      heading: "Datos cambiados",
+      sub: "El plan anterior ya no corresponde a los datos.",
+      title: "Vuelve a calcular el plan",
+      detail:
+        "Has cambiado los datos de la carrera desde el último cálculo. Calcula el plan otra vez para que cuadre con ellos.",
+    },
+    calculating: {
+      heading: "Calculando…",
+      sub: "Con los datos confirmados en Carrera.",
+      title: "Calculando el plan",
+      detail:
+        "Puedes cancelar cuando quieras: no se guarda nada a medias y tus datos no cambian.",
+    },
+    done: {
+      heading: "Plan calculado",
+      noStops: (laps: number) => `Sin paradas para ${lapsWord(laps)}.`,
+      summary: (stints: string, stops: string, laps: number) =>
+        `${stints} y ${stops} para ${lapsWord(laps)}.`,
+      stopsOnly: (stops: string, laps: number) =>
+        `${stops} para ${lapsWord(laps)}.`,
+    },
+    unfinished: {
+      heading: "Cálculo sin terminar",
+      sub: "No se ha encontrado un plan completo.",
+    },
+    failed: {
+      heading: "No se pudo calcular",
+      sub: "Tus datos están intactos.",
+      title: "No se pudo calcular el plan",
+      detail:
+        "Algo falló durante el cálculo. Tus datos no han cambiado. Prueba otra vez; si se repite, revisa los datos de la pestaña Carrera.",
+    },
+    rejected: {
+      heading: "Revisa los datos",
+      sub: "El cálculo no ha aceptado alguno de los datos.",
+      title: "El cálculo no ha aceptado los datos",
+      detail: "Revisa los datos de la pestaña Carrera y vuelve a calcular.",
+      field: (label: string) => `Revisa «${label}» en la pestaña Carrera.`,
+      inField: "El cálculo no ha aceptado este dato. Revísalo.",
+      general: "El cálculo no ha aceptado los datos. Revísalos.",
+    },
+    noSolution: {
+      heading: "Sin plan posible",
+      sub: "Con estos datos no se puede terminar la carrera.",
+      hint: "Revisa el depósito, los consumos, la reserva o las vueltas en la pestaña Carrera.",
+    },
+    certificate: {
+      label: "Qué garantiza este plan",
+      proven: "Comprobado: es el plan más rápido con estos datos",
+      provenDetail: (steps: string) =>
+        `Vantare ha revisado todas las formas de repartir las paradas y las cargas${steps ? `, ${steps}` : ""}, y ninguna termina antes.`,
+      coarse: "El paso de carga es más grueso que el que pediste",
+      coarseDetail: (steps: string) =>
+        steps
+          ? `Es el plan más rápido de los que se pueden hacer cargando ${steps}. Con el paso que pediste podría haber uno algo más rápido.`
+          : "Es el plan más rápido con el paso de carga que ha usado el cálculo. Con el paso que pediste podría haber uno algo más rápido.",
+      coarseLine: (steps: string) =>
+        steps
+          ? `El paso de carga es más grueso que el que pediste: ${steps}.`
+          : "El paso de carga es más grueso que el que pediste.",
+      partial: "Plan válido, pero sin garantía de que sea el más rápido",
+      unfinished: "El cálculo no ha terminado",
+      noSolution: "Ningún plan termina la carrera con estos datos",
+      reasons: {
+        searchBudgetExhausted:
+          "La búsqueda se detuvo antes de poder comprobarlo",
+        fineGridNoFallback:
+          "Con pasos de carga tan finos no se pudo completar el cálculo; prueba con pasos más gruesos",
+        constraintsUnsatisfiable:
+          "Las reglas del evento o el calendario editado no lo permiten",
+        noFeasiblePlan: "No hay plan posible con estos datos y pasos",
+      },
+      searchStopped: "La búsqueda se detuvo antes de encontrar un plan",
+      steps: (fuel: string, energy: string) =>
+        [
+          fuel && `de ${fuel} L en ${fuel} L`,
+          energy && `de ${energy} % en ${energy} %`,
+        ]
+          .filter(Boolean)
+          .join(" y "),
+    },
+    figures: {
+      label: "Cifras del plan",
+      duration: "Duración",
+      durationNote: "horas : min : s",
+      laps: "Vueltas",
+      asked: "las que pediste",
+      stops: "Paradas",
+      allTyres: "todas con ruedas nuevas",
+      noTyres: "sin cambio de ruedas",
+      someTyres: (some: number, all: number) =>
+        `ruedas nuevas en ${some} de ${all}`,
+      left: "Sobra al final",
+      askedReserve: (value: string) => `pediste ${value} v`,
+    },
+    full: "Carrera completa",
+    timeline: (stints: number, stops: number, laps: number) =>
+      `Línea de tiempo: ${timeText.stints(stints)} y ${timeText.stops(stops)} en ${lapsWord(laps)}`,
+    tooLong: "Este plan tiene demasiadas paradas para dibujarlo.",
+    unreadable: {
+      title: "No se puede saber cómo va el cálculo",
+      detail:
+        "No hemos podido leer el resultado. Puedes volver a intentarlo o cancelar el cálculo.",
+    },
+    list: "Stints y paradas",
+    stint: (n: number) => `Stint ${n}`,
+    stop: (n: number) => `Parada ${n}`,
+    lapsRange: (from: number, to: number) =>
+      from === to ? `Vuelta ${from}` : `Vueltas ${from}–${to}`,
+    lap: (n: number) => `Vuelta ${n}`,
+    lapCount: (n: number) => lapsWord(n),
+    leaves: (load: string) => `sale con ${load}`,
+    arrives: (load: string) => `llega con ${load}`,
+    noLoad: "sin carga",
+    freshTyres: "ruedas nuevas",
+    sameTyres: "mismas ruedas",
+    services: { parallel: "a la vez", sequential: "uno tras otro" },
+    announce: {
+      calculating: "Calculando el plan.",
+      cancelled: "Cálculo cancelado.",
+      done: (duration: string, stops: string) =>
+        `Plan calculado: ${duration}; ${stops}.`,
+      unproven: "Plan calculado sin garantía de ser el más rápido.",
+      failed: "No se pudo calcular el plan.",
+      unfinished: "No se pudo completar el cálculo del plan.",
+      noSolution: "Ningún plan termina la carrera con estos datos.",
+    },
+    time: timeText,
+  },
 };
+
+function lapsWord(laps: number) {
+  return `${laps} ${laps === 1 ? "vuelta" : "vueltas"}`;
+}

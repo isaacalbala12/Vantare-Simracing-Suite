@@ -1,13 +1,20 @@
 import { Menu } from "@base-ui/react/menu";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { HostError } from "../../../contract/generated/contract";
 import type {
   StrategyComputeForm,
   StrategyEventSummary,
+  StrategyField,
+  StrategyPlanState,
   StrategyView,
 } from "../../../contract/generated/strategy";
 import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { strategy as t } from "../../i18n/strategy";
+import { planAnnouncement } from "../../screens/strategy/planText";
+import {
+  strategyCancel,
+  strategyCompute,
+} from "../../screens/strategy/strategyCompute";
 import { strategyConfirm } from "../../screens/strategy/strategyConfirm";
 import { strategyCreate } from "../../screens/strategy/strategyCreate";
 import {
@@ -17,7 +24,8 @@ import {
 } from "../../screens/strategy/useStrategy";
 import { Button } from "../Button";
 import { Select } from "../Forms";
-import { RaceTab, raceLength } from "./RaceTab";
+import { PlanTab } from "./PlanTab";
+import { type Draft, RaceTab, raceLength } from "./RaceTab";
 import { Wizard } from "./Wizard";
 
 const tabs = [
@@ -31,12 +39,17 @@ type Selection = { eventId: string; strategyId: string };
 type Notice = "importedLegacy" | "recovered";
 
 export function StrategyScreen({ client }: { client: StrategyClient }) {
-  const { view, error, pending, act, clearError } = useStrategy(client);
+  const { view, error, pending, pollFailed, retryPoll, act, clearError } =
+    useStrategy(client);
   const [screen, setScreen] = useState<"collection" | "wizard" | "race">(
     "collection",
   );
   const [tab, setTab] = useState("race");
   const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState<Draft>();
+  // the button that sent us to Carrera is gone: its title takes the focus
+  const [focusRaceTitle, setFocusRaceTitle] = useState(false);
+  const raceTitle = useRef<HTMLHeadingElement>(null);
   const [confirmConflict, setConfirmConflict] = useState<HostError>();
   const [announcement, setAnnouncement] = useState("");
   const [dismissed, setDismissed] = useState<Notice>();
@@ -59,6 +72,90 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     }
   }, [editing, hasForm, clearError]);
 
+  // The calculation this screen started, with the form it sent: if the
+  // calculation refuses an input, the editor reopens with that form.
+  const launched = useRef<{
+    computeId: number | null;
+    form: StrategyComputeForm;
+  }>(undefined);
+  const lastPlanState = useRef<StrategyPlanState>(undefined);
+  const plan = view?.plan;
+  // The single status line says what happened to the plan since the last view.
+  useEffect(() => {
+    if (!plan) return;
+    const said = planAnnouncement(plan, lastPlanState.current);
+    lastPlanState.current = plan.state;
+    if (said) setAnnouncement(said);
+  }, [plan]);
+  useEffect(() => {
+    const sent = launched.current;
+    if (!sent || !plan || plan.computeId !== sent.computeId) return;
+    if (plan.state === "calculating") return;
+    launched.current = undefined;
+    // someone already editing keeps their own draft
+    if (!editing && plan.state === "error" && plan.errorField) {
+      setDraft({ form: sent.form, field: plan.errorField });
+      setEditing(true);
+      setTab("race");
+    }
+  }, [plan, editing]);
+
+  useEffect(() => {
+    if (focusRaceTitle && tab === "race" && raceTitle.current) {
+      raceTitle.current.focus();
+      setFocusRaceTitle(false);
+    }
+  }, [focusRaceTitle, tab]);
+
+  function closeEditor() {
+    clearError();
+    setDraft(undefined);
+    setEditing(false);
+  }
+  // To the Carrera tab; with a field, the editor opens with that field marked.
+  function review(field: StrategyField | null) {
+    setTab("race");
+    if (field && view?.form) {
+      setAnnouncement("");
+      setDraft({ form: view.form, field });
+      setEditing(true);
+    } else setFocusRaceTitle(true);
+  }
+  // Starts the calculation with this form. Returns whether the host took it;
+  // when it did, the screen moves to the plan. On a conflict the host's view
+  // replaces ours and the editor, if open, keeps what the user wrote.
+  // With `confirmFirst` (the form comes from the editor) the data are confirmed
+  // before the calculation starts: the host drops what a cancelled calculation
+  // was given, so cancelling must not be able to lose what was written.
+  async function calculate(form: StrategyComputeForm, confirmFirst = false) {
+    if (!active || !variant) return false;
+    setAnnouncement("");
+    if (confirmFirst) {
+      const confirmed = await strategyConfirm(act, active.id, variant.id, form);
+      if (!confirmed) return false;
+      if (!("value" in confirmed)) {
+        if (confirmed.error.kind === "strategyConflict")
+          setConfirmConflict(confirmed.error);
+        return false;
+      }
+      // confirmed: nothing written is at risk any more
+      setDraft(undefined);
+      setEditing(false);
+    }
+    const result = await strategyCompute(act, active.id, variant.id, form);
+    if (!result) return false;
+    if ("value" in result) {
+      launched.current = { computeId: result.value.plan.computeId, form };
+      setDraft(undefined);
+      setEditing(false);
+      setTab("plan");
+      return true;
+    }
+    if (result.error.kind === "strategyConflict")
+      setConfirmConflict(result.error);
+    return false;
+  }
+
   // Returns whether the data were confirmed. On a conflict the host's view
   // replaces ours but the editor stays open with what the user wrote.
   async function confirm(form: StrategyComputeForm) {
@@ -67,6 +164,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     const result = await strategyConfirm(act, active.id, variant.id, form);
     if (!result) return false;
     if ("value" in result) {
+      setDraft(undefined);
       setEditing(false);
       setAnnouncement(t.confirmed);
       return true;
@@ -280,7 +378,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
         </div>
         {editConflict && (
           <div className="strategy-notice" data-tone="error" role="alert">
-            {t.confirmConflict}
+            {editing ? t.confirmConflict : t.calc.changedOutside}
           </div>
         )}
         {fileError && (
@@ -306,7 +404,9 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                 {t.returnToCollection}
               </Button>
               <div>
-                <h2>{active.name}</h2>
+                <h2 ref={raceTitle} tabIndex={-1}>
+                  {active.name}
+                </h2>
                 <p>
                   {[
                     active.class,
@@ -343,19 +443,36 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                   key={`${active.id}/${variant.id}`}
                   form={view.form}
                   editing={editing}
+                  draft={draft}
                   pending={pending}
                   edit={() => {
                     setBlocked(undefined);
                     clearError();
                     setAnnouncement("");
+                    setDraft(undefined);
                     setEditing(true);
                   }}
-                  cancel={() => {
-                    clearError();
-                    setEditing(false);
-                  }}
+                  cancel={closeEditor}
                   clearError={clearError}
                   confirm={confirm}
+                  calculate={(form) => calculate(form, true)}
+                />
+              )}
+              {tab === "plan" && (
+                <PlanTab
+                  key={`${active.id}/${variant.id}`}
+                  plan={view.plan}
+                  form={view.form}
+                  name={variant.name}
+                  actions={{
+                    canCalculate: !!view.form,
+                    pending,
+                    calculate: () => view.form && void calculate(view.form),
+                    cancel: () => void strategyCancel(act, view.plan),
+                    unreadable: pollFailed,
+                    readAgain: retryPoll,
+                    review,
+                  }}
                 />
               )}
             </SectionPanel>

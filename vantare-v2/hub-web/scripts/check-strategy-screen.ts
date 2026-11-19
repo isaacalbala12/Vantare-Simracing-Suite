@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "playwright-core";
+import type { Locator, Page } from "playwright-core";
 import type { HostToUi, UiToHost } from "../src/contract/generated/contract";
 import { until } from "./wait-for";
 
@@ -170,6 +170,8 @@ async function verify(
         node.querySelector(".strategy-wizard-body"),
         node.querySelector(".strategy-race"),
         node.querySelector(".strategy-race-editor-body"),
+        node.querySelector(".strategy-plan"),
+        node.querySelector(".strategy-legs"),
       ].every((panel) => !panel || panel.scrollWidth <= panel.clientWidth + 1),
     ),
     true,
@@ -219,7 +221,15 @@ async function verify(
   );
   // The editor was just audited in this layout. The focus exercise checks
   // the ring and border directly without a second axe pass over the same form.
-  if (scene === "carrera-foco" || scene === "carrera-editar-fin") return;
+  if (
+    [
+      "carrera-foco",
+      "carrera-editar-fin",
+      "carrera-calcular-error",
+      "plan-ok-fin",
+    ].includes(scene)
+  )
+    return;
   const { violations } = await new AxeBuilder({ page })
     .include(".strategy-screen")
     .include('[role="menu"][aria-label="Archivo"]')
@@ -324,6 +334,159 @@ async function editRace(page: Page, shot: (name: string) => Promise<void>) {
   );
 }
 
+async function openPlan(page: Page, base: string, scene: string) {
+  await collection(page, base, scene);
+  await button(page, "Continuar").click();
+  await page.getByRole("tab", { name: "Plan", exact: true }).click();
+}
+async function focusVisible(locator: Locator) {
+  assert(
+    await locator.evaluate(
+      (node) =>
+        node === document.activeElement && node.matches(":focus-visible"),
+    ),
+  );
+}
+// The stints are drawn to scale inside the bar and every stop sits on it.
+async function checkTimeline(page: Page, scene: string) {
+  const drawn = await page.locator(".strategy-timeline-bar").evaluate((bar) => {
+    const area = bar.getBoundingClientRect();
+    const inside = (node: Element) => {
+      const box = node.getBoundingClientRect();
+      return box.left >= area.left - 1 && box.right <= area.right + 1;
+    };
+    return {
+      stints: Array.from(bar.querySelectorAll("[data-stint]")).map(inside),
+      stops: Array.from(bar.querySelectorAll("[data-stop] > i")).map((node) => {
+        const box = node.getBoundingClientRect();
+        return box.left >= area.left - 8 && box.right <= area.right + 8;
+      }),
+    };
+  });
+  assert(drawn.stints.length > 0 && drawn.stints.every(Boolean), scene);
+  assert(drawn.stops.every(Boolean), `stop outside the timeline: ${scene}`);
+}
+
+// Every state of the plan tab, one scene each. A calculation is started from
+// the tab where the scene needs it, as a person would.
+async function planStates(
+  page: Page,
+  base: string,
+  scheme: Scheme,
+  width: number,
+  saveShot: (name: string) => Promise<void>,
+  zoomed = false,
+) {
+  const ready = async (scene: string) => {
+    await openPlan(page, base, scene);
+    if (zoomed)
+      await until(
+        () =>
+          page.evaluate(() => document.documentElement.style.zoom === "1.25"),
+        5000,
+        "Strategy zoom 125%",
+      );
+  };
+  const noEditing = async (name: string) => {
+    const text = (await page.locator(".strategy-plan").textContent()) ?? "";
+    assert(!/Ajustar|Recalcular|Restablecer|valor anterior/.test(text), name);
+    assert.equal(await page.getByRole("slider").count(), 0, name);
+  };
+
+  await ready("ready");
+  await page.getByRole("heading", { name: "Calcula tu plan" }).waitFor();
+  await noEditing("plan-sin");
+  await saveShot("plan-sin");
+
+  await ready("calculating");
+  await button(page, "Calcular plan").press("Enter");
+  await page.getByRole("heading", { name: "Calculando…" }).waitFor();
+  assert.equal(
+    await page.locator(".strategy-screen").getByRole("status").textContent(),
+    "Calculando el plan.",
+  );
+  await page.keyboard.press("Tab");
+  await focusVisible(button(page, "Cancelar"));
+  await saveShot("plan-calc");
+  await page.keyboard.press("Enter");
+  await page.getByRole("heading", { name: "Sin calcular" }).waitFor();
+  // the heading takes the focus the cancelled calculation left
+  assert(
+    await page.evaluate(() => document.activeElement?.tagName === "H2"),
+    "focus after cancelling",
+  );
+
+  await ready("plannedFuji");
+  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
+  await noEditing("plan-ok");
+  await checkTimeline(page, "plan-ok");
+  assert.equal(
+    await page
+      .getByRole("list", { name: "Stints y paradas" })
+      .getByRole("listitem")
+      .count(),
+    11,
+  );
+  await saveShot("plan-ok");
+  await page.locator(".strategy-race").evaluate((node) => {
+    node.scrollTop = node.scrollHeight;
+  });
+  await saveShot("plan-ok-fin");
+
+  await ready("plannedFujiPartial");
+  await page
+    .getByText("Plan válido, pero sin garantía de que sea el más rápido")
+    .waitFor();
+  await noEditing("plan-parcial");
+  await saveShot("plan-parcial");
+
+  await ready("computeFailed");
+  await button(page, "Calcular plan").press("Enter");
+  await page.getByRole("alert").waitFor();
+  await saveShot("plan-error");
+
+  await ready("reasonNoFeasiblePlan");
+  await button(page, "Calcular plan").press("Enter");
+  await page
+    .getByRole("heading", {
+      name: "Ningún plan termina la carrera con estos datos",
+    })
+    .waitFor();
+  await saveShot("plan-nosol");
+
+  // the plan the mock really calculates (3 laps), checked but not photographed
+  await ready("planned");
+  await page.getByRole("heading", { name: "Plan calculado" }).waitFor();
+  await checkTimeline(page, "plan-mock");
+  await verify(page, "plan-mock", scheme, width);
+
+  // a calculation that refuses an input leads back to the marked field
+  await openPlan(page, base, "computeInvalid");
+  await page.getByRole("tab", { name: "Carrera", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Editar carrera", exact: true })
+    .press("Enter");
+  await fill(page, { "Nombre de la carrera": "Copa Fuji" });
+  await button(page, "Confirmar y calcular").press("Enter");
+  const laps = page.getByRole("textbox", {
+    name: "Vueltas que vas a dar",
+    exact: true,
+  });
+  await until(
+    async () =>
+      (await laps.getAttribute("aria-invalid").catch(() => null)) === "true",
+    5000,
+    "marked field after a refused calculation",
+  );
+  assert.equal(
+    await page
+      .getByRole("textbox", { name: "Nombre de la carrera", exact: true })
+      .inputValue(),
+    "Copa Fuji",
+  );
+  await saveShot("carrera-calcular-error");
+}
+
 async function exercise(
   page: Page,
   base: string,
@@ -345,6 +508,7 @@ async function exercise(
       evidence &&
       (width === 1440 ||
         name.startsWith("carrera") ||
+        name.startsWith("plan-") ||
         (scheme === "dark" && ["col", "as-reglas"].includes(name)))
     )
       await page.screenshot({
@@ -398,6 +562,7 @@ async function exercise(
   await page.getByRole("tab", { name: "Carrera", exact: true }).waitFor();
   await saveShot("carrera");
   await editRace(page, saveShot);
+  await planStates(page, base, scheme, width, saveShot);
 
   await collection(page, base, "ready");
   await chooseWizard(page);
@@ -516,6 +681,7 @@ export async function checkStrategyScreen(
           };
           await shot("carrera");
           await editRace(page, shot);
+          await planStates(page, base, scheme, width, shot, true);
         } finally {
           await page.close();
         }

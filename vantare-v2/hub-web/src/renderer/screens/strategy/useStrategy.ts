@@ -9,11 +9,22 @@ import { type Client, HostFailure } from "../../bridge/client";
 
 export type StrategyClient = Pick<Client, "request">;
 type Operation = Extract<StrategyRequest, { revision: string }>;
-export type StrategyAction = Operation extends infer T
-  ? T extends Operation
-    ? Omit<T, "revision">
-    : never
-  : never;
+type Cancel = Extract<StrategyRequest, { method: "strategy.cancel" }>;
+// Every action but a cancellation carries the revision of the view it acts on;
+// the hook adds it. A cancellation names the calculation instead.
+export type StrategyAction =
+  | (Operation extends infer T
+      ? T extends Operation
+        ? Omit<T, "revision">
+        : never
+      : never)
+  | Cancel;
+// How often the screen asks the host for the end of a calculation. The host
+// only moves a calculation on when asked, and never pushes the result.
+export const calculationPollMs = 250;
+// Read errors in a row the screen puts up with while it asks; then it stops
+// and lets the person retry or cancel.
+export const calculationPollFailures = 3;
 type Result = { value: StrategyView } | { error: HostError };
 
 async function send(
@@ -55,6 +66,8 @@ export function useStrategy(client: StrategyClient) {
   const [view, setView] = useState<StrategyView>();
   const [error, setError] = useState<HostError>();
   const [pending, setPending] = useState(false);
+  // the reads of a running calculation failed too often in a row
+  const [pollFailed, setPollFailed] = useState(false);
   const current = useRef<StrategyView | undefined>(undefined);
   const running = useRef<object | undefined>(undefined);
   const session = useRef<object | undefined>(undefined);
@@ -84,13 +97,63 @@ export function useStrategy(client: StrategyClient) {
     };
   }, [client]);
 
+  // While the host calculates, ask for the view until it says otherwise. An
+  // answer is used only if nothing else replaced the view meanwhile.
+  const calculating = view?.plan.state === "calculating";
+  const computeId = view?.plan.computeId;
+  // a failure to read belongs to the calculation it happened in
+  useEffect(() => {
+    if (!calculating) setPollFailed(false);
+  }, [calculating]);
+  useEffect(() => {
+    // a calculation always has its id; a new one restarts the loop
+    if (!calculating || computeId == null || pollFailed) return;
+    const token = session.current;
+    let failures = 0;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
+    async function poll() {
+      const asked = current.current;
+      if (!running.current) {
+        const read = await send(client, { method: "strategy.view" });
+        if (stopped || session.current !== token) return;
+        if (current.current === asked) {
+          if ("error" in read) {
+            // a transient error is asked again at the usual pace, up to the limit
+            if (++failures >= calculationPollFailures) {
+              setPollFailed(true);
+              return;
+            }
+          } else {
+            failures = 0;
+            const fresh = read.value;
+            if (
+              fresh.revision !== asked?.revision ||
+              fresh.plan.state !== "calculating" ||
+              fresh.plan.computeId !== asked.plan.computeId
+            ) {
+              current.current = fresh;
+              setView(fresh);
+            }
+          }
+        }
+      }
+      timer = setTimeout(poll, calculationPollMs);
+    }
+    timer = setTimeout(poll, 0);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [calculating, computeId, client, pollFailed]);
+
   async function act(action: StrategyAction): Promise<Result | undefined> {
     if (!current.current || running.current || !session.current) return;
     const token = session.current;
-    const request = {
-      ...action,
-      revision: current.current.revision,
-    } satisfies Operation;
+    const request: StrategyRequest =
+      action.method === "strategy.cancel"
+        ? action
+        : { ...action, revision: current.current.revision };
     running.current = token;
     setPending(true);
     setError(undefined);
@@ -119,5 +182,13 @@ export function useStrategy(client: StrategyClient) {
       setError(result.error);
     return result;
   }
-  return { view, error, pending, act, clearError: () => setError(undefined) };
+  return {
+    view,
+    error,
+    pending,
+    pollFailed,
+    retryPoll: () => setPollFailed(false),
+    act,
+    clearError: () => setError(undefined),
+  };
 }

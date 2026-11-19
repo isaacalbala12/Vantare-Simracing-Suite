@@ -3,6 +3,7 @@ use serde_json::json;
 use sha2::{Digest, Sha256};
 use std::os::windows::{fs::OpenOptionsExt, process::CommandExt};
 use std::{
+    collections::BTreeMap,
     fs,
     io::{BufRead, BufReader, Write},
     path::{Path, PathBuf},
@@ -10,9 +11,10 @@ use std::{
     sync::atomic::{AtomicBool, Ordering},
 };
 use vantare_installer::{
+    args::Args,
     engine::{
         self, Installation,
-        context::qa_path,
+        context::{Context, qa_path},
         operations::{self, Control},
         write_fs as disk,
     },
@@ -35,6 +37,14 @@ impl Drop for OwnedChild {
             let _ = self.0.kill();
         }
         let _ = self.0.wait();
+    }
+}
+impl Drop for Fixture {
+    // A passing test leaves nothing in the shared QA root; a failed one keeps its tree.
+    fn drop(&mut self) {
+        if !std::thread::panicking() {
+            let _ = fs::remove_dir_all(&self.path);
+        }
     }
 }
 impl Package {
@@ -75,14 +85,27 @@ impl Fixture {
         extra: Option<(&str, &[u8])>,
         engine: u32,
     ) -> Package {
-        let executable = fs::read(
-            PathBuf::from(std::env::var_os("WINDIR").expect("Windows root"))
-                .join("System32/cmd.exe"),
-        )
-        .expect("inert PE fixture");
+        self.build("package", version, test_members(), extra, engine)
+    }
+    /// Electron generation: the Rust host keeps `bin/vantare-hub.exe` and the
+    /// sealed `hub-ui` tree travels beside `bin`, as `build-candidate.ps1` emits it.
+    fn electron(&self, version: &str) -> Package {
+        self.build("electron", version, electron_members(), None, 2)
+    }
+    fn build(
+        &self,
+        tag: &str,
+        version: &str,
+        members: Vec<String>,
+        extra: Option<(&str, &[u8])>,
+        engine: u32,
+    ) -> Package {
+        let mut executable = inert_pe();
+        // A trailing overlay keeps the PE valid and tells one package's launcher from another's.
+        executable.extend_from_slice(format!("{tag}-{version}").as_bytes());
         let executable_hash = format!("{:x}", Sha256::digest(&executable));
         let mut entries = Vec::new();
-        for name in test_members() {
+        for name in members {
             let bytes = if Path::new(&name)
                 .extension()
                 .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
@@ -111,7 +134,7 @@ impl Fixture {
             "manifest.json".into(),
             serde_json::to_vec(&manifest).expect("manifest"),
         ));
-        let path = self.path.join(format!("package-{version}.zip"));
+        let path = self.path.join(format!("{tag}-{version}.zip"));
         let mut writer = zip::ZipWriter::new(fs::File::create(&path).expect("archive"));
         for (name, bytes) in entries {
             writer
@@ -1518,4 +1541,729 @@ fn repair_without_active_state_rejects_before_touching_a_pending_cleanup() {
     assert_eq!(fs::read(&marker).unwrap(), b"pending cleanup sentinel");
     assert_eq!(disk::data_index(&data).unwrap(), before);
     assert!(!fixture.root.join("state.json").exists());
+}
+
+// Electron generation (ISA-2737, P4 of #1995). Paths of the sealed Electron
+// 45.2.3 tree in the P3 candidate receipt; only names travel here and the bytes
+// are inert fixtures: no Electron, host or window is ever started.
+const HUB_UI: [&str; 21] = [
+    "LICENSE",
+    "LICENSES.chromium.html",
+    "chrome_100_percent.pak",
+    "chrome_200_percent.pak",
+    "d3dcompiler_47.dll",
+    "dxcompiler.dll",
+    "electron_wer.dll",
+    "ffmpeg.dll",
+    "icudtl.dat",
+    "locales/en-US.pak",
+    "locales/es.pak",
+    "resources.pak",
+    "resources/app.asar",
+    "snapshot_blob.bin",
+    "v8_context_snapshot.bin",
+    "vantare-hub-ui.exe",
+    "vantare-hub-ui.exe.sha256",
+    "version",
+    "vk_swiftshader.dll",
+    "vk_swiftshader_icd.json",
+    "vulkan-1.dll",
+];
+const ELECTRON: &str = "hub-ui/vantare-hub-ui.exe";
+const ASAR: &str = "hub-ui/resources/app.asar";
+type Index = BTreeMap<PathBuf, Option<(u64, String)>>;
+
+fn inert_pe() -> Vec<u8> {
+    let system = PathBuf::from(std::env::var_os("WINDIR").expect("Windows root"));
+    fs::read(system.join("System32/cmd.exe")).expect("inert PE fixture")
+}
+fn electron_members() -> Vec<String> {
+    let added = [
+        "bin/vantare-overlays-rune.exe",
+        "bin/vantare-overlays-rune.exe.sha256",
+        "licenses/hub-web-notices.txt",
+    ];
+    test_members()
+        .into_iter()
+        .chain(added.map(String::from))
+        .chain(HUB_UI.iter().map(|name| format!("hub-ui/{name}")))
+        .collect()
+}
+fn index(path: &Path) -> Index {
+    disk::data_index(path).expect("content index")
+}
+fn children(path: &Path) -> usize {
+    fs::read_dir(path).expect("directory").count()
+}
+fn utf16(text: &str) -> Vec<u8> {
+    text.encode_utf16().flat_map(u16::to_le_bytes).collect()
+}
+fn contains(bytes: &[u8], needle: &[u8]) -> bool {
+    bytes.windows(needle.len()).any(|window| window == needle)
+}
+/// Another program keeps the file open for reading, as a mapped image or a scanner does.
+fn hold(path: &Path) -> fs::File {
+    fs::OpenOptions::new()
+        .read(true)
+        .share_mode(1)
+        .open(path)
+        .expect("held file")
+}
+struct Sink(
+    fn(vantare_installer::model::Progress),
+    fn(&str) -> disk::Result<()>,
+    fn(&str),
+);
+impl Sink {
+    fn new() -> Self {
+        Self(|_| {}, |_| Ok(()), |message| eprintln!("{message}"))
+    }
+    fn control<'a>(&'a mut self, cancel: &'a AtomicBool) -> Control<'a> {
+        Control {
+            cancel,
+            progress: &mut self.0,
+            checkpoint: &mut self.1,
+            warning: &mut self.2,
+        }
+    }
+}
+
+/// Injected Windows projection: a QA HKCU prefix and shell folders, never the real ones.
+struct Shell {
+    context: Context,
+    payload: PathBuf,
+    registry: String,
+    folders: PathBuf,
+}
+impl Drop for Shell {
+    fn drop(&mut self) {
+        let _ = windows_registry::CURRENT_USER.remove_tree(&self.registry);
+    }
+}
+/// Real `ACCESS_DENIED` for new files of one QA directory; the ACE is always removed.
+struct Denied(PathBuf);
+impl Denied {
+    fn new(path: &Path) -> Self {
+        Self::icacls(path, "/deny", "*S-1-1-0:(WD)");
+        Self(path.to_path_buf())
+    }
+    fn icacls(path: &Path, action: &str, entry: &str) {
+        qa_path(path).expect("QA guard");
+        let system = PathBuf::from(std::env::var_os("WINDIR").expect("Windows root"));
+        let status = Command::new(system.join("System32/icacls.exe"))
+            .arg(path)
+            .args([action, entry])
+            .creation_flags(0x0800_0000)
+            .stdout(Stdio::null())
+            .status()
+            .expect("icacls");
+        assert!(status.success(), "icacls {action}");
+    }
+}
+impl Drop for Denied {
+    fn drop(&mut self) {
+        Self::icacls(&self.0, "/remove:d", "*S-1-1-0");
+    }
+}
+
+impl Fixture {
+    fn shell(&self) -> Shell {
+        self.shell_in(self.path.join("shell"))
+    }
+    fn shell_in(&self, folders: PathBuf) -> Shell {
+        let registry = format!(
+            "Software\\VantareInstallerMatrix\\{}",
+            disk::id().expect("hive ID")
+        );
+        let payload = self.path.join("payload");
+        fs::create_dir_all(&payload).expect("payload");
+        fs::write(payload.join("Uninstall.exe"), inert_pe()).expect("inert uninstaller");
+        fs::write(payload.join("installer-notices.txt"), b"notices").expect("notices");
+        Shell {
+            context: Context::isolated(
+                self.path.join("LocalAppData"),
+                registry.clone(),
+                folders.clone(),
+            )
+            .expect("isolated context"),
+            payload,
+            registry,
+            folders,
+        }
+    }
+    /// Same composition as the product `Session`: Probe carries the stored
+    /// options, then one engine transaction ends in the real `shell::sync`.
+    fn setup(
+        &self,
+        shell: &Shell,
+        package: &Package,
+        mode: Mode,
+        autostart: Option<bool>,
+    ) -> disk::Result<()> {
+        let root = disk::path(&self.root)?;
+        let arguments = Args {
+            root: Some(root.clone()),
+            ..Args::default()
+        };
+        let mut request = engine::Request::new(&arguments, engine::Operation::Install);
+        let found = shell.context.probe(&request)?;
+        (request.mode, request.desktop) = (mode, found.desktop);
+        request.autostart = autostart.unwrap_or(found.autostart);
+        let previous = engine::context::options(&root, false)?;
+        let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+        operations::install(
+            &root,
+            &package.borrowed(),
+            mode,
+            &mut sink.control(&cancel),
+            |control, restoring, projection| {
+                let options = engine::shell::Options {
+                    request: &request,
+                    previous: previous.as_ref(),
+                    payload: &shell.payload,
+                    restoring,
+                };
+                engine::shell::sync(
+                    &root,
+                    &shell.context,
+                    projection,
+                    &options,
+                    control.progress,
+                    control.warning,
+                )
+            },
+            || Ok(()),
+        )
+    }
+    fn remove(&self, shell: &Shell) -> disk::Result<()> {
+        let root = disk::path(&self.root)?;
+        let arguments = Args {
+            root: Some(root.clone()),
+            uninstall: true,
+            ..Args::default()
+        };
+        let request = engine::Request::new(&arguments, engine::Operation::Uninstall);
+        let previous = engine::context::options(&root, true)?;
+        let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+        operations::uninstall(&root, &mut sink.control(&cancel), |control| {
+            let options = engine::shell::Options {
+                request: &request,
+                previous: previous.as_ref(),
+                payload: &shell.payload,
+                restoring: false,
+            };
+            engine::shell::sync(
+                &root,
+                &shell.context,
+                None,
+                &options,
+                control.progress,
+                control.warning,
+            )
+        })
+    }
+    /// Opaque user tree as the Electron Hub leaves it: a damaged ("protected")
+    /// document, unknown and read-only files, Chromium-like names, empty folders.
+    fn write_documents(&self) {
+        let data = self.data();
+        let documents: [(&str, &[u8]); 6] = [
+            ("hub/hub-settings.json", b"{protected-after-start"),
+            ("hub/hub-ui/Local State", b"{\"profile\":1}"),
+            ("hub/hub-ui/Local Storage/leveldb/3.log", b"\0leveldb\xff"),
+            ("Vantare/native/layout.json", b"{\"revision\":7}"),
+            ("Vantare/native/rights.bin", b"read-only"),
+            ("desconocido sin extensión", b""),
+        ];
+        for (name, bytes) in documents {
+            let path = data.join(name);
+            fs::create_dir_all(path.parent().expect("parent")).expect("user folders");
+            fs::write(path, bytes).expect("user document");
+        }
+        fs::create_dir_all(data.join("hub/hub-ui/Cache/vacía")).expect("empty folder");
+        let path = data.join("Vantare/native/rights.bin");
+        let mut permissions = fs::metadata(&path).expect("metadata").permissions();
+        permissions.set_readonly(true);
+        fs::set_permissions(path, permissions).expect("read-only document");
+    }
+}
+
+/// Start menu and Startup run the root launcher of this root, never the host or Electron.
+fn assert_launcher_links(fixture: &Fixture, shell: &Shell, startup: bool) {
+    let root = disk::path(&fixture.root).expect("root");
+    let launch = format!("--root -Root \"{}\"", root.display());
+    let mut links = vec![(
+        "Programs/Vantare/Vantare Simracing Suite.lnk",
+        launch.clone(),
+    )];
+    if startup {
+        links.push(("Startup/Vantare.lnk", format!("{launch} --background")));
+    }
+    for (name, arguments) in links {
+        let bytes = fs::read(shell.folders.join(name)).expect("own link");
+        assert!(contains(&bytes, &utf16(&arguments)), "{name}");
+        for foreign in ["vantare-hub", "hub-ui"] {
+            assert!(
+                !contains(&bytes, &utf16(foreign)) && !contains(&bytes, foreign.as_bytes()),
+                "{name}: {foreign}"
+            );
+        }
+    }
+}
+
+#[test]
+fn fresh_setup_installs_the_electron_tree_behind_the_root_launcher() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    fixture
+        .setup(&shell, &fixture.electron("1.0.0"), Mode::Auto, Some(true))
+        .unwrap();
+    let view = verified(&fixture.root).unwrap();
+    assert_eq!(view.installed_version(), Some("1.0.0"));
+    assert_eq!(view.manifest.as_ref().unwrap().engine(), 2);
+    let active = fixture.active();
+    for name in HUB_UI {
+        assert!(active.join("hub-ui").join(name).is_file(), "{name}");
+    }
+    assert_eq!(children(&active.join("data")), 0);
+    assert!(!fixture.root.join("boot-pending.json").exists());
+    assert_eq!(
+        fs::read(fixture.root.join("Vantare.exe")).unwrap(),
+        fs::read(active.join("bin/vantare.exe")).unwrap()
+    );
+    assert_launcher_links(&fixture, &shell, true);
+    assert_eq!(
+        shell.context.install_location().unwrap(),
+        Some(disk::path(&fixture.root).unwrap().display().to_string())
+    );
+}
+
+#[test]
+fn relay_from_a_gpui_motor_two_generation_copies_data_and_keeps_options_and_links() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    fixture
+        .setup(&shell, &fixture.package("1.0.0"), Mode::Auto, Some(true))
+        .unwrap();
+    fixture.write_documents();
+    let old = fixture.active();
+    let before = index(&old.join("data"));
+    let options = fs::read(fixture.root.join("installer-ui.json")).unwrap();
+    fixture
+        .setup(&shell, &fixture.electron("1.0.1"), Mode::Auto, None)
+        .unwrap();
+    let view = verified(&fixture.root).unwrap();
+    assert_eq!(view.installed_version(), Some("1.0.1"));
+    let new = fixture.active();
+    assert!(new.join(ELECTRON).is_file() && !old.join("hub-ui").exists());
+    assert_eq!(index(&new.join("data")), before);
+    assert_eq!(index(&old.join("data")), before);
+    let copied = fs::metadata(new.join("data/Vantare/native/rights.bin")).unwrap();
+    assert!(copied.permissions().readonly());
+    assert_eq!(
+        view.state.unwrap().previous.unwrap().generation,
+        old.file_name().unwrap().to_string_lossy()
+    );
+    assert_eq!(
+        fs::read(fixture.root.join("installer-ui.json")).unwrap(),
+        options
+    );
+    let launcher = fs::read(fixture.root.join("Vantare.exe")).unwrap();
+    assert_eq!(launcher, fs::read(new.join("bin/vantare.exe")).unwrap());
+    assert_ne!(launcher, fs::read(old.join("bin/vantare.exe")).unwrap());
+    assert_launcher_links(&fixture, &shell, true);
+    let marker = disk::read_json(&fixture.root.join("boot-pending.json"), None).unwrap();
+    assert_eq!(marker["version"], "1.0.1");
+}
+
+#[test]
+fn rollback_after_the_relay_returns_to_gpui_and_keeps_both_data_snapshots_apart() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    fixture.write_documents();
+    let old = fixture.active();
+    let before = index(&old.join("data"));
+    fixture
+        .install(&fixture.electron("1.0.1"), Mode::Auto, false, false)
+        .unwrap();
+    let new = fixture.active();
+    // B wrote its own documents before failing to confirm its boot.
+    fs::write(new.join("data/hub/hub-settings.json"), b"{\"by\":\"B\"}").unwrap();
+    fs::write(new.join("data/hub/hub-ui/Preferences"), b"{}").unwrap();
+    let diverged = index(&new.join("data"));
+    assert_ne!(diverged, before);
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    assert_eq!(fixture.active(), old);
+    assert_eq!(index(&old.join("data")), before);
+    assert_eq!(index(&new.join("data")), diverged);
+    let launcher = fs::read(fixture.root.join("Vantare.exe")).unwrap();
+    assert_eq!(launcher, fs::read(old.join("bin/vantare.exe")).unwrap());
+    assert_ne!(launcher, fs::read(new.join("bin/vantare.exe")).unwrap());
+    let status = disk::read_json(&fixture.root.join("update-status.json"), None).unwrap();
+    assert_eq!(status["state"], "rollback");
+    assert_eq!(status["rejectedVersion"], "1.0.1");
+}
+
+#[test]
+fn repair_restores_a_damaged_electron_tree_and_keeps_the_data() {
+    let fixture = Fixture::new();
+    let package = fixture.electron("1.0.0");
+    fixture.install(&package, Mode::Auto, false, false).unwrap();
+    fixture.write_documents();
+    let old = fixture.active();
+    let before = index(&old.join("data"));
+    fs::write(old.join(ASAR), b"tampered").unwrap();
+    fs::remove_file(old.join("hub-ui/locales/es.pak")).unwrap();
+    assert!(verified(&fixture.root).is_err());
+    let other = fixture.electron("1.0.1");
+    assert_eq!(
+        fixture
+            .install(&other, Mode::Repair, false, false)
+            .unwrap_err()
+            .code,
+        3
+    );
+    fixture
+        .install(&package, Mode::Repair, false, false)
+        .unwrap();
+    let view = verified(&fixture.root).unwrap();
+    assert_eq!(view.installed_version(), Some("1.0.0"));
+    assert!(view.state.unwrap().previous.is_none());
+    let new = fixture.active();
+    assert_ne!(new, old);
+    assert_eq!(fs::read(new.join(ASAR)).unwrap(), b"fixture");
+    assert_eq!(index(&new.join("data")), before);
+    assert_eq!(index(&old.join("data")), before);
+}
+
+#[test]
+fn older_setup_is_rejected_over_electron_without_touching_the_generation() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.electron("1.0.1"), Mode::Auto, false, false)
+        .unwrap();
+    fixture.write_documents();
+    let tree = index(&fixture.root.join("generations"));
+    let state = fs::read(fixture.root.join("state.json")).unwrap();
+    for older in [fixture.package("1.0.0"), fixture.electron("1.0.0")] {
+        assert_eq!(
+            fixture
+                .install(&older, Mode::Auto, false, false)
+                .unwrap_err()
+                .code,
+            3
+        );
+    }
+    assert_eq!(fs::read(fixture.root.join("state.json")).unwrap(), state);
+    assert_eq!(index(&fixture.root.join("generations")), tree);
+    assert_eq!(children(&fixture.root.join("staging")), 0);
+}
+
+/// One fault while Setup relays GPUI to Electron: the GPUI generation stays
+/// active, nothing of the failed attempt remains and a retry succeeds.
+fn relay_fault(fault: &str) {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .expect("GPUI generation");
+    fixture.write_documents();
+    let old = fixture.active();
+    let before = index(&old.join("data"));
+    let state = fs::read(fixture.root.join("state.json")).expect("state");
+    let electron = fixture.electron("1.0.1");
+    // The root accepts no new file: neither the boot marker nor a restored state.
+    let denied = (fault == "access-denied").then(|| Denied::new(&fixture.root));
+    let busy = (fault == "busy-document").then(|| {
+        fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(old.join("data/hub/hub-settings.json"))
+            .expect("exclusive document")
+    });
+    let cancel = AtomicBool::new(false);
+    // ERROR_DISK_FULL once the data copy has finished. A volume that is
+    // really full is not reproduced on the server or in CI.
+    let mut checkpoint = |point: &str| {
+        if fault == "disk-full" && point == "staged" {
+            return Err(engine::WriteError::from(std::io::Error::from_raw_os_error(
+                112,
+            )));
+        }
+        Ok(())
+    };
+    let mut control = Control {
+        cancel: &cancel,
+        progress: &mut |_| {},
+        checkpoint: &mut checkpoint,
+        warning: &mut |message| eprintln!("{message}"),
+    };
+    let error = operations::install(
+        &fixture.root,
+        &electron.borrowed(),
+        Mode::Auto,
+        &mut control,
+        |_, _, _| panic!("a failed relay cannot reach the Windows projection"),
+        || Ok(()),
+    )
+    .expect_err(fault);
+    drop((denied, busy));
+    assert_eq!(error.code, 1, "{fault}");
+    let after = fs::read(fixture.root.join("state.json")).expect("state");
+    assert_eq!(after, state, "{fault}");
+    assert_eq!(fixture.active(), old, "{fault}");
+    assert_eq!(index(&old.join("data")), before, "{fault}");
+    assert_eq!(children(&fixture.root.join("generations")), 1, "{fault}");
+    assert_eq!(children(&fixture.root.join("staging")), 0, "{fault}");
+    assert!(!fixture.root.join("boot-pending.json").exists(), "{fault}");
+    fixture
+        .install(&electron, Mode::Auto, false, false)
+        .expect(fault);
+    assert_eq!(index(&fixture.data()), before, "{fault}");
+}
+
+#[test]
+fn injected_disk_full_during_the_relay_keeps_gpui_active_and_can_be_retried() {
+    relay_fault("disk-full");
+}
+
+#[test]
+fn read_only_root_during_the_relay_keeps_gpui_active_and_can_be_retried() {
+    relay_fault("access-denied");
+}
+
+#[test]
+fn busy_document_during_the_relay_keeps_gpui_active_and_can_be_retried() {
+    relay_fault("busy-document");
+}
+
+#[test]
+fn open_electron_image_blocks_setup_repair_and_uninstall_before_any_change() {
+    let fixture = Fixture::new();
+    let package = fixture.electron("1.0.0");
+    fixture.install(&package, Mode::Auto, false, false).unwrap();
+    fixture.write_documents();
+    let tree = index(&fixture.root.join("generations"));
+    let state = fs::read(fixture.root.join("state.json")).unwrap();
+    let image = hold(&fixture.active().join(ELECTRON));
+    for (incoming, mode) in [
+        (fixture.electron("1.0.1"), Mode::Auto),
+        (package, Mode::Repair),
+    ] {
+        assert_eq!(
+            fixture
+                .install(&incoming, mode, false, false)
+                .unwrap_err()
+                .code,
+            2
+        );
+    }
+    let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+    let error = operations::uninstall(&fixture.root, &mut sink.control(&cancel), |_| {
+        panic!("a blocked uninstall cannot reach the Windows projection")
+    })
+    .unwrap_err();
+    assert_eq!(error.code, 2);
+    drop(image);
+    assert_eq!(fs::read(fixture.root.join("state.json")).unwrap(), state);
+    assert_eq!(index(&fixture.root.join("generations")), tree);
+    assert!(!fixture.root.join("retained-data.json").exists());
+}
+
+#[test]
+fn startup_and_foreign_links_survive_the_relay_and_uninstall() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    // Another installation of the same user owns its accesses in the same folders.
+    let other = Fixture::new();
+    let other_shell = other.shell_in(shell.folders.clone());
+    other
+        .setup(
+            &other_shell,
+            &other.electron("1.0.0"),
+            Mode::Auto,
+            Some(true),
+        )
+        .unwrap();
+    let mut foreign: Vec<_> = [
+        "Programs/Vantare/Vantare Simracing Suite.lnk",
+        "Programs/Vantare/Desinstalar.lnk",
+        "DesktopDirectory/Vantare Simracing Suite.lnk",
+        "Startup/Vantare.lnk",
+    ]
+    .into_iter()
+    .map(|name| shell.folders.join(name))
+    .map(|path| (fs::read(&path).unwrap(), path))
+    .collect();
+    let intact = |foreign: &[(Vec<u8>, PathBuf)]| {
+        for (bytes, path) in foreign {
+            assert_eq!(&fs::read(path).unwrap(), bytes, "{}", path.display());
+        }
+    };
+    // Its mandatory accesses stop this Setup before anything is activated.
+    assert!(
+        fixture
+            .setup(&shell, &fixture.electron("1.0.0"), Mode::Auto, Some(true))
+            .is_err()
+    );
+    assert!(!fixture.root.join("state.json").exists());
+    intact(&foreign);
+    // Only its desktop and Startup accesses remain from here on.
+    for (_, path) in foreign.drain(..2) {
+        fs::remove_file(path).unwrap();
+    }
+    fixture
+        .setup(&shell, &fixture.package("1.0.0"), Mode::Auto, Some(false))
+        .unwrap();
+    fixture
+        .setup(&shell, &fixture.electron("1.0.1"), Mode::Auto, None)
+        .unwrap();
+    assert_launcher_links(&fixture, &shell, false);
+    intact(&foreign);
+    // Asking for autostart cannot take the foreign access over: Setup fails and restores.
+    operations::confirm(&fixture.root).unwrap();
+    assert!(
+        fixture
+            .setup(&shell, &fixture.electron("1.0.2"), Mode::Auto, Some(true))
+            .is_err()
+    );
+    assert_eq!(
+        verified(&fixture.root).unwrap().installed_version(),
+        Some("1.0.1")
+    );
+    intact(&foreign);
+    fixture.remove(&shell).unwrap();
+    intact(&foreign);
+    assert!(!shell.folders.join("Programs/Vantare").exists());
+    assert_eq!(
+        verified(&other.root).unwrap().installed_version(),
+        Some("1.0.0")
+    );
+}
+
+#[test]
+fn uninstall_retires_every_own_electron_member_and_keeps_data_and_foreign_files() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    fixture
+        .setup(&shell, &fixture.package("1.0.0"), Mode::Auto, Some(true))
+        .unwrap();
+    fixture.write_documents();
+    let old = fixture.active();
+    fixture
+        .setup(&shell, &fixture.electron("1.0.1"), Mode::Auto, None)
+        .unwrap();
+    let new = fixture.active();
+    fs::write(new.join("data/hub/hub-settings.json"), b"{\"by\":\"B\"}").unwrap();
+    let data = [&old, &new].map(|generation| index(&generation.join("data")));
+    assert_ne!(data[0], data[1]);
+    let foreign = [
+        "hub-ui/debug.log",
+        "hub-ui/resources/ajeno.bin",
+        "bin/foreign.dll",
+    ];
+    for name in foreign {
+        fs::write(new.join(name), name).unwrap();
+    }
+    // The shared reader of Setup and Repair refuses a generation with unlisted
+    // files; uninstalling and installing again (below) keeps the data.
+    assert!(matches!(
+        Installation::read(&fixture.root),
+        Err(engine::ReadError::Invalid(_))
+    ));
+    // A member kept open by another program stops the retirement; it can be resumed.
+    let asar = hold(&new.join(ASAR));
+    assert!(fixture.remove(&shell).is_err());
+    assert!(fixture.root.join("state.json").is_file());
+    assert!(shell.context.has_registration().unwrap());
+    drop(asar);
+    fixture.remove(&shell).unwrap();
+    for (generation, members) in [(&old, test_members()), (&new, electron_members())] {
+        for member in members.iter().map(String::as_str).chain(["manifest.json"]) {
+            assert!(!generation.join(member).exists(), "{member}");
+        }
+    }
+    assert!(!old.join("bin").exists() && !new.join("hub-ui/locales").exists());
+    for name in foreign {
+        assert_eq!(fs::read(new.join(name)).unwrap(), name.as_bytes(), "{name}");
+    }
+    assert_eq!(
+        [&old, &new].map(|generation| index(&generation.join("data"))),
+        data
+    );
+    let retained = disk::read_json(&fixture.root.join("retained-data.json"), None).unwrap();
+    assert_eq!(retained["version"], "1.0.1");
+    assert_eq!(
+        retained["generation"],
+        *new.file_name().unwrap().to_string_lossy()
+    );
+    assert!(!fixture.root.join("state.json").exists());
+    assert!(!fixture.root.join("Vantare.exe").exists());
+    assert!(!shell.context.has_registration().unwrap());
+    assert!(!shell.folders.join("Programs/Vantare").exists());
+    assert!(!shell.folders.join("Startup/Vantare.lnk").exists());
+    // Installing again adopts the newest retained copy; an older Setup is refused.
+    assert_eq!(
+        fixture
+            .install(&fixture.electron("1.0.0"), Mode::Auto, false, false)
+            .unwrap_err()
+            .code,
+        3
+    );
+    fixture
+        .install(&fixture.electron("1.0.1"), Mode::Auto, false, false)
+        .unwrap();
+    assert_eq!(index(&fixture.data()), data[1]);
+    assert_eq!(index(&old.join("data")), data[0]);
+}
+
+#[test]
+fn motor_one_relay_never_returns_to_the_old_launcher_and_repair_keeps_the_data() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    fixture
+        .install(
+            &fixture.package_with_engine("1.0.0", None, 1),
+            Mode::Auto,
+            false,
+            false,
+        )
+        .unwrap();
+    fixture.write_documents();
+    let old = fixture.active();
+    let before = index(&old.join("data"));
+    assert!(!fixture.root.join("Vantare.exe").exists());
+    let electron = fixture.electron("1.0.1");
+    fixture
+        .setup(&shell, &electron, Mode::Auto, Some(false))
+        .unwrap();
+    let new = fixture.active();
+    assert_eq!(index(&new.join("data")), before);
+    // The Electron generation never confirms its boot.
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::RepairRequired
+    );
+    assert_eq!(fixture.active(), new);
+    let launcher = fs::read(fixture.root.join("Vantare.exe")).unwrap();
+    assert_eq!(launcher, fs::read(new.join("bin/vantare.exe")).unwrap());
+    assert_ne!(launcher, fs::read(old.join("bin/vantare.exe")).unwrap());
+    assert_launcher_links(&fixture, &shell, false);
+    let status = disk::read_json(&fixture.root.join("update-status.json"), None).unwrap();
+    assert_eq!(status["state"], "repair");
+    assert_eq!(index(&old.join("data")), before);
+    fixture
+        .setup(&shell, &electron, Mode::Repair, None)
+        .unwrap();
+    let repaired = fixture.active();
+    assert_ne!(repaired, new);
+    assert_eq!(
+        verified(&fixture.root).unwrap().installed_version(),
+        Some("1.0.1")
+    );
+    assert_eq!(index(&repaired.join("data")), before);
+    assert_eq!(index(&old.join("data")), before);
 }

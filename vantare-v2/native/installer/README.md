@@ -216,7 +216,8 @@ La señal de readiness es una fixture; el arranque live requiere otro SID/VM.
 ## Escritura Rust — #1840, pasos4–5
 
 `operations` comparte instalación/actualización/reparación y retirada; `package`
-conserva SHA externo, miembros exactos, hashes/PE/sidecars, límites128/256/512MiB
+conserva SHA externo, miembros exactos, hashes/PE/sidecars, límites 256/256/768 MiB
+(ZIP, miembro y total expandido; #2528)
 y rechazo de enlaces. Comprueba también las entradas crudas del directorio ZIP,
 porque un índice por nombre podría ocultar duplicados. `write_fs` mantiene
 NTFS/replace atómico, locks, guarda de imágenes vivas y copias verificadas con
@@ -286,3 +287,32 @@ antes/después para detectar cambios concurrentes: no se confunden con los antig
 recálculos completos de la generación anterior. Probe de la UI es una petición
 anterior y separada de la mutación. No se afirma unicidad global del motor mientras
 Feed, Register y SetStartup sigan en PowerShell hasta los pasos6–7.
+
+## Generación con Electron — #1995, P4 (ISA-2737)
+
+El motor no distingue tecnologías: instala lo que enumera el manifiesto
+autenticado del paquete. La generación nueva lleva el anfitrión Rust como
+`bin/vantare-hub.exe` y el árbol cerrado `hub-ui/` junto a `bin`. No cambian
+el manifiesto, `state.json`, el motor 2, la raíz ni los accesos.
+
+El bloque final de `tests/installation_write.rs` lo prueba con las rutas reales
+de `hub-ui` (recibo de P3) y bytes inertes, con HKCU y carpetas inyectados y el
+`shell::sync` real. No arranca Electron, el anfitrión ni ventanas:
+
+| Caso | Qué comprueba |
+| --- | --- |
+| Instalación nueva | Árbol `hub-ui` completo; menú e Inicio apuntan a `Vantare.exe` de la raíz |
+| Relevo GPUI motor 2 → Electron | Datos copiados byte a byte; opciones y accesos conservados; la anterior es GPUI |
+| Vuelta atrás tras el relevo | Vuelve a GPUI con sus datos; lo que escribió la nueva queda en su carpeta |
+| Reparar | Sustituye un `hub-ui` dañado con la misma versión y conserva los datos |
+| Versión antigua | Rechazada (código 3) sin tocar nada |
+| Fallos durante el relevo | Disco lleno (inyectado), raíz sin permiso de escritura y documento ocupado: la anterior sigue activa y se puede reintentar |
+| Electron abierto | Setup, Reparar y Desinstalar se detienen (código 2) sin cerrar la aplicación |
+| Accesos ajenos | Los de otra instalación ni se pisan ni se borran |
+| Desinstalar | Retira todos los miembros propios y conserva `data` y lo ajeno; reinstalar recupera los datos |
+| Motor 1 | No vuelve al lanzador antiguo; tras un arranque fallido pide Reparar y conserva los datos |
+
+Límites conocidos que este paso no cambia: el lector compartido rechaza una
+generación con archivos no enumerados (Setup y Reparar se detienen; desinstalar
+y volver a instalar conserva los datos), y las generaciones que dejan de estar
+referenciadas no se retiran solas.

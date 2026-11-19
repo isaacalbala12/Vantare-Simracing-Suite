@@ -382,8 +382,13 @@ de ciclo de vida. La medición tiene su propio protocolo.
    `visual_utc` menos cinco minutos y el fin a `visual_utc`. El v2 comprueba
    Python antes de consultar sesión y discos.
 2. Guardar `cita.json` con `preflight_utc` y `visual_utc` en UTC
-   `yyyy-MM-ddTHH:mm:ssZ`, `source_sha`, `zip_sha256` y `preflight_sha256`
+   `yyyy-MM-ddTHH:mm:ssZ`, `source_sha`, `zip_sha256`, `preflight_sha256`,
+   `launcher_sha256` y `task_sha256` (de los dos scripts de la tarea)
    en minúsculas y rutas absolutas `zip`, `kit`, `preflight` y `output`.
+   Fijar `modo` a `real`. `ensayo` requiere el guard sin gráficos y nunca
+   selecciona TANDA en modo Servidor. Una variable Machine no elige el modo.
+   El ZIP debe incluir un TANDA con `-CitaProgramada`. Si el kit anterior no
+   lo admite, hay que preparar y aprobar un ZIP nuevo para la siguiente cita.
    Usar el hash del ZIP aprobado para la cita. La salida real es
    `D:/VantareServer/evidence/overlays-rune`.
 3. Preparar una acción con la ruta absoluta de PowerShell 7 y argumentos
@@ -393,12 +398,15 @@ de ciclo de vida. La medición tiene su propio protocolo.
    En el registro real, el Programador solicita la contraseña en su interfaz,
    con «Ejecutar tanto si el usuario inició sesión como si no» y acceso de red
    para el SSH ya configurado. Disparador único, una instancia (`IgnoreNew`),
-   cero reinicios y cero arranques tardíos.
+   cero reinicios y cero arranques tardíos. Verificar la tarea ya registrada
+   con `Assert-CitaRegisteredTask <nombre> $action <cuenta> $at`; lee el XML
+   del Programador y coteja principal Password, disparador y acción fijada.
 4. Para cancelar antes de la tanda, crear
    `D:/VantareServer/qa/CITA-CANCELAR`. Se comprueba al inicio, antes y
    después del preflight y mientras el controlador espera el inicio visual.
-   Cuando toma el control TANDA, se aplican su limpieza, límite de 72 minutos
-   y salvaguardas de apagado. Un aborto de TANDA deja el equipo encendido.
+   Si no se puede enumerar la carpeta de control en D:, se aborta. TANDA
+   vuelve a comprobar antes de copiar, arrancar el trabajador y solicitar el
+   apagado, después de verificar la evidencia. Un aborto deja el equipo encendido.
    La salida gráfica se ejecuta solo en el PC.
 5. Leer `RESULTADO-CITA-<UTC>.json`, su línea `.txt` y el log indicado.
    El `.lock` impide volver a ejecutar la misma cita. Un preflight no
@@ -410,3 +418,21 @@ de ciclo de vida. La medición tiene su propio protocolo.
 be17532a5 y usa su preflight v2 archivado. El caso positivo ejecuta
 `TANDA -Modo Ensayo` con el guard 6.
 El ensayo guarda el log y retira su tarea.
+
+El ensayo S4U no valida las credenciales SSH del principal Password.
+Antes de registrar la cita real, la raíz debe repetir una prueba de red
+con la cuenta Administrator y un host SSH de pruebas autorizado, distinto
+del PC de juego:
+
+1. Preparar un script temporal que ejecute una única consulta inocua
+   `ssh.exe -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes <usuario@host-de-prueba> "exit 0"`.
+   Fijar la ruta absoluta local de ssh.exe. Guardar stderr y el código local
+   en un log, devolver ese código y usar el known_hosts del mismo usuario.
+2. Crear una tarea desechable `VantareCitaEnsayoRed` con
+   `New-CitaTaskDefinition $action $at <cuenta>`, sin `-SinRed`, a +3 min.
+   Registrar desde la interfaz con «Ejecutar tanto si el usuario inició
+   sesión como si no», contraseña de la cuenta y acceso de red. Cerrar su
+   sesión interactiva del servidor antes de la hora.
+3. Desde otra cuenta verificar en el XML exportado `LogonType=Password`,
+   SID y acción, y exigir `LastTaskResult=0` y código SSH 0 en el log.
+   Retirar solo la tarea de prueba. Si falla, no registrar la cita.

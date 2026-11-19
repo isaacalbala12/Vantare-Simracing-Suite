@@ -7,7 +7,7 @@ $taskName='VantareCitaEnsayo'
 
 if($EjecutarCasos){
  $env:VANTARE_SIN_GRAFICOS='1'
- $cases=@('timeout','python310','sin-python','fuera-ventana','cancelado','cancelado-entre-pasos','zip-distinto','python313')
+ $cases=@('timeout','python310','sin-python','fuera-ventana','cancelado','cancelado-real','cancelado-entre-pasos','zip-distinto','preflight-distinto','staging-distinto','config-distinta','python313')
  $original='D:/VantareServer/evidence/overlays-rune/PREFLIGHT-VISUAL-20261119-v2.ps1'
  $source=[IO.File]::ReadAllText($original)
  $fakeSsh=@"
@@ -33,6 +33,17 @@ function ssh {
  $sha='be17532a5817371bc44ed181512172003b0c57ce'
  $zipSha='2c326a8d64ad506789acb363a637999e3982293aca0ab842b434403542bfaae1'
  $log=Join-Path $Salida 'ensayo.log'
+ $tanda=Join-Path $PSScriptRoot 'TANDA.ps1'
+ & $tanda -Modo Servidor -SoloVisual -CitaProgramada -ValidarEnlace -Kit $kit -PythonExe 'C:/Python313/python.exe' -NoAntesUtc '2026-11-19T01:00:00Z' -LimiteUtc '2026-11-19T02:12:00Z' -DestinoServidor $Salida
+ Add-Content -LiteralPath $log 'PASS parámetros Servidor del TANDA de producción enlazados sin ejecución.'
+ & {
+  . $tanda -SoloFunciones -CitaProgramada
+  function Get-Item {throw 'Unidad de control inaccesible (simulada)'}
+  $refused=$false
+  try{Assert-TandaCitaContinues}catch{$refused=$_.Exception.Message -eq 'Unidad de control inaccesible (simulada)'}
+  if(-not $refused){throw 'El servidor continuó con la carpeta de control inaccesible'}
+ }
+ Add-Content -LiteralPath $log 'PASS TANDA falla cerrado cuando no puede comprobar la carpeta de control.'
  Add-Content -LiteralPath $log "Inicio real de la tarea UTC $([DateTimeOffset]::UtcNow.ToString('o')) PID $PID; VANTARE_SIN_GRAFICOS=1; SSH falso."
  try{
   foreach($case in $cases){
@@ -54,16 +65,40 @@ function ssh {
     preflight_utc=$fromUtc; visual_utc=$startUtc; source_sha=$sha
     zip_sha256=if($case -eq 'zip-distinto'){'0'*64}else{$zipSha}
     preflight_sha256=(Get-FileHash -LiteralPath $preflight).Hash.ToLowerInvariant()
-    output=$root.FullName; preflight=$preflight; zip=$zip; kit=$kit
+    output=$root.FullName; preflight=$preflight; zip=$zip; kit=$kit; modo='ensayo'
+    launcher_sha256=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'LANZAR-CITA.ps1')).Hash.ToLowerInvariant()
+    task_sha256=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'TAREA-CITA.ps1')).Hash.ToLowerInvariant()
    }|ConvertTo-Json | Set-Content -LiteralPath $config
    if($case -eq 'cancelado'){New-Item -ItemType File -Path (Join-Path $root 'CITA-CANCELAR')|Out-Null}
    $env:VANTARE_CITA_TEST=$case
-   $out=@(& $pwsh -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot 'LANZAR-CITA.ps1') -Cita $config -CitaSha256 (Get-FileHash -LiteralPath $config).Hash 2>&1)
-   $exit=$LASTEXITCODE
+   $configHash=(Get-FileHash -LiteralPath $config).Hash
+   $preflightBytes=[IO.File]::ReadAllBytes($preflight)
+   $extra=Join-Path $kit 'EXTRA-ENSAYO.txt'
+   $cancelFile='D:/VantareServer/qa/CITA-CANCELAR'
+   $ownsSignal=$false
+   try{
+    switch($case){
+     'cancelado-real'{$stream=[IO.File]::Open($cancelFile,[IO.FileMode]::CreateNew);$ownsSignal=$true;$stream.Dispose()}
+     'preflight-distinto'{Add-Content -LiteralPath $preflight '# cambiado tras autorizar'}
+     'config-distinta'{Add-Content -LiteralPath $config ' '}
+     'staging-distinto'{Set-Content -LiteralPath $extra 'fichero ajeno al ZIP'}
+    }
+    $out=@(& $pwsh -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot 'LANZAR-CITA.ps1') -Cita $config -CitaSha256 $configHash 2>&1)
+    $exit=$LASTEXITCODE
+   }finally{
+    if($ownsSignal){Remove-Item -LiteralPath $cancelFile}
+    if($case -eq 'preflight-distinto'){[IO.File]::WriteAllBytes($preflight,$preflightBytes)}
+    if($case -eq 'staging-distinto'){Remove-Item -LiteralPath $extra}
+   }
+   if($case -eq 'config-distinta'){
+    if($exit -eq 0 -or (Get-ChildItem -LiteralPath $root -Filter 'RESULTADO-CITA-*') -or (Test-Path -LiteralPath (Join-Path $Salida "ssh-$case"))){throw 'Config no autorizada aceptada'}
+    Add-Content -LiteralPath $log 'PASS configuración distinta, sin SSH ni resultado en ruta no autorizada.'
+    continue
+   }
    $result=Get-ChildItem -LiteralPath $root -Filter 'RESULTADO-CITA-*.json' | Get-Content -Raw | ConvertFrom-Json
    $summary=Get-ChildItem -LiteralPath $root -Filter 'RESULTADO-CITA-*.txt' | Get-Content -Raw
    $contact=Test-Path -LiteralPath (Join-Path $Salida "ssh-$case")
-   $expectContact=$case -notin @('fuera-ventana','cancelado','zip-distinto')
+   $expectContact=$case -notin @('fuera-ventana','cancelado','cancelado-real','zip-distinto','preflight-distinto','staging-distinto')
    if($contact -ne $expectContact){throw "Contacto SSH falso inesperado en $case : $($result.reason) / $($out -join ' ')"}
    if($contact){
     $sshPid=[int](Get-Content -LiteralPath (Join-Path $Salida "ssh-$case"))
@@ -86,8 +121,11 @@ function ssh {
     'sin-python'{'Preflight rechazado'}
     'fuera-ventana'{'Fuera de la ventana de preflight'}
     'cancelado'{'CITA-CANCELAR activo'}
+    'cancelado-real'{'CITA-CANCELAR activo'}
     'cancelado-entre-pasos'{'CITA-CANCELAR activo'}
     'zip-distinto'{'SHA-256 del ZIP distinto'}
+    'preflight-distinto'{'SHA-256 del preflight distinto'}
+    'staging-distinto'{'Archivo ajeno al ZIP en staging'}
    }
    if($result.reason -cne $expectedReason){throw "Motivo inesperado de $case : $($result.reason)"}
    if($result.preflight_exit -eq 1 -and -not (Select-String -LiteralPath $result.log -SimpleMatch 'Preflight SSH rechazado: no copiar, lanzar ni apagar' -Quiet)){
@@ -95,6 +133,10 @@ function ssh {
    }
    Add-Content -LiteralPath $log ("PASS {0} exit={1} preflight={2} tanda={3} ssh={4} motivo={5}" -f $case,$exit,$result.preflight_exit,$result.tanda_exit,$contact,$result.reason)
   }
+  $previous=(Get-Item -LiteralPath $result.log).LastWriteTimeUtc
+  $null=& $pwsh -NoProfile -NonInteractive -File (Join-Path $PSScriptRoot 'LANZAR-CITA.ps1') -Cita $config -CitaSha256 $configHash 2>&1
+  if($LASTEXITCODE -eq 0 -or (Get-Item -LiteralPath $result.log).LastWriteTimeUtc -ne $previous){throw 'La segunda ejecución alteró el resultado'}
+  Add-Content -LiteralPath $log 'PASS el lock rechazó el segundo lanzamiento.'
   Add-Content -LiteralPath $log 'PASS todos los casos; no quedan hijos de preflight; guard 6 confirmado en TANDA Ensayo.'
   Set-Content -LiteralPath (Join-Path $Salida 'fin.txt') 'PASS'
  }catch{
@@ -116,6 +158,8 @@ $registered=$false
 try{
  Register-ScheduledTask -TaskName $taskName -InputObject $definition -ErrorAction Stop|Out-Null
  $registered=$true
+ Assert-CitaRegisteredTask $taskName $action ([Security.Principal.WindowsIdentity]::GetCurrent().Name) $at -SinRed
+ Set-Content -LiteralPath (Join-Path $Salida 'ensayo.log') 'PASS XML registrado: SID, S4U, disparador único, acción, duración, instancia única y sin reinicio.'
  $until=$at.AddMinutes(5)
  do{
   Start-Sleep -Seconds 2

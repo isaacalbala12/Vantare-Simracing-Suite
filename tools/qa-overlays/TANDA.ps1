@@ -20,6 +20,8 @@ param(
  [string]$CliSha256QA='',
  [string[]]$LogsQA=@(),
  [switch]$SoloVisual,
+ [switch]$CitaProgramada,
+ [switch]$ValidarEnlace,
  [switch]$SoloFunciones
 )
 $ErrorActionPreference='Stop'
@@ -554,6 +556,7 @@ function Invoke-TandaSsh([string]$Target,[string]$Code){
  $result -join "`n"
 }
 function Invoke-TandaServer([string]$Root){
+ Assert-TandaCitaContinues
  Assert-TandaWindow $NoAntesUtc $LimiteUtc
  if(-not $SoloVisual){Assert-TandaMachineRegistry}
  Assert-TandaPython $PythonExe -SyntaxOnly
@@ -567,6 +570,7 @@ function Invoke-TandaServer([string]$Root){
  $destination=Join-Path $DestinoServidor "tanda-pc-$stamp-$($manifest.source_sha.Substring(0,9))"
  if(Test-Path -LiteralPath $destination){throw 'Destino de evidencia ya existe'}
  $null=Invoke-TandaSsh $Pc "if(Test-Path '$remote'){throw 'Ruta ya existe'};New-Item -ItemType Directory '$remote'|Out-Null"
+ Assert-TandaCitaContinues
  & scp -q -r $Root "${Pc}:$remote/kit"
  if($LASTEXITCODE){throw 'Copia del kit falló; no apagar'}
  $task="Vantare-tanda-$stamp"
@@ -580,6 +584,7 @@ function Invoke-TandaServer([string]$Root){
    $null=Invoke-TandaSsh $Pc "`$a=New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument '$($definition.arguments)';`$p=New-ScheduledTaskPrincipal -UserId 'isaac' -LogonType Interactive -RunLevel Highest;Register-ScheduledTask -TaskName '$($definition.name)' -Action `$a -Principal `$p|Out-Null"
    $registered+= $definition.name
   }
+  Assert-TandaCitaContinues
   $null=Invoke-TandaSsh $Pc "`$ErrorActionPreference='Stop';`$a=New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument '$action';`$p=New-ScheduledTaskPrincipal -UserId 'isaac' -LogonType Interactive -RunLevel Limited;Register-ScheduledTask -TaskName '$task' -Action `$a -Principal `$p|Out-Null;Start-ScheduledTask -TaskName '$task'"
   $registered+=$task
   do {
@@ -608,9 +613,11 @@ function Invoke-TandaServer([string]$Root){
    throw 'Evidencia visual/lifecycle incompleta o de otra tanda: no apagar'
   }
   # ACK solo tras verificar archivo y hashes de CADA fichero en servidor.
+  Assert-TandaCitaContinues
   $hash=(Get-FileHash -LiteralPath (Join-Path $destination 'evidence-hashes.json') -Algorithm SHA256).Hash
   $null=Invoke-TandaSsh $Pc "if(Test-Path '$remote/evidence/copia-servidor.json'){throw 'ACK ya existe'};@{verified=`$true;hash_manifest='$hash';destination='$destination'}|ConvertTo-Json|Set-Content '$remote/evidence/copia-servidor.json' -Encoding utf8"
   $finish=$action.Replace('-Modo Trabajador','-Modo Apagar')
+  Assert-TandaCitaContinues
   $null=Invoke-TandaSsh $Pc "`$a=New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument '$finish';Set-ScheduledTask -TaskName '$task' -Action `$a|Out-Null;Start-ScheduledTask -TaskName '$task'"
   $until=[DateTime]::UtcNow.AddSeconds(75)
   do {
@@ -645,7 +652,14 @@ function Invoke-TandaShutdown([string]$Root,[string]$Output){
  } catch {$result.error=$_.Exception.Message}
  Write-TandaJson $result (Join-Path $Output 'apagado.json')
 }
-if($SoloFunciones){return}
+function Assert-TandaCitaContinues {
+ if(-not $CitaProgramada){return}
+ $directory=Get-Item -LiteralPath 'D:/VantareServer/qa' -ErrorAction Stop
+ if(-not $directory.PSIsContainer -or ($directory.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'No se puede comprobar CITA-CANCELAR'}
+ if(@($directory.EnumerateFileSystemInfos('CITA-CANCELAR')).Count){throw 'CITA-CANCELAR activo: no lanzar ni apagar'}
+}
+if($SoloFunciones -or $ValidarEnlace){return}
+if($CitaProgramada -and ($Modo -cne 'Servidor' -or -not $SoloVisual)){throw 'Cita programada requiere Servidor y SoloVisual'}
 if(-not $SoloVisual -and $Modo -in @('Servidor','Trabajador','Apagar')){
  throw 'BLOCKED_MEASUREMENT_AUTHORIZATION: falta el preflight de autorización de L3; usar el kit visual para la cita'
 }

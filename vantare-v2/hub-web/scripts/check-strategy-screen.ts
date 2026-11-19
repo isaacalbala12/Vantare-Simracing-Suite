@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import type { Locator, Page } from "playwright-core";
 import type { HostToUi, UiToHost } from "../src/contract/generated/contract";
 import { axeClassic } from "./axe-classic";
-import { press, pressKey, until, visible } from "./wait-for";
+import { focused, press, pressKey, until, visible } from "./wait-for";
 
 // Comprobar y capturar son cosas distintas: `verify` (axe, desbordamiento,
 // foco, conducta) corre SIEMPRE; los PNG solo se escriben si se pasa
@@ -822,7 +822,9 @@ async function exercise(
     await saveShot(name);
     if (name === "col-sucio") {
       const more = button(page, "Más acciones de archivo");
+      await focused(page.getByRole("menuitem", { name: "Guardar como…" }));
       await page.keyboard.press("ArrowDown");
+      await focused(page.getByRole("menuitem", { name: "Abrir archivo…" }));
       await page.keyboard.press("Escape");
       await until(
         () =>
@@ -1127,11 +1129,7 @@ async function acceptedStates(page: Page, base: string, shot: Shot) {
   await menu.press("ArrowDown");
   const item = page.getByRole("menuitem", { name: /Quitar plan aceptado/ });
   await visible(item);
-  await until(
-    () => item.evaluate((node) => node === document.activeElement),
-    5000,
-    "focus on the first item of the menu of the accepted plan",
-  );
+  await focused(item);
   await shot("a-menu");
   await page.keyboard.press("Escape");
   await until(
@@ -1151,6 +1149,7 @@ async function acceptedStates(page: Page, base: string, shot: Shot) {
   // removing it asks in the same place, with the focus on the safe button
   await menu.press("ArrowDown");
   await visible(item);
+  await focused(item);
   await page.keyboard.press("Enter");
   const question = page.getByRole("group", {
     name: "¿Quitar el plan aceptado?",
@@ -1392,7 +1391,11 @@ async function unsavedQuestions(page: Page, base: string, shot: Shot) {
   await visible(page.getByRole("heading", { name: "Plan aceptado" }));
   const menu = button(page, "Más acciones del plan aceptado");
   await menu.press("ArrowDown");
-  await visible(page.getByRole("menuitem", { name: /Quitar plan aceptado/ }));
+  const removeItem = page.getByRole("menuitem", {
+    name: /Quitar plan aceptado/,
+  });
+  await visible(removeItem);
+  await focused(removeItem);
   await page.keyboard.press("Enter");
   const remove = page.getByRole("group", { name: "¿Quitar el plan aceptado?" });
   await visible(remove);
@@ -1502,11 +1505,7 @@ async function openExportMenu(page: Page) {
   await exportTrigger(page).press("ArrowDown");
   const first = page.getByRole("menuitem", { name: /^Copiar como texto/ });
   await visible(first);
-  await until(
-    () => first.evaluate((node) => node === document.activeElement),
-    5000,
-    "focus on the first item of the export menu",
-  );
+  await focused(first);
 }
 async function closeExportMenu(page: Page) {
   await page.keyboard.press("Escape");
@@ -1527,11 +1526,7 @@ async function chooseExportFile(page: Page) {
   await openExportMenu(page);
   await page.keyboard.press("ArrowDown");
   const file = page.getByRole("menuitem", { name: /^Guardar como hoja/ });
-  await until(
-    () => file.evaluate((node) => node === document.activeElement),
-    5000,
-    "focus on the file item of the export menu",
-  );
+  await focused(file);
   await page.keyboard.press("Enter");
 }
 
@@ -1576,6 +1571,7 @@ async function exportStates(
   assert.equal((await exportRequestsOf(page, "strategy.export")).length, 0);
   await shot("x-menu-aceptado");
   // copy: the screen asks with the revision and the accepted plan, and says «Copiado»
+  await focused(page.getByRole("menuitem", { name: /^Copiar como texto/ }));
   await page.keyboard.press("Enter");
   await visible(page.getByText("Copiado", { exact: true }));
   assert.equal(await planStatus(page), "Plan copiado como texto.");

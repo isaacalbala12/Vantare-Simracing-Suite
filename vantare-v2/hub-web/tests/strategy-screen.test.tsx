@@ -46,7 +46,7 @@ function clientFor(
     }
     throw Error("Missing strategy response");
   });
-  return request;
+  return Object.assign(request, { host });
 }
 const shell = (request: ReturnType<typeof clientFor>) => (
   <SectionChromeProvider>
@@ -830,7 +830,7 @@ it("aligns the renderer with the host rules: positive rates, control characters,
     expect(field(name).getAttribute("aria-invalid")).toBe("true");
   expect(screen.getAllByText(/^Tiene que ser mayor que 0./)).toHaveLength(2);
   expect(
-    screen.getByText(/^No uses saltos de línea ni caracteres de control./),
+    screen.getByText(/^No uses saltos de línea ni caracteres invisibles./),
   ).toBeTruthy();
   expect(screen.getByText(/^Acorta este texto./)).toBeTruthy();
   expect(confirmSent(request)).toBeUndefined();
@@ -910,4 +910,80 @@ it("puts aria-invalid only where the role allows it", async () => {
       .queryAllByRole("group")
       .filter((n) => n.hasAttribute("aria-invalid")),
   ).toHaveLength(0);
+});
+
+it("confirms again after a conflict with the revision of the replaced view", async () => {
+  const { seen, map } = watch();
+  let conflicts = 1;
+  const request = mount(
+    "ready",
+    (r) => {
+      if (
+        r.method !== "strategy.confirm" ||
+        conflicts-- <= 0 ||
+        !seen.view?.form
+      )
+        return undefined;
+      // someone else really confirms a change first: the host moves on
+      const other = request.host({
+        kind: "request",
+        id: 99,
+        request: {
+          ...(r as Confirm),
+          fields: { ...seen.view.form.fields, name: "Cambiado fuera" },
+        },
+      });
+      if (
+        other?.kind !== "response" ||
+        other.result.method !== "strategy.confirm"
+      )
+        throw Error("The concurrent change failed");
+      return { kind: "strategyConflict", current: other.result.value };
+    },
+    false,
+    map,
+  );
+  await openRace();
+  click("Editar carrera");
+  fill({ Depósito: "90" });
+  click("Confirmar datos");
+  await screen.findByText(/Los datos de la carrera han cambiado/);
+  click("Confirmar datos");
+  await screen.findByText("Datos confirmados.");
+  const [first, second] = request.mock.calls
+    .filter(([r]) => r.method === "strategy.confirm")
+    .map(([r]) => r as Confirm);
+  expect(first.revision).toBe("a".repeat(64));
+  expect(second.revision).not.toBe(first.revision);
+  expect(second.fields.fuelCapacityLiters).toBe("90");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByText("90 L · 1,83 L/v")).toBeTruthy();
+});
+
+it("does not keep the draft of one strategy when the new view has another active one", async () => {
+  const { seen, map } = watch();
+  mount(
+    "ready",
+    editedConflict(seen, (view) => {
+      const other = view.events[0].strategies[1];
+      view.activeStrategyId = other.id;
+      if (view.form) {
+        view.form.fields.name = "Otra carrera";
+        view.form.fields.variantName = other.name;
+      }
+    }),
+    false,
+    map,
+  );
+  await openRace();
+  click("Editar carrera");
+  fill({ "Nombre de la carrera": "Mi nombre", Depósito: "90" });
+  click("Confirmar datos");
+  expect((await screen.findByRole("alert")).textContent).toMatch(
+    /^Los datos de la carrera han cambiado fuera de esta pantalla/,
+  );
+  await waitFor(() =>
+    expect(field("Nombre de la carrera").value).toBe("Otra carrera"),
+  );
+  expect(field("Depósito").value).toBe("82");
 });

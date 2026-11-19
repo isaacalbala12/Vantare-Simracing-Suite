@@ -339,6 +339,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
             <SectionPanel activeTab={tab}>
               {tab === "race" && (
                 <RaceTab
+                  // the draft belongs to one strategy: another one starts clean
+                  key={`${active.id}/${variant.id}`}
                   form={view.form}
                   editing={editing}
                   pending={pending}

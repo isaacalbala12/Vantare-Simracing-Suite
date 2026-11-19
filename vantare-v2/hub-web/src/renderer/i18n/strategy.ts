@@ -139,7 +139,7 @@ export const strategy = {
     "Los campos marcados están vacíos o no son válidos. No se ha guardado nada a medias.",
   required: "Completa este campo.",
   length: "Acorta este texto.",
-  control: "No uses saltos de línea ni caracteres de control.",
+  control: "No uses saltos de línea ni caracteres invisibles.",
   positive: "Tiene que ser mayor que 0.",
   integer: "Escribe un número entero mayor que 0.",
   range: "Escribe un número dentro del intervalo indicado.",

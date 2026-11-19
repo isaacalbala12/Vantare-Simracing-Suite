@@ -452,6 +452,7 @@
 }
 
 .strategy-service > .strategy-legend {
+  margin-bottom: var(--space-2);
   font-weight: 650;
 }
 .strategy-manual,

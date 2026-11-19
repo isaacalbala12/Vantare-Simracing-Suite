@@ -3,6 +3,7 @@ import argparse
 import base64
 import ctypes
 import hashlib
+import io
 import os
 import re
 import stat
@@ -42,6 +43,8 @@ DEFAULT_STREAM = "::$data"
 # tolerated only on the approved kit ZIP, as its only extra stream and small.
 ZONE_IDENTIFIER_STREAM = ":zone.identifier:$data"
 ZONE_IDENTIFIER_LIMIT = 1024
+ZONE_IDENTIFIER_PATTERN = re.compile(
+    r"\A\[ZoneTransfer\]\r\n(?:[A-Za-z]+=[\x20-\x7E]*\r\n?)*\Z")
 
 
 if WINDOWS:
@@ -109,13 +112,12 @@ def reject_alternate_streams(path, allow_zone_identifier=False):
     """Any NTFS stream other than the default one hides data from the scan.
 
     The approved kit ZIP may carry the browser download mark
-    (:Zone.Identifier) as its only extra stream and under 1 KiB; its size is
-    read from the enumeration and its content is never opened. A volume that
+    (:Zone.Identifier) as its only extra stream and under 1 KiB. A volume that
     cannot store streams has nothing to hide, and a missing file fails on the
-    later open.
+    later open. Returns whether the tolerated mark was found.
     """
     if not WINDOWS:
-        return
+        return False
     data = _FindStreamData()
     handle = _FIND_FIRST_STREAM(_api_path(path), STREAM_INFO_STANDARD,
                                 ctypes.byref(data), 0)
@@ -123,7 +125,7 @@ def reject_alternate_streams(path, allow_zone_identifier=False):
         error = ctypes.get_last_error()
         if error in (ERROR_INVALID_FUNCTION, ERROR_FILE_NOT_FOUND,
                      ERROR_PATH_NOT_FOUND, ERROR_HANDLE_EOF):
-            return
+            return False
         raise PrivateMaterial("No se pudieron enumerar los streams del preflight")
     zone_identifier = False
     try:
@@ -139,10 +141,32 @@ def reject_alternate_streams(path, allow_zone_identifier=False):
                 raise PrivateMaterial("Stream alternativo en el preflight")
             if not _FIND_NEXT_STREAM(handle, ctypes.byref(data)):
                 if ctypes.get_last_error() == ERROR_HANDLE_EOF:
-                    return
+                    return zone_identifier
                 raise PrivateMaterial("No se pudieron enumerar los streams del preflight")
     finally:
         _FIND_CLOSE(handle)
+
+
+def check_zone_identifier(path, patterns):
+    """Read the tolerated download mark: exact format and no key material.
+
+    Only called for the approved kit ZIP after the enumeration accepted this
+    stream by name and size. Unreadable or longer than the limit stays closed.
+    """
+    try:
+        with open(f"{path}:Zone.Identifier", "rb") as stream:
+            raw = stream.read(ZONE_IDENTIFIER_LIMIT + 1)
+    except OSError as error:
+        raise PrivateMaterial("Stream alternativo en el preflight") from error
+    if len(raw) > ZONE_IDENTIFIER_LIMIT:
+        raise PrivateMaterial("Stream alternativo en el preflight")
+    scan_stream(io.BytesIO(raw), patterns)
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise PrivateMaterial("Stream alternativo en el preflight") from error
+    if not ZONE_IDENTIFIER_PATTERN.fullmatch(text):
+        raise PrivateMaterial("Stream alternativo en el preflight")
 
 
 def open_checked(path):
@@ -229,11 +253,12 @@ def is_container(header, size=None):
     return int(checksum, 8) == sum(header[:148]) + 8 * 32 + sum(header[156:512])
 
 
-def verify_kit_zip(path, expected):
+def verify_kit_zip(path, expected, patterns):
     check_no_link(path)
     if not re.fullmatch(r"[0-9a-f]{64}", expected):
         raise PrivateMaterial("Se requiere el SHA-256 previamente verificado del ZIP")
-    reject_alternate_streams(path, allow_zone_identifier=True)
+    if reject_alternate_streams(path, allow_zone_identifier=True):
+        check_zone_identifier(path, patterns)
     # One handle for the whole verification: the bytes hashed and parsed as a
     # ZIP are the ones of this same file object.
     with open_checked(path) as stream:
@@ -265,7 +290,7 @@ def scan(path, patterns, approved_zip=None):
         if approved_zip is not None and path.resolve() == approved_zip[0]:
             # Skipping the package only after checking it again keeps the
             # hash and size of the file on disk tied to the receipt.
-            verify_kit_zip(path, approved_zip[1])
+            verify_kit_zip(path, approved_zip[1], patterns)
             return
         reject_alternate_streams(path)
         with open_checked(path) as stream:
@@ -301,9 +326,9 @@ def main():
     parser.add_argument("paths", nargs="+", type=Path)
     args = parser.parse_args()
     try:
-        verify_kit_zip(args.kit_zip, args.kit_zip_sha256)
-        approved_zip = (args.kit_zip.resolve(), args.kit_zip_sha256)
         patterns = signatures(read_key(args.private_key))
+        verify_kit_zip(args.kit_zip, args.kit_zip_sha256, patterns)
+        approved_zip = (args.kit_zip.resolve(), args.kit_zip_sha256)
         for path in args.paths:
             scan(path, patterns, approved_zip)
     except Exception:

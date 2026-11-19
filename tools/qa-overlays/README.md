@@ -312,18 +312,21 @@ veredicto no imprime contenido ni rutas de los ficheros que coinciden.
 Cualquier fichero o directorio del árbol de medición, de los logs o el propio
 ZIP del kit que declare un stream alternativo NTFS distinto de `::$DATA` hace
 fallar el preflight con `QA_PRIVATE_PREFLIGHT_FAILED`. Los streams se
-enumeran con `FindFirstStreamW`/`FindNextStreamW` sin leer su contenido y solo
-en Windows; en otros sistemas el recorrido de streams no aplica. Un volumen
-que no admite streams no puede ocultar nada, y un fichero ausente falla al
-abrirse.
+enumeran con `FindFirstStreamW`/`FindNextStreamW` y solo en Windows; en otros
+sistemas el recorrido de streams no aplica. Salvo la excepción de abajo, no se
+abre ni se lee ningún stream. Un volumen que no admite streams no puede
+ocultar nada, y un fichero ausente falla al abrirse.
 
 Única excepción: el ZIP del kit aprobado puede llevar la marca de descarga del
-navegador `:Zone.Identifier:$DATA` como **único** stream extra y con tamaño
-menor o igual a 1024 bytes (se toma `StreamSize` de la enumeración, nunca se
-abre). Cualquier otro stream, un tamaño mayor o esa marca en cualquier otro
-fichero se rechazan. Para evitarla, descargar con `gh run download` (no
-propaga la marca) o ejecutar `Unblock-File -LiteralPath <zip>` sobre el ZIP
-aprobado antes del preflight.
+navegador `:Zone.Identifier:$DATA` como **único** stream extra y con 1024
+bytes o menos. Ese stream **sí se mide**: se lee como máximo 1025 bytes, debe
+decodificar en UTF-8 estricto y cumplir `[ZoneTransfer]` seguido de líneas
+`Clave=valor` con CR/LF, sin NUL ni otros bytes no imprimibles, y sus bytes
+pasan por el mismo escáner de la privada (bruto, hex, base64 con los tres
+desplazamientos y UTF-16). Contenido distinto, ilegible, más largo, un nombre
+parecido (`Zone.Identifier2`) o cualquier otro stream se rechazan. Para
+evitarla, descargar con `gh run download` (no propaga la marca) o ejecutar
+`Unblock-File -LiteralPath <zip>` sobre el ZIP aprobado antes del preflight.
 
 El invariante TOCTOU es «el fichero que se verifica es el que se consume»,
 **dentro del preflight**: se abre una única vez, el escaneo y el SHA-256 leen

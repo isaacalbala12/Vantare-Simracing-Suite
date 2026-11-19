@@ -920,7 +920,20 @@ export async function checkStrategyScreen(
   const context = browser
     ? await browser.newContext({ timezoneId: "Europe/Madrid" })
     : parent.context();
-  const newPage = () => context.newPage();
+  try {
+    await checkPages(() => context.newPage(), base, evidence);
+  } finally {
+    // the context of Madrid's hour was ours: it goes with the check, also when
+    // the check fails
+    if (browser) await context.close();
+  }
+}
+
+async function checkPages(
+  newPage: () => Promise<Page>,
+  base: string,
+  evidence?: string,
+) {
   await Promise.all(
     (["dark", "light"] as const).flatMap((scheme) =>
       [
@@ -1030,8 +1043,6 @@ export async function checkStrategyScreen(
       await page.close();
     }
   }
-  // the context of Madrid's hour was ours: it goes with the check
-  if (browser) await context.close();
 }
 
 // ---- Aceptar la propuesta (E5b) ----
@@ -1334,6 +1345,22 @@ async function staleStates(
   assert.doesNotMatch(said, /en la vuelta \d/);
   await shot("a-desact-imposible");
   if (zoomed) return;
+  // a proposal of the same race next to the plan that no longer reaches the
+  // finish: the strong tone and the words of its cause
+  await openAcceptedPlan(
+    page,
+    base,
+    "acceptedFujiUnreachableNew",
+    "Plan calculado",
+    false,
+  );
+  const card = page.getByRole("region", { name: "Ya tienes un plan aceptado" });
+  await visible(card);
+  await visible(card.locator('.strategy-compare-icon[data-tone="error"]'));
+  const cardText = (await card.textContent()) ?? "";
+  assert.match(cardText, /el plan aceptado ya no llega a meta\./);
+  assert.match(cardText, /Esta propuesta: 6:01:06 · 5 paradas/);
+  await shot("a-desact-imposible-nueva");
   // the data changed and the new proposal has the same stops: it is a proposal
   // (its own certificate and figures), the outdated plan is shown apart, and it
   // can be accepted, which brings the plan up to date
@@ -1354,6 +1381,10 @@ async function staleStates(
   );
   await visible(button(page, "Volver al plan aceptado"));
   await visible(button(page, "Aceptar propuesta"));
+  // an outdated plan is a warning, not a tick
+  await visible(
+    page.locator('.strategy-compare .strategy-compare-icon[data-tone="warn"]'),
+  );
   await shot("a-desact-nueva-igual");
   await pressKey(button(page, "Aceptar propuesta"), "Enter");
   await visible(page.getByRole("heading", { name: "Plan aceptado" }));

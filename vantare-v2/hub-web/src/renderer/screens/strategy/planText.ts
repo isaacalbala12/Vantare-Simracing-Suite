@@ -423,6 +423,48 @@ export function unreachableText(unreachable: StrategyUnreachable) {
   }
 }
 
+// Only two causes say the plan does not reach the finish; the reserve says it
+// does and an unknown cause says nothing is known: «no llega a meta», the strong
+// tone and the alert are for the first two only.
+export function cannotReach(unreachable: StrategyUnreachable | null) {
+  return (
+    unreachable?.cause === "resourceExhausted" ||
+    unreachable?.cause === "scheduleMismatch"
+  );
+}
+
+// The notice of the accepted plan on its own: the title follows the cause; the
+// line under it is only for the causes that have something to add.
+export function staleUnreachableText(unreachable: StrategyUnreachable | null) {
+  const u = t.accept.unreachable;
+  if (unreachable && cannotReach(unreachable))
+    return { title: u.title, detail: unreachableText(unreachable) };
+  return {
+    title:
+      unreachable?.cause === "reserveNotMet" ? u.reserveTitle : u.unknownTitle,
+    detail: null,
+  };
+}
+
+// What the card of the accepted plan next to a proposal says of a plan that
+// cannot be kept. Only two causes say the plan does not reach the finish; the
+// reserve says it does, and an unknown cause says nothing is known: the strong
+// tone and the words «ya no llega a meta» are for the first two only.
+export function compareUnreachable(unreachable: StrategyUnreachable | null): {
+  strong: boolean;
+  text: string;
+} {
+  const c = t.accept.compare.unreachable;
+  if (unreachable && cannotReach(unreachable))
+    return { strong: true, text: `${c.lead} ${unreachableText(unreachable)}` };
+  if (unreachable?.cause === "reserveNotMet")
+    return { strong: false, text: c.reserveNotMet };
+  return {
+    strong: false,
+    text: unreachableText({ cause: "other", failLap: null }),
+  };
+}
+
 export function acceptedTag(accepted: StrategyAcceptedView): Tag {
   const tags = t.accept.tags;
   switch (accepted.state) {
@@ -431,7 +473,9 @@ export function acceptedTag(accepted: StrategyAcceptedView): Tag {
     case "stale":
       return { tone: "warn", text: tags.stale };
     default:
-      return { tone: "error", text: tags.unreachable };
+      return cannotReach(accepted.unreachable)
+        ? { tone: "error", text: tags.unreachable }
+        : { tone: "warn", text: tags.stale };
   }
 }
 

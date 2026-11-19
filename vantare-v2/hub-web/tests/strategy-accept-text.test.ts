@@ -204,10 +204,27 @@ describe("the tag of the state", () => {
       tone: "warn",
       text: "Desactualizado",
     });
-    expect(acceptedTag(accepted({ state: "staleUnreachable" }))).toEqual({
-      tone: "error",
-      text: "No llega a meta",
-    });
+    for (const cause of ["resourceExhausted", "scheduleMismatch"] as const)
+      expect(
+        acceptedTag(
+          accepted({
+            state: "staleUnreachable",
+            unreachable: { cause, failLap: null },
+          }),
+        ),
+        cause,
+      ).toEqual({ tone: "error", text: "No llega a meta" });
+    // the reserve and an unknown cause do not say the plan fails to arrive
+    for (const cause of ["reserveNotMet", "other"] as const)
+      expect(
+        acceptedTag(
+          accepted({
+            state: "staleUnreachable",
+            unreachable: { cause, failLap: null },
+          }),
+        ),
+        cause,
+      ).toEqual({ tone: "warn", text: "Desactualizado" });
   });
 });
 

@@ -555,7 +555,13 @@ export const strategy = {
           `Esta propuesta: ${summary}${sameStops ? " · mismas paradas" : ""}${difference ? ` · ${difference}` : ""}`,
         // the plan accepted is outdated and the proposal has its stops
         outdatedHint:
-          "Los datos de la carrera han cambiado desde que lo aceptaste. Si aceptas esta propuesta, el plan aceptado pasa a ser este.",
+          "Los datos de la carrera han cambiado desde que lo aceptaste. Si aceptas esta propuesta, esta pasa a ser tu plan aceptado.",
+        // the accepted plan no longer reaches the finish with the new data
+        unreachable: {
+          // only for the causes that say the plan does not reach the finish
+          lead: "Con los datos nuevos, el plan aceptado ya no llega a meta.",
+          reserveNotMet: "Llega a meta, pero sin la reserva que pides.",
+        },
         slower: (amount: string) => `${amount} más lenta`,
         faster: (amount: string) => `${amount} más rápida`,
         same: "misma duración",
@@ -593,6 +599,10 @@ export const strategy = {
       },
       unreachable: {
         title: "Con los datos nuevos, este plan no llega a meta",
+        reserveTitle:
+          "Con los datos nuevos, este plan llega a meta, pero sin la reserva que pides",
+        unknownTitle:
+          "No hemos podido comprobar si este plan llega a meta con los datos nuevos",
         // `failLap` is null until the solver crate reports it; the lap is said
         // only when the host sends it
         resourceExhausted: (lap: number | null) =>

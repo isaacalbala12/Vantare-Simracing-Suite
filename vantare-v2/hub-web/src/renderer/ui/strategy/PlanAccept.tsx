@@ -6,11 +6,13 @@ import { strategy } from "../../i18n/strategy";
 import {
   acceptedDay,
   acceptedOn,
+  cannotReach,
   changeLine,
+  compareUnreachable,
   differenceText,
   planSummary,
+  staleUnreachableText,
   type Tag,
-  unreachableText,
 } from "../../screens/strategy/planText";
 import { Button } from "../Button";
 
@@ -101,14 +103,27 @@ export function CompareCard({
   // the plan accepted is outdated: say what changed, and that accepting this
   // proposal brings it up to date
   const outdated = accepted.state !== "accepted";
+  // a tick only while the plan is up to date; an outdated one is a warning, and
+  // a plan that no longer reaches the finish is the strong one
+  const unreachable =
+    accepted.state === "staleUnreachable"
+      ? compareUnreachable(accepted.unreachable)
+      : null;
+  const tone = unreachable?.strong ? "error" : outdated ? "warn" : undefined;
   const shown = accepted.changes.slice(0, shownChanges);
   return (
     <section
       className="strategy-card strategy-compare"
       aria-labelledby={`${id}-title`}
     >
-      <span className="strategy-compare-icon" aria-hidden="true">
-        <Icon name="check" />
+      <span
+        className="strategy-compare-icon"
+        data-tone={tone}
+        aria-hidden="true"
+      >
+        <Icon
+          name={unreachable?.strong ? "alert" : outdated ? "warn" : "check"}
+        />
       </span>
       <div>
         <strong id={`${id}-title`}>{c.title}</strong>
@@ -129,6 +144,7 @@ export function CompareCard({
             ))}
           </ul>
         )}
+        {unreachable && <p>{unreachable.text}</p>}
         {outdated && <p>{c.outdatedHint}</p>}
       </div>
       <Button size="sm" variant="ghost" disabled={pending} onClick={back}>
@@ -235,13 +251,18 @@ export function StaleNotice({
   const id = useId();
   const s = t.stale;
   const unreachable = accepted.state === "staleUnreachable";
+  // the cause says how strong the notice is: a plan that does not reach the finish
+  // is an alert; one that reaches it without the reserve, or that could not be
+  // checked, is a warning
+  const said = unreachable ? staleUnreachableText(accepted.unreachable) : null;
+  const strong = unreachable && cannotReach(accepted.unreachable);
   const shown = accepted.changes.slice(0, shownChanges);
   const rest = accepted.changes.length - shown.length;
-  const title = unreachable ? t.unreachable.title : s.title;
+  const title = said ? said.title : s.title;
   const body = (
     <>
       <span className="strategy-icon">
-        <Icon name={unreachable ? "alert" : "warn"} />
+        <Icon name={strong ? "alert" : "warn"} />
       </span>
       <div>
         <strong id={`${id}-title`}>{title}</strong>
@@ -253,11 +274,9 @@ export function StaleNotice({
           </ul>
         )}
         {rest > 0 && <p>{s.more(rest)}</p>}
-        <p>
-          {unreachable && accepted.unreachable
-            ? unreachableText(accepted.unreachable)
-            : s.reaches}
-        </p>
+        {(said ? said.detail : s.reaches) && (
+          <p>{said ? said.detail : s.reaches}</p>
+        )}
         <div className="strategy-actions">
           <Button
             size="sm"
@@ -276,7 +295,7 @@ export function StaleNotice({
       </div>
     </>
   );
-  return unreachable ? (
+  return strong ? (
     <div
       className="strategy-notice strategy-stale"
       data-tone="error"

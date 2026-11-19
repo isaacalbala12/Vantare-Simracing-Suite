@@ -685,9 +685,10 @@ export function create(context: MockContext): MockHandler {
     ? context.sceneName.slice(9)
     : "empty";
   // The scene is the fault itself (`exportInUse`, on the usual sample plan) or the
-  // fault after `plannedFuji` (`plannedFujiExportInUse`: Opus' Fuji plan, calculated).
+  // fault after `plannedFuji` or `acceptedFuji` (`plannedFujiExportInUse`: Opus' Fuji plan,
+  // calculated; `acceptedFujiExportInUse`: the same plan, accepted and saved).
   const fault = (() => {
-    const rest = scenario.replace(/^plannedFuji/, "");
+    const rest = scenario.replace(/^(plannedFuji|acceptedFuji)/, "");
     const name = rest.charAt(0).toLowerCase() + rest.slice(1);
     return exportFaults.includes(name) ? name : undefined;
   })();

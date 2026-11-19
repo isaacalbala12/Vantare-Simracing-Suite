@@ -240,3 +240,31 @@ it("plays the faults of the export on Opus' Fuji plan, already calculated", () =
     }),
   ).toMatchObject({ kind: "failure", error: { kind: "busy" } });
 });
+
+it("plays the faults of the export on the accepted plan of Opus' Fuji case too", () => {
+  const host = createMockHost("strategy-acceptedFujiFileUnavailable");
+  const send = (request: unknown) =>
+    host({ kind: "request", id: 1, request }) as Json;
+  const opened = send({ method: "strategy.open" }).result.value;
+  // the file already holds the accepted plan, and no proposal is on view
+  expect(opened.plan.accepted.state).toBe("accepted");
+  expect(opened.plan.result).toBeNull();
+  expect(
+    send({
+      method: "strategy.exportFile",
+      revision: opened.revision,
+      target: { kind: "accepted" },
+    }),
+  ).toMatchObject({
+    kind: "failure",
+    error: { kind: "strategyFileUnavailable" },
+  });
+  // and the text still goes
+  expect(
+    send({
+      method: "strategy.export",
+      revision: opened.revision,
+      target: { kind: "accepted" },
+    }).result.value.text,
+  ).toMatch(/^PLAN ACEPTADO · /);
+});

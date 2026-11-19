@@ -129,11 +129,9 @@ mod ui_tick;
 struct Fixture(PathBuf);
 impl Fixture {
     fn new() -> Self {
-        static SEQUENCE: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let path = std::env::temp_dir().join(format!(
-            "vantare-dispatch-{}-{}",
-            std::process::id(),
-            SEQUENCE.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            "vantare-dispatch-{}",
+            vantare_services::random_id().expect("QA entropy")
         ));
         std::fs::create_dir(&path).expect("exclusive QA directory");
         Self(path)
@@ -158,7 +156,8 @@ impl Fixture {
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
-        std::fs::remove_dir_all(&self.0).expect("remove isolated QA data");
+        // Best effort: a panic inside Drop would abort and hide the test failure.
+        let _ = std::fs::remove_dir_all(&self.0);
     }
 }
 fn run_corpus(

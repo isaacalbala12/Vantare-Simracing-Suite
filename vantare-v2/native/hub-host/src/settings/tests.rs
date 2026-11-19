@@ -1,23 +1,16 @@
 use super::*;
-use std::{
-    fs,
-    path::PathBuf,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::{fs, path::PathBuf};
 struct Root(PathBuf);
 impl Root {
     fn new() -> Self {
-        static NEXT: AtomicU64 = AtomicU64::new(0);
         let base = std::env::var_os("VANTARE_HUB_QA_ROOT").map_or_else(
             || std::env::temp_dir().join("vantare-hub-settings"),
             PathBuf::from,
         );
-        let root = base.join(format!(
-            "{}-{}",
-            std::process::id(),
-            NEXT.fetch_add(1, Ordering::Relaxed)
-        ));
-        fs::create_dir_all(&root).expect("QA root");
+        // Random name + exclusive creation: a leftover from a killed run never leaks state in.
+        let root = base.join(vantare_services::random_id().expect("QA entropy"));
+        fs::create_dir_all(&base).expect("QA base");
+        fs::create_dir(&root).expect("QA root");
         Self(root)
     }
     fn settings(&self) -> Settings {
@@ -41,7 +34,8 @@ impl Drop for Root {
             .canonicalize()
             .expect("QA base");
         assert!(target.starts_with(&parent) && target != parent);
-        fs::remove_dir_all(target).expect("remove owned QA root");
+        // Best effort: a panic inside Drop would abort and hide the test failure.
+        let _ = fs::remove_dir_all(target);
     }
 }
 #[test]

@@ -458,6 +458,7 @@ impl Editing {
         let wanted = FixedStop {
             fuel_liters: self.amount(StrategyStopAmount::FuelLiters, fuel)?,
             ve_percent: self.amount(StrategyStopAmount::VePercent, ve)?,
+            change_tyres: None,
         };
         if self.fixed[index] != wanted {
             self.fixed[index] = wanted;
@@ -496,10 +497,12 @@ impl Editing {
             StrategyStopAmount::FuelLiters => FixedStop {
                 fuel_liters: Some(value),
                 ve_percent: None,
+                change_tyres: None,
             },
             StrategyStopAmount::VePercent => FixedStop {
                 fuel_liters: None,
                 ve_percent: Some(value),
+                change_tyres: None,
             },
         };
         let refusal = |reason, below: Option<f64>, above: Option<f64>| {

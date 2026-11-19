@@ -307,6 +307,52 @@ comprimidos o contenedores identificados por firma. La única excepción es el
 ZIP del kit cuyo hash se verifica; el preflight no lo descomprime. El
 veredicto no imprime contenido ni rutas de los ficheros que coinciden.
 
+#### Streams NTFS, TOCTOU y firmas cortas (#2608)
+
+Cualquier fichero o directorio del árbol de medición, de los logs o el propio
+ZIP del kit que declare un stream alternativo NTFS distinto de `::$DATA` hace
+fallar el preflight con `QA_PRIVATE_PREFLIGHT_FAILED`. Los streams se
+enumeran con `FindFirstStreamW`/`FindNextStreamW` y solo en Windows; en otros
+sistemas el recorrido de streams no aplica. Salvo la excepción de abajo, no se
+abre ni se lee ningún stream. Un volumen que no admite streams no puede
+ocultar nada, y un fichero ausente falla al abrirse.
+
+Única excepción: el ZIP del kit aprobado puede llevar la marca de descarga del
+navegador `:Zone.Identifier:$DATA` como **único** stream extra y con 1024
+bytes o menos. Ese stream **sí se mide**: se lee como máximo 1025 bytes, debe
+decodificar en UTF-8 estricto y cumplir `[ZoneTransfer]` seguido de líneas
+`Clave=valor` con CR/LF, sin NUL ni otros bytes no imprimibles, y sus bytes
+pasan por el mismo escáner de la privada (bruto, hex, base64 con los tres
+desplazamientos y UTF-16). Contenido distinto, ilegible, más largo, un nombre
+parecido (`Zone.Identifier2`) o cualquier otro stream se rechazan. Para
+evitarla, descargar con `gh run download` (no propaga la marca) o ejecutar
+`Unblock-File -LiteralPath <zip>` sobre el ZIP aprobado antes del preflight.
+
+El invariante TOCTOU es «el fichero que se verifica es el que se consume»,
+**dentro del preflight**: se abre una única vez, el escaneo y el SHA-256 leen
+de ese handle y `zipfile.ZipFile` recibe el mismo objeto, sin reabrir por
+ruta. Si el tamaño o el mtime cambian durante la lectura, el preflight falla
+cerrado. Residual declarado: los enlaces y reparse points se rechazan por
+ruta (`lstat`) antes de abrir; un cambio de fichero por enlace entre esa
+comprobación y `open` no se detecta (el handle abierto solo valida que sea un
+fichero regular). Tampoco se detecta un cambio entre listar el directorio y
+abrir cada fichero, ni entre listar y enumerar sus streams (la API de Windows
+enumera por ruta). El consumidor posterior (extracción o `TANDA`) vuelve a
+leer por ruta, así que el hash verificado aquí no cubre ese segundo acceso.
+Cuando el árbol contiene el ZIP aprobado, `scan` no lo salta a ciegas: repite
+`verify_kit_zip` (hash, tamaño y streams) justo antes de omitirlo. Todo el
+residual se mitiga porque el servidor es de confianza y el árbol se prepara
+en una carpeta QA nueva.
+
+Las firmas cortas se validan ahora con su cabecera completa, sin abrir ni
+descomprimir el contenedor: `BZh` exige nivel 1–9 y el magic de bloque o de
+fin bzip2 justo después; `070701`/`070702` exigen campos hex de 8 caracteres
+en el encabezado newc; `MSCF` exige los cuatro bytes reservados a cero y un
+tamaño de cabinet coherente. Un texto imprimible que empiece por esas letras
+ya no se rechaza, y un contenedor binario, aunque esté truncado, se sigue
+rechazando. `test_preflight_privado.py` conserva fixtures inocuos y mínimos
+reales de bz2, cpio newc y cab.
+
 El ensayo sin GPU ejecuta `PROBAR_CREDENCIAL_TANDA.ps1` y el descubrimiento
 de tests Python incluye `test_preflight_privado.py`.
 

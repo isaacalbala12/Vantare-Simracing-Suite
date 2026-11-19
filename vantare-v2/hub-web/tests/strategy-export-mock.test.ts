@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { isHostMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
 import { requestOf } from "./strategy-corpus";
@@ -125,4 +125,118 @@ it("plays the dialog at once for the renderer and through a ticket for the main 
   expect(
     host({ kind: "pickedStrategyFile", id: 0x80000003, path: null }),
   ).toMatchObject({ result: { value: { kind: "cancelled" } } });
+});
+
+// The QA scenes of what goes wrong when the plan is exported (#2715): the four of
+// the export and the four of E4a that an export can meet too.
+const faults = [
+  ["exportInUse", "strategyFileInUse"],
+  ["exportNotCsv", "strategyExportNotCsv"],
+  ["fileUnavailable", "strategyFileUnavailable"],
+  ["fileTooLarge", "strategyFileTooLarge"],
+  ["pickExpired", "strategyPickExpired"],
+  ["targetExists", "strategyTargetExists"],
+] as const;
+
+describe.each(faults)("the scene %s", (scene, kind) => {
+  it(`fails the file export with ${kind} and leaves the text export alone`, () => {
+    const { send, value, host } = planned(`strategy-${scene}`);
+    const request = {
+      method: "strategy.exportFile",
+      revision: value.revision,
+      target: proposal(value),
+    };
+    // without the main process the dialog answers at once
+    const direct = send(request);
+    expect(isHostMessage(direct)).toBe(true);
+    expect(direct).toMatchObject({ kind: "failure", error: { kind } });
+    // with it, the failure is the final answer after the ticket; a cancelled
+    // dialog is only that, whatever the scene
+    expect(send(request, 0x80000000).result.value).toMatchObject({
+      kind: "ticket",
+    });
+    const done = host({
+      kind: "pickedStrategyFile",
+      id: 0x80000000,
+      path: "D:/x/plan.csv",
+    }) as Json;
+    expect(isHostMessage(done)).toBe(true);
+    expect(done).toMatchObject({ kind: "failure", error: { kind } });
+    send(request, 0x80000001);
+    expect(
+      host({ kind: "pickedStrategyFile", id: 0x80000001, path: null }),
+    ).toMatchObject({ result: { value: { kind: "cancelled" } } });
+    // the text never opens a dialog
+    const text = send({
+      method: "strategy.export",
+      revision: value.revision,
+      target: proposal(value),
+    });
+    expect(text.result.value.text).toMatch(/^PROPUESTA SIN ACEPTAR\n/);
+  });
+});
+
+describe.each([
+  ["exportBusy", "busy"],
+  ["nothingToExport", "strategyNothingToExport"],
+] as const)("the scene %s", (scene, kind) => {
+  it(`refuses both exports with ${kind}, and never takes the ticket`, () => {
+    const { send, value, host } = planned(`strategy-${scene}`);
+    for (const method of ["strategy.export", "strategy.exportFile"]) {
+      for (const own of [undefined, 0x80000000]) {
+        const refused = send(
+          { method, revision: value.revision, target: proposal(value) },
+          own,
+        );
+        expect(isHostMessage(refused)).toBe(true);
+        expect(refused).toMatchObject({ kind: "failure", error: { kind } });
+      }
+    }
+    // a stale revision is still the conflict of the plan, before anything else
+    expect(
+      send({
+        method: "strategy.export",
+        revision: "0".repeat(64),
+        target: proposal(value),
+      }),
+    ).toMatchObject({ error: { kind: "strategyConflict" } });
+    // no ticket was kept: the dialog has nothing to answer
+    expect(
+      host({ kind: "pickedStrategyFile", id: 0x80000000, path: null }),
+    ).toMatchObject({ kind: "failure", error: { kind: "denied" } });
+  });
+});
+
+it("plays the faults of the export on Opus' Fuji plan, already calculated", () => {
+  const host = createMockHost("strategy-plannedFujiExportInUse");
+  const send = (request: unknown) =>
+    host({ kind: "request", id: 1, request }) as Json;
+  const opened = send({ method: "strategy.open" }).result.value;
+  expect(opened.plan.state).toBe("calculated");
+  expect(opened.plan.result.metrics.pitCount).toBe(5);
+  expect(
+    send({
+      method: "strategy.exportFile",
+      revision: opened.revision,
+      target: proposal(opened),
+    }),
+  ).toMatchObject({ kind: "failure", error: { kind: "strategyFileInUse" } });
+  // another scene of the same family is a different fault
+  const busy = createMockHost("strategy-plannedFujiExportBusy");
+  const first = busy({
+    kind: "request",
+    id: 1,
+    request: { method: "strategy.open" },
+  }) as Json;
+  expect(
+    busy({
+      kind: "request",
+      id: 2,
+      request: {
+        method: "strategy.export",
+        revision: first.result.value.revision,
+        target: proposal(first.result.value),
+      },
+    }),
+  ).toMatchObject({ kind: "failure", error: { kind: "busy" } });
 });

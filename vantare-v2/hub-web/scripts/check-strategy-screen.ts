@@ -1886,6 +1886,13 @@ async function amountStates(
   await fuel.fill("71");
   await fuel.press("Enter");
   await visible(button(page, "Volver todo a automático"));
+  // the button is disabled while the host answers the amount just sent: a key
+  // pressed then does nothing (it showed up as soon as the page ran alone and fast)
+  await until(
+    () => button(page, "Volver todo a automático").isEnabled(),
+    5000,
+    "«Volver todo a automático» enabled",
+  );
   await pressKey(button(page, "Volver todo a automático"), "Enter");
   await until(
     async () => (await page.getByText("fijado por ti").count()) === 0,

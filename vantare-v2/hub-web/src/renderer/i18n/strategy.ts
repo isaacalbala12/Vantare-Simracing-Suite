@@ -610,6 +610,110 @@ export const strategy = {
         variantMode: "Tipo de estrategia",
       },
     },
+    // Exportar el plan (E5d): copiarlo como texto o guardarlo como hoja de cálculo.
+    // The renderer never sees a path: it only says the NAME of the file.
+    export: {
+      action: "Exportar",
+      working: "Exportando…",
+      menu: "Exportar el plan",
+      proposalNote:
+        "Es una propuesta sin aceptar. Lo que exportes lo dirá en la primera línea.",
+      text: {
+        title: "Copiar como texto",
+        detail: "Para pegarlo en un chat, un correo o una nota",
+      },
+      file: {
+        title: "Guardar como hoja de cálculo…",
+        detail: "Archivo CSV para Excel, Google Sheets o Numbers",
+      },
+      copied: "Copiado",
+      waiting: {
+        title: "Elige dónde guardar el archivo",
+        detail:
+          "Se ha abierto la ventana para guardar. Elige la carpeta y el nombre; si la cierras, no se guarda nada.",
+      },
+      saved: {
+        title: "Plan exportado",
+        detail: (name: string) =>
+          `Guardado como «${name}». Ábrelo con Excel, Google Sheets o Numbers.`,
+      },
+      expired: {
+        title: "No se guardó nada",
+        detail:
+          "La ventana para guardar estuvo abierta demasiado tiempo y se cerró. Vuelve a exportar cuando quieras.",
+      },
+      failed: {
+        title: "No se pudo exportar el plan",
+        copyTitle: "No se pudo copiar el plan",
+      },
+      dismiss: "Cerrar aviso",
+      // for the single status line
+      announce: {
+        copied: "Plan copiado como texto.",
+        waiting: "Elige dónde guardar el archivo.",
+        saved: (name: string) => `Guardado como ${name}.`,
+        cancelled: "Exportación cancelada.",
+        expired: "No se guardó nada: la ventana para guardar se cerró.",
+      },
+      // what each refusal says, and the button that tries again when trying again
+      // can help; none of them says where on the disk
+      errors: {
+        strategyNothingToExport: {
+          detail:
+            "No hay ningún plan que exportar. Calcula el plan o acepta una propuesta y vuelve a intentarlo.",
+        },
+        strategyExportNotCsv: {
+          detail: "El archivo tiene que terminar en «.csv». Elige otro nombre.",
+          retry: "Elegir otro nombre…",
+        },
+        strategyFileInUse: {
+          detail:
+            "Otro programa tiene ese archivo abierto, por ejemplo Excel. Ciérralo en el otro programa y vuelve a intentarlo.",
+          retry: "Volver a intentarlo",
+        },
+        strategyFileUnavailable: {
+          detail:
+            "No se pudo escribir el archivo en esa carpeta. El plan no ha cambiado. Prueba en otra carpeta, como Documentos.",
+          retry: "Elegir otra carpeta…",
+        },
+        strategyFileTooLarge: {
+          detail:
+            "El plan es demasiado grande para guardarlo como hoja de cálculo. Cópialo como texto.",
+        },
+        strategyTargetExists: {
+          detail:
+            "Ese archivo es el de tus estrategias y no se puede sobrescribir. Elige otro nombre.",
+          retry: "Elegir otro nombre…",
+        },
+        busy: {
+          detail:
+            "Vantare está ocupado un momento. Espera un momento y vuelve a intentarlo.",
+          retry: "Volver a intentarlo",
+        },
+        strategyEditPending: {
+          detail:
+            "Tienes ajustes sin recalcular. Recalcula o restablece el plan antes de exportarlo.",
+        },
+        protected: {
+          detail:
+            "Este archivo es de una versión más nueva de Vantare y no se puede exportar desde esta versión.",
+        },
+        denied: {
+          detail:
+            "Ahora mismo no tienes acceso a esta función. Revisa tu sesión e inténtalo de nuevo.",
+        },
+        copyFailed: {
+          detail:
+            "No se pudo copiar el texto. El plan no ha cambiado. Vuelve a intentarlo.",
+          retry: "Volver a intentarlo",
+        },
+        other: {
+          detail:
+            "No se ha podido completar la exportación. El plan no ha cambiado. Vuelve a intentarlo.",
+          retry: "Volver a intentarlo",
+        },
+      },
+    },
     time: timeText,
   },
 };

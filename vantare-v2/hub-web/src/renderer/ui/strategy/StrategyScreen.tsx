@@ -30,6 +30,11 @@ import {
   strategyResetEdit,
 } from "../../screens/strategy/strategyEdit";
 import {
+  type ExportState,
+  exportIdle,
+  exportTarget,
+} from "../../screens/strategy/strategyExport";
+import {
   fileActions,
   type StrategyClient,
   useStrategy,
@@ -47,6 +52,9 @@ const tabs = [
 
 const editingTabs = [tabs[0], { ...tabs[1], ariaDisabled: true }];
 
+// how long «Copiado» stays beside the button
+const copiedMs = 4000;
+
 type Selection = { eventId: string; strategyId: string };
 type Notice = "importedLegacy" | "recovered";
 
@@ -60,6 +68,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     whenIdle,
     peek,
     act,
+    exportPlan,
     clearError,
   } = useStrategy(client);
   const [screen, setScreen] = useState<"collection" | "wizard" | "race">(
@@ -79,6 +88,8 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
   const [announcement, setAnnouncement] = useState("");
   // the plan was just accepted for the first time: «Deshacer» is offered until saved
   const [firstAccept, setFirstAccept] = useState(false);
+  // what came of the last try to copy or save the plan
+  const [exported, setExported] = useState<ExportState>(exportIdle);
   const [dismissed, setDismissed] = useState<Notice>();
   const [blocked, setBlocked] = useState<Selection>();
   const active = view?.events.find(({ id }) => id === view.activeEventId);
@@ -121,6 +132,21 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     lastHadResult.current = plan.result !== null;
     if (said) setAnnouncement(said);
   }, [plan]);
+  // The notice of an export is about the plan that was exported: it goes when the
+  // plan on view is another (a new calculation, an acceptance, the host's view). The
+  // window to save is still open, so that one stays until it answers.
+  const target = plan ? exportTarget(plan) : null;
+  const targetKey = JSON.stringify(target);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only when the target changes
+  useEffect(() => {
+    setExported((now) => (now.status === "waiting" ? now : exportIdle));
+  }, [targetKey]);
+  // «Copiado» is a flash; the notices of a file stay until they are put away
+  useEffect(() => {
+    if (exported.status !== "copied") return;
+    const timer = setTimeout(() => setExported(exportIdle), copiedMs);
+    return () => clearTimeout(timer);
+  }, [exported]);
   useEffect(() => {
     const sent = launched.current;
     if (!sent || !plan || plan.computeId !== sent.computeId) return;
@@ -290,6 +316,38 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     const result = await strategyShowAccepted(act);
     planAnswered(result);
     if (result && "value" in result) setAnnouncement(t.calc.announce.showing);
+  }
+  // Copies the plan as text, or saves it as a spreadsheet. What the file is called
+  // and where it goes is for the main process and the host; here only the name comes
+  // back. A conflict is one of the plan: the host's view is shown.
+  async function exportAs(via: "text" | "file") {
+    if (!view || !target) return;
+    setAnnouncement("");
+    setExported(via === "file" ? { status: "waiting" } : exportIdle);
+    if (via === "file") setAnnouncement(t.calc.export.announce.waiting);
+    const result = await exportPlan(
+      via === "file" ? "strategy.exportFile" : "strategy.export",
+      target,
+    );
+    // nothing was sent (another action was running): back to what it was
+    if (!result) return setExported(exportIdle);
+    const say = t.calc.export.announce;
+    if ("copied" in result) {
+      setExported({ status: "copied" });
+      setAnnouncement(say.copied);
+    } else if ("saved" in result) {
+      setExported({ status: "saved", name: result.saved });
+      setAnnouncement(say.saved(result.saved));
+    } else if ("cancelled" in result) {
+      setExported(exportIdle);
+      setAnnouncement(say.cancelled);
+    } else if (result.error.kind === "strategyConflict") {
+      setExported(exportIdle);
+      setPlanConflict(result.error);
+    } else if (result.error.kind === "strategyPickExpired") {
+      setExported({ status: "expired" });
+      setAnnouncement(say.expired);
+    } else setExported({ status: "failed", kind: result.error.kind, via });
   }
   async function resetEdit() {
     if (!view) return;
@@ -636,6 +694,19 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                       showAccepted: () => void showAccepted(),
                       unaccept: () => void removeAccepted(),
                       fresh: firstAccept && view.plan.accepted?.saved === false,
+                    },
+                    export: {
+                      available: target !== null,
+                      proposal: target?.kind === "proposal",
+                      state: exported,
+                      pending,
+                      copy: () => void exportAs("text"),
+                      save: () => void exportAs("file"),
+                      retry: () =>
+                        void exportAs(
+                          exported.status === "failed" ? exported.via : "file",
+                        ),
+                      dismiss: () => setExported(exportIdle),
                     },
                   }}
                 />

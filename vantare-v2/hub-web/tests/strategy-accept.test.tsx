@@ -112,9 +112,8 @@ describe("a proposal", () => {
     expect(stateTag()).toBe("Propuesta");
     expect(screen.getByText(proposalLine)).toBeTruthy();
     expect(button("Aceptar propuesta")).toBeTruthy();
-    // the Ingeniero is not there yet, and nothing here exports
+    // the Ingeniero is not there yet (the export has its own tests)
     expect(screen.queryByText(/Ingeniero/)).toBeNull();
-    expect(maybe("Exportar")).toBeNull();
     expect(screen.getAllByRole("status")).toHaveLength(1);
   });
 
@@ -852,7 +851,7 @@ describe("when the host refuses", () => {
 // ---- the words of the screen ----
 
 describe("the words of the screen", () => {
-  it("never show a path, nor the Ingeniero, nor export", async () => {
+  it("never show a path, nor the Ingeniero", async () => {
     for (const scene of [
       "plannedFuji",
       "acceptedFujiNew",
@@ -874,7 +873,7 @@ describe("the words of the screen", () => {
         expect(text, scene).not.toMatch(
           /[a-z]:[\\/]|\\\\|(^|\s)\/(?:[^\s]+\/)+/im,
         );
-        expect(text, scene).not.toMatch(/Ingeniero|Exportar/);
+        expect(text, scene).not.toMatch(/Ingeniero/);
       }
     }
   });

@@ -60,6 +60,19 @@ async function setup(page: Page, scheme: Scheme, zoom: number) {
           message.result.value.appearance.scheme = scheme;
           message.result.value.zoom = zoom;
         }
+        // The window to save stays open: the answer of the export of a file is
+        // kept until the check lets it go (`window.__release()`).
+        const held = new URLSearchParams(location.search).get("hold");
+        if (
+          held === "exportFile" &&
+          message?.kind === "response" &&
+          message.result.method === "strategy.exportFile"
+        ) {
+          const answer = message;
+          (window as unknown as { __release?: () => void }).__release = () =>
+            Reflect.apply(post, this, [answer, transfer]);
+          return;
+        }
         // Inject one stale save reply through the normal protocol without changing the mock.
         const conflict = new URLSearchParams(location.search).has("conflict");
         if (
@@ -256,6 +269,7 @@ async function verify(
       ".strategy-screen",
       '[role="menu"][aria-label="Archivo"]',
       '[role="menu"][aria-label="Más acciones del plan aceptado"]',
+      '[role="menu"][aria-label="Exportar el plan"]',
     ],
     ['[data-base-ui-focus-guard][aria-hidden="true"]'],
   );
@@ -776,7 +790,7 @@ async function exercise(
       (width === 1440 ||
         name.startsWith("carrera") ||
         name.startsWith("plan-") ||
-        /^(a|c)-/.test(name) ||
+        /^(a|c|x)-/.test(name) ||
         (scheme === "dark" && ["col", "as-reglas"].includes(name)))
     )
       await page.screenshot({
@@ -1068,7 +1082,7 @@ async function proposalStates(
   await openAcceptedPlan(page, base, "plannedFuji", "Plan calculado", zoomed);
   assert.equal(await stateTag(page), "Propuesta");
   assert.equal(await page.getByText(proposalLine, { exact: true }).count(), 1);
-  assert.equal(await page.getByText(/Ingeniero|Exportar/).count(), 0);
+  assert.equal(await page.getByText(/Ingeniero/).count(), 0);
   await shot("a-propuesta");
   await press(button(page, "Aceptar propuesta"));
   await visible(page.getByRole("heading", { name: "Plan aceptado" }));
@@ -1462,4 +1476,195 @@ async function acceptStates(
   await staleStates(page, base, shot, zoomed);
   await carreraAcceptStates(page, base, shot, zoomed);
   if (!zoomed) await acceptCollection(page, base, shot);
+  await exportStates(page, base, shot, zoomed);
+}
+
+// ---- Exportar el plan (E5d) ----
+// Funciones propias, al final del archivo. Cada estado pasa por `shot` (axe, también
+// con el menú abierto; desbordamiento; un solo status; sin rutas) y, con evidencia,
+// se fotografía con el nombre del diseño de Opus (`x-*`). La ventana de guardar se
+// retiene con `?hold=exportFile` para ver «Esperando…».
+
+const exportRequestsOf = async (page: Page, method: string) =>
+  (await strategyRequests(page)).filter((request) => request.method === method);
+const exportTrigger = (page: Page) =>
+  page.getByRole("button", { name: /^(Exportar|Exportando…)$/ });
+const exportFocused = (page: Page, visibleRing: boolean) =>
+  exportTrigger(page).evaluate(
+    (node, ring) =>
+      node === document.activeElement &&
+      (!ring || node.matches(":focus-visible")),
+    visibleRing,
+  );
+
+// ArrowDown on the button opens the menu with the focus on its first item
+async function openExportMenu(page: Page) {
+  await exportTrigger(page).press("ArrowDown");
+  const first = page.getByRole("menuitem", { name: /^Copiar como texto/ });
+  await visible(first);
+  await until(
+    () => first.evaluate((node) => node === document.activeElement),
+    5000,
+    "focus on the first item of the export menu",
+  );
+}
+async function closeExportMenu(page: Page) {
+  await page.keyboard.press("Escape");
+  await until(
+    async () => (await page.getByRole("menu").count()) === 0,
+    5000,
+    "export menu closed",
+  );
+  // the focus is back on the button, and it is seen
+  await until(
+    () => exportFocused(page, true),
+    5000,
+    "focus returns to the export button",
+  );
+}
+// the second item: the file; the arrows move and Enter chooses
+async function chooseExportFile(page: Page) {
+  await openExportMenu(page);
+  await page.keyboard.press("ArrowDown");
+  const file = page.getByRole("menuitem", { name: /^Guardar como hoja/ });
+  await until(
+    () => file.evaluate((node) => node === document.activeElement),
+    5000,
+    "focus on the file item of the export menu",
+  );
+  await page.keyboard.press("Enter");
+}
+
+async function exportStates(
+  page: Page,
+  base: string,
+  shot: Shot,
+  zoomed: boolean,
+) {
+  // a proposal: the menu warns that it is not accepted
+  await openAcceptedPlan(page, base, "plannedFuji", "Plan calculado", zoomed);
+  await openExportMenu(page);
+  assert.equal(
+    await page
+      .getByRole("menu", { name: "Exportar el plan" })
+      .getByText(
+        "Es una propuesta sin aceptar. Lo que exportes lo dirá en la primera línea.",
+      )
+      .count(),
+    1,
+  );
+  // the menu covers the plan, so it must not let the text behind show through
+  assert.match(
+    await page
+      .getByRole("menu", { name: "Exportar el plan" })
+      .evaluate((node) => getComputedStyle(node).backgroundColor),
+    /^rgb\(/,
+  );
+  await shot("x-menu");
+  await closeExportMenu(page);
+  if (zoomed) return;
+  // the accepted plan: no warning, and nothing was asked just by opening the menu
+  await openAcceptedPlan(page, base, "acceptedFuji", "Plan aceptado", false);
+  await openExportMenu(page);
+  assert.equal(
+    await page
+      .getByRole("menu")
+      .getByText(/propuesta sin aceptar/)
+      .count(),
+    0,
+  );
+  assert.equal((await exportRequestsOf(page, "strategy.export")).length, 0);
+  await shot("x-menu-aceptado");
+  // copy: the screen asks with the revision and the accepted plan, and says «Copiado»
+  await page.keyboard.press("Enter");
+  await visible(page.getByText("Copiado", { exact: true }));
+  assert.equal(await planStatus(page), "Plan copiado como texto.");
+  const copies = await exportRequestsOf(page, "strategy.export");
+  assert.equal(copies.length, 1);
+  assert.match(String(copies[0].revision), /^[0-9a-f]{64}$/);
+  assert.deepEqual(copies[0].target, { kind: "accepted" });
+  await until(
+    () => exportFocused(page, true),
+    5000,
+    "focus on the export button after copying",
+  );
+  await shot("x-copiado");
+
+  // the file: «Esperando…» while the window is open, then the name it was saved with
+  await openAcceptedPlan(
+    page,
+    base,
+    "acceptedFuji&hold=exportFile",
+    "Plan aceptado",
+    false,
+  );
+  await chooseExportFile(page);
+  await visible(page.getByRole("button", { name: "Exportando…" }));
+  await visible(
+    page.getByText("Elige dónde guardar el archivo", { exact: true }),
+  );
+  assert.equal(await exportTrigger(page).getAttribute("aria-disabled"), "true");
+  assert.equal(await planStatus(page), "Elige dónde guardar el archivo.");
+  const files = await exportRequestsOf(page, "strategy.exportFile");
+  assert.equal(files.length, 1);
+  assert.match(String(files[0].revision), /^[0-9a-f]{64}$/);
+  assert.deepEqual(files[0].target, { kind: "accepted" });
+  await shot("x-esperando");
+  await page.evaluate(() =>
+    (window as unknown as { __release: () => void }).__release(),
+  );
+  await visible(page.getByText("Plan exportado", { exact: true }));
+  await visible(page.getByText(/^Guardado como «Fuji 6 Horas\.csv»\./));
+  assert.equal(await planStatus(page), "Guardado como Fuji 6 Horas.csv.");
+  await until(
+    () => exportFocused(page, false),
+    5000,
+    "focus on the export button after saving",
+  );
+  await shot("x-hecho");
+  await press(button(page, "Cerrar aviso"));
+  assert.equal(
+    await page.getByText("Plan exportado", { exact: true }).count(),
+    0,
+  );
+  await until(
+    () => exportFocused(page, false),
+    5000,
+    "focus on the export button after putting the notice away",
+  );
+
+  // a refusal is an alert, with words and no path; the plan stays as it was
+  await openAcceptedPlan(
+    page,
+    base,
+    "acceptedFujiFileUnavailable",
+    "Plan aceptado",
+    false,
+  );
+  await chooseExportFile(page);
+  const alert = page.getByRole("alert");
+  await visible(alert);
+  assert.match(
+    (await alert.textContent()) ?? "",
+    /No se pudo exportar el plan.*Prueba en otra carpeta, como Documentos\./,
+  );
+  await visible(page.getByRole("button", { name: "Elegir otra carpeta…" }));
+  assert.equal(await stateTag(page), "Aceptado");
+  await shot("x-error");
+  // the other one the person can mend by themselves: a program has the file open
+  await openAcceptedPlan(
+    page,
+    base,
+    "plannedFujiExportInUse",
+    "Plan calculado",
+    false,
+  );
+  await chooseExportFile(page);
+  await visible(
+    page.getByText(
+      "Otro programa tiene ese archivo abierto, por ejemplo Excel. Ciérralo en el otro programa y vuelve a intentarlo.",
+      { exact: true },
+    ),
+  );
+  await shot("x-error-enuso");
 }

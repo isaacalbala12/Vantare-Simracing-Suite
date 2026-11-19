@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { HostError } from "../../../contract/generated/contract";
 import type {
+  StrategyExportTarget,
   StrategyReply,
   StrategyRequest,
   StrategyView,
@@ -8,8 +9,8 @@ import type {
 import { type Client, HostFailure } from "../../bridge/client";
 
 export type StrategyClient = Pick<Client, "request">;
-// The export requests answer with a text or a file name, not a view: they are the
-// export menu's own (E5d), not an action of this hook.
+// The export requests answer with a text or a file name, not a view: they go
+// through `exportPlan`, not through `act`.
 type Operation = Extract<
   Exclude<
     StrategyRequest,
@@ -34,6 +35,14 @@ export const calculationPollMs = 250;
 // and lets the person retry or cancel.
 export const calculationPollFailures = 3;
 type Result = { value: StrategyView } | { error: HostError };
+// What an export came to. The plan is copied by the main process (the screen only
+// asks), and a file is saved by it (the screen only learns the NAME).
+export type ExportMethod = "strategy.export" | "strategy.exportFile";
+export type ExportOutcome =
+  | { copied: true }
+  | { saved: string }
+  | { cancelled: true }
+  | { error: HostError };
 
 async function send(
   client: StrategyClient,
@@ -209,6 +218,50 @@ export function useStrategy(client: StrategyClient) {
     wake();
     return result;
   }
+  // Asks the host for the text or the file of a plan, with the revision of the view
+  // on screen. It takes the same turn as every action (the dialog of the file and the
+  // ticket of the pickers are one at a time). A `strategyConflict` brings the host's
+  // view, which replaces ours; every other error is the caller's to say.
+  async function exportPlan(
+    method: ExportMethod,
+    target: StrategyExportTarget,
+  ): Promise<ExportOutcome | undefined> {
+    const base = current.current;
+    if (!base || running.current || !session.current) return;
+    const token = session.current;
+    running.current = token;
+    setPending(true);
+    setError(undefined);
+    let outcome: ExportOutcome;
+    try {
+      const reply = (await client.request({
+        method,
+        revision: base.revision,
+        target,
+      })) as StrategyReply;
+      if (reply.method !== method) outcome = { error: { kind: "rejected" } };
+      else if (reply.method === "strategy.export") outcome = { copied: true };
+      else if (reply.value.kind === "saved")
+        outcome = { saved: reply.value.file.name };
+      else if (reply.value.kind === "cancelled") outcome = { cancelled: true };
+      // the ticket is the main process's: it never reaches the screen
+      else outcome = { error: { kind: "rejected" } };
+    } catch (error) {
+      outcome = {
+        error: error instanceof HostFailure ? error.detail : { kind: "io" },
+      };
+    }
+    if (session.current !== token) return;
+    running.current = undefined;
+    setPending(false);
+    if ("error" in outcome && outcome.error.kind === "strategyConflict") {
+      current.current = outcome.error.current;
+      setView(outcome.error.current);
+      setError(outcome.error);
+    }
+    wake();
+    return outcome;
+  }
   return {
     view,
     error,
@@ -219,6 +272,7 @@ export function useStrategy(client: StrategyClient) {
     // the last view the host sent, before the screen has drawn it
     peek: () => current.current,
     act,
+    exportPlan,
     clearError: () => setError(undefined),
   };
 }

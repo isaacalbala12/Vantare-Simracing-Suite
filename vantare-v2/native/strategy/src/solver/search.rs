@@ -1,8 +1,9 @@
+use super::fixed::Fixed;
 use super::model::{Model, require};
 use super::replay::{completed_reason, replay_model, time_cmp};
 use super::{
-    AtomicBool, AtomicOrdering, DecisionVector, Evaluation, Input, OptimalityStatus, Ordering,
-    PitDecision, PitStop, ResultV2, SolverOutcome, StintDecision, amount, populated,
+    AtomicBool, AtomicOrdering, DecisionVector, Evaluation, FixedStop, Input, OptimalityStatus,
+    Ordering, PitDecision, PitStop, ResultV2, SolverOutcome, StintDecision, amount, populated,
     solver_outcome, units,
 };
 use serde_json::json;
@@ -47,7 +48,19 @@ fn compare_state(l: &State, r: &State) -> Ordering {
     time_cmp(l.evaluation.total_seconds, r.evaluation.total_seconds)
         .then_with(|| decision_cmp(&l.decision, &r.decision))
 }
-fn dominates(l: &State, r: &State, m: &Model, risk: bool) -> bool {
+/// `fixed_stops`: paradas que hacen falta para respetar lo fijado a mano (0 si
+/// no hay nada fijado).
+fn dominates(l: &State, r: &State, m: &Model, risk: bool, fixed_stops: usize) -> bool {
+    // Con algo fijado, lo que viene depende del número de parada, y una cantidad
+    // fijada tiene que caber: llevar más combustible o energía puede impedir la
+    // parada. Solo se comparan estados con las mismas paradas hechas y, mientras
+    // queden paradas fijadas por delante, con los mismos niveles.
+    if fixed_stops > 0
+        && (l.decision.pit_stops.len() != r.decision.pit_stops.len()
+            || (l.decision.pit_stops.len() < fixed_stops && (l.fuel != r.fuel || l.ve != r.ve)))
+    {
+        return false;
+    }
     if risk
         && ((!l.worst_feasible && r.worst_feasible)
             || (l.worst_feasible && (l.worst_fuel < r.worst_fuel || l.worst_ve < r.worst_ve)))
@@ -149,6 +162,7 @@ fn cannot_improve(
 #[allow(clippy::too_many_lines)] // One bounded walk owns budget, cancellation and proof completion.
 pub(super) fn solve(
     input: &Input,
+    fixed: &[FixedStop],
     cancel: &AtomicBool,
     partial: bool,
     deadline_millis: Option<u64>,
@@ -160,11 +174,18 @@ pub(super) fn solve(
     let (effective, requested) = super::budget::effective(input);
     let input = &effective;
     let m = Model::new(input)?;
+    let fixed = Fixed::new(fixed, m.fuel, m.ve).map_err(|invalid| invalid.to_string())?;
+    let fixed_stops = fixed.required_stops();
     let worst = Model::new(&super::risk::envelope(input, true))?;
     let cost = Model::new(&super::risk::envelope(input, false))?;
     let risk = super::risk::active(&m, &worst);
-    let certified =
-        super::certified::one_pit(&m, &worst, &cost, risk, cancel, &started, deadline_millis)?;
+    // El atajo certificado de una parada y la semilla de más abajo no saben de
+    // cantidades fijadas: con algo fijado se usa solo la enumeración.
+    let certified = if fixed.is_empty() {
+        super::certified::one_pit(&m, &worst, &cost, risk, cancel, &started, deadline_millis)?
+    } else {
+        None
+    };
     let bound_certified = certified.is_some();
     let max_work = if input.budget.max_candidates == 0 {
         10_000_000
@@ -179,7 +200,7 @@ pub(super) fn solve(
     let mut pruned = 0;
     let (mut work, mut iterations) = (0usize, 0usize);
     let mut reason = None;
-    let seed = if bound_certified {
+    let seed = if bound_certified || !fixed.is_empty() {
         None
     } else {
         super::seed::greedy(&m, cancel, &started, deadline_millis)?
@@ -366,7 +387,9 @@ pub(super) fn solve(
                         if (m.dims.race_duration_seconds.is_none() && end == input.race_laps)
                             || timed_complete
                         {
-                            if completed_reason(&m, &after.decision).is_none() {
+                            if completed_reason(&m, &after.decision).is_none()
+                                && after.decision.pit_stops.len() >= fixed_stops
+                            {
                                 let replayed = replay_model(&m, &after.decision, None, true)?;
                                 if replayed.feasible {
                                     first_incumbent_micros
@@ -409,9 +432,10 @@ pub(super) fn solve(
                         {
                             continue;
                         }
+                        let (fixed_fuel, fixed_ve) = fixed.at(after.decision.pit_stops.len());
                         for (next_tyre, change_tyres) in m.tyres.next(&after.tyre) {
-                            for f in m.fuel.amounts(after.fuel) {
-                                for v in m.ve.amounts(after.ve) {
+                            for f in m.fuel.amounts(after.fuel, fixed_fuel) {
+                                for v in m.ve.amounts(after.ve, fixed_ve) {
                                     work += 1;
                                     if work > max_work {
                                         reason = Some("candidate_budget_exhausted");
@@ -465,7 +489,7 @@ pub(super) fn solve(
                                             reason = Some("deadline_exceeded");
                                             break 'search;
                                         }
-                                        if dominates(existing, &next, &m, risk) {
+                                        if dominates(existing, &next, &m, risk, fixed_stops) {
                                             dominated = true;
                                             break;
                                         }
@@ -488,7 +512,7 @@ pub(super) fn solve(
                                                 reason = Some("deadline_exceeded");
                                                 break 'search;
                                             }
-                                            if dominates(&next, &existing, &m, risk) {
+                                            if dominates(&next, &existing, &m, risk, fixed_stops) {
                                                 pruned += 1;
                                                 retained_states -= 1;
                                                 retained_items -= decision_items(&existing);
@@ -655,6 +679,7 @@ pub(super) fn solve(
         OptimalityStatus::NoSolution
     };
     let mut outcome = solver_outcome(result, status, work, reason);
+    outcome.certificate.fixed_stops = fixed.stops().count();
     outcome.certificate.scope = if adverse_policy {
         "validated_adverse_feasible_input"
     } else {

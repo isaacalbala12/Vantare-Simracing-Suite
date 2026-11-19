@@ -19,12 +19,13 @@ use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use vantare_strategy::application::{
     EditedPlan, SourceStatus, calculate_detailed, prepare_manual, recalculate_edited_plan_detailed,
+    recalculate_edited_plan_fixed,
 };
 use vantare_strategy::solver::{
-    DecisionVector, Input, PitDecision, ResultV2, Scalar, SolverOutcome, StintDecision,
+    DecisionVector, FixedStop, Input, PitDecision, ResultV2, Scalar, SolverOutcome, StintDecision,
     WeatherScenarioSet, Window, manual_service_grid, replay_decision_v2,
     replay_decision_v2_with_resources, resource_requirements_v2, solve_greedy_fallback,
-    solve_v2_cancellable, solve_weather_scenarios,
+    solve_greedy_fallback_fixed, solve_v2_cancellable, solve_v2_fixed, solve_weather_scenarios,
 };
 
 struct Case {
@@ -667,4 +668,70 @@ fn coarsened_grids_keep_their_results_without_fixed_stops() {
         });
     }
     check("coarsened", &cases);
+}
+
+// ---------------------------------------------------------------------------
+// 4. No fijar nada, de cualquiera de las formas, es el mismo cálculo.
+// ---------------------------------------------------------------------------
+
+/// Una lista vacía y una lista con todas las paradas en automático dan, byte a
+/// byte, lo mismo que las funciones sin lista: búsqueda, respaldo y recálculo.
+#[test]
+fn an_empty_or_all_automatic_list_is_the_calculation_without_a_list() {
+    let text = |value: &Value| {
+        let mut out = String::new();
+        canonical(value, &mut out);
+        out
+    };
+    let automatic = [FixedStop::default(); 4];
+    let lists: [&[FixedStop]; 2] = [&[], &automatic];
+    let mut rng = Rng(0x5EED_2690);
+    let mut recalculations = 0;
+    for index in 0..160 {
+        let input = generated(&mut rng, index % 5 != 0);
+        let cancel = AtomicBool::new(false);
+        let without = solve_v2_cancellable(&input, &cancel);
+        let plan = without
+            .as_ref()
+            .ok()
+            .filter(|outcome| outcome.result.feasible)
+            .map(|outcome| outcome.result.clone())
+            .or_else(|| solve_greedy_fallback(&input).ok().map(|o| o.result));
+        let (expected, _) = solved(without);
+        let expected_greedy = greedy(&input);
+        for fixed in lists {
+            let (actual, _) = solved(solve_v2_fixed(&input, fixed, &cancel));
+            assert_eq!(text(&actual), text(&expected), "caso {index}: búsqueda");
+            let actual = match solve_greedy_fallback_fixed(&input, fixed) {
+                Ok(outcome) => json!(outcome),
+                Err(refusal) => json!({ "refusal": refusal.code() }),
+            };
+            assert_eq!(
+                text(&actual),
+                text(&expected_greedy),
+                "caso {index}: respaldo"
+            );
+        }
+        let Some(result) = plan else { continue };
+        recalculations += 1;
+        let edited = edited_of(&result);
+        let expected = recalculated(&input, &edited);
+        for fixed in lists {
+            let actual = match recalculate_edited_plan_fixed(&input, &edited, fixed, &cancel) {
+                Ok(recalculation) => {
+                    assert_eq!(recalculation.unreachable_stop, None, "caso {index}");
+                    json!({
+                        "outcome": recalculation.outcome,
+                        "fallback": format!("{:?}", recalculation.fallback),
+                    })
+                }
+                Err(error) => json!({ "error": error }),
+            };
+            assert_eq!(text(&actual), text(&expected), "caso {index}: recálculo");
+        }
+    }
+    assert!(
+        recalculations > 80,
+        "solo {recalculations} recálculos comparados"
+    );
 }

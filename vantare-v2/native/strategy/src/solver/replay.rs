@@ -1,9 +1,26 @@
 use super::model::{Model, require};
 use super::{
     DecisionResourceRequirements, DecisionVector, Evaluation, Input, Ordering, ReserveStatus,
-    ResourceRequirement, ResourceReserveStatus, Serialize, StintDecision, Value, amount, json,
-    populated, reserve_amount, units,
+    ResourceRequirement, ResourceReserveStatus, SavingLevel, Serialize, StintDecision, Value,
+    amount, json, populated, reserve_amount, units,
 };
+
+/// Recurso que se agota en un plan reproducido que no llega.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ExhaustedResource {
+    Fuel,
+    VirtualEnergy,
+    Tyres,
+}
+
+/// Dónde deja de poder seguirse un plan reproducido: `lap` es la primera vuelta
+/// de carrera que no se puede completar y `stint` su tramo (0 = el primero).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ReplayFailure {
+    pub stint: usize,
+    pub lap: u32,
+    pub resource: ExhaustedResource,
+}
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -23,6 +40,10 @@ pub struct ReplayResult {
     pub reserve: ReserveStatus,
     pub feasible: bool,
     pub reasons: Vec<SolverReason>,
+    /// Solo con el motivo `resource_exhausted`. No forma parte del JSON, que
+    /// sigue siendo el del contrato de replay.
+    #[serde(skip)]
+    pub failure: Option<ReplayFailure>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct SolverReason {
@@ -302,6 +323,7 @@ pub(super) fn replay_model(
         reserve: ReserveStatus::default(),
         feasible: false,
         reasons: vec![],
+        failure: None,
     };
     result.evaluation.total();
     let mut lap = 0;
@@ -335,6 +357,15 @@ pub(super) fn replay_model(
                 && f64::from(super::tyres::age(&tyre, &tyre_usage, tyre_age) + requested.laps)
                     > model.input.tyre_life_laps.value)
         {
+            result.failure = Some(exhaustion(
+                model,
+                index,
+                lap,
+                requested,
+                level,
+                (f, v),
+                super::tyres::age(&tyre, &tyre_usage, tyre_age),
+            )?);
             return Ok(failed(result, decision, "resource_exhausted"));
         }
         let mut eval = model.stint(
@@ -453,6 +484,43 @@ pub(super) fn replay_model(
     }
     result.feasible = true;
     Ok(result)
+}
+/// Primera vuelta de un tramo que no se puede completar y qué se agota en
+/// ella. Si coinciden varios recursos: combustible, energía y ruedas, por ese
+/// orden. `done` son las vueltas ya completadas; `available`, el combustible y
+/// la energía al empezar el tramo.
+fn exhaustion(
+    model: &Model,
+    stint: usize,
+    done: u32,
+    requested: &StintDecision,
+    level: &SavingLevel,
+    available: (i64, i64),
+    tyre_age: u32,
+) -> Result<ReplayFailure, String> {
+    let life = model.input.tyre_life_laps.value;
+    let (mut fuel, mut ve) = (0i64, 0i64);
+    for lap in done + 1..=done + requested.laps {
+        let (f, v) = model.usage(lap, 1, &requested.driver, level)?;
+        fuel += f;
+        ve += v;
+        let resource = if fuel > available.0 {
+            ExhaustedResource::Fuel
+        } else if ve > available.1 {
+            ExhaustedResource::VirtualEnergy
+        } else if life > 0.0 && f64::from(tyre_age + lap - done) > life {
+            ExhaustedResource::Tyres
+        } else {
+            continue;
+        };
+        return Ok(ReplayFailure {
+            stint,
+            lap,
+            resource,
+        });
+    }
+    // Quien llama ya comprobó que el tramo entero no se puede completar.
+    Err("invalid_input: resource_exhausted sin vuelta de fallo".into())
 }
 pub(super) fn completed_reason(model: &Model, d: &DecisionVector) -> Option<String> {
     let rules = &model.input.event_rules;

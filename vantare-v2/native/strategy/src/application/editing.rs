@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use serde::{Deserialize, Serialize};
 
 use super::Fallback;
-use super::solver::{self, Input, SolverOutcome, Window};
+use super::solver::{self, FixedStop, GreedyRefusal, Input, SolverOutcome, Window};
 
 const MAX_PIT_STOPS: usize = 16;
 
@@ -36,10 +36,42 @@ pub fn recalculate_edited_plan_detailed(
     edited: &EditedPlan,
     cancel: &AtomicBool,
 ) -> Result<(SolverOutcome, Fallback), String> {
+    recalculate_edited_plan_fixed(input, edited, &[], cancel)
+        .map(|recalculation| (recalculation.outcome, recalculation.fallback))
+}
+
+/// Un recálculo con cantidades fijadas a mano y su resultado.
+#[derive(Clone, Debug)]
+pub struct FixedRecalculation {
+    pub outcome: SolverOutcome,
+    pub fallback: Fallback,
+    /// Cuando no hay plan por culpa de lo fijado, la primera parada fijada con la
+    /// que deja de haberlo (0 = primera parada). `None` si hay plan, si la causa
+    /// es otra (el calendario, las reglas) o si no se puede saber (pasos finos).
+    pub unreachable_stop: Option<usize>,
+}
+
+/// Como [`recalculate_edited_plan_detailed`], respetando además las cantidades
+/// fijadas a mano por parada (`fixed[0]` es la primera parada del calendario
+/// editado). El plan lleva exactamente lo fijado o no hay plan; nunca se devuelve
+/// uno que lo cambie. Con la lista vacía es el mismo recálculo.
+pub fn recalculate_edited_plan_fixed(
+    input: &Input,
+    edited: &EditedPlan,
+    fixed: &[FixedStop],
+    cancel: &AtomicBool,
+) -> Result<FixedRecalculation, String> {
     input.validate()?;
     validate_edited_plan(input.race_laps, edited)?;
 
     let stops = edited.pit_stop_laps.len();
+    if fixed
+        .iter()
+        .skip(stops)
+        .any(|stop| *stop != FixedStop::default())
+    {
+        return Err("fixed_stop_outside_edited_schedule".into());
+    }
     if input
         .event_rules
         .min_pit_stops
@@ -72,7 +104,7 @@ pub fn recalculate_edited_plan_detailed(
         return Err("too_many_required_pit_windows".into());
     }
 
-    let (outcome, fallback) = solve_with_fallback(&constrained, cancel)?;
+    let (outcome, fallback) = solve_with_fallback(&constrained, fixed, cancel)?;
     // This guard is for the scalar solver. A greedy plan cannot trip it: the edited stops
     // are fixed (min = max = their count, one exact window each), so a plan with that many
     // stops has every stop on a window lap, and the greedy plan refuses (`MaxStops`) as
@@ -89,7 +121,48 @@ pub fn recalculate_edited_plan_detailed(
     {
         return Err("solver_did_not_preserve_edited_schedule".into());
     }
-    Ok((outcome, fallback))
+    // Defensa: la búsqueda y el respaldo solo prueban la cantidad fijada.
+    if outcome.result.feasible
+        && outcome
+            .result
+            .pit_stops
+            .iter()
+            .zip(fixed)
+            .any(|(stop, fixed)| !fixed.kept_by(stop))
+    {
+        return Err("solver_did_not_preserve_fixed_stops".into());
+    }
+    let unreachable_stop = unreachable_stop(&constrained, fixed, &outcome, fallback);
+    Ok(FixedRecalculation {
+        outcome,
+        fallback,
+        unreachable_stop,
+    })
+}
+
+/// La parada fijada que impide el plan. El respaldo ya la trae cuando se negó
+/// por eso; si la búsqueda terminó sin plan por su cuenta (lo demostró, o el
+/// respaldo no llegó a usarse), se le pregunta al respaldo, que con el calendario
+/// fijo es exacto y no prueba ningún plan.
+fn unreachable_stop(
+    constrained: &Input,
+    fixed: &[FixedStop],
+    outcome: &SolverOutcome,
+    fallback: Fallback,
+) -> Option<usize> {
+    if outcome.result.feasible || fixed.iter().all(|stop| *stop == FixedStop::default()) {
+        return None;
+    }
+    let refusal = match fallback {
+        Fallback::Refused(refusal) => refusal,
+        Fallback::NotApplicable | Fallback::Applied => {
+            solver::solve_greedy_fallback_fixed(constrained, fixed).err()?
+        }
+    };
+    match refusal {
+        GreedyRefusal::FixedAmountUnreachable { stop } => Some(stop),
+        _ => None,
+    }
 }
 
 /// The scalar search first. Only when it ends without any plan (`not_proven`, no
@@ -103,18 +176,20 @@ pub fn recalculate_edited_plan_detailed(
 /// cancellation there.
 fn solve_with_fallback(
     constrained: &Input,
+    fixed: &[FixedStop],
     cancel: &AtomicBool,
 ) -> Result<(SolverOutcome, Fallback), String> {
-    solve_with_hooks(constrained, cancel, &|| {}, &|| {})
+    solve_with_hooks(constrained, fixed, cancel, &|| {}, &|| {})
 }
 
 fn solve_with_hooks(
     constrained: &Input,
+    fixed: &[FixedStop],
     cancel: &AtomicBool,
     before: &dyn Fn(),
     after: &dyn Fn(),
 ) -> Result<(SolverOutcome, Fallback), String> {
-    let mut outcome = solver::solve_v2_cancellable(constrained, cancel)?;
+    let mut outcome = solver::solve_v2_fixed(constrained, fixed, cancel)?;
     let without_plan = outcome.certificate.status == solver::OptimalityStatus::NotProven
         && !outcome.result.feasible;
     if !without_plan {
@@ -127,7 +202,7 @@ fn solve_with_hooks(
     if cancel.load(Ordering::Relaxed) {
         return Err("cancelled".into());
     }
-    let greedy = solver::solve_greedy_fallback(constrained);
+    let greedy = solver::solve_greedy_fallback_fixed(constrained, fixed);
     after();
     if cancel.load(Ordering::Relaxed) {
         return Err("cancelled".into());
@@ -577,6 +652,7 @@ mod tests {
         let ran = AtomicBool::new(false);
         let result = solve_with_hooks(
             &constrained(&input, &edited),
+            &[],
             &cancel,
             &|| cancel.store(true, Ordering::Relaxed),
             &|| ran.store(true, Ordering::Relaxed),
@@ -589,7 +665,7 @@ mod tests {
     fn a_cancellation_while_the_greedy_plan_runs_publishes_no_plan() {
         let (input, edited) = without_plan_input();
         let cancel = AtomicBool::new(false);
-        let result = solve_with_hooks(&constrained(&input, &edited), &cancel, &|| {}, &|| {
+        let result = solve_with_hooks(&constrained(&input, &edited), &[], &cancel, &|| {}, &|| {
             cancel.store(true, Ordering::Relaxed);
         });
         assert_eq!(result.expect_err("cancelled"), "cancelled");

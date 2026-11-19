@@ -17,25 +17,52 @@ import type {
 import { Icon } from "../../assets/icons/Icon";
 import { strategy } from "../../i18n/strategy";
 import {
+  acceptedTag,
   addedLoad,
+  canAccept,
   certificateNotice,
   clock,
+  differsFromAccepted,
+  durationNote,
   editSummary,
-  isTrialPlan,
+  isAcceptedOnly,
+  isAcceptedOnView,
   lapTime,
   load,
   movedStops,
   planSubtitle,
+  planSummary,
   reserveFigure,
   reserveNote,
   scheduleTimeline,
+  type Tag,
   tyresNote,
 } from "../../screens/strategy/planText";
 import { Button } from "../Button";
+import {
+  AcceptedLine,
+  AcceptedMenu,
+  CompareCard,
+  ConfirmCard,
+  ProposalLine,
+  proposalLine,
+  StaleNotice,
+  StateTag,
+} from "./PlanAccept";
 import { type EditActions, StintEditor, StopEditor } from "./PlanAdjust";
 import { PlanTimeline, type TimelineMark } from "./PlanTimeline";
 
 const t = strategy.calc;
+
+export type AcceptActions = {
+  // keeps the proposal on view, replacing the plan accepted before if there is one
+  accept: () => void;
+  // drops the proposal: the accepted plan is what is shown
+  showAccepted: () => void;
+  unaccept: () => void;
+  // the plan was just accepted for the first time and the file is not saved yet
+  fresh: boolean;
+};
 
 export type PlanActions = {
   // false when there is no form to send, or an action is already running
@@ -49,6 +76,7 @@ export type PlanActions = {
   // to the Carrera tab; with a field, the editor opens with that field marked
   review: (field: StrategyField | null) => void;
   edit: EditActions;
+  acceptance: AcceptActions;
 };
 
 function Heading({
@@ -57,12 +85,14 @@ function Heading({
   title,
   sub,
   actions,
+  tag,
 }: {
   state: string;
   name: string;
   title: string;
   sub: string;
   actions?: ReactNode;
+  tag?: Tag | null;
 }) {
   // The heading takes focus by script when the plan changes under a keyboard
   // user (the button they pressed is gone): it is not a control, so no ring.
@@ -76,9 +106,12 @@ function Heading({
     <header className="strategy-plan-head">
       <div>
         <div className="strategy-kicker">{t.eyebrow(name)}</div>
-        <h2 ref={heading} tabIndex={-1}>
-          {title}
-        </h2>
+        <div className="strategy-plan-title">
+          <h2 ref={heading} tabIndex={-1}>
+            {title}
+          </h2>
+          {tag && <StateTag tag={tag} />}
+        </div>
         <p>{sub}</p>
       </div>
       {actions && <div className="strategy-actions">{actions}</div>}
@@ -118,12 +151,14 @@ function Figure({
   value,
   note,
   stale,
+  staleLabel,
 }: {
   label: string;
   value: string;
   note?: string;
-  // the figure is that of the plan before the edit
+  // the figure is that of the plan before the edit, or of old data
   stale: boolean;
+  staleLabel: string;
 }) {
   return (
     <li
@@ -131,7 +166,7 @@ function Figure({
       data-stale={stale || undefined}
     >
       <span>{label}</span>
-      {stale && <em>{t.adjust.previous}</em>}
+      {stale && <em>{staleLabel}</em>}
       <b>{value}</b>
       {note && <small>{note}</small>}
     </li>
@@ -142,10 +177,15 @@ function Figures({
   result,
   form,
   stale,
+  staleLabel,
+  durationText,
 }: {
   result: StrategyCalculationView;
   form: StrategyComputeForm | null;
   stale: boolean;
+  staleLabel: string;
+  // what the duration says of the accepted plan, when this is another proposal
+  durationText?: string;
 }) {
   const { metrics, timeline } = result;
   if (!metrics) return null;
@@ -156,26 +196,30 @@ function Figures({
       <Figure
         label={f.duration}
         value={clock(metrics.totalSeconds)}
-        note={f.durationNote}
+        note={durationText ?? f.durationNote}
         stale={stale}
+        staleLabel={staleLabel}
       />
       <Figure
         label={f.laps}
         value={String(metrics.laps)}
         note={asked === metrics.laps ? f.asked : undefined}
         stale={stale}
+        staleLabel={staleLabel}
       />
       <Figure
         label={f.stops}
         value={String(metrics.pitCount)}
         note={timeline ? tyresNote(timeline.pits) : undefined}
         stale={stale}
+        staleLabel={staleLabel}
       />
       <Figure
         label={f.left}
         value={reserveFigure(metrics.fuelReserveRealLaps)}
         note={reserveNote(metrics, timeline?.fuelFinishLiters)}
         stale={stale}
+        staleLabel={staleLabel}
       />
     </ul>
   );
@@ -311,6 +355,7 @@ function EditNotices({
           <div>
             <strong>{t.adjust.pending.title}</strong>
             <p>{t.adjust.pending.detail}</p>
+            <p>{t.adjust.pending.accept}</p>
             <p>{t.adjust.notSaved}</p>
           </div>
         </section>
@@ -336,14 +381,15 @@ function Result({
   form,
   name,
   actions,
-  trial,
+  only = false,
 }: {
   plan: StrategyPlanView;
   result: StrategyCalculationView;
   form: StrategyComputeForm | null;
   name: string;
   actions: PlanActions;
-  trial: boolean;
+  // only the accepted plan is on view: there is no proposal and nothing to adjust
+  only?: boolean;
 }) {
   const { state, edit } = plan;
   const { timeline } = result;
@@ -370,6 +416,56 @@ function Result({
   const stops = edit?.stops.length ?? 0;
   const adjustable = !!edit && !!timeline && !!result.metrics && stops > 0;
   const view: Mode = adjustable ? mode : "summary";
+  // the plan accepted, and what the plan on view is next to it
+  const { accepted } = plan;
+  const acceptance = actions.acceptance;
+  const onView = !only && isAcceptedOnView(plan);
+  const showsAccepted = !!accepted && (only || onView);
+  const outdated = showsAccepted && accepted.state !== "accepted";
+  const other = !only && differsFromAccepted(plan);
+  const acceptable = !only && canAccept(plan);
+  const [confirm, setConfirm] = useState<"replace" | "remove" | null>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  const acceptRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLButtonElement>(null);
+  // the question takes the focus; the menu that opened it must not take it back
+  const skipFocus = useRef(false);
+  const restore = useRef<"accept" | "menu" | null>(null);
+  // the question goes when what it asks about is no longer there
+  const asks =
+    view === "summary" &&
+    ((confirm === "replace" && other) ||
+      (confirm === "remove" && showsAccepted));
+  useEffect(() => {
+    if (confirm && !asks) setConfirm(null);
+  }, [confirm, asks]);
+  useEffect(() => {
+    if (asks) cancelRef.current?.focus();
+    else if (restore.current) {
+      (restore.current === "accept" ? acceptRef : menuRef).current?.focus();
+      restore.current = null;
+      skipFocus.current = false;
+    }
+  }, [asks]);
+  function cancelQuestion() {
+    restore.current = confirm === "replace" ? "accept" : "menu";
+    setConfirm(null);
+  }
+  function confirmQuestion() {
+    const kind = confirm;
+    restore.current = kind === "replace" ? "accept" : "menu";
+    setConfirm(null);
+    if (kind === "replace") acceptance.accept();
+    else acceptance.unaccept();
+  }
+  // with the proposal on view nothing is lost: it stays and can be accepted again
+  function remove() {
+    if (onView) acceptance.unaccept();
+    else {
+      skipFocus.current = true;
+      setConfirm("remove");
+    }
+  }
   // stint i and stop i are the two ends of the same boundary: one selection
   const index = Math.min(selected, view === "stops" ? stops - 1 : stops);
   const mark: TimelineMark | undefined =
@@ -445,7 +541,12 @@ function Result({
         ? [t.adjust.stints.heading, t.adjust.stints.sub]
         : view === "stops"
           ? [t.adjust.stops.heading, t.adjust.stops.sub]
-          : [t.done.heading, planSubtitle(result)];
+          : [
+              showsAccepted
+                ? strategy.calc.accept.acceptedHeading
+                : t.done.heading,
+              planSubtitle(result),
+            ];
   const headActions = recalculating ? undefined : edited ? (
     <>
       {reset}
@@ -458,16 +559,46 @@ function Result({
     <>
       {reset}
       {again}
+      {acceptable && !asks && (
+        <Button
+          ref={acceptRef}
+          variant="primary"
+          disabled={actions.pending}
+          onClick={() => (other ? setConfirm("replace") : acceptance.accept())}
+        >
+          <Icon name="check" />
+          {strategy.calc.accept.action}
+        </Button>
+      )}
+      {showsAccepted && (
+        <AcceptedMenu
+          remove={remove}
+          keeps={onView}
+          triggerRef={menuRef}
+          skipFocus={skipFocus}
+          disabled={actions.pending}
+        />
+      )}
     </>
   );
+  // the state of the plan, next to its title (only in the summary)
+  const tag: Tag | null =
+    edited || recalculating || view !== "summary"
+      ? null
+      : showsAccepted && accepted
+        ? acceptedTag(accepted)
+        : acceptable
+          ? { tone: "neutral", text: strategy.calc.accept.tags.proposal }
+          : null;
   return (
     <>
       <Heading
-        state={state}
+        state={`${state}/${tag?.text ?? ""}`}
         name={name}
         title={title}
         sub={sub}
         actions={headActions}
+        tag={tag}
       />
       {recalculating && (
         <div
@@ -509,17 +640,68 @@ function Result({
           recalculating={recalculating}
         />
       )}
+      {!edited &&
+        !recalculating &&
+        view === "summary" &&
+        (outdated && accepted ? (
+          <StaleNotice
+            accepted={accepted}
+            canCalculate={actions.canCalculate}
+            pending={actions.pending}
+            calculate={actions.calculate}
+            review={() => actions.review(null)}
+          />
+        ) : (
+          <Notice result={result} />
+        ))}
       {!edited && !recalculating && view === "summary" && (
-        <Notice result={result} />
-      )}
-      {view === "summary" && isTrialPlan(plan, trial) && (
-        <p className="strategy-trial">
-          <Icon name="info" />
-          {t.adjust.trial}
-        </p>
+        <>
+          {acceptable && !other && (
+            <ProposalLine unproven={result.certificate !== "proven"} />
+          )}
+          {showsAccepted && !outdated && accepted && (
+            <AcceptedLine
+              accepted={accepted}
+              pending={actions.pending}
+              undo={acceptance.fresh ? acceptance.unaccept : undefined}
+            />
+          )}
+          {other && accepted && !asks && (
+            <CompareCard
+              accepted={accepted}
+              proposal={proposalLine(accepted, planSummary(result))}
+              back={acceptance.showAccepted}
+              pending={actions.pending}
+            />
+          )}
+          {asks && accepted && (
+            <ConfirmCard
+              kind={confirm === "replace" ? "replace" : "remove"}
+              summary={planSummary(accepted.result)}
+              cancelRef={cancelRef}
+              cancel={cancelQuestion}
+              confirm={confirmQuestion}
+              pending={actions.pending}
+            />
+          )}
+        </>
       )}
       {(view === "summary" || edited || recalculating) && (
-        <Figures result={result} form={form} stale={edited || recalculating} />
+        <Figures
+          result={result}
+          form={form}
+          stale={edited || recalculating || (outdated && view === "summary")}
+          staleLabel={
+            outdated && !edited && !recalculating
+              ? strategy.calc.accept.oldData
+              : t.adjust.previous
+          }
+          durationText={
+            other && view === "summary"
+              ? durationNote(accepted?.compare ?? null)
+              : undefined
+          }
+        />
       )}
       {shown ? (
         <>
@@ -531,7 +713,11 @@ function Result({
             {edit && stops === 0 && (
               <p className="strategy-help">{t.adjust.noStops}</p>
             )}
-            {!edit && <p className="strategy-help">{t.adjust.notEditable}</p>}
+            {!edit && (
+              <p className="strategy-help">
+                {only ? strategy.calc.accept.noAdjust : t.adjust.notEditable}
+              </p>
+            )}
             <PlanTimeline
               timeline={shown}
               selected={mark}
@@ -588,14 +774,11 @@ export function PlanTab({
   form,
   name,
   actions,
-  trial,
 }: {
   plan: StrategyPlanView;
   form: StrategyComputeForm | null;
   name: string;
   actions: PlanActions;
-  // the plan on view is a recalculation of this session, not the file's
-  trial: boolean;
 }) {
   const state = plan.state;
   const calculate = (
@@ -620,6 +803,26 @@ export function PlanTab({
   const heading = (title: string, sub: string) => (
     <Heading state={state} name={name} title={title} sub={sub} />
   );
+
+  // no proposal on view but a plan accepted: that plan is what the tab shows
+  if (isAcceptedOnly(plan) && plan.accepted)
+    return (
+      <div className="strategy-plan">
+        <Result
+          plan={{
+            ...plan,
+            state: "calculated",
+            result: plan.accepted.result,
+            edit: null,
+          }}
+          result={plan.accepted.result}
+          form={form}
+          name={name}
+          actions={actions}
+          only
+        />
+      </div>
+    );
 
   switch (state) {
     case "uncalculated":
@@ -661,7 +864,6 @@ export function PlanTab({
               form={form}
               name={name}
               actions={actions}
-              trial={trial}
             />
           </div>
         );
@@ -779,7 +981,6 @@ export function PlanTab({
             form={form}
             name={name}
             actions={actions}
-            trial={trial}
           />
         </div>
       ) : null;

@@ -79,6 +79,11 @@ export const strategy = {
     strategyInvalidInput: "El cálculo no ha aceptado los datos. Revísalos.",
     strategyImportFailed: "No hemos podido traer los datos del Hub anterior.",
     busy: "El archivo está ocupado. Vuelve a intentarlo.",
+    protected:
+      "Este archivo es de una versión más nueva de Vantare: no se puede cambiar el plan aceptado.",
+    strategyNotAcceptable:
+      "Este plan no se puede aceptar: no tiene un calendario de paradas. Calcula el plan de nuevo.",
+    strategyNoAcceptedPlan: "Ya no hay un plan aceptado en esta estrategia.",
     other: "No se ha podido completar la acción.",
   },
   steps: ["Inicio", "Combinación", "Reglas", "Pilotos", "Revisa y crea"],
@@ -355,8 +360,8 @@ export const strategy = {
       },
       notEditable: "Este plan no se puede ajustar a mano.",
       noStops: "Este plan no tiene paradas que ajustar.",
-      notSaved: "Estos ajustes son para probar. No se guardan en el archivo.",
-      trial: "Plan recalculado de prueba: no se guarda en el archivo.",
+      notSaved:
+        "Estos ajustes son de prueba hasta que recalcules y aceptes el plan.",
       conflict: "El plan ha cambiado. Te mostramos el actual.",
       pendingFromRace:
         "Tienes ajustes del plan sin recalcular. Ve a la pestaña Plan para recalcular o restablecer.",
@@ -374,6 +379,7 @@ export const strategy = {
         title: "Cambios pendientes de recalcular",
         detail:
           "Las cifras de abajo son del plan anterior. Recalcula para actualizar tiempos y cargas y comprobar que el plan sigue siendo posible. «Restablecer» vuelve al último plan válido.",
+        accept: "Recalcula para poder aceptar el plan.",
       },
       recalculating: {
         heading: "Recalculando…",
@@ -460,6 +466,22 @@ export const strategy = {
       eyebrow: "Plan",
       done: (duration: string, stops: string) =>
         `Calculado · ${duration} · ${stops}`,
+      accepted: (duration: string, stops: string) => `${duration} · ${stops}`,
+      acceptedOutdated: (duration: string, stops: string) =>
+        `Aceptado · ${duration} · ${stops}`,
+      differs: (difference: string) =>
+        difference
+          ? `Es distinta de tu plan aceptado: ${difference}.`
+          : "Es distinta de tu plan aceptado.",
+      changedOne: (label: string, before: string, after: string) =>
+        `Has cambiado «${label}»: ${before} → ${after}.`,
+      changedMany: (count: number) =>
+        `Has cambiado ${count} datos desde que aceptaste el plan.`,
+      changedHidden: (label: string) =>
+        `Has cambiado «${label}» desde que aceptaste el plan.`,
+      staleReaches:
+        "Con los datos nuevos sigue llegando a meta, pero puede que ya no sea el más rápido.",
+      staleRecalculate: "Calcula de nuevo y acepta la nueva propuesta.",
       modified: "Plan modificado · pendiente de recalcular",
       recalculating: "Recalculando el plan…",
       noSolution: "Sin plan posible",
@@ -484,6 +506,97 @@ export const strategy = {
       failed: "No se pudo calcular el plan.",
       unfinished: "No se pudo completar el cálculo del plan.",
       noSolution: "Ningún plan termina la carrera con estos datos.",
+      accepted: "Plan aceptado.",
+      replaced: "Plan sustituido.",
+      removed: "Plan aceptado quitado.",
+      showing: "Mostrando el plan aceptado.",
+    },
+    accept: {
+      action: "Aceptar propuesta",
+      tags: {
+        proposal: "Propuesta",
+        accepted: "Aceptado",
+        stale: "Desactualizado",
+        unreachable: "No llega a meta",
+      },
+      acceptedHeading: "Plan aceptado",
+      // on the row of a strategy of the collection
+      rowAccepted: "Plan aceptado",
+      proposal:
+        "Es una propuesta: no se guarda en el archivo hasta que la aceptes.",
+      unproven: {
+        before: "Es una propuesta: no se guarda hasta que la aceptes. ",
+        strong: "Puedes aceptarla aunque no tenga garantía",
+        after: "; el plan aceptado lo seguirá diciendo.",
+      },
+      // the plan has just been accepted and the file is not saved yet
+      unsaved: {
+        strong: "Plan aceptado.",
+        rest: " Guarda el archivo para conservarlo; hasta entonces es solo de esta sesión.",
+      },
+      undo: "Deshacer",
+      savedOn: (day: string, time: string) =>
+        `Aceptado el ${day} a las ${time}.`,
+      menu: "Más acciones del plan aceptado",
+      remove: "Quitar plan aceptado",
+      removeKeeps: "Vuelve a ser una propuesta; no se borra nada de la carrera",
+      removeAlone: "No se borra nada de la carrera",
+      calculateAgain: "Calcular con los datos nuevos",
+      review: "Revisar datos",
+      oldData: "datos antiguos",
+      noAdjust: "Para ajustar las paradas, calcula el plan de nuevo.",
+      compare: {
+        title: "Ya tienes un plan aceptado",
+        accepted: (summary: string, day: string, outdated: boolean) =>
+          `Plan aceptado: ${summary}${outdated ? " · desactualizado" : ""} · aceptado el ${day}`,
+        proposal: (summary: string, difference: string) =>
+          `Esta propuesta: ${summary}${difference ? ` · ${difference}` : ""}`,
+        slower: (amount: string) => `${amount} más lenta`,
+        faster: (amount: string) => `${amount} más rápida`,
+        same: "misma duración",
+        figureSlower: (amount: string) => `${amount} más que tu plan aceptado`,
+        figureFaster: (amount: string) =>
+          `${amount} menos que tu plan aceptado`,
+        back: "Volver al plan aceptado",
+      },
+      confirm: {
+        replaceTitle: "¿Sustituir tu plan aceptado por esta propuesta?",
+        replaceDetail: (summary: string) =>
+          `El plan aceptado de ahora (${summary}) se pierde cuando guardes el archivo. Hasta entonces, «Descartar cambios» lo recupera.`,
+        replace: "Sustituir plan aceptado",
+        removeTitle: "¿Quitar el plan aceptado?",
+        removeDetail: (summary: string) =>
+          `El plan aceptado (${summary}) se pierde cuando guardes el archivo. Hasta entonces, «Descartar cambios» lo recupera.`,
+        remove: "Quitar plan aceptado",
+        cancel: "Cancelar",
+      },
+      stale: {
+        title:
+          "Los datos de la carrera han cambiado desde que aceptaste este plan",
+        reaches:
+          "Con los datos nuevos, este plan sigue llegando a meta, pero puede que ya no sea el más rápido.",
+        changes: "Datos que han cambiado",
+        more: (count: number) =>
+          count === 1 ? "y otro dato más" : `y otros ${count} datos`,
+        hidden: "ha cambiado (texto largo)",
+      },
+      unreachable: {
+        title: "Con los datos nuevos, este plan no llega a meta",
+        // `failLap` is null until the solver crate reports it; the lap is said
+        // only when the host sends it
+        resourceExhausted: (lap: number | null) =>
+          lap === null
+            ? "Se quedaría sin combustible, energía o neumáticos antes de llegar a meta."
+            : `Se quedaría sin combustible, energía o neumáticos en la vuelta ${lap}.`,
+        reserveNotMet: "Llegaría a meta sin la reserva que pides.",
+        scheduleMismatch: "El plan ya no cubre las vueltas de la carrera.",
+        other:
+          "No hemos podido comprobar si llega a meta con los datos nuevos.",
+      },
+      otherFields: {
+        team: "Equipo",
+        variantMode: "Tipo de estrategia",
+      },
     },
     time: timeText,
   },

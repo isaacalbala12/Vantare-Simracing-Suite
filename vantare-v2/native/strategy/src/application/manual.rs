@@ -583,6 +583,30 @@ mod tests {
         }
     }
 
+    /// A document saved before steps were checked may hold a negative one in its
+    /// stored inputs. That must not block the form that corrects it.
+    #[test]
+    fn a_stored_negative_step_does_not_block_the_corrected_form() {
+        let mut stored = form();
+        stored.ve_step = "-1".into();
+        let input = stored.build_input().expect("parses");
+        assert!(input.validate().is_err(), "the step is out of range");
+        let mut doc = document(&form());
+        doc.put(
+            "/events/0/strategies/0/overrides",
+            &json!({"nativeScalarInput": input}),
+        )
+        .expect("stored negative step");
+        let corrected = form();
+        let prepared = corrected.prepare(&mut doc, 0, 0).expect("corrected form");
+        assert!((prepared.discretization.ve_percent - 1.0).abs() < f64::EPSILON);
+        let read = ManualEvent::read(&doc, 0, 0);
+        assert_eq!(read.ve_step, "1");
+        // a form that is still wrong is refused for what it holds
+        assert!(stored.prepare(&mut doc, 0, 0).is_err());
+        assert_eq!(stored.input_field(), Some(InputField::VeStep));
+    }
+
     #[test]
     fn unsupported_dimensions_are_retained_instead_of_replaced_by_scalar_input() {
         let form = form();

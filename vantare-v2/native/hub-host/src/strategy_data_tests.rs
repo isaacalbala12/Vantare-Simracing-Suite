@@ -1701,9 +1701,107 @@ fn a_rejected_confirmation_leaves_the_plan_and_the_view_alone() {
     let mut state = root.state();
     let saved = saved_with(&mut state);
     let before = state.view();
+    let bytes = document_bytes(&state);
     let mut zero = distinct_inputs();
     zero.base_pace_seconds = "0".into();
     assert!(confirm_with(&mut state, &saved, &distinct_fields(), Some(&zero)).is_err());
     assert_eq!(state.view(), before);
+    assert_eq!(document_bytes(&state), bytes);
     assert!(confirm_with(&mut state, &saved, &distinct_fields(), Some(&distinct_inputs())).is_ok());
+}
+
+// ---- review of #2678 ----
+
+#[test]
+fn a_stored_negative_step_does_not_block_confirm_or_compute_with_the_corrected_form() {
+    // saved before steps were checked: the stored inputs hold a negative VE step
+    let root = Root::new();
+    stored_with(&root, |event| {
+        event["strategies"][0]["overrides"]["nativeScalarInput"]["serviceDiscretization"]
+            ["vePercent"] = serde_json::json!(-1.0);
+    });
+    let mut state = root.state();
+    let opened = state.open().unwrap();
+    let confirmed =
+        confirm_with(&mut state, &opened, &distinct_fields(), Some(&distinct_inputs())).unwrap();
+    assert!(same_inputs(&form_of(&confirmed).inputs, &distinct_inputs()));
+    let form = StrategyComputeForm { fields: distinct_fields(), inputs: distinct_inputs() };
+    let (error, field) = compute_verdict(&mut state, &confirmed, &form);
+    assert_ne!(error, Some(StrategyPlanError::InvalidInput));
+    assert_eq!(field, None);
+    // a form that is still wrong is refused with its own field
+    let mut still = distinct_inputs();
+    still.ve_step = "-1".into();
+    assert_eq!(
+        confirm_with(&mut state, &confirmed, &distinct_fields(), Some(&still)),
+        Err(HostError::StrategyInvalidInput { field: Some(StrategyField::VeStep) })
+    );
+}
+
+type FieldsCase = (&'static str, fn(&mut StrategyFields), StrategyField);
+
+#[test]
+fn confirm_names_the_same_field_as_compute_for_the_two_scalars_that_live_in_fields() {
+    // a swap of FuelCapacity and PitTransit in the translation would show here
+    let cases: [FieldsCase; 4] = [
+        ("tank text", |f| f.fuel_capacity_liters = "lleno".into(), StrategyField::FuelCapacityLiters),
+        ("tank negative", |f| f.fuel_capacity_liters = "-5".into(), StrategyField::FuelCapacityLiters),
+        ("pit text", |f| f.pit_transit_seconds = "x".into(), StrategyField::PitTransitSeconds),
+        ("pit negative", |f| f.pit_transit_seconds = "-1".into(), StrategyField::PitTransitSeconds),
+    ];
+    let root = Root::new();
+    let mut state = root.state();
+    let saved = saved_with(&mut state);
+    for (case, apply, field) in cases {
+        let mut fields = distinct_fields();
+        apply(&mut fields);
+        let form = StrategyComputeForm { fields: fields.clone(), inputs: distinct_inputs() };
+        let (error, computed) = compute_verdict(&mut state, &saved, &form);
+        assert_eq!(error, Some(StrategyPlanError::InvalidInput), "{case}");
+        assert_eq!(computed, Some(field), "compute: {case}");
+        assert_eq!(
+            confirm_with(&mut state, &saved, &fields, Some(&distinct_inputs())),
+            Err(HostError::StrategyInvalidInput { field: Some(field) }),
+            "confirm: {case}"
+        );
+    }
+}
+
+#[test]
+fn with_several_bad_entries_a_text_that_is_not_a_number_goes_first_in_the_order_of_the_form() {
+    // the order of `ManualField::ALL`: the laps come before the pace; a text that
+    // is not a number beats a limit of the crate whatever the position
+    let root = Root::new();
+    let mut state = root.state();
+    let saved = saved_with(&mut state);
+    for (case, change, field) in [
+        (
+            "laps and pace texts",
+            (|v: &mut StrategySolverFields| {
+                v.base_pace_seconds = "x".into();
+                v.race_laps = "y".into();
+            }) as fn(&mut StrategySolverFields),
+            StrategyField::RaceLaps,
+        ),
+        (
+            "text late, limit early",
+            |v| {
+                v.base_pace_seconds = "0".into();
+                v.service_mode = "turbo".into();
+                v.reserve_laps = "z".into();
+            },
+            StrategyField::ReserveLaps,
+        ),
+    ] {
+        let mut solver = distinct_inputs();
+        change(&mut solver);
+        let form = StrategyComputeForm { fields: distinct_fields(), inputs: solver.clone() };
+        let (_, computed) = compute_verdict(&mut state, &saved, &form);
+        assert_eq!(computed, Some(field), "compute: {case}");
+        assert_eq!(
+            confirm_with(&mut state, &saved, &distinct_fields(), Some(&solver)),
+            Err(HostError::StrategyInvalidInput { field: Some(field) }),
+            "confirm: {case}"
+        );
+    }
 }

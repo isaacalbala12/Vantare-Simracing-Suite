@@ -372,6 +372,9 @@ indica fin sin errores; no pretende certificar una limpieza no observada.
 
 ### Cita visual programada en el servidor
 
+**No se registra ninguna cita real hasta aprobar el ensayo con
+`LogonType Password` y SSH real al PC de Isaac.**
+
 La raíz registra una sola tarea tras la autorización de Isaac para esa fecha.
 El controlador sirve para las 223 parejas visuales y los cuatro escenarios
 de ciclo de vida. La medición tiene su propio protocolo.
@@ -419,13 +422,14 @@ be17532a5 y usa su preflight v2 archivado. El caso positivo ejecuta
 `TANDA -Modo Ensayo` con el guard 6.
 El ensayo guarda el log y retira su tarea.
 
-El ensayo S4U no valida las credenciales SSH del principal Password.
-Antes de registrar la cita real, la raíz debe repetir una prueba de red
-con la cuenta Administrator y un host SSH de pruebas autorizado, distinto
-del PC de juego:
+La raíz hace la prueba de red el día que Isaac fije, con su PC encendido
+y dentro de una ventana autorizada previa a la cita. Hace falta la misma
+cuenta Administrator del servidor que usará la cita, su contraseña por
+canal seguro (nunca en el repositorio) y acceso SSH real al PC con su
+huella ya verificada. La comprobación es de solo lectura.
 
 1. Preparar un script temporal que ejecute una única consulta inocua
-   `ssh.exe -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes <usuario@host-de-prueba> "exit 0"`.
+   `ssh.exe -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes isaac@100.83.142.118 "exit 0"`.
    Fijar la ruta absoluta local de ssh.exe. Guardar stderr y el código local
    en un log, devolver ese código y usar el known_hosts del mismo usuario.
 2. Crear una tarea desechable `VantareCitaEnsayoRed` con

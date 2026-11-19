@@ -8,10 +8,19 @@ use ts_rs::TS;
 use vantare_ipc::files::{self, Doc, Mode, Options};
 use vantare_strategy::{
     application::{self, ManualEvent, repository::import_last_draft, select_event},
-    document::{Document, MAX_BYTES, SCHEMA_VERSION_V2, SCHEMA_VERSION_V2_RULES},
+    document::{
+        Document, MAX_BYTES, SCHEMA_VERSION_V2, SCHEMA_VERSION_V2_PLAN, SCHEMA_VERSION_V2_RULES,
+    },
     solver::Input,
 };
 
+#[path = "strategy_accepted.rs"]
+mod accepted;
+pub use accepted::{
+    STRATEGY_CHANGE_TEXT_LIMIT, StrategyAcceptedMark, StrategyAcceptedState,
+    StrategyAcceptedView, StrategyChange, StrategyCompare, StrategyUnreachable,
+    StrategyUnreachableCause,
+};
 #[path = "strategy_calculation.rs"]
 mod calculation;
 use calculation::Calculation;
@@ -21,7 +30,7 @@ pub use editing::{StrategyEditError, StrategyEditStop, StrategyEditView};
 pub use calculation::{
     STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyComputeForm,
     StrategyField, StrategyMetrics, StrategyPit, StrategyPitService, StrategyPlanError,
-    StrategyPlanState, StrategyPlanView, StrategyReason, StrategyServiceSteps,
+    StrategyPitPinned, StrategyPlanState, StrategyPlanView, StrategyReason, StrategyServiceSteps,
     StrategySolverFields, StrategyStint, StrategyTimeline,
 };
 #[path = "strategy_file.rs"]
@@ -85,6 +94,10 @@ pub struct StrategyEventSummary {
     /// take them as they are: it refuses, for example, an event of another source
     /// or one with rules. Inputs with extended dimensions do not count.
     pub has_inputs: bool,
+    /// The accepted plans of the event's variants: `stale` when any of them was
+    /// calculated from entries that changed, `accepted` when some variant has one
+    /// and none is stale, `none` otherwise.
+    pub accepted_plan: StrategyAcceptedMark,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -186,6 +199,9 @@ pub(crate) struct State {
     /// For each event of `doc`, whether it has plain stored inputs (see `valid_inputs`),
     /// worked out once when the document is set, not on every view.
     has_inputs: Vec<bool>,
+    /// What the entries now say about the accepted plans of `doc`, worked out
+    /// with `has_inputs` when the document is set.
+    accepted: accepted::Inspection,
     observed: Option<Vec<u8>>,
     status: StrategyState,
     revision: String,
@@ -201,6 +217,7 @@ impl State {
             opened: false,
             doc: None,
             has_inputs: Vec::new(),
+            accepted: accepted::Inspection::default(),
             observed: None,
             status: StrategyState::Empty,
             revision: hash(b""),
@@ -332,7 +349,11 @@ impl State {
             .iter()
             .enumerate()
             .filter_map(|(index, event)| {
-                project_event(event, self.has_inputs.get(index).copied().unwrap_or(false))
+                project_event(
+                    event,
+                    self.has_inputs.get(index).copied().unwrap_or(false),
+                    self.accepted.marks.get(index).copied().unwrap_or_default(),
+                )
             })
             .collect();
         let active = value["activeEventId"]
@@ -358,10 +379,27 @@ impl State {
             active_event_id,
             active_strategy_id,
             dirty: self.dirty(),
-            plan: self.calculation.view().clone(),
+            plan: self.plan_view(),
             file: self.file(),
             form,
         }
+    }
+
+    /// The plan of the calculation (the proposal) with the plan accepted for the
+    /// active variant next to it, never mixed.
+    fn plan_view(&self) -> StrategyPlanView {
+        let mut plan = self.calculation.view().clone();
+        if let (Some(doc), Some(active)) = (&self.doc, &self.accepted.active) {
+            let saved = accepted::is_saved(doc, self.observed.as_deref(), active);
+            let proposal = match plan.state {
+                StrategyPlanState::Calculated
+                | StrategyPlanState::Partial
+                | StrategyPlanState::Edited => plan.result.as_deref(),
+                _ => None,
+            };
+            plan.accepted = Some(Box::new(accepted::view(active, saved, proposal)));
+        }
+        plan
     }
 
     /// The entries of the active variant, read from the document or its draft.
@@ -648,6 +686,94 @@ impl State {
         }
     }
 
+    /// Accepts the plan `compute_id` names for the active variant: its metrics,
+    /// calendar and certificate are copied into the document together with the
+    /// entries it was calculated from, in memory (the document is «Sin guardar»
+    /// until it is saved). The plan on screen stays as it is. An accepted plan of
+    /// the variant is replaced; `strategy.discard` brings it back from the file.
+    ///
+    /// The checks run in this order, and the first to fail answers: a protected
+    /// document (`protected`), a document not open (`denied`), a malformed revision
+    /// (`rejected`), an outdated one or another `compute_id` (`strategyConflict`),
+    /// a calculation running (`busy`), an edited schedule not recalculated
+    /// (`strategyEditPending`) and a plan that cannot be accepted: no plan, no
+    /// timeline, no active variant or an entry the document cannot copy
+    /// (`strategyNotAcceptable`).
+    pub(crate) fn accept(
+        &mut self,
+        revision: &str,
+        compute_id: u32,
+        now: &str,
+    ) -> Result<StrategyView, HostError> {
+        self.require_edit(revision)?;
+        let view = self.calculation.view();
+        if view.compute_id != Some(compute_id) {
+            return Err(self.conflict());
+        }
+        match view.state {
+            StrategyPlanState::Calculating => return Err(HostError::Busy),
+            StrategyPlanState::Edited => return Err(HostError::StrategyEditPending),
+            StrategyPlanState::Calculated | StrategyPlanState::Partial => {}
+            _ => return Err(HostError::StrategyNotAcceptable),
+        }
+        let result = view
+            .result
+            .as_deref()
+            .ok_or(HostError::StrategyNotAcceptable)?
+            .clone();
+        let doc = self.doc.as_ref().ok_or(HostError::Rejected)?;
+        let (event, variant) = active_indices(doc).ok_or(HostError::StrategyNotAcceptable)?;
+        let entries = StrategyComputeForm::read(&ManualEvent::read(doc, event, variant))
+            .ok_or(HostError::StrategyNotAcceptable)?;
+        let plan = accepted::StrategyAcceptedPlan {
+            accepted_at: now.to_owned(),
+            entries,
+            result,
+        };
+        if !accepted::plan_is_valid(&plan) {
+            return Err(HostError::StrategyNotAcceptable);
+        }
+        let mut next = doc.clone();
+        if next.schema_version() != SCHEMA_VERSION_V2_PLAN {
+            next.set("/schemaVersion", &Value::from(SCHEMA_VERSION_V2_PLAN))
+                .map_err(|_| HostError::Rejected)?;
+        }
+        let stored = serde_json::to_value(&plan).map_err(|_| HostError::Io)?;
+        next.put(&format!("/events/{event}/strategies/{variant}/acceptedPlan"), &stored)
+            .map_err(|_| HostError::Rejected)?;
+        validate_projection(&next, HostError::StrategyInvalidText)?;
+        // The calculation on screen is still the one the plan came from.
+        self.apply_draft(next);
+        Ok(self.view())
+    }
+
+    /// Removes the accepted plan of the active variant (it is «Sin guardar» until
+    /// saved). The proposal on screen stays.
+    pub(crate) fn unaccept(&mut self, revision: &str) -> Result<StrategyView, HostError> {
+        self.require_edit(revision)?;
+        let doc = self.doc.as_ref().ok_or(HostError::Rejected)?;
+        let (event, variant) = active_indices(doc).ok_or(HostError::StrategyNoAcceptedPlan)?;
+        if accepted::plan_of(doc, event, variant).is_none() {
+            return Err(HostError::StrategyNoAcceptedPlan);
+        }
+        let mut next = doc.clone();
+        next.remove(&format!("/events/{event}/strategies/{variant}/acceptedPlan"))
+            .map_err(|_| HostError::Rejected)?;
+        self.apply_draft(next);
+        Ok(self.view())
+    }
+
+    /// Drops the proposal on screen so that the accepted plan is what is shown.
+    /// The document does not change.
+    pub(crate) fn show_accepted(&mut self, revision: &str) -> Result<StrategyView, HostError> {
+        self.require_revision(revision)?;
+        if self.accepted.active.is_none() {
+            return Err(HostError::StrategyNoAcceptedPlan);
+        }
+        self.calculation.invalidate(false);
+        Ok(self.view())
+    }
+
     pub(crate) fn poll_calculation(&mut self) {
         if let Some(doc) = self.calculation.poll() {
             self.apply_draft(doc);
@@ -774,6 +900,7 @@ impl State {
                 })
                 .collect()
         });
+        self.accepted = doc.as_ref().map_or_else(accepted::Inspection::default, accepted::inspect);
         self.doc = doc;
     }
 }
@@ -793,6 +920,17 @@ fn confirm_inputs(
     let input = manual.prepare(next, event, variant).map_err(refused)?;
     application::prepare_manual(input).map_err(refused)?;
     Ok(())
+}
+/// The indices of the active event and variant of the document.
+fn active_indices(doc: &Document) -> Option<(usize, usize)> {
+    let value = doc.value();
+    let event = array(&value["events"])
+        .iter()
+        .position(|event| event["id"] == value["activeEventId"])?;
+    let variant = array(&value["events"][event]["strategies"])
+        .iter()
+        .position(|variant| variant["id"] == value["events"][event]["activeStrategyId"])?;
+    Some((event, variant))
 }
 fn indices(doc: &Document, event_id: &str, strategy_id: &str) -> Result<(usize, usize), HostError> {
     if !valid_id(event_id) || !valid_id(strategy_id) {
@@ -825,7 +963,7 @@ fn parse_primary(bytes: &[u8]) -> Result<Document, files::Error> {
         ("contractVersion", &["strategy.v2"][..]),
         (
             "schemaVersion",
-            &[SCHEMA_VERSION_V2, SCHEMA_VERSION_V2_RULES][..],
+            &[SCHEMA_VERSION_V2, SCHEMA_VERSION_V2_RULES, SCHEMA_VERSION_V2_PLAN][..],
         ),
     ] {
         if value[key]
@@ -856,6 +994,14 @@ fn validate_projection(doc: &Document, collection_error: HostError) -> Result<()
         });
         if !event_ok || !variants_ok {
             return Err(HostError::StrategyInvalidText);
+        }
+        // A stored plan that is not valid (or of an older schema) is not ours to read.
+        let schema_allows = doc.schema_version() == SCHEMA_VERSION_V2_PLAN;
+        if array(&event["strategies"])
+            .iter()
+            .any(|variant| accepted::read(variant, schema_allows).is_err())
+        {
+            return Err(collection_error);
         }
     }
     Ok(())
@@ -907,7 +1053,11 @@ fn valid_inputs(value: &Value) -> bool {
 fn text(value: &Value) -> String {
     value["value"].as_str().unwrap_or_default().to_owned()
 }
-fn project_event(value: &Value, has_inputs: bool) -> Option<StrategyEventSummary> {
+fn project_event(
+    value: &Value,
+    has_inputs: bool,
+    accepted_plan: StrategyAcceptedMark,
+) -> Option<StrategyEventSummary> {
     Some(StrategyEventSummary {
         id: id(&value["id"])?,
         name: text(&value["name"]),
@@ -924,6 +1074,7 @@ fn project_event(value: &Value, has_inputs: bool) -> Option<StrategyEventSummary
             })
             .collect(),
         has_inputs,
+        accepted_plan,
     })
 }
 #[cfg(test)]
@@ -935,3 +1086,6 @@ mod file_tests;
 #[cfg(test)]
 #[path = "strategy_data_tests.rs"]
 mod data_tests;
+#[cfg(test)]
+#[path = "strategy_accepted_tests.rs"]
+mod accepted_tests;

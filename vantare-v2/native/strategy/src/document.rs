@@ -8,6 +8,9 @@ use serde_json::{Value, json};
 pub const MAX_BYTES: usize = 12 * 1024 * 1024;
 pub const SCHEMA_VERSION_V2: &str = "2.0.0";
 pub const SCHEMA_VERSION_V2_RULES: &str = "2.1.0";
+/// Adds `acceptedPlan` to a variant. The document only moves to it when the first
+/// plan is accepted; an older reader refuses it (it is a newer schema).
+pub const SCHEMA_VERSION_V2_PLAN: &str = "2.2.0";
 
 #[derive(Clone, Debug)]
 pub struct Document {
@@ -93,6 +96,62 @@ impl Document {
         }
         let mut bytes = self.bytes.clone();
         bytes.splice(range.end - 1..range.end - 1, insertion);
+        *self = Self::parse(&bytes)?;
+        Ok(())
+    }
+
+    /// Removes an object member (or an array element) and the comma that
+    /// separated it; every other byte stays. The result is validated whole before
+    /// it replaces the document, and a missing path is an error.
+    pub fn remove(&mut self, pointer: &str) -> Result<(), String> {
+        let (parent, key) = pointer.rsplit_once('/').ok_or("se requiere JSON pointer")?;
+        let unescape = |s: &str| s.replace("~1", "/").replace("~0", "~");
+        let parts = if parent.is_empty() {
+            vec![]
+        } else {
+            parent[1..].split('/').map(unescape).collect::<Vec<_>>()
+        };
+        let key = unescape(key);
+        let range = locate(&self.bytes, 0..self.bytes.len(), &parts)?;
+        let object = self.bytes.get(range.start) == Some(&b'{');
+        // (name, start of the member, end of its value) of every member of the parent
+        let mut members = Vec::new();
+        let mut pos = skip_space(&self.bytes, range.start + 1);
+        let end = range.end - 1;
+        let mut index = 0;
+        while pos < end {
+            let start = pos;
+            let name = if object {
+                let key_end = token_end(&self.bytes, pos)?;
+                let name: String =
+                    serde_json::from_slice(&self.bytes[pos..key_end]).map_err(|e| e.to_string())?;
+                pos = skip_space(&self.bytes, key_end) + 1; // the colon
+                name
+            } else {
+                index.to_string()
+            };
+            pos = skip_space(&self.bytes, pos);
+            let value_end = token_end(&self.bytes, pos)?;
+            members.push((name, start, value_end));
+            pos = skip_space(&self.bytes, value_end);
+            if self.bytes.get(pos) == Some(&b',') {
+                pos = skip_space(&self.bytes, pos + 1);
+            }
+            index += 1;
+        }
+        let at = members
+            .iter()
+            .position(|(name, _, _)| *name == key)
+            .ok_or_else(|| format!("campo no encontrado: {key}"))?;
+        let (_, start, value_end) = members[at];
+        // Take the comma after the member, or the one before it when it is the last.
+        let (from, to) = match members.get(at + 1) {
+            Some(&(_, next, _)) => (start, next),
+            None if at > 0 => (members[at - 1].2, value_end),
+            None => (start, value_end),
+        };
+        let mut bytes = self.bytes.clone();
+        bytes.drain(from..to);
         *self = Self::parse(&bytes)?;
         Ok(())
     }
@@ -342,7 +401,12 @@ pub fn validate(doc: &Value) -> Result<(), String> {
     check(doc["contractVersion"] == "strategy.v2", "contractVersion")?;
     let schema_version = doc["schemaVersion"].as_str().unwrap_or_default();
     check(
-        [SCHEMA_VERSION_V2, SCHEMA_VERSION_V2_RULES].contains(&schema_version),
+        [
+            SCHEMA_VERSION_V2,
+            SCHEMA_VERSION_V2_RULES,
+            SCHEMA_VERSION_V2_PLAN,
+        ]
+        .contains(&schema_version),
         "schemaVersion",
     )?;
     timestamp(&doc["generatedAt"])?;
@@ -378,8 +442,8 @@ pub fn validate(doc: &Value) -> Result<(), String> {
 fn validate_event(event: &Value, schema_version: &str) -> Result<(), String> {
     if !event["rules"].is_null() {
         check(
-            schema_version == SCHEMA_VERSION_V2_RULES,
-            "event.rules requires schemaVersion 2.1.0",
+            [SCHEMA_VERSION_V2_RULES, SCHEMA_VERSION_V2_PLAN].contains(&schema_version),
+            "event.rules requires schemaVersion 2.1.0 or later",
         )?;
         validate_event_rules(&event["rules"])?;
     }
@@ -1016,6 +1080,139 @@ mod tests {
                 .is_err()
         );
         assert_eq!(doc.bytes(), before);
+    }
+
+    fn plan_document(schema: &str, accepted: &str) -> Vec<u8> {
+        let mut event = new_event("event", "Original", 60, 90.0, 30.0);
+        event["strategies"][0]["acceptedPlan"] = serde_json::from_str(accepted).expect("json");
+        format!(
+            "{{\"contractVersion\":\"strategy.v2\", \"schemaVersion\":\"{schema}\",\"generatedAt\":\"2026-11-19T00:00:00Z\",\"events\":[{event}],\"opaque\": {{\"decimal\": 1.2300}}}}"
+        )
+        .into_bytes()
+    }
+
+    #[test]
+    fn schema_2_2_0_opens_and_older_versions_open_as_before() {
+        let plain = plan_document("2.2.0", "{\"acceptedAt\":\"2026-11-19T18:42:00Z\"}");
+        let doc = Document::parse(&plain).expect("2.2.0 opens");
+        assert_eq!(doc.schema_version(), SCHEMA_VERSION_V2_PLAN);
+        assert_eq!(doc.bytes(), plain);
+        // `rules` is allowed from 2.1.0 on, never in 2.0.0: the Go oracle's 2.1.0
+        // document with rules, once per schema
+        let oracle: Value =
+            serde_json::from_str(include_str!("../testdata/oracle/document-rules.json"))
+                .expect("oracle");
+        let rules = array(&oracle["cases"])
+            .iter()
+            .find(|case| case["name"] == "rules_v2_1")
+            .expect("rules case")["input"]
+            .clone();
+        for (schema, valid) in [("2.0.0", false), ("2.1.0", true), ("2.2.0", true)] {
+            let mut input = rules.clone();
+            input["schemaVersion"] = json!(schema);
+            let bytes = serde_json::to_vec(&input).expect("document");
+            assert_eq!(Document::parse(&bytes).is_ok(), valid, "{schema}");
+        }
+        for schema in ["2.0.0", "2.1.0"] {
+            let old = plan_document(schema, "null");
+            assert_eq!(Document::parse(&old).expect("older").bytes(), old);
+        }
+        let future = plan_document("2.3.0", "null");
+        assert!(
+            Document::parse(&future).is_err(),
+            "a newer schema is refused"
+        );
+    }
+
+    #[test]
+    fn remove_drops_only_the_member_and_never_lowers_the_schema() {
+        let bytes = plan_document(
+            "2.2.0",
+            "{\"acceptedAt\":\"2026-11-19T18:42:00Z\", \"n\": 1.5}",
+        );
+        let mut doc = Document::parse(&bytes).expect("document");
+        let pointer = "/events/0/strategies/0/acceptedPlan";
+        doc.remove(pointer).expect("remove");
+        assert!(doc.value().pointer(pointer).is_none());
+        assert_eq!(doc.schema_version(), SCHEMA_VERSION_V2_PLAN);
+        // every other byte is as it was: cut the member out by hand and compare
+        let text = String::from_utf8(bytes.clone()).expect("utf8");
+        let start = text.find("\"acceptedPlan\":").expect("member");
+        let end = start + text[start..].find("},").expect("end") + 2;
+        let expected = format!("{}{}", &text[..start], &text[end..]);
+        assert_eq!(String::from_utf8(doc.bytes().to_vec()).unwrap(), expected);
+        assert!(doc.remove(pointer).is_err(), "a missing path is an error");
+        // first, middle, last and only members
+        for (before, path, after) in [
+            (
+                "{\"a\": 1, \"b\": 2, \"c\": 3}",
+                "/b",
+                "{\"a\": 1, \"c\": 3}",
+            ),
+            ("{\"a\": 1, \"b\": 2}", "/a", "{\"b\": 2}"),
+            ("{\"a\": 1,\"b\": 2}", "/b", "{\"a\": 1}"),
+            ("{\"a\": 1}", "/a", "{}"),
+        ] {
+            let bytes = format!(
+                "{{\"contractVersion\":\"strategy.v2\",\"schemaVersion\":\"2.2.0\",\"generatedAt\":\"2026-11-19T00:00:00Z\",\"events\":[],\"x\":{before}}}"
+            );
+            let mut doc = Document::parse(bytes.as_bytes()).expect("document");
+            doc.remove(&format!("/x{path}")).expect("remove");
+            let written = String::from_utf8_lossy(doc.bytes()).into_owned();
+            assert!(
+                written.contains(&format!("\"x\":{after}")),
+                "{before} -> {written}"
+            );
+        }
+        // a removal that would leave the document invalid changes nothing
+        let mut doc = Document::parse(&bytes).expect("document");
+        let before = doc.bytes().to_vec();
+        assert!(doc.remove("/events/0/id").is_err());
+        assert_eq!(doc.bytes(), before);
+    }
+
+    /// What the frozen GPUI Hub does: it opens with `Document::parse`, edits with
+    /// `edit_sourced`, `append_event`, `select_event` and `ManualEvent::confirm`, and
+    /// saves `bytes()`. (It refuses to OPEN anything but 2.0.0 and 2.1.0 before this,
+    /// so it never gets here with a 2.2.0 file; this proves the crate would still not
+    /// touch the accepted plan if it did.)
+    #[test]
+    fn the_api_of_the_gpui_hub_keeps_an_accepted_plan_byte_for_byte() {
+        use crate::application::{ManualEvent, select_event};
+        const PLAN: &str = "\"acceptedPlan\" :  {\"acceptedAt\":\"2026-11-19T18:42:00Z\",\n  \"result\":{\"metrics\":{\"totalSeconds\":21664.0000, \"x\":1e3}}, \"unknown\":[1.50, true]}";
+        let mut event = new_event("event", "Original", 60, 90.0, 30.0);
+        event["strategies"][0]["note"] = manual(json!("nota"));
+        let text = serde_json::to_string(&event).expect("event");
+        let text = text.replacen(
+            "\"strategies\":[{",
+            &format!("\"strategies\":[{{{PLAN},"),
+            1,
+        );
+        let bytes = format!(
+            "{{\"contractVersion\":\"strategy.v2\",\"schemaVersion\":\"2.2.0\",\"generatedAt\":\"2026-11-19T00:00:00Z\",\"events\":[{text}]}}"
+        );
+        let mut doc = Document::parse(bytes.as_bytes()).expect("2.2.0 with a plan");
+        assert!(doc.value()["events"][0]["strategies"][0]["acceptedPlan"].is_object());
+        let kept = |doc: &Document| String::from_utf8_lossy(doc.bytes()).contains(PLAN);
+        assert!(kept(&doc));
+
+        doc.edit_sourced("/events/0/name", &json!("Renamed"))
+            .expect("edit");
+        assert!(kept(&doc));
+        doc.append_event(&new_event("second", "Second", 60, 90.0, 30.0))
+            .expect("append");
+        assert!(kept(&doc));
+        select_event(&mut doc, 0, 0).expect("select");
+        assert!(kept(&doc));
+        let mut manual_event = ManualEvent::read(&doc, 0, 0);
+        manual_event.variant_name = "Otra".into();
+        manual_event.confirm(&mut doc, 0, 0).expect("confirm");
+        assert!(kept(&doc));
+        // saved and reopened: the same bytes, the plan included
+        let reopened = Document::parse(doc.bytes()).expect("round trip");
+        assert_eq!(reopened.bytes(), doc.bytes());
+        assert!(kept(&reopened));
+        assert_eq!(reopened.schema_version(), SCHEMA_VERSION_V2_PLAN);
     }
 
     #[test]

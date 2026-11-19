@@ -328,6 +328,8 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
                         ve_percent: number(99.5),
                         change_tyres: true,
                         service: StrategyPitService::Sequential,
+                        pit_seconds: number(123_456.789),
+                        pinned: crate::strategy::StrategyPitPinned::default(),
                     })
                     .collect(),
             }),
@@ -342,7 +344,48 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
     };
     let mut view = value;
     view.form = Some(Box::new(form));
-    view.plan = plan;
+    // next to the proposal, the accepted plan: the same full plan, the 26 entries
+    // that can make it stale each changed (texts of the limit made of what JSON
+    // escapes), a cause and a comparison
+    let kept = plan.result.clone().unwrap();
+    let changes = crate::strategy::StrategyField::ALL
+        .iter()
+        .filter(|field| {
+            !matches!(
+                field,
+                crate::strategy::StrategyField::Name
+                    | crate::strategy::StrategyField::VariantName
+                    | crate::strategy::StrategyField::VariantNote
+            )
+        })
+        .map(|&field| crate::strategy::StrategyChange {
+            field,
+            before: Some("\"".repeat(crate::strategy::STRATEGY_CHANGE_TEXT_LIMIT)),
+            after: Some("\"".repeat(crate::strategy::STRATEGY_CHANGE_TEXT_LIMIT)),
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(changes.len(), crate::strategy::StrategyField::ALL.len() - 3);
+    view.plan = StrategyPlanView {
+        accepted: Some(Box::new(crate::strategy::StrategyAcceptedView {
+            state: crate::strategy::StrategyAcceptedState::StaleUnreachable,
+            accepted_at: "2026-11-19T18:42:00.123456789+00:00".into(),
+            saved: true,
+            result: *kept,
+            changes,
+            unreachable: Some(crate::strategy::StrategyUnreachable {
+                cause: crate::strategy::StrategyUnreachableCause::ScheduleMismatch,
+                fail_lap: Some(u32::MAX),
+            }),
+            compare: Some(crate::strategy::StrategyCompare {
+                same: false,
+                delta_seconds: serde_json::Number::from_f64(f64::MAX).unwrap(),
+            }),
+        })),
+        ..plan
+    };
+    for event in &mut view.events {
+        event.accepted_plan = crate::strategy::StrategyAcceptedMark::Stale;
+    }
     let response = HostToUi::Response {
         id: u32::MAX,
         result: Reply::StrategyOpen {
@@ -666,6 +709,8 @@ fn bounded_strategy_timeline_and_edit_fit_even_with_a_full_document_view() {
                         ve_percent: amount,
                         change_tyres: true,
                         service: StrategyPitService::Sequential,
+                        pit_seconds: Number::from_f64(f64::MAX).unwrap(),
+                        pinned: crate::strategy::StrategyPitPinned::default(),
                     };
                     STRATEGY_PIT_LIMIT
                 ],
@@ -673,6 +718,7 @@ fn bounded_strategy_timeline_and_edit_fit_even_with_a_full_document_view() {
         })),
         error: None,
         error_field: None,
+        accepted: None,
         edit: Some(crate::strategy::StrategyEditView {
             stints: vec![
                 StrategyStint {

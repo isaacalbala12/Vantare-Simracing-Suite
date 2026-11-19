@@ -183,6 +183,7 @@ impl Editing {
             error: None,
             error_field: None,
             edit: Some(self.edit_view()),
+            accepted: None,
         }
     }
 

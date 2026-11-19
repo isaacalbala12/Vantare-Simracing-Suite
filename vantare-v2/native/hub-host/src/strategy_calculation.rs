@@ -1,6 +1,7 @@
 //! One cancellable scalar calculation per host session.
 use super::{
     StrategyFields,
+    accepted::{self, StrategyAcceptedView},
     editing::{Editing, Recalculation, StrategyEditError, StrategyEditView},
     valid_text,
 };
@@ -335,6 +336,9 @@ pub struct StrategyPlanView {
     pub error_field: Option<StrategyField>,
     /// The editable schedule of a feasible plan; `null` when there is none.
     pub edit: Option<StrategyEditView>,
+    /// The plan accepted for the active variant, apart from `result` (the
+    /// proposal). The calculation never fills it: the view of the session does.
+    pub accepted: Option<Box<StrategyAcceptedView>>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -413,6 +417,21 @@ pub struct StrategyPit {
     pub ve_percent: Number,
     pub change_tyres: bool,
     pub service: StrategyPitService,
+    /// The time the stop takes in the pits, from the crate's own replay of the plan.
+    #[cfg_attr(any(test, feature = "bindings"), ts(type = "number"))]
+    pub pit_seconds: Number,
+    /// Which amounts the person fixed by hand. Reserved: the calculation decides
+    /// everything today, so every flag is `false` until the amounts can be fixed.
+    pub pinned: StrategyPitPinned,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StrategyPitPinned {
+    pub fuel_liters: bool,
+    pub ve_percent: bool,
+    pub change_tyres: bool,
 }
 
 pub const STRATEGY_PIT_LIMIT: usize = 16;
@@ -686,6 +705,7 @@ impl Calculation {
             error: Some(failure.error),
             error_field: failure.field,
             edit: None,
+            accepted: None,
         };
     }
 }
@@ -862,6 +882,7 @@ pub(super) fn project_with(
         error: None,
         error_field: None,
         edit: None,
+        accepted: None,
     })
 }
 
@@ -925,6 +946,17 @@ fn timeline(
                 ve_percent: number(pit.ve_percent)?,
                 change_tyres: pit.change_tyres,
                 service,
+                pit_seconds: number(accepted::pit_seconds(
+                    input,
+                    &solver::PitDecision {
+                        lap: pit.lap,
+                        fuel_liters: pit.fuel_liters,
+                        ve_percent: pit.ve_percent,
+                        change_tyres: pit.change_tyres,
+                        ..solver::PitDecision::default()
+                    },
+                ))?,
+                pinned: StrategyPitPinned::default(),
             })
         })
         .collect::<Result<_, _>>()?;

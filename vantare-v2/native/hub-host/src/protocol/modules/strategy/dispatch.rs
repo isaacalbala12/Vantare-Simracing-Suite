@@ -35,6 +35,7 @@ pub(super) fn picked(
     frame::write(pipe, &message)
 }
 
+#[allow(clippy::too_many_lines)] // One flat match with an arm per request.
 pub(super) fn dispatch(
     session: &mut Session,
     pipe: &mut Pipe,
@@ -131,6 +132,22 @@ pub(super) fn dispatch(
             Request::StrategyPickFile { mode, revision } => strategy
                 .pick_file(id, *mode, revision, std::time::Instant::now())
                 .map(|value| Reply::StrategyPickFile { value }),
+            Request::StrategyAccept {
+                revision,
+                compute_id,
+            } => strategy
+                .accept(
+                    revision,
+                    *compute_id,
+                    &chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+                )
+                .map(|value| Reply::StrategyAccept { value }),
+            Request::StrategyUnaccept { revision } => strategy
+                .unaccept(revision)
+                .map(|value| Reply::StrategyUnaccept { value }),
+            Request::StrategyShowAccepted { revision } => strategy
+                .show_accepted(revision)
+                .map(|value| Reply::StrategyShowAccepted { value }),
             _ => Err(HostError::Rejected),
         }
     } else {

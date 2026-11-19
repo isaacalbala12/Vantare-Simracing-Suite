@@ -105,6 +105,20 @@ pub enum Request {
         mode: crate::strategy::StrategyFileMode,
         revision: String,
     },
+    /// Accepts the plan `computeId` names for the active variant: it is kept in the
+    /// document (in memory, «Sin guardar») with the entries it came from.
+    #[serde(rename = "strategy.accept")]
+    StrategyAccept {
+        revision: String,
+        #[serde(rename = "computeId")]
+        compute_id: u32,
+    },
+    /// Removes the accepted plan of the active variant.
+    #[serde(rename = "strategy.unaccept")]
+    StrategyUnaccept { revision: String },
+    /// Drops the proposal on screen so that the accepted plan is shown.
+    #[serde(rename = "strategy.showAccepted")]
+    StrategyShowAccepted { revision: String },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -167,6 +181,18 @@ pub enum Reply {
     StrategyPickFile {
         value: crate::strategy::StrategyView,
     },
+    #[serde(rename = "strategy.accept")]
+    StrategyAccept {
+        value: crate::strategy::StrategyView,
+    },
+    #[serde(rename = "strategy.unaccept")]
+    StrategyUnaccept {
+        value: crate::strategy::StrategyView,
+    },
+    #[serde(rename = "strategy.showAccepted")]
+    StrategyShowAccepted {
+        value: crate::strategy::StrategyView,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -191,6 +217,11 @@ pub enum HostError {
     StrategyTargetExists,
     /// The ticket of the dialog expired (120 s) before the main process answered.
     StrategyPickExpired,
+    /// `strategy.accept` found no plan it can keep: none, without a timeline, not
+    /// the active variant's, or an entry the document cannot copy.
+    StrategyNotAcceptable,
+    /// `strategy.unaccept` or `strategy.showAccepted` on a variant with no accepted plan.
+    StrategyNoAcceptedPlan,
     StrategyConflict {
         current: Box<crate::strategy::StrategyView>,
     },

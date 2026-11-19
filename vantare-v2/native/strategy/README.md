@@ -13,6 +13,13 @@ nuevos usan `2.1.0`, que permite reglas de evento con evidencia, ventanas de
 parada, límites de piloto y compuestos permitidos por clima. La lectura de ambas versiones conserva los bytes originales; no se convierte
 el esquema al abrirlo. `2.0.0` no admite el campo `rules`.
 
+`2.2.0` (E5a, VANTA-138) añade `acceptedPlan` a cada estrategia: el plan aceptado
+con la copia de las entradas del cálculo. El documento solo sube a `2.2.0` al
+aceptar el primer plan y nunca baja; un lector anterior lo trata como versión más
+nueva y lo protege. Este crate solo acepta la versión y conserva los bytes
+(`Document::remove` quita la clave sin reescribir el resto); la validación del
+plan aceptado la hace el host (`hub-host`).
+
 Las ediciones validan el documento completo antes de guardar y conservan los
 bytes de campos no editados. Las seis entradas de
 `testdata/oracle/document-rules.json` se generaron contra Go en

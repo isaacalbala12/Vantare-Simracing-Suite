@@ -13,6 +13,9 @@
 //! Para regenerar las huellas (solo si el cambio de resultado es intencionado y
 //! está revisado): `VANTARE_STRATEGY_HUELLAS=escribir cargo test -p vantare-strategy
 //! --test unfixed_fingerprints`.
+//!
+//! Además de la huella del caso entero se guarda cada caso troceado por partes
+//! (#2691, más abajo), en `testdata/unfixed/partes/`.
 use std::sync::atomic::AtomicBool;
 
 use serde_json::{Value, json};
@@ -77,48 +80,257 @@ fn fingerprint(value: &Value) -> String {
 }
 
 fn check(section: &str, cases: &[Case]) {
-    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("testdata/unfixed")
-        .join(format!("{section}.json"));
-    let actual: Vec<Value> = cases
+    let whole: Vec<Value> = cases
         .iter()
         .map(|case| json!({"id": case.id, "sha256": fingerprint(&case.output), "summary": case.summary}))
         .collect();
-    if std::env::var("VANTARE_STRATEGY_HUELLAS").as_deref() == Ok("escribir") {
-        let lines: Vec<String> = actual.iter().map(Value::to_string).collect();
-        std::fs::create_dir_all(path.parent().expect("carpeta")).expect("crear carpeta");
-        std::fs::write(&path, format!("[\n{}\n]\n", lines.join(",\n"))).expect("escribir huellas");
-        return;
+    let parts: Vec<Value> = cases.iter().map(part_fingerprints).collect();
+    let mode = std::env::var("VANTARE_STRATEGY_HUELLAS").unwrap_or_default();
+    // Las huellas enteras y las huellas por partes se escriben por separado:
+    // «escribir» solo toca las enteras y «partes», solo las troceadas.
+    for (name, actual, write) in [
+        (format!("{section}.json"), &whole, "escribir"),
+        (format!("partes/{section}.json"), &parts, "partes"),
+    ] {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("testdata/unfixed")
+            .join(&name);
+        if mode == write {
+            let lines: Vec<String> = actual.iter().map(Value::to_string).collect();
+            std::fs::create_dir_all(path.parent().expect("carpeta")).expect("crear carpeta");
+            std::fs::write(&path, format!("[\n{}\n]\n", lines.join(",\n")))
+                .expect("escribir huellas");
+            continue;
+        }
+        let stored: Vec<Value> =
+            serde_json::from_slice(&std::fs::read(&path).expect("huellas guardadas"))
+                .expect("JSON de huellas");
+        let mut changed = Vec::new();
+        for (index, case) in actual.iter().enumerate() {
+            match stored.get(index) {
+                Some(expected) if expected == case => {}
+                Some(expected) => changed.push(format!(
+                    "{}: {}",
+                    case["id"].as_str().unwrap_or_default(),
+                    difference(expected, case)
+                )),
+                None => changed.push(format!("{}: caso nuevo", case["id"])),
+            }
+        }
+        assert!(
+            changed.is_empty() && stored.len() == actual.len(),
+            "{name}: {} de {} casos cambian sin nada fijado (guardados: {}):\n{}",
+            changed.len(),
+            actual.len(),
+            stored.len(),
+            changed
+                .iter()
+                .take(20)
+                .cloned()
+                .collect::<Vec<_>>()
+                .join("\n")
+        );
     }
-    let stored: Vec<Value> =
-        serde_json::from_slice(&std::fs::read(&path).expect("huellas guardadas"))
-            .expect("JSON de huellas");
-    let mut changed = Vec::new();
-    for (index, case) in actual.iter().enumerate() {
-        match stored.get(index) {
-            Some(expected) if expected == case => {}
-            Some(expected) => changed.push(format!(
-                "{}: antes «{}», ahora «{}»",
-                case["id"].as_str().unwrap_or_default(),
-                expected["summary"].as_str().unwrap_or_default(),
-                case["summary"].as_str().unwrap_or_default()
-            )),
-            None => changed.push(format!("{}: caso nuevo", case["id"])),
+}
+
+/// Qué cambia entre la huella guardada y la de ahora, para el mensaje del test.
+fn difference(expected: &Value, actual: &Value) -> String {
+    let Some(parts) = actual["partes"].as_object() else {
+        return format!(
+            "antes «{}», ahora «{}»",
+            expected["summary"].as_str().unwrap_or_default(),
+            actual["summary"].as_str().unwrap_or_default()
+        );
+    };
+    let stored = expected["partes"].as_object();
+    let mut names: Vec<&str> = parts
+        .iter()
+        .filter(|(name, part)| stored.and_then(|stored| stored.get(name.as_str())) != Some(*part))
+        .map(|(name, _)| name.as_str())
+        .collect();
+    names.extend(
+        stored
+            .into_iter()
+            .flat_map(|stored| stored.keys())
+            .filter(|name| !parts.contains_key(name.as_str()))
+            .map(String::as_str),
+    );
+    if names.is_empty() {
+        return format!(
+            "cambian las marcas de ruedas usadas: antes {}, ahora {}",
+            expected["ruedasUsadas"], actual["ruedasUsadas"]
+        );
+    }
+    format!("cambian las partes {names:?}")
+}
+
+// ---------------------------------------------------------------------------
+// Huellas por partes (#2691).
+// ---------------------------------------------------------------------------
+//
+// Cada caso se guarda además troceado por las claves de primer nivel de su
+// resultado («solve», «replay», «noEnergyNorTyresAtLastStop»...). De cada parte
+// se guarda una huella corta (los 16 primeros caracteres del SHA-256) y, si el
+// plan que evalúa lleva ruedas que no son nuevas, dos marcas:
+//
+// - `sinCambio`: alguna parada no cambia ruedas;
+// - `reutiliza`: alguna parada monta un juego que ya había rodado antes.
+//
+// Con las marcas van el tiempo y el desgaste del plan, legibles (en texto con
+// seis decimales: un número con todos sus decimales no siempre se lee del
+// fichero igual que se escribió). Sirven para ver, parte a parte, qué mueve un
+// cambio del modelo de desgaste y comprobar que las partes en que todas las
+// paradas montan ruedas nuevas no se mueven.
+//
+// Cada línea repite el SHA-256 del caso entero: es el mismo de la huella
+// original, así que las partes guardadas son las de ese resultado y no otras.
+// Se escriben con `VANTARE_STRATEGY_HUELLAS=partes`, que no toca las huellas
+// enteras.
+
+fn part_fingerprints(case: &Case) -> Value {
+    let whole = serde_json::Map::from_iter([("todo".to_owned(), case.output.clone())]);
+    let parts = case.output.as_object().unwrap_or(&whole);
+    let mut hashes = serde_json::Map::new();
+    let mut worn = serde_json::Map::new();
+    for (name, part) in parts {
+        hashes.insert(name.clone(), json!(fingerprint(part)[..16]));
+        let (mut keeps, mut reuses) = (false, false);
+        worn_tyres(part, &mut keeps, &mut reuses);
+        if keeps || reuses {
+            worn.insert(
+                name.clone(),
+                json!({"sinCambio": keeps, "reutiliza": reuses, "cifras": figures(part)}),
+            );
         }
     }
-    assert!(
-        changed.is_empty() && stored.len() == actual.len(),
-        "{section}: {} de {} casos cambian sin nada fijado (guardados: {}):\n{}",
-        changed.len(),
-        actual.len(),
-        stored.len(),
-        changed
-            .iter()
-            .take(20)
+    let mut line = json!({"id": case.id, "sha256": fingerprint(&case.output), "partes": hashes});
+    if !worn.is_empty() {
+        line["ruedasUsadas"] = Value::Object(worn);
+    }
+    line
+}
+
+/// Busca en un resultado planes con ruedas que no son nuevas: paradas con
+/// `changeTyres` a `false`, o tramos que montan un juego ya usado antes.
+fn worn_tyres(value: &Value, keeps: &mut bool, reuses: &mut bool) {
+    match value {
+        Value::Object(map) => {
+            if let Some(stops) = map.get("pitStops").and_then(Value::as_array) {
+                *keeps |= stops.iter().any(|stop| stop["changeTyres"] == false);
+                if let Some(stints) = map.get("stints").and_then(Value::as_array) {
+                    *reuses |= remounts(stints, stops);
+                }
+            }
+            for inner in map.values() {
+                worn_tyres(inner, keeps, reuses);
+            }
+        }
+        Value::Array(items) => {
+            for inner in items {
+                worn_tyres(inner, keeps, reuses);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Si algún tramo monta, tras una parada con cambio, ruedas que ya rodaron.
+fn remounts(stints: &[Value], stops: &[Value]) -> bool {
+    let ids = |stint: &Value| -> Vec<String> {
+        stint["tyreFitment"]
+            .as_object()
+            .into_iter()
+            .flat_map(|fitment| fitment.values())
+            .filter_map(|id| id.as_str().map(str::to_owned))
+            .collect()
+    };
+    let mut used = std::collections::BTreeSet::new();
+    for (index, stint) in stints.iter().enumerate() {
+        let mounted = ids(stint);
+        let changed = index > 0
+            && stops
+                .get(index - 1)
+                .is_some_and(|stop| stop["changeTyres"] == true);
+        if changed && mounted.iter().any(|id| used.contains(id)) {
+            return true;
+        }
+        used.extend(mounted);
+    }
+    false
+}
+
+/// Tiempo total y desgaste del plan de una parte, donde los tenga.
+fn figures(part: &Value) -> Value {
+    let first = |candidates: [&Value; 3], wanted: fn(&Value) -> bool| {
+        candidates
+            .into_iter()
+            .find(|value| wanted(value))
             .cloned()
-            .collect::<Vec<_>>()
-            .join("\n")
+            .unwrap_or(Value::Null)
+    };
+    let evaluation = first(
+        [
+            &part["evaluation"],
+            &part["result"]["expected"],
+            &part["outcome"]["result"]["expected"],
+        ],
+        Value::is_object,
     );
+    let feasible = first(
+        [
+            &part["feasible"],
+            &part["result"]["feasible"],
+            &part["outcome"]["result"]["feasible"],
+        ],
+        Value::is_boolean,
+    );
+    let seconds = |value: &Value| value.as_f64().map(|seconds| format!("{seconds:.6}"));
+    json!({
+        "plan": feasible,
+        "total": seconds(&evaluation["totalSeconds"]),
+        "desgaste": seconds(&evaluation["degradationSeconds"]),
+    })
+}
+
+/// Las huellas por partes se sacaron de los mismos resultados que las huellas
+/// originales: cada línea lleva el SHA-256 del caso entero y tiene que ser el
+/// de la huella original de ese caso.
+#[test]
+fn the_part_fingerprints_belong_to_the_original_fingerprints() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("testdata/unfixed");
+    let read = |path: std::path::PathBuf| -> Vec<Value> {
+        serde_json::from_slice(&std::fs::read(&path).expect("huellas guardadas"))
+            .expect("JSON de huellas")
+    };
+    let mut cases = 0;
+    for section in [
+        "oracle-scalar",
+        "oracle-extended",
+        "manual",
+        "generated",
+        "coarsened",
+    ] {
+        let whole = read(root.join(format!("{section}.json")));
+        let parts = read(root.join(format!("partes/{section}.json")));
+        assert_eq!(whole.len(), parts.len(), "{section}: número de casos");
+        for (whole, parts) in whole.iter().zip(&parts) {
+            assert_eq!(whole["id"], parts["id"], "{section}: orden de los casos");
+            assert_eq!(
+                whole["sha256"], parts["sha256"],
+                "{section}: {}",
+                whole["id"]
+            );
+            assert!(
+                parts["partes"]
+                    .as_object()
+                    .is_some_and(|map| !map.is_empty()),
+                "{section}: {} sin partes",
+                whole["id"]
+            );
+            cases += 1;
+        }
+    }
+    assert_eq!(cases, 696, "las huellas originales son 696");
 }
 
 fn outcome_summary(outcome: &SolverOutcome) -> String {

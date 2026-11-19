@@ -66,6 +66,53 @@ recursos, replay y los campos de certificado cubiertos por cada fixture.
 Esto demuestra paridad del corpus congelado, no de todos los inputs posibles
 ni del wire completo en cada caso.
 
+### Cantidades fijadas por parada (#2690)
+
+`solve_v2_fixed`, `solve_greedy_fallback_fixed` y
+`recalculate_edited_plan_fixed` reciben una lista `&[FixedStop]`: la posición es
+el número de parada (0 = primera) y cada entrada puede fijar combustible,
+energía o nada. Lo fijado es una restricción: en esa parada solo se prueba esa
+cantidad, y un plan solo vale si tiene todas las paradas fijadas. Una lista
+vacía o con todo en automático es el mismo cálculo que sin lista; lo vigilan
+las huellas de `tests/unfixed_fingerprints.rs`, que no se regeneran salvo
+cambio de resultado intencionado y revisado.
+
+- Una cantidad fijada tiene que ser múltiplo del paso efectivo de la rejilla
+  (`manual_service_grid`), con la tolerancia de la unidad interna del cálculo
+  (una millonésima): `check_fixed_stops` lo comprueba con la misma regla que la
+  búsqueda.
+- Errores de entrada: una cantidad que el cálculo no acepta falla con
+  `invalid_input: fixedStops[n].fuelLiters …` (o `.vePercent`), como el resto
+  de validaciones del solver. Fijar una parada que no existe en el calendario
+  editado falla con `fixed_stop_outside_edited_schedule`, sin prefijo, como los
+  demás errores de `recalculate_edited_plan` (`invalid_edited_stint_schedule`,
+  `edited_stop_count_conflicts_with_event_rules`…).
+- `certificate.fixed_stops` cuenta las paradas con algo fijado y no sale en el
+  JSON cuando es 0. Con un valor mayor, `proven` significa «el plan más rápido
+  entre los que respetan lo fijado» y `no_solution`, «ninguno lo respeta», en la
+  rejilla efectiva. La búsqueda solo certifica si recorrió entero el espacio
+  restringido: el atajo de una sola decisión, el atajo certificado de una parada
+  y la semilla de carreras por tiempo se apagan con algo fijado, y la poda
+  extendida solo compara estados con las mismas paradas hechas y, mientras
+  queden paradas fijadas por delante, con los mismos niveles. Con
+  incertidumbre de consumo (riesgo) y algo fijado, el alcance es
+  `validated_discrete_input`, no el de planes viables en el caso adverso.
+- El respaldo lleva por recurso el nivel mínimo y máximo alcanzable y hace que
+  las paradas automáticas compensen a una fijada que carga poco. Con el
+  calendario fijo de «Ajustar paradas» es exacto. Si no hay plan por culpa de
+  lo fijado se niega con `GreedyRefusal::FixedAmountUnreachable { stop }`: la
+  primera parada fijada con la que deja de haberlo. `FixedRecalculation`
+  lo publica como `unreachable_stop`, también cuando la búsqueda demuestra que
+  no hay plan. Con pasos finos (búsqueda extendida) no se señala parada.
+- «Cabe» se mide con el depósito lleno en la salida, que es como simula la
+  búsqueda; el plan publicado informa después de la salida mínima (#2692).
+- Los neumáticos no se fijan: el modelo reinicia el desgaste en cada tramo
+  aunque no se cambien ruedas (#2691).
+
+El `replay` añade `ReplayResult.failure` cuando el motivo es
+`resource_exhausted`: tramo, primera vuelta de carrera que no se puede completar
+y recurso (combustible, energía o ruedas). No forma parte del JSON del replay.
+
 ## Application y Hub
 
 La API de aplicación valida entradas manuales, exige una fuente abierta antes

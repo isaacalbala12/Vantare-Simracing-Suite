@@ -2,8 +2,10 @@
 mod budget;
 mod certified;
 mod drivers;
+mod fixed;
 mod greedy;
 pub use drivers::{DriverLimit, DriverProfile, ManualDriverProfile, TimeWindow};
+pub use fixed::{FixedResource, FixedStop, FixedStopProblem, InvalidFixedStop, check_fixed_stops};
 mod model;
 #[cfg(test)]
 mod parity_tests;
@@ -22,8 +24,8 @@ pub use tyres::{CompoundPace, CurvePoint, Fitment, PhysicalTyre, TyreInventory};
 
 pub use model::*;
 pub use replay::{
-    ReplayResult, ReplayStint, SolverReason, replay_decision_v2, replay_decision_v2_with_resources,
-    resource_requirements_v2,
+    ExhaustedResource, ReplayFailure, ReplayResult, ReplayStint, SolverReason, replay_decision_v2,
+    replay_decision_v2_with_resources, resource_requirements_v2,
 };
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
@@ -400,6 +402,16 @@ pub struct OptimalityCertificate {
     pub proof: Option<SearchProof>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
+    /// Paradas con algo fijado a mano. Con un valor mayor que cero, `proven` y
+    /// `no_solution` hablan solo de los planes que respetan lo fijado. No sale
+    /// en el JSON cuando es cero.
+    #[serde(skip_serializing_if = "is_zero")]
+    pub fixed_stops: usize,
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)] // firma que exige `skip_serializing_if`.
+fn is_zero(value: &usize) -> bool {
+    *value == 0
 }
 
 /// Result for consumers that need an explicit search status and cost.
@@ -466,8 +478,16 @@ impl Resource {
                 .min(remaining)
         }
     }
-    fn amounts(self, current: i64) -> impl Iterator<Item = i64> {
-        (0..=(self.capacity - current) / self.step).map(move |n| n * self.step)
+    /// Cargas posibles en una parada. Con una cantidad fijada (siempre múltiplo
+    /// del paso) solo vale esa, y ninguna si no cabe.
+    fn amounts(self, current: i64, fixed: Option<i64>) -> impl Iterator<Item = i64> {
+        let most = (self.capacity - current) / self.step;
+        let (first, last) = match fixed.map(|amount| amount / self.step) {
+            None => (0, most),
+            Some(steps) if steps <= most => (steps, steps),
+            Some(_) => (1, 0),
+        };
+        (first..=last).map(move |n| n * self.step)
     }
 }
 
@@ -562,7 +582,7 @@ fn solve(input: &Input) -> Result<ResultV2, String> {
 /// Production consumers use the certified V2 API instead.
 #[cfg(test)]
 fn solve_cancellable(input: &Input, cancel: &AtomicBool) -> Result<ResultV2, String> {
-    solve_internal(input, cancel, false, Some(input.budget.p95_millis))
+    solve_internal(input, &[], cancel, false, Some(input.budget.p95_millis))
         .map(|outcome| outcome.result)
 }
 
@@ -600,7 +620,20 @@ pub fn solve_v2(input: &Input) -> Result<SolverOutcome, String> {
 /// Returns the best complete plan found so far when the search budget expires.
 /// Cancellation and invalid inputs still fail without publishing a result.
 pub fn solve_v2_cancellable(input: &Input, cancel: &AtomicBool) -> Result<SolverOutcome, String> {
-    solve_internal(input, cancel, true, Some(input.budget.p95_millis))
+    solve_v2_fixed(input, &[], cancel)
+}
+
+/// Como [`solve_v2_cancellable`], respetando lo fijado a mano por parada: en una
+/// parada fijada solo se prueba la cantidad fijada, y un plan solo vale si tiene
+/// todas las paradas fijadas. `proven` significa entonces «el más rápido entre
+/// los planes que respetan lo fijado» (`certificate.fixed_stops` lo señala).
+/// Con la lista vacía o con todo en automático es el mismo cálculo.
+pub fn solve_v2_fixed(
+    input: &Input,
+    fixed: &[FixedStop],
+    cancel: &AtomicBool,
+) -> Result<SolverOutcome, String> {
+    solve_internal(input, fixed, cancel, true, Some(input.budget.p95_millis))
 }
 
 /// Why the greedy fallback plan cannot be built without breaking a constraint.
@@ -629,6 +662,11 @@ pub enum GreedyRefusal {
     /// for example a capacity with no consumption), which the scalar search
     /// rejects with an error before the fallback runs.
     ServiceGrid,
+    /// No hay plan de respaldo que respete lo fijado a mano: `stop` es la primera
+    /// parada fijada con la que deja de haberlo (0 = primera parada). Con el
+    /// calendario fijo de «Ajustar paradas» es exacto; con calendario libre es
+    /// una pista, porque el respaldo no prueba todos los calendarios.
+    FixedAmountUnreachable { stop: usize },
 }
 
 impl GreedyRefusal {
@@ -640,6 +678,7 @@ impl GreedyRefusal {
             Self::MinStops => "min_pit_stops",
             Self::WindowUnreachable => "window_unreachable",
             Self::ServiceGrid => "service_grid",
+            Self::FixedAmountUnreachable { .. } => "fixed_amount_unreachable",
         }
     }
 }
@@ -648,7 +687,19 @@ impl GreedyRefusal {
 /// only after the scalar search ran out of budget without any plan. The
 /// certificate is always `not_proven`; no optimality bound is claimed.
 pub fn solve_greedy_fallback(input: &Input) -> Result<SolverOutcome, GreedyRefusal> {
-    greedy::solve(input)
+    greedy::solve(input, &[])
+}
+
+/// Como [`solve_greedy_fallback`], respetando lo fijado a mano por parada: las
+/// paradas automáticas cargan lo necesario para compensar. Si no hay plan por
+/// culpa de lo fijado se niega con `FixedAmountUnreachable`; si tampoco lo hay
+/// sin fijar nada, con la causa de siempre. Una cantidad que el cálculo no
+/// acepta (ver [`check_fixed_stops`]) se niega con `ServiceGrid`.
+pub fn solve_greedy_fallback_fixed(
+    input: &Input,
+    fixed: &[FixedStop],
+) -> Result<SolverOutcome, GreedyRefusal> {
+    greedy::solve(input, fixed)
 }
 
 /// True when [`solve_v2_cancellable`] already runs the extended search for
@@ -670,12 +721,13 @@ pub fn runs_extended_search(input: &Input) -> bool {
 
 #[cfg(test)]
 fn solve_v2_without_deadline(input: &Input) -> Result<SolverOutcome, String> {
-    solve_internal(input, &AtomicBool::new(false), true, None)
+    solve_internal(input, &[], &AtomicBool::new(false), true, None)
 }
 
 // Cancellation has precedence at entry and publication, including fast paths.
 fn solve_internal(
     input: &Input,
+    fixed: &[FixedStop],
     cancel: &AtomicBool,
     return_partial: bool,
     deadline_millis: Option<u64>,
@@ -683,7 +735,7 @@ fn solve_internal(
     if cancel.load(AtomicOrdering::Relaxed) {
         return Err("cancelled".into());
     }
-    let outcome = solve_search(input, cancel, return_partial, deadline_millis)?;
+    let outcome = solve_search(input, fixed, cancel, return_partial, deadline_millis)?;
     if cancel.load(AtomicOrdering::Relaxed) {
         return Err("cancelled".into());
     }
@@ -693,12 +745,13 @@ fn solve_internal(
 #[allow(clippy::too_many_lines)] // One bounded walk keeps exhaustion and certificate state explicit.
 fn solve_search(
     input: &Input,
+    fixed: &[FixedStop],
     cancel: &AtomicBool,
     return_partial: bool,
     deadline_millis: Option<u64>,
 ) -> Result<SolverOutcome, String> {
     if runs_extended_search(input) {
-        return search::solve(input, cancel, return_partial, deadline_millis);
+        return search::solve(input, fixed, cancel, return_partial, deadline_millis);
     }
     input.validate()?;
     let fuel = Resource::new(
@@ -715,7 +768,15 @@ fn solve_search(
         &input.virtual_energy_reserve,
         input.race_laps,
     )?;
-    match single_fuel_decision(input, fuel, ve, cancel, deadline_millis) {
+    let fixed = fixed::Fixed::new(fixed, fuel, ve).map_err(|invalid| invalid.to_string())?;
+    // El atajo de una sola decisión no sabe de cantidades fijadas: con algo fijado
+    // se pasa siempre por la búsqueda.
+    let shortcut = if fixed.is_empty() {
+        single_fuel_decision(input, fuel, ve, cancel, deadline_millis)
+    } else {
+        Ok(None)
+    };
+    match shortcut {
         Ok(Some(result)) => {
             let status = if result.feasible {
                 OptimalityStatus::Proven
@@ -815,6 +876,7 @@ fn solve_search(
                     let all_windows = (1u32 << input.event_rules.required_windows.len()) - 1;
                     if after.fuel < fuel.reserve
                         || after.ve < ve.reserve
+                        || stops < fixed.required_stops()
                         || u32::from(after.windows) != all_windows
                         || input.event_rules.min_pit_stops.is_some_and(|n| stops < n)
                         || input.event_rules.max_pit_stops.is_some_and(|n| stops > n)
@@ -851,8 +913,12 @@ fn solve_search(
                 {
                     continue;
                 }
-                for f in fuel.amounts(after.fuel) {
-                    for v in ve.amounts(after.ve) {
+                // Lo fijado depende solo del número de parada, que ya forma parte
+                // de la clave del estado: quedarse con el mejor de cada clave
+                // sigue siendo correcto.
+                let (fixed_fuel, fixed_ve) = fixed.at(after.result.pit_stops.len());
+                for f in fuel.amounts(after.fuel, fixed_fuel) {
+                    for v in ve.amounts(after.ve, fixed_ve) {
                         work += 1;
                         if work > max_work {
                             if return_partial {
@@ -925,7 +991,9 @@ fn solve_search(
     } else {
         OptimalityStatus::NoSolution
     };
-    Ok(solver_outcome(result, status, work, exhaustion_reason))
+    let mut outcome = solver_outcome(result, status, work, exhaustion_reason);
+    outcome.certificate.fixed_stops = fixed.stops().count();
+    Ok(outcome)
 }
 
 fn solver_outcome(
@@ -943,6 +1011,7 @@ fn solver_outcome(
             explored_work_items,
             proof: None,
             reason: reason.map(str::to_owned),
+            fixed_stops: 0,
         },
         cost_seconds,
         result,

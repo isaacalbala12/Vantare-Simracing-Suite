@@ -4,8 +4,10 @@
 use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 
-use vantare_strategy::application::{EditedPlan, recalculate_edited_plan_detailed};
-use vantare_strategy::solver::{Input, Window, solve_v2_cancellable};
+use vantare_strategy::application::{
+    EditedPlan, recalculate_edited_plan_detailed, recalculate_edited_plan_fixed,
+};
+use vantare_strategy::solver::{FixedStop, Input, Window, solve_v2_cancellable};
 
 fn manual() -> Input {
     let mut input: Input = serde_json::from_str(include_str!("../testdata/fuji-1450-input.json"))
@@ -56,5 +58,61 @@ fn recalculating_the_fuji_witness_with_virtual_energy() {
             after.result.pit_stops.len(),
             after.result.expected.total_seconds,
         );
+    }
+}
+
+/// Medición de «Recalcular» con cantidades fijadas a mano (#2690), sobre el
+/// mismo calendario de Fuji. Parte de lo que el cálculo carga solo y fija la
+/// segunda parada: lo mismo, 4 L menos (la primera parada compensa: llega con
+/// 3,3 L y le caben 78), 5 L menos (ya no cabe compensar) y 0 L.
+#[test]
+#[ignore = "measurement"]
+fn recalculating_the_fuji_witness_with_fixed_amounts() {
+    let edited = EditedPlan {
+        stints: vec![43, 42, 42, 43, 42, 24],
+        pit_stop_laps: vec![43, 85, 127, 170, 212],
+    };
+    let (automatic, _) =
+        recalculate_edited_plan_detailed(&manual(), &edited, &AtomicBool::new(false))
+            .expect("recalculate");
+    let second = &automatic.result.pit_stops[1];
+    let pin = |fuel_liters: f64| {
+        vec![
+            FixedStop::default(),
+            FixedStop {
+                fuel_liters: Some(fuel_liters),
+                ve_percent: Some(second.ve_percent),
+            },
+        ]
+    };
+    for (name, fixed) in [
+        ("sin fijar", Vec::new()),
+        ("lo mismo", pin(second.fuel_liters)),
+        ("4 L menos", pin(second.fuel_liters - 4.0)),
+        ("5 L menos", pin(second.fuel_liters - 5.0)),
+        ("0 L", pin(0.0)),
+    ] {
+        for repetition in 1..=3 {
+            let started = Instant::now();
+            let recalculation =
+                recalculate_edited_plan_fixed(&manual(), &edited, &fixed, &AtomicBool::new(false))
+                    .expect("recalculate");
+            println!(
+                "{name} rep={repetition} total={:?} status={:?} feasible={} fallback={:?} unreachable={:?} fuel={:?} race_seconds={:.1}",
+                started.elapsed(),
+                recalculation.outcome.certificate.status,
+                recalculation.outcome.result.feasible,
+                recalculation.fallback,
+                recalculation.unreachable_stop,
+                recalculation
+                    .outcome
+                    .result
+                    .pit_stops
+                    .iter()
+                    .map(|stop| stop.fuel_liters)
+                    .collect::<Vec<_>>(),
+                recalculation.outcome.result.expected.total_seconds,
+            );
+        }
     }
 }

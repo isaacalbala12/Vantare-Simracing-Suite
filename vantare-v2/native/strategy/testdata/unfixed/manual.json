@@ -1,0 +1,23 @@
+[
+{"id":"calcular/fuji-60-energia-false-250000","sha256":"c84a6129a3d652158544b0a895127d637a46b99e8757f47a2a6b5596e65d122b","summary":"NotProven plan=true paradas=1 segundos=Some(5483.3447265625) motivo=Some(\"greedy_fallback_plan\") ruta=Greedy respaldo=Applied"},
+{"id":"calcular/fuji-160-energia-false-250000","sha256":"dd000710e1da208ccbe877b2a776580f9145e3938b75e86ee2750deba0162fb5","summary":"NotProven plan=true paradas=3 segundos=Some(14640.5859375) motivo=Some(\"greedy_fallback_plan\") ruta=Greedy respaldo=Applied"},
+{"id":"calcular/fuji-236-energia-false-250000","sha256":"a70c44a7ecab534d08dc385f115d1426dfaa345b48db4696d2b110339c83c656","summary":"NotProven plan=true paradas=5 segundos=Some(21626.4892578125) motivo=Some(\"greedy_fallback_plan\") ruta=Greedy respaldo=Applied"},
+{"id":"calcular/fuji-240-energia-false-250000","sha256":"a6b10d505b5c53d1c8c7a0c6cc0c5bcf8c36532ffab879a1216639573e0ffaa3","summary":"NotProven plan=true paradas=5 segundos=Some(21988.37890625) motivo=Some(\"greedy_fallback_plan\") ruta=Greedy respaldo=Applied"},
+{"id":"calcular/fuji-60-energia-true-250000","sha256":"6cb4f6b2794828647b8cf1d5c325124e129c34e3f87ce3764e263d6ce6093113","summary":"NotProven plan=true paradas=1 segundos=Some(5483.3447265625) motivo=Some(\"greedy_fallback_plan\") ruta=Greedy respaldo=Applied"},
+{"id":"calcular/fuji-160-energia-true-60000","sha256":"a9ea78a808937bd6253ebde839e47391725873f4d6e2fbd44edbd7dc784d933a","summary":"NotProven plan=true paradas=3 segundos=Some(14659.785930557251) motivo=Some(\"greedy_fallback_plan\") ruta=Greedy respaldo=Applied"},
+{"id":"calcular/fuji-236-energia-true-250000","sha256":"d115adecbeb0481f05e430751ee046f4aae1814e2b975892aa086fcd89b534dd","summary":"NotProven plan=true paradas=5 segundos=Some(21662.889247868858) motivo=Some(\"greedy_fallback_plan\") ruta=Greedy respaldo=Applied"},
+{"id":"calcular/fuji-240-energia-true-60000","sha256":"847d6f534c6875a9630db41fdcda129454a78fc9b0ee693470124e9b497a3b7e","summary":"NotProven plan=true paradas=5 segundos=Some(22024.778896306358) motivo=Some(\"greedy_fallback_plan\") ruta=Greedy respaldo=Applied"},
+{"id":"calcular/fuji-480-energia-true-20000","sha256":"0d008383ae4ba35d4f1bfb128bf7d430279d64fa8757b9ba6e378b665a09a914","summary":"NotProven plan=true paradas=11 segundos=Some(44123.75778757731) motivo=Some(\"greedy_fallback_plan\") ruta=Greedy respaldo=Applied"},
+{"id":"recalcular/fuji-236-energia-true-None-0","sha256":"7600857bebf9c2369288b127051f3a92c851634d1b18852c2179b6da2fa35f7c","summary":"\"not_proven\" Applied"},
+{"id":"recalcular/fuji-236-energia-false-None-0","sha256":"0ca0bd2d6239daea0cc617c62c472320f24566bd82d1b7286631911451fc3ca9","summary":"\"not_proven\" Applied"},
+{"id":"recalcular/fuji-236-energia-true-Some(0)--1","sha256":"b018979f8d0362124d9617f3312b541d89dcd0a0a9987f32109033e11d3f9d6d","summary":"\"not_proven\" Applied"},
+{"id":"recalcular/fuji-236-energia-false-Some(0)--1","sha256":"e65d5641aa866bf97c61f39df21a068c1ed5847cf62ee8821a22342065be4d4c","summary":"\"not_proven\" Applied"},
+{"id":"recalcular/fuji-236-energia-true-Some(1)-1","sha256":"979082d35d4109462cbbe69f86977a172b2015a8bceb46d356868763a841377f","summary":"\"not_proven\" Refused(MaxStops)"},
+{"id":"recalcular/fuji-236-energia-false-Some(1)-1","sha256":"ab02b53a687557abbe5dbd2305c026a17eac77afd87af50481a9422738e5f73d","summary":"\"not_proven\" Applied"},
+{"id":"recalcular/fuji-236-energia-true-Some(3)--1","sha256":"05b3831b0596b1e8467735e52928c9a9541302ad221a88ecb588a09213326d33","summary":"\"not_proven\" Applied"},
+{"id":"recalcular/fuji-236-energia-false-Some(3)--1","sha256":"f982b8b8a78195c882c6c9bf1bf5d5a2c7b5db313177914bee39f53a4a7a348e","summary":"\"not_proven\" Applied"},
+{"id":"recalcular/fuji-236-energia-true-Some(4)--1","sha256":"aa2e7542381b9c8c838f15ab15cd14017facafd9c89fff513b2fbcc9b632a8a5","summary":"\"not_proven\" Applied"},
+{"id":"recalcular/fuji-236-energia-false-Some(4)--1","sha256":"3f545be99316b3519713f6272b97de616a6f4201a93dcacd095ee13ffdb0cbe8","summary":"\"not_proven\" Applied"},
+{"id":"recalcular/imposible-energia-true","sha256":"cc79e5f7ea7ebe4cf28191b04367449097cb36e2ca96bd330b463036be67ad33","summary":"\"not_proven\" Refused(MaxStops)"},
+{"id":"recalcular/imposible-energia-false","sha256":"45ca97b4adcdf19f14c21a8f3368d76af72683c3eca934c841dd9e56ec0e1a9c","summary":"\"no_solution\" NotApplicable"}
+]

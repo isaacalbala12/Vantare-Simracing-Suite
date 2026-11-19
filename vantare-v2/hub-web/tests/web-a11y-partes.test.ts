@@ -13,6 +13,10 @@ const fuente = readFileSync(
   resolve(import.meta.dirname, "../scripts/web-a11y.ts"),
   "utf8",
 );
+// Fragilidad conocida: la regex lee el código fuente y solo ve llamadas literales
+// `timed("nombre"`. Un check con nombre calculado, o llamado de otra forma, no
+// se detecta aquí. El respaldo es `comprobarEjecutados` (web-a11y-partes.ts), que
+// en cada parte compara los `timed` realmente ejecutados con su lista.
 const enElArchivo = new Set(
   [...fuente.matchAll(/timed\(\s*"(\w+)"/g)].map((match) => match[1] ?? ""),
 );

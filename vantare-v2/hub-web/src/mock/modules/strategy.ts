@@ -318,6 +318,26 @@ function fujiPlan(unproven: boolean): StrategyPlanView {
   };
 }
 
+// QA: the Fuji plan after a recalculation of the schedule with the first stop one
+// lap earlier (the calendar the crate does solve), as the mock recalculation gives
+// it: valid, not proven, two seconds slower than the proven plan. It is what a
+// person sees after adjusting a stop of an accepted plan.
+function fujiMovedPlan(): StrategyPlanView {
+  const plan = fujiPlan(true);
+  const pits = plan.result?.timeline?.pits;
+  const stints = plan.result?.timeline?.stints;
+  if (!plan.result?.metrics || !pits || !stints || !plan.edit) return plan;
+  plan.result.metrics.totalSeconds += 2;
+  pits[0].lap = 42;
+  stints[0].toLap = 42;
+  stints[1].fromLap = 43;
+  plan.edit.stints = structuredClone(stints);
+  plan.edit.stops[0].lap = 42;
+  plan.edit.stops[0].maxLap = 84;
+  plan.edit.stops[1].minLap = 43;
+  return plan;
+}
+
 // QA: the document of Opus' Fuji case, so the header of the race fits its plan
 // (236 laps in 360 minutes). Only the Fuji scenes use it.
 function fujiDocument(view: StrategyView): StrategyView {
@@ -667,6 +687,35 @@ export function create(context: MockContext): MockHandler {
               : "empty",
           );
   if (fuji) saved = fujiDocument(saved);
+  // QA: the data changed after the plan was accepted (the plan keeps the old ones)
+  if (saved.form && /^acceptedFuji(Stale|List)$/.test(scenario))
+    saved.form.inputs.basePaceSeconds = "90.9";
+  if (saved.form && scenario === "acceptedFujiUnreachable")
+    saved.form.inputs.fuelPerLapLiters = "1.85";
+  // QA: a collection with an accepted plan, an outdated one and none
+  if (scenario === "acceptedFujiList")
+    saved.events.push(
+      {
+        id: "event-2",
+        name: "Le Mans 24 Horas",
+        class: "Hypercar",
+        track: "Circuit de la Sarthe",
+        drivers: 1,
+        strategies: [{ id: "variant-1", name: "Base" }],
+        hasInputs: true,
+        acceptedPlan: "none",
+      },
+      {
+        id: "event-3",
+        name: "Sprint de Spa",
+        class: "GT3",
+        track: "Spa-Francorchamps",
+        drivers: 1,
+        strategies: [{ id: "variant-1", name: "Base" }],
+        hasInputs: false,
+        acceptedPlan: "none",
+      },
+    );
   let current = structuredClone(saved);
   // The entries of each variant written in this session (create, confirm and a
   // calculation), as the host keeps them in the document; the others are the
@@ -1026,27 +1075,47 @@ export function create(context: MockContext): MockHandler {
         seeded = true;
         const key = activeKey();
         const form = activeForm(saved);
-        const result = calculation("calculated").result;
+        const result = fuji
+          ? fujiPlan(scenario === "acceptedFujiPartial").result
+          : calculation("calculated").result;
         if (key && form && result) {
           const entries = structuredClone(form);
           if (scenario === "acceptedStale")
             entries.inputs.basePaceSeconds = "90";
           if (scenario === "acceptedUnreachable")
             entries.inputs.fuelPerLapLiters = "1.5";
+          // the Fuji plan was accepted with the entries of the Fuji case
+          if (/^acceptedFuji(Stale|List)$/.test(scenario))
+            entries.inputs.basePaceSeconds = "90.472";
+          if (scenario === "acceptedFujiUnreachable")
+            entries.inputs.fuelPerLapLiters = "1.83";
           savedAccepts[key] = { acceptedAt: mockNow, entries, result };
         }
+        // the other event of the list that has an accepted plan, up to date
+        const other = saved.events.find(({ id }) => id === "event-2");
+        const kept = other && formOf(other, other.strategies[0]);
+        if (scenario === "acceptedFujiList" && other && kept && result)
+          savedAccepts[formKey(other.id, other.strategies[0].id)] = {
+            acceptedAt: mockNow,
+            entries: kept,
+            result,
+          };
       }
       restore();
       opened = true;
-      if (scenario.startsWith("planned")) {
+      if (scenario.startsWith("planned") || scenario === "acceptedFujiNew") {
         // QA: a document with its plan already calculated and editable; the
-        // Fuji scenes have the size of a real race
-        current.plan = scenario.startsWith("plannedFuji")
-          ? fujiPlan(scenario === "plannedFujiPartial")
-          : {
-              ...calculation("calculated"),
-              computeId: ++computeSequence,
-            };
+        // Fuji scenes have the size of a real race. `acceptedFujiNew` has the
+        // proposal of an adjusted calendar next to the plan accepted before.
+        current.plan =
+          scenario === "acceptedFujiNew"
+            ? fujiMovedPlan()
+            : scenario.startsWith("plannedFuji")
+              ? fujiPlan(scenario === "plannedFujiPartial")
+              : {
+                  ...calculation("calculated"),
+                  computeId: ++computeSequence,
+                };
         computeSequence = Math.max(
           computeSequence,
           current.plan.computeId ?? 0,

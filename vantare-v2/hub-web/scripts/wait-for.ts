@@ -52,8 +52,23 @@ export async function press(locator: Locator, timeout = 20000) {
   await locator.click({ timeout });
 }
 
-// Lo mismo con una tecla: espera a que el elemento sea visible y luego la pulsa.
+// Espera a que el elemento esté habilitado (sin `disabled` ni `aria-disabled`), con el
+// mismo plazo y sondeo que `visible`. Un botón se ve antes de poder usarse: mientras el
+// host contesta a la petición anterior sigue deshabilitado y la tecla que llega se
+// pierde. (`click` ya espera a que esté habilitado; `press` de una tecla no.)
+export async function enabled(locator: Locator, timeout = 20000) {
+  const deadline = performance.now() + timeout;
+  do {
+    if (await locator.isEnabled()) return;
+    await setTimeout(20);
+  } while (performance.now() < deadline);
+  throw new Error(`Timed out: enabled ${locator}`);
+}
+
+// Lo mismo con una tecla: espera a que el elemento sea visible y esté habilitado, y
+// luego la pulsa.
 export async function pressKey(locator: Locator, key: string, timeout = 20000) {
   await visible(locator, timeout);
+  await enabled(locator, timeout);
   await locator.press(key, { timeout });
 }

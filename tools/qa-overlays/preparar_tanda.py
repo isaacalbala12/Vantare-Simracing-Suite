@@ -3,6 +3,7 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -130,6 +131,23 @@ def prefixes(count):
     return sorted({value for value in (1, 3, 10, 121, 197, count) if value <= count})
 
 
+def copy_tracked_tree(source, output):
+    source, output = Path(source), Path(output)
+    entries = subprocess.run(["git", "-C", str(source), "ls-files", "-z", "--", "."],
+                             check=True, stdout=subprocess.PIPE).stdout
+    output.mkdir(parents=True, exist_ok=False)
+    for entry in entries.split(b"\0"):
+        if not entry:
+            continue
+        relative = Path(os.fsdecode(entry))
+        original = source / relative
+        if original.is_symlink() or not original.resolve().is_relative_to(source.resolve()):
+            raise ValueError(f"Enlace en los ficheros versionados del kit: {relative}")
+        destination = output / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(original, destination)
+
+
 def seal_measurement(output, destination):
     output, destination = Path(output).resolve(), Path(destination).resolve()
     if destination.is_relative_to(output):
@@ -149,18 +167,29 @@ def seal_measurement(output, destination):
         if (relative.is_absolute() or ".." in relative.parts or not file.resolve().is_relative_to(output)
                 or digest(file) != paths[raw]):
             raise ValueError(f"Input del ZIP no coincide con el manifiesto: {raw}")
-    with zipfile.ZipFile(destination, "x", compression=zipfile.ZIP_DEFLATED) as bundle:
-        bundle.writestr("manifiesto.json", manifest_bytes)
-        for relative in sorted(paths):
-            bundle.write(output / relative, relative)
-    with receipt_path.open("x", encoding="utf-8") as stream:
-        json.dump({"schema": 1, "zip": destination.name, "zip_sha256": digest(destination),
-                   "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(), "source_sha": manifest["source_sha"],
-                   "run_id": manifest["ci_artifact"]["run_id"],
-                   "ci_receipt_sha256": manifest["ci_artifact"]["receipt_sha256"],
-                   "qa_license": manifest["qa_license"], "external_corpus": manifest["external_corpus"]},
-                  stream, ensure_ascii=False, indent=2)
-        stream.write("\n")
+    zip_owned = receipt_owned = False
+    try:
+        with destination.open("xb") as target:
+            zip_owned = True
+            with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+                bundle.writestr("manifiesto.json", manifest_bytes)
+                for relative in sorted(paths):
+                    bundle.write(output / relative, relative)
+        with receipt_path.open("x", encoding="utf-8") as stream:
+            receipt_owned = True
+            json.dump({"schema": 1, "zip": destination.name, "zip_sha256": digest(destination),
+                       "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(), "source_sha": manifest["source_sha"],
+                       "run_id": manifest["ci_artifact"]["run_id"],
+                       "ci_receipt_sha256": manifest["ci_artifact"]["receipt_sha256"],
+                       "qa_license": manifest["qa_license"], "external_corpus": manifest["external_corpus"]},
+                      stream, ensure_ascii=False, indent=2)
+            stream.write("\n")
+    except BaseException:
+        if receipt_owned:
+            receipt_path.unlink(missing_ok=True)
+        if zip_owned:
+            destination.unlink(missing_ok=True)
+        raise
     return receipt_path
 
 
@@ -342,8 +371,9 @@ def prepare(repo, output, binary_directory, presentmon=None, corpus=None, invent
     # Keep the original sampler tree: imports and guards are shared, not forked.
     scripts = Path(__file__).resolve().parent
     manifest["tools_sha"] = subprocess.check_output(["git", "-C", str(scripts), "rev-parse", "HEAD"], text=True).strip()
-    shutil.copytree(scripts, output / "tools/qa-overlays", ignore=shutil.ignore_patterns("__pycache__"))
-    shutil.copytree(repo / "vantare-v2/native/pruebas-rune/muestreador", output / "vantare-v2/native/pruebas-rune/muestreador", ignore=shutil.ignore_patterns("__pycache__"))
+    copy_tracked_tree(scripts, output / "tools/qa-overlays")
+    sampler = Path("vantare-v2/native/pruebas-rune/muestreador")
+    copy_tracked_tree(repo / sampler, output / sampler)
     shutil.copyfile(scripts / "TANDA.ps1", output / "TANDA.ps1")
     shutil.copyfile(scripts / "SEGURIDAD_TANDA.ps1", output / "SEGURIDAD_TANDA.ps1")
     shutil.copyfile(scripts / "LICENCIA_TANDA.ps1", output / "LICENCIA_TANDA.ps1")

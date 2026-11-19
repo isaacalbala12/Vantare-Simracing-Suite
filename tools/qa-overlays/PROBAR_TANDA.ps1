@@ -35,12 +35,20 @@ $fakeManifest=Join-Path $stage 'manifiesto.json'
 $fakeCi=Join-Path $stage 'ci-binarios.json'
 $fakeCorpus=Join-Path $sealed 'corpus.tar.gz'
 Set-Content -LiteralPath $fakeManifest 'manifest fixture'
-Set-Content -LiteralPath $fakeCi 'CI fixture'
+$null=New-Item -ItemType Directory (Join-Path $stage 'bin')
+$binaryNames=@('vantare-core.exe','vantare-qa-license.exe')
+$ciRows=@(foreach($name in $binaryNames){
+ $path=Join-Path $stage "bin/$name"
+ Set-Content -LiteralPath $path $name
+ @{file=$name;sha256=(Get-FileHash -LiteralPath $path).Hash.ToLowerInvariant()}
+})
 Set-Content -LiteralPath $fakeCorpus 'corpus fixture'
 $fakeZip=Join-Path $sealed 'kit.zip'
-[IO.Compression.ZipFile]::CreateFromDirectory($stage,$fakeZip)
 $fakeReceipt=Join-Path $sealed 'kit.receipt.json'
-$binding=@{key_id='qa-01234567';registry_sha256='b'*64;core_sha256='c'*64;cli_sha256='d'*64}
+$binding=@{key_id='qa-01234567';registry_sha256='b'*64;core_sha256=$ciRows[0].sha256;cli_sha256=$ciRows[1].sha256}
+Write-TandaJson @{source_sha='a'*40;run_id='123';license_key_id=$binding.key_id;license_registry_sha256=$binding.registry_sha256;
+ license_public_keys_configured=$true;core_features=@('paint-stats','qa-license');qa_license_cli_sha256=$binding.cli_sha256;files=$ciRows} $fakeCi
+[IO.Compression.ZipFile]::CreateFromDirectory($stage,$fakeZip)
 $corpus=@{name='corpus.tar.gz';sha256=(Get-FileHash -LiteralPath $fakeCorpus).Hash.ToLowerInvariant()}
 $sealedManifest=@{source_sha='a'*40;scope='measurement-qa';external_corpus=$corpus;qa_license=$binding;ci_artifact=@{
  run_id='123';receipt_sha256=(Get-FileHash -LiteralPath $fakeCi).Hash.ToLowerInvariant()
@@ -52,7 +60,7 @@ $record=@{schema=1;source_sha=$sealedManifest.source_sha;run_id='123';zip='kit.z
 Write-TandaJson $record $fakeReceipt
 $valid=Assert-TandaPackageReceipt $stage $sealedManifest $fakeZip $fakeReceipt $fakeCorpus
 if($valid.zip_sha256 -cne $record.zip_sha256){throw 'Recibo válido no conservó el hash esperado'}
-foreach($changed in @($fakeCorpus,$fakeZip)){
+foreach($changed in @($fakeCorpus,$fakeZip,$fakeManifest,(Join-Path $stage 'bin/vantare-core.exe'),(Join-Path $stage 'bin/vantare-qa-license.exe'))){
  $original=[IO.File]::ReadAllBytes($changed)
  Add-Content -LiteralPath $changed 'mutated'
  $reject=$false
@@ -60,6 +68,32 @@ foreach($changed in @($fakeCorpus,$fakeZip)){
  [IO.File]::WriteAllBytes($changed,$original)
  if(-not $reject){throw 'Input cambiado aceptado por el recibo QA'}
 }
+foreach($extraName in 'qa-license.key','bin/extra.exe'){
+ $extra=Join-Path $stage $extraName
+ Set-Content -LiteralPath $extra 'FAKE'
+ $reject=$false
+ try{$null=Assert-TandaPackageReceipt $stage $sealedManifest $fakeZip $fakeReceipt $fakeCorpus}catch{$reject=$_.Exception.Message -like 'QA_PACKAGE_RECEIPT*'}
+ Remove-Item -LiteralPath $extra
+ if(-not $reject){throw "Fichero extra aceptado: $extraName"}
+}
+foreach($field in 'run_id','key_id','core_sha256','cli_sha256'){
+ $modified=Read-TandaJson $fakeReceipt
+ if($field -eq 'run_id'){$modified.run_id='999'}else{
+  $modified.qa_license[$field]='e'*64
+  $sealedManifest.qa_license=$modified.qa_license
+ }
+ $wrong=Join-Path $sealed 'incorrecto.json'
+ Write-TandaJson $modified $wrong
+ $reject=$false
+ try{$null=Assert-TandaPackageReceipt $stage $sealedManifest $fakeZip $wrong $fakeCorpus}catch{$reject=$_.Exception.Message -like 'QA_PACKAGE_RECEIPT*'}
+ $sealedManifest.qa_license=$binding
+ if(-not $reject){throw "Procedencia modificada aceptada: $field"}
+}
+$inside=Join-Path $stage 'receipt.json'
+Copy-Item -LiteralPath $fakeReceipt -Destination $inside
+$reject=$false
+try{$null=Assert-TandaPackageReceipt $stage $sealedManifest $fakeZip $inside $fakeCorpus}catch{$reject=$_.Exception.Message -like 'QA_PACKAGE_RECEIPT*'}
+if(-not $reject){throw 'Recibo interior aceptado'}
 $png=Join-Path $sandbox 'header.png'
 [byte[]]$header=@(137,80,78,71,13,10,26,10,0,0,0,13,73,72,68,82,0,0,2,248,0,0,0,192)
 [IO.File]::WriteAllBytes($png,$header)

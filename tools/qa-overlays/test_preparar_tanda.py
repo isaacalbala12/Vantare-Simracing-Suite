@@ -1,8 +1,10 @@
 """Valida selección y orden de fixtures existentes, sin ejecutables ni GPU."""
 import json
+import shutil
 import unittest
 import tempfile
 import zipfile
+import subprocess
 from pathlib import Path
 from unittest.mock import patch
 import preparar_tanda as packaging
@@ -43,10 +45,16 @@ class InputsTests(unittest.TestCase):
             output, archive = root / "output", root / "kit.zip"
             fixture = next(packaging.specifications(repo))
             with patch.object(packaging.subprocess, "check_output", return_value=sha + "\n"), \
+                 patch.object(packaging, "copy_tracked_tree", side_effect=shutil.copytree), \
                  patch.object(packaging, "specifications", return_value=[fixture]), \
                  patch.object(packaging, "PRESENTMON_SHA", packaging.digest(pm)), \
                  patch.object(packaging, "CORPUS_SHA", packaging.digest(corpus)):
                 manifest = packaging.prepare(repo, output, binaries, pm, corpus, inventory, measurement_sha=sha)
+                with patch.object(packaging.json, "dump", side_effect=OSError("fallo de escritura")):
+                    with self.assertRaises(OSError):
+                        packaging.seal_measurement(output, archive)
+                self.assertFalse(archive.exists())
+                self.assertFalse(archive.with_suffix(".receipt.json").exists())
                 receipt_path = packaging.seal_measurement(output, archive)
                 ci["license_key_id"] = "qa-00000000"
                 packaging.write_json(root / "ci-binarios.json", ci)
@@ -65,6 +73,18 @@ class InputsTests(unittest.TestCase):
             self.assertEqual(receipt["ci_receipt_sha256"], manifest["ci_artifact"]["receipt_sha256"])
             with self.assertRaises(FileExistsError):
                 packaging.seal_measurement(output, archive)
+
+    def test_copy_tools_excludes_untracked_files(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source, target = root / "tools", root / "target"
+            source.mkdir()
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            (source / "published.py").write_text("fixture", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", "tools/published.py"], check=True)
+            (source / "qa-license.key").write_text("FAKE UNTRACKED PRIVATE MATERIAL", encoding="utf-8")
+            packaging.copy_tracked_tree(source, target)
+            self.assertEqual(sorted(path.name for path in target.iterdir()), ["published.py"])
 
     def test_visual_package_only_needs_binaries_from_the_frozen_source(self):
         repo = Path(__file__).resolve().parents[2]
@@ -85,6 +105,7 @@ class InputsTests(unittest.TestCase):
             # One real fixture suffices to exercise the visual packaging branch.
             fixture = next(packaging.specifications(repo))
             with patch.object(packaging.subprocess, "check_output", return_value=sha + "\n"), \
+                 patch.object(packaging, "copy_tracked_tree", side_effect=shutil.copytree), \
                  patch.object(packaging, "specifications", return_value=[fixture]):
                 manifest = packaging.prepare(repo, root / "output", binaries, visual_sha=sha)
             self.assertEqual(manifest["scope"], "visual-lifecycle")
@@ -167,6 +188,7 @@ class InputsTests(unittest.TestCase):
             def fake_corpus_digest(path):
                 return "c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c" if Path(path) == corpus else actual_digest(path)
             with patch.object(packaging.subprocess, "check_output", return_value=packaging.SOURCE_SHA + "\n"), \
+                 patch.object(packaging, "copy_tracked_tree", side_effect=shutil.copytree), \
                  patch.object(packaging, "PRESENTMON_SHA", actual_digest(pm)), \
                  patch.object(packaging, "digest", side_effect=fake_corpus_digest):
                 manifest = packaging.prepare(repo, root / "output", binaries, pm, corpus, inventory)

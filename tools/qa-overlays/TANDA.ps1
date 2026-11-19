@@ -72,18 +72,46 @@ function Assert-TandaPackageReceipt([string]$Root,$Manifest,[string]$Zip,[string
    throw 'QA_PACKAGE_RECEIPT: hash del ZIP, manifiesto, recibo CI o corpus distinto'
   }
  }
+ $ci=Read-TandaJson (Join-Path $Root 'ci-binarios.json')
+ $qa=$receipt.qa_license
+ if($ci.source_sha -cne $receipt.source_sha -or [string]$ci.run_id -cne [string]$receipt.run_id -or
+    $ci.license_public_keys_configured -isnot [bool] -or -not $ci.license_public_keys_configured -or
+    ($ci.core_features -join ',') -cne 'paint-stats,qa-license' -or $ci.license_key_id -cne $qa.key_id -or
+    $ci.license_registry_sha256 -cne $qa.registry_sha256 -or $ci.qa_license_cli_sha256 -cne $qa.cli_sha256){
+  throw 'QA_PACKAGE_RECEIPT: licencia distinta del recibo CI'
+ }
+ foreach($pair in @(@('vantare-core.exe',$qa.core_sha256),@('vantare-qa-license.exe',$qa.cli_sha256))){
+  $rows=@($ci.files|Where-Object file -ceq $pair[0])
+  if($rows.Count -ne 1 -or $pair[1] -cnotmatch '\A[a-f0-9]{64}\z' -or $rows[0].sha256 -cne $pair[1] -or
+     (Get-FileHash -LiteralPath (Join-Path $Root "bin/$($pair[0])") -Algorithm SHA256).Hash -ine $pair[1]){
+   throw 'QA_PACKAGE_RECEIPT: hash del núcleo o CLI QA distinto de CI'
+  }
+ }
+ $files=[Collections.Generic.Dictionary[string,string]]::new([StringComparer]::Ordinal)
+ $pending=[Collections.Generic.Stack[IO.DirectoryInfo]]::new()
+ $pending.Push([IO.DirectoryInfo]::new($Root))
+ while($pending.Count){
+  $directory=$pending.Pop()
+  if($directory.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'QA_PACKAGE_RECEIPT: enlace en staging'}
+  foreach($item in $directory.EnumerateFileSystemInfos()){
+   if($item.Attributes -band [IO.FileAttributes]::ReparsePoint){throw 'QA_PACKAGE_RECEIPT: enlace en staging'}
+   if($item -is [IO.DirectoryInfo]){$pending.Push($item);continue}
+   $files.Add([IO.Path]::GetRelativePath($Root,$item.FullName).Replace('\','/'),$item.FullName)
+  }
+ }
  $archive=[IO.Compression.ZipFile]::OpenRead($Zip)
  try{
-  foreach($pair in @(@('manifiesto.json',$receipt.manifest_sha256),@('ci-binarios.json',$receipt.ci_receipt_sha256))){
-   $entry=$archive.GetEntry($pair[0])
-   if(-not $entry){throw 'QA_PACKAGE_RECEIPT: el ZIP no contiene manifiesto o recibo CI'}
+  foreach($entry in $archive.Entries){
+   if($entry.FullName.EndsWith('/')){continue}
+   $path=''
+   if(-not $files.Remove($entry.FullName,[ref]$path)){throw 'QA_PACKAGE_RECEIPT: entrada del ZIP ausente o duplicada en staging'}
    $stream=$entry.Open()
-   try{
-    if((Get-FileHash -InputStream $stream -Algorithm SHA256).Hash -ine $pair[1]){
-     throw 'QA_PACKAGE_RECEIPT: staging distinto del ZIP'
-    }
-   }finally{$stream.Dispose()}
+   try{$expected=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($stream))}finally{$stream.Dispose()}
+   $stream=[IO.File]::OpenRead($path)
+   try{$actual=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($stream))}finally{$stream.Dispose()}
+   if($actual -cne $expected){throw 'QA_PACKAGE_RECEIPT: staging distinto del ZIP'}
   }
+  if($files.Count){throw 'QA_PACKAGE_RECEIPT: fichero extra en staging'}
  }finally{$archive.Dispose()}
  $receipt
 }
@@ -440,7 +468,18 @@ function Invoke-TandaMeasurement([string]$Root,[string]$Output,$Case,[hashtable]
    }
    if(-not (Read-TandaJson $ready).ready){throw 'Sampler no confirmó ETW listo'}
   }
-  $argsCore=if($Case.state -eq 'replay'){@('--replay',(Join-Path $Root 'inputs/lmu47-high-rate-60s.tar.gz'),'--velocidad','1','--pipe',$pipe)}else{@('--live','--simulator','lmu','--pipe',$pipe)}
+  $argsCore=if($Case.state -eq 'replay'){
+   $replay=Join-Path $Root 'inputs/lmu47-high-rate-60s.tar.gz'
+   $manifest=Read-TandaJson (Join-Path $Root 'manifiesto.json')
+   if($manifest['scope'] -ceq 'measurement-qa'){
+    $replay=$CorpusQA
+    if(-not $replay -or $manifest.external_corpus.sha256 -cnotmatch '\A[a-f0-9]{64}\z' -or
+       (Get-FileHash -LiteralPath $replay -Algorithm SHA256).Hash -ine $manifest.external_corpus.sha256){
+     throw 'QA_PACKAGE_RECEIPT: el corpus cambió antes del replay'
+    }
+   }
+   @('--replay',$replay,'--velocidad','1','--pipe',$pipe)
+  }else{@('--live','--simulator','lmu','--pipe',$pipe)}
   $launchQpc=[Diagnostics.Stopwatch]::GetTimestamp()
   $core=Start-TandaOwned (Join-Path $Root 'bin/vantare-core.exe') $argsCore (Join-Path $round 'core') $coreEnvironment
   $observed=if($Case.state -eq 'replay'){Get-TandaLiveClock $core}else{0}

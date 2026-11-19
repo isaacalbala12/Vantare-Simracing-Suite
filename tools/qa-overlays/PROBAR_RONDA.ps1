@@ -14,6 +14,7 @@ function Get-TandaProfileRoots {@($script:fakeProfile)}
 foreach($dir in @('tools/qa-overlays','inputs','bin')){$null=New-Item -ItemType Directory -Path (Join-Path $root $dir) -Force}
 $null=New-Item -ItemType Directory -Path (Join-Path $output 'perf') -Force
 Write-TandaJson @{version=1;instances=@()} (Join-Path $root 'inputs/layout.json')
+Write-TandaJson @{scope='legacy-test'} (Join-Path $root 'manifiesto.json')
 @'
 function Get-VantareObservedIdentity {param($RootProcessId)
  [ordered]@{process_id=$RootProcessId;created_utc='2026-11-17T00:00:00.0000000Z';image_name='fake-overlay.exe';image_sha256=('a'*64)}

@@ -62,11 +62,14 @@ function Import-TandaArtifact([string]$Source,[string]$Output,[long]$RunId,[stri
    throw 'CI_LICENSE_MODE: hash del CLI distinto de su fila en el recibo'
   }
   $features=switch($file){'vantare-overlays.exe'{'parity-capture'} 'vantare-core.exe'{$coreFeatures -join ','} 'vantare-qa-license.exe'{'qa-license'} default{''}}
-  @{name=[IO.Path]::GetFileNameWithoutExtension($file);file=$file;size=$image.Length;sha256=$row.sha256;
+  $build=@{name=[IO.Path]::GetFileNameWithoutExtension($file);file=$file;size=$image.Length;sha256=$row.sha256;
     source_sha=$SourceSha;profile=$profile;run_id=$RunId;origin='GitHub Actions';features=$features;
-    license_public_keys_configured=($file -ceq 'vantare-core.exe' -and $configured);
-    license_key_id=if($file -ceq 'vantare-core.exe' -and $configured){$ApprovedKeyId};
-    license_registry_sha256=if($file -ceq 'vantare-core.exe' -and $configured){$ApprovedRegistrySha256}}
+    license_public_keys_configured=($file -ceq 'vantare-core.exe' -and $configured)}
+  if($build.license_public_keys_configured){
+   $build.license_key_id=$ApprovedKeyId
+   $build.license_registry_sha256=$ApprovedRegistrySha256
+  }
+  $build
  })
  if($seen.Count -ne $expected.Count -or @(Get-ChildItem -LiteralPath $bin -Force).Count -ne $expected.Count){throw 'Inventario de binarios de CI distinto del contrato'}
  # Publicar solo después de verificar todos los ejecutables del modo elegido.

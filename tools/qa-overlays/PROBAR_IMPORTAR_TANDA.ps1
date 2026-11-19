@@ -98,6 +98,10 @@ Import-TandaArtifact $scratch $good $script:runId $script:sourceSha
 if(($script:calls -join ',') -cne 'api,run'){throw 'La importación debe hacer una consulta y una descarga'}
 $receipt=Get-Content -LiteralPath (Join-Path $good 'binarios.json') -Raw | ConvertFrom-Json -AsHashtable
 if($receipt.Count -ne 6 -or @($receipt | Where-Object {$_.run_id -ne 123 -or $_.source_sha -cne $script:sourceSha}).Count){throw 'Se perdió la procedencia del run'}
+$legacyKeys=@('features','file','license_public_keys_configured','name','origin','profile','run_id','sha256','size','source_sha')
+foreach($row in $receipt){
+ if((($row.Keys|Sort-Object) -join ',') -cne ($legacyKeys -join ',')){throw 'El recibo visual no conserva el formato anterior'}
+}
 foreach($bad in 'pr','tamper','sha'){
  $script:case=$bad;$script:calls.Clear()
  $out=Join-Path $scratch $bad

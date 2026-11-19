@@ -116,8 +116,13 @@ impl Document {
         let key = unescape(key);
         let mut bytes = self.bytes.clone();
         let mut removed = false;
-        while remove_last(&mut bytes, &parts, &key)? {
+        // An array element is one position: after it goes, the next one takes its
+        // index, so only an object is asked again for the same key.
+        while let Some(object) = remove_last(&mut bytes, &parts, &key)? {
             removed = true;
+            if !object {
+                break;
+            }
         }
         if !removed {
             return Err(format!("campo no encontrado: {key}"));
@@ -228,10 +233,11 @@ fn token_end(bytes: &[u8], start: usize) -> Result<usize, String> {
 }
 
 /// Removes the last member `key` of the container at `parts`, with the comma that
-/// separated it. `false` when there is none (or the container is not there).
-fn remove_last(bytes: &mut Vec<u8>, parts: &[String], key: &str) -> Result<bool, String> {
+/// separated it. `None` when there is none (or the container is not there);
+/// otherwise whether the container is an object.
+fn remove_last(bytes: &mut Vec<u8>, parts: &[String], key: &str) -> Result<Option<bool>, String> {
     let Ok(range) = locate(bytes, 0..bytes.len(), parts) else {
-        return Ok(false);
+        return Ok(None);
     };
     let object = bytes.get(range.start) == Some(&b'{');
     // (name, start of the member, end of its value) of every member of the container
@@ -260,7 +266,7 @@ fn remove_last(bytes: &mut Vec<u8>, parts: &[String], key: &str) -> Result<bool,
         index += 1;
     }
     let Some(at) = members.iter().rposition(|(name, _, _)| name == key) else {
-        return Ok(false);
+        return Ok(None);
     };
     let (_, start, value_end) = members[at];
     // Take the comma after the member, or the one before it when it is the last.
@@ -270,7 +276,7 @@ fn remove_last(bytes: &mut Vec<u8>, parts: &[String], key: &str) -> Result<bool,
         None => (start, value_end),
     };
     bytes.drain(from..to);
-    Ok(true)
+    Ok(Some(object))
 }
 
 fn locate(bytes: &[u8], range: Range<usize>, parts: &[String]) -> Result<Range<usize>, String> {
@@ -1099,8 +1105,19 @@ mod tests {
     }
 
     fn plan_document(schema: &str, accepted: &str) -> Vec<u8> {
-        let mut event = new_event("event", "Original", 60, 90.0, 30.0);
-        event["strategies"][0]["acceptedPlan"] = serde_json::from_str(accepted).expect("json");
+        // The plan goes in as text, as the first member of the variant: where serde
+        // would put it depends on its `preserve_order` feature, which the whole
+        // workspace turns on and a single crate does not.
+        let event = new_event("event", "Original", 60, 90.0, 30.0).to_string();
+        let event = event.replacen(
+            "\"strategies\":[{",
+            &format!("\"strategies\":[{{\"acceptedPlan\":{accepted},"),
+            1,
+        );
+        assert!(
+            event.contains("\"acceptedPlan\""),
+            "the variant takes the plan"
+        );
         format!(
             "{{\"contractVersion\":\"strategy.v2\", \"schemaVersion\":\"{schema}\",\"generatedAt\":\"2026-11-19T00:00:00Z\",\"events\":[{event}],\"opaque\": {{\"decimal\": 1.2300}}}}"
         )
@@ -1185,6 +1202,55 @@ mod tests {
         let before = doc.bytes().to_vec();
         assert!(doc.remove("/events/0/id").is_err());
         assert_eq!(doc.bytes(), before);
+    }
+
+    /// Bytes written by hand, never through `Value`: what `remove` leaves is exactly
+    /// these bytes, whatever order serde keeps its keys in (`preserve_order` is on
+    /// for the whole workspace and off for this crate alone, and CI builds both
+    /// ways), so the promise that the rest of the document is not rewritten holds.
+    #[test]
+    fn remove_leaves_exactly_the_other_bytes_with_or_without_preserve_order() {
+        const BEFORE: &str = concat!(
+            "{\"contractVersion\":\"strategy.v2\", \"schemaVersion\":\"2.2.0\",\r\n",
+            " \"generatedAt\":\"2026-11-19T00:00:00Z\", \"events\":[],\r\n",
+            " \"x\": { \"a\": 1.2300, \"acceptedPlan\" : {\"n\":1.50,\"k\":[1,2]} , \"b\":\"z\" },\r\n",
+            " \"first\":{\"acceptedPlan\":{\"n\":1}, \"keep\":1},\r\n",
+            " \"last\":{\"keep\":1,\"acceptedPlan\":{\"n\":2}},\r\n",
+            " \"only\":{ \"acceptedPlan\":{\"n\":3} },\r\n",
+            " \"twice\":{\"acceptedPlan\":{\"a\":1},\"acceptedPlan\":{\"a\":2}},\r\n",
+            " \"list\":[1, 2 ,3]}\r\n"
+        );
+        let remove = |pointer: &str| {
+            let mut doc = Document::parse(BEFORE.as_bytes()).expect("document");
+            assert_eq!(doc.bytes(), BEFORE.as_bytes());
+            doc.remove(pointer).expect("remove");
+            String::from_utf8(doc.bytes().to_vec()).expect("utf8")
+        };
+        // each case: the same bytes as before, minus the member and one comma
+        for (pointer, from, to) in [
+            (
+                "/x/acceptedPlan",
+                "\"acceptedPlan\" : {\"n\":1.50,\"k\":[1,2]} , ",
+                "",
+            ),
+            ("/first/acceptedPlan", "\"acceptedPlan\":{\"n\":1}, ", ""),
+            ("/last/acceptedPlan", ",\"acceptedPlan\":{\"n\":2}}", "}"),
+            ("/only/acceptedPlan", "\"acceptedPlan\":{\"n\":3}", ""),
+            (
+                "/twice/acceptedPlan",
+                "{\"acceptedPlan\":{\"a\":1},\"acceptedPlan\":{\"a\":2}}",
+                "{}",
+            ),
+            ("/list/1", "2 ,", ""),
+        ] {
+            assert_eq!(BEFORE.matches(from).count(), 1, "{pointer}: {from}");
+            assert_eq!(remove(pointer), BEFORE.replacen(from, to, 1), "{pointer}");
+        }
+        // pinned by hand as well, so the table above cannot drift with the code
+        assert_eq!(
+            remove("/x/acceptedPlan").lines().nth(2).expect("line"),
+            " \"x\": { \"a\": 1.2300, \"b\":\"z\" },"
+        );
     }
 
     #[test]

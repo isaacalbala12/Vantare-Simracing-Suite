@@ -8,6 +8,11 @@ import type {
   UiToHost,
 } from "../../contract/generated/contract";
 import type { LauncherReviewResult } from "../../contract/launcher-review-bridge";
+import {
+  invalidReplyLog,
+  isInvalidResponseFailure,
+  readReplyEnvelope,
+} from "../../contract/local-failure";
 import { bounded, isHostMessage } from "../../contract/validation";
 import {
   type CloseClock,
@@ -23,6 +28,17 @@ export class HostFailure extends Error {
     super(detail.kind);
   }
 }
+// The core answered a request with a reply that breaks the contract.
+// Detected by the Hub, so it is not a core failure; `detail` is the generic `io`
+// error so screens without a specific message show their generic text.
+export class InvalidHostResponse extends HostFailure {
+  constructor(
+    readonly method: Request["method"],
+    readonly requestId: number,
+  ) {
+    super({ kind: "io" });
+  }
+}
 // Local cancellation of a clean Testing request during Window close, not a core failure.
 export class ReportCloseDiscarded extends HostFailure {
   constructor() {
@@ -35,6 +51,7 @@ export type RequestObservation = {
 } & ({ phase: "start" } | { phase: "done"; reply?: Reply; error?: HostError });
 export class Client {
   private disposed = false;
+  private logInvalid = invalidReplyLog();
   private requestListeners = new Set<(event: RequestObservation) => void>();
   private subscriptions = new Map<Topic, number>();
   observeRequests(receive: (event: RequestObservation) => void) {
@@ -88,8 +105,17 @@ export class Client {
   ) {
     this.reportClose = new ReportClosePreparation(clock);
     port.onmessage = ({ data }: MessageEvent<unknown>) => {
+      if (isInvalidResponseFailure(data)) {
+        this.rejectInvalid(data.id);
+        return;
+      }
+      if (!isHostMessage(data)) {
+        const envelope = readReplyEnvelope(data);
+        if (envelope) this.rejectInvalid(envelope.id);
+        else this.logInvalid("unreadable");
+        return;
+      }
       if (
-        !isHostMessage(data) ||
         data.kind === "reviewContent" ||
         data.kind === "reviewFailure" ||
         !bounded(data)
@@ -122,6 +148,26 @@ export class Client {
       for (const receive of this.listeners) receive(data);
     };
     port.start();
+  }
+  // Fails only the own pending request that the id selects; nothing else.
+  private rejectInvalid(id: number) {
+    const request = this.pending.get(id);
+    if (!request) {
+      this.logInvalid("no pending request");
+      return;
+    }
+    this.logInvalid(`${request.method} id=${id}`);
+    clearTimeout(request.timer);
+    request.dispose?.();
+    this.pending.delete(id);
+    this.observed({
+      id,
+      method: request.method,
+      phase: "done",
+      error: { kind: "io" },
+    });
+    request.reject(new InvalidHostResponse(request.method, id));
+    this.answerWhenIdle();
   }
   static async connect(): Promise<Client> {
     if (__VANTARE_RENDERER_MOCK__ && !window.vantare) {

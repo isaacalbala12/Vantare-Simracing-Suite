@@ -5,7 +5,10 @@ import type {
   Reply,
   Request,
 } from "../src/contract/generated/contract";
-import { HostFailure } from "../src/renderer/bridge/client";
+import {
+  HostFailure,
+  InvalidHostResponse,
+} from "../src/renderer/bridge/client";
 import {
   canEnterPrivate,
   saveConsents,
@@ -104,6 +107,10 @@ it("keeps the durable choice from cleanup failures and never offers escape for c
     ),
   ).toBe(false);
   expect(canEnterPrivate(new HostFailure({ kind: "io" }), initial)).toBe(true);
+  // An invalid reply to a write leaves the outcome unknown: not "not applied".
+  expect(
+    canEnterPrivate(new InvalidHostResponse("privacy.update", 3), initial),
+  ).toBe(false);
   expect(
     canEnterPrivate(new HostFailure({ kind: "io" }), {
       ...initial,

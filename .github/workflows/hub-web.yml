@@ -14,7 +14,8 @@ permissions:
   contents: read
 jobs:
   web:
-    # Nightly 8-11 min, peor visto 12,4 (PR); 20 deja margen y corta un cuelgue.
+    # Verificación estática y vitest (~4 min). Mismo nombre de siempre.
+    # Hub web se reparte en tres jobs en paralelo (VANTA-138); 20 min corta un cuelgue.
     timeout-minutes: 20
     env:
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
@@ -39,6 +40,23 @@ jobs:
         run: bun scripts/renderer-production.ts
       - name: Verify settings field guard
         run: bun scripts/settings-field-guard.ts
+  web-pages:
+    # Páginas del Hub en Chromium (a11y + interacciones) y ajustes; 20 deja margen y corta un cuelgue.
+    timeout-minutes: 20
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vantare-v2/hub-web
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -112,8 +130,99 @@ jobs:
           echo "::error::Chromium no quedó operativo tras tres intentos; revisa el log de los intentos anteriores."
           exit 1
       - run: bun run build
-      - run: bun scripts/web-a11y.ts
+      - run: bun scripts/web-a11y.ts --parte=paginas
       - run: bun scripts/settings-web.ts
+  web-analysis:
+    # Análisis y Estrategia en Chromium; 20 deja margen y corta un cuelgue.
+    timeout-minutes: 20
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vantare-v2/hub-web
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # El navegador depende de la versión de playwright-core del lock, no del SO
+          # de la máquina local: la clave se invalida al subir esa dependencia.
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('vantare-v2/hub-web/bun.lock') }}
+      - name: Install Chromium and system dependencies
+        # El paso entero (descarga + apt) tiene un tope de 10 min. Antes cada intento
+        # mataba a los 180 s un `timeout` a bun mientras apt seguía trabajando y la
+        # tubería con tee no se cerraba hasta ~5 min después: el paso fallaba con un
+        # error que no era de red. Aquí no se mata ningún proceso a medias.
+        timeout-minutes: 10
+        env:
+          DEBIAN_FRONTEND: noninteractive
+          PLAYWRIGHT_CACHE_HIT: ${{ steps.playwright-cache.outputs.cache-hit }}
+        run: |
+          set -euo pipefail
+
+          # apt con reintentos y timeouts propios: `install-deps` invoca apt-get por su
+          # cuenta y así hereda esta política sin tener que reescribir su comando.
+          sudo tee /etc/apt/apt.conf.d/99-vantare-ci-retries > /dev/null <<'APT_CONF'
+          Acquire::Retries "3";
+          Acquire::http::Timeout "60";
+          Acquire::https::Timeout "60";
+          APT_CONF
+
+          probe_chromium() {
+            # Arranque real del navegador instalado: es la única prueba de que las
+            # librerías del sistema bastan. Si falla, se instalan las dependencias.
+            bun -e '
+              const { chromium } = await import("playwright-core");
+              const browser = await chromium.launch({ headless: true });
+              console.log(`Chromium arranca (versión ${browser.version()}).`);
+              await browser.close();
+            '
+          }
+
+          install_chromium() {
+            echo "::group::Descargando Chromium (caché: ${PLAYWRIGHT_CACHE_HIT:-false})"
+            bun x playwright-core install chromium
+            echo "::endgroup::"
+
+            if [ "${PLAYWRIGHT_CACHE_HIT:-false}" = "true" ] && probe_chromium; then
+              echo "Caché caliente y Chromium arranca con las librerías del runner: no hace falta apt."
+              return 0
+            fi
+
+            # La caché del navegador no incluye los paquetes de apt: sin acierto, o con
+            # un arranque fallido, se instalan las dependencias del sistema.
+            echo "::group::Instalando dependencias del sistema para Chromium"
+            bun x playwright-core install-deps chromium
+            echo "::endgroup::"
+
+            probe_chromium
+          }
+
+          for attempt in 1 2 3; do
+            echo "Chromium: intento $attempt/3"
+            if install_chromium; then
+              echo "Chromium listo en el intento $attempt."
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::El intento $attempt de preparar Chromium falló; se reintenta en 10 s."
+              sleep 10
+            fi
+          done
+
+          echo "::error::Chromium no quedó operativo tras tres intentos; revisa el log de los intentos anteriores."
+          exit 1
+      - run: bun run build
+      - run: bun scripts/web-a11y.ts --parte=analisis
   windows-smoke:
     if: github.event_name == 'workflow_dispatch'
     timeout-minutes: 15

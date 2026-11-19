@@ -1060,3 +1060,386 @@
 .strategy-plan .strategy-notice :where(p) {
   margin-block: var(--space-1) 0;
 }
+
+/* Plan tab: the card in Carrera, the view selector, the editors and the edited plan */
+.strategy-race-cards .strategy-plan-card {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  background: var(--grad-now);
+}
+
+.strategy-plan-card p {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-small);
+  color: var(--text-2);
+}
+
+.strategy-plan-card .strategy-kicker {
+  margin-bottom: var(--space-1);
+}
+
+.strategy-timeline-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.strategy-modes {
+  display: inline-flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  margin: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.strategy-modes button {
+  min-height: calc(var(--control-h) - var(--space-3));
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-small);
+  color: var(--text-2);
+}
+
+.strategy-modes button:hover {
+  color: var(--text-1);
+}
+
+.strategy-modes button[aria-pressed="true"] {
+  background: var(--surface-3);
+  font-weight: 650;
+  color: var(--text-1);
+}
+
+.strategy-modes button:focus-visible,
+.strategy-choice:has(:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.strategy-help {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-small);
+  color: var(--text-3);
+}
+
+.strategy-help kbd {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-3);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+}
+
+.strategy-plan .strategy-pending {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.strategy-notice[data-tone="warn"] > .strategy-icon {
+  color: var(--warn-text, var(--warn));
+}
+
+/* «valor anterior» sits in the row of the label, at the end */
+.strategy-figure,
+.strategy-metric {
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-3);
+}
+
+.strategy-figure > :where(b, small),
+.strategy-metric > :where(b, small) {
+  grid-column: 1 / -1;
+}
+
+.strategy-figure > :where(em),
+.strategy-metric > :where(em) {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  font-size: var(--text-micro);
+  font-style: normal;
+  color: var(--text-2);
+}
+
+/* The figure of the plan before the edit: same place, quieter, and said in words. */
+.strategy-figure[data-stale] {
+  border-style: dashed;
+}
+
+.strategy-figure[data-stale] > :where(b),
+.strategy-legs[data-stale] {
+  color: var(--text-2);
+}
+
+.strategy-stint[data-selected] {
+  border-color: var(--accent-bright);
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-panel));
+}
+
+.strategy-stop[data-selected] > :where(i) {
+  background: var(--accent-bright);
+}
+
+.strategy-stop[data-selected] > :where(span) {
+  color: var(--text-1);
+}
+
+.strategy-stop[data-ghost] > :where(i) {
+  border-style: dashed;
+  border-color: var(--text-3);
+  background: transparent;
+}
+
+.strategy-stop[data-ghost]::after {
+  display: none;
+}
+
+.strategy-editor {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.strategy-editor-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.strategy-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.strategy-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.strategy-choice {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: calc(var(--control-h) - var(--space-3));
+  padding-inline: var(--space-4);
+  border: 1px solid var(--line-3);
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  font-size: var(--text-small);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+}
+
+.strategy-choice:has(:checked) {
+  border-color: var(--accent-bright);
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-panel));
+  color: var(--text-1);
+}
+
+.strategy-editor-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: start;
+  gap: var(--space-7);
+}
+
+.strategy-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.strategy-metric {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-2);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+
+.strategy-metric[data-stale] {
+  border-style: dashed;
+}
+
+.strategy-editor .strategy-metric > :where(span) {
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-caption);
+}
+
+.strategy-editor .strategy-metric > :where(b) {
+  font-variant-numeric: tabular-nums;
+}
+
+.strategy-editor .strategy-metric[data-stale] > :where(b) {
+  color: var(--text-2);
+}
+
+.strategy-slider {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.strategy-slider-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.strategy-slider-head .strategy-input {
+  width: calc(var(--control-h) * 2);
+}
+
+.strategy-slider-head .strategy-input input {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.strategy-range {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: var(--control-h);
+}
+
+.strategy-slider .strategy-range input {
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  appearance: none;
+  cursor: pointer;
+}
+
+.strategy-range input::-webkit-slider-runnable-track {
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to right,
+    var(--accent-bright) var(--share),
+    var(--surface-3) var(--share)
+  );
+}
+
+.strategy-range input::-webkit-slider-thumb {
+  width: var(--space-7);
+  height: var(--space-7);
+  margin-top: calc((var(--space-7) - var(--space-2)) / -2);
+  border: 2px solid var(--accent-bright);
+  border-radius: var(--radius-pill);
+  background: var(--surface-panel);
+  appearance: none;
+}
+
+.strategy-range input:focus-visible {
+  outline: none;
+}
+
+.strategy-range input:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.strategy-range input:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.strategy-range-proposal {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: var(--space-6);
+  background: var(--text-2);
+  translate: -50% -50%;
+  pointer-events: none;
+}
+
+.strategy-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: var(--text-micro);
+  color: var(--text-caption);
+}
+
+.strategy-mover {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.strategy-mover-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: var(--space-3);
+}
+
+.strategy-mover-value {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-3);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.strategy-mover-value[data-moved] {
+  border-color: var(--warn);
+}
+
+.strategy-mover-value > :where(small) {
+  font-size: var(--text-small);
+  color: var(--text-2);
+}
+
+.strategy-mover .strategy-help {
+  margin: 0;
+}
+
+@container (width < 760px) {
+  .strategy-editor-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The plan on view was recalculated in this session: a quiet line, not an alert */
+.strategy-screen p.strategy-trial {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--text-small);
+  color: var(--text-2);
+}
+
+.strategy-screen p.strategy-trial > svg {
+  flex: none;
+  color: var(--text-3);
+}
+
+.strategy-plan-card .strategy-trial {
+  margin-top: var(--space-1);
+}

@@ -15,8 +15,20 @@ function ticks(total: number) {
   return marks;
 }
 
+export type TimelineMark = { kind: "stint" | "stop"; index: number };
+
 // The race to scale: one block per stint and a diamond where each stop is.
-export function PlanTimeline({ timeline }: { timeline: StrategyTimeline }) {
+// `selected` lights the stint or stop being adjusted; `proposal` holds the laps
+// the stops had in the calculated plan, and the ones that moved leave a ghost.
+export function PlanTimeline({
+  timeline,
+  selected,
+  proposal,
+}: {
+  timeline: StrategyTimeline;
+  selected?: TimelineMark;
+  proposal?: readonly number[];
+}) {
   const { stints, pits } = timeline;
   const total = stints[stints.length - 1]?.toLap ?? 0;
   if (!total) return null;
@@ -34,6 +46,11 @@ export function PlanTimeline({ timeline }: { timeline: StrategyTimeline }) {
               key={stint.fromLap}
               className="strategy-stint"
               data-stint=""
+              data-selected={
+                selected?.kind === "stint" && selected.index === index
+                  ? ""
+                  : undefined
+              }
               style={{
                 left: share(stint.fromLap - 1, total),
                 width: share(laps, total),
@@ -49,12 +66,27 @@ export function PlanTimeline({ timeline }: { timeline: StrategyTimeline }) {
             key={pit.lap}
             className="strategy-stop"
             data-stop=""
+            data-selected={selected?.index === index ? "" : undefined}
             style={{ left: share(pit.lap, total) }}
           >
             <i />
             <span>{`P${index + 1}`}</span>
           </div>
         ))}
+        {pits.map((pit, index) => {
+          const was = proposal?.[index];
+          return was === undefined || was === pit.lap ? null : (
+            <div
+              key={`was-${was}`}
+              className="strategy-stop"
+              data-ghost=""
+              aria-hidden="true"
+              style={{ left: share(was, total) }}
+            >
+              <i />
+            </div>
+          );
+        })}
       </div>
       <div className="strategy-timeline-axis">
         <span style={{ left: 0 }}>{1}</span>

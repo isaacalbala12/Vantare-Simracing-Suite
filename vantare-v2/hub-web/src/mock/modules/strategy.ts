@@ -337,6 +337,26 @@ function noSolution(
   return { ...plan, state: "calculated", computeId, result };
 }
 
+// The same data whatever the order of the keys: the host compares what it writes.
+function sameData(a: unknown, b: unknown) {
+  const sorted = (_: string, value: unknown) =>
+    value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(
+          Object.entries(value).sort(([x], [y]) => x.localeCompare(y)),
+        )
+      : value;
+  return JSON.stringify(a, sorted) === JSON.stringify(b, sorted);
+}
+
+// QA: the scenes whose recalculation fails, and how
+const recalculationErrors: Record<string, StrategyEditError> = {
+  recalcError: "scheduleNotPreserved",
+  plannedFujiNotPreserved: "scheduleNotPreserved",
+  plannedFujiInvalidSchedule: "invalidSchedule",
+  plannedFujiEventRules: "eventRulesConflict",
+  plannedFujiEditFailed: "failed",
+};
+
 function validNumber(value: string, minimum: number): boolean {
   return (
     value.trim() !== "" &&
@@ -699,17 +719,18 @@ export function create(context: MockContext): MockHandler {
       if (scenario.startsWith("planned")) {
         // QA: a document with its plan already calculated and editable; the
         // Fuji scenes have the size of a real race
-        current.plan =
-          scenario === "plannedFuji" || scenario === "plannedFujiPartial"
-            ? fujiPlan(scenario === "plannedFujiPartial")
-            : {
-                ...calculation("calculated"),
-                computeId: ++computeSequence,
-              };
+        current.plan = scenario.startsWith("plannedFuji")
+          ? fujiPlan(scenario === "plannedFujiPartial")
+          : {
+              ...calculation("calculated"),
+              computeId: ++computeSequence,
+            };
         computeSequence = Math.max(
           computeSequence,
           current.plan.computeId ?? 0,
         );
+        // QA: a plan with no editable schedule (a race by time)
+        if (scenario === "plannedFujiNoEdit") current.plan.edit = null;
         editing = startEditing(current.plan);
       }
     }
@@ -859,14 +880,20 @@ export function create(context: MockContext): MockHandler {
     } else if (
       request.method === "strategy.view" &&
       recalculating !== undefined &&
-      editing
+      editing &&
+      // QA: this recalculation never ends until it is cancelled
+      scenario !== "plannedFujiRecalculating"
     ) {
       const finished = recalculating;
       recalculating = undefined;
-      if (scenario === "recalcError") {
-        // QA: the solver did not keep the schedule; the edit stays pending
-        editing.error = "scheduleNotPreserved";
-      } else if (scenario === "recalcNoSolution") {
+      const failure = recalculationErrors[scenario];
+      if (failure) {
+        // QA: the recalculation fails; the edit stays pending with its error
+        editing.error = failure;
+      } else if (
+        scenario === "recalcNoSolution" ||
+        scenario === "plannedFujiNoSolution"
+      ) {
         // QA: no plan for this schedule; the plan it started from stays the base
         editing.shown = noSolution(editing.base, finished);
         editing.pending = false;
@@ -1029,9 +1056,8 @@ export function create(context: MockContext): MockHandler {
         // the same data again is no change: neither the revision nor the plan move
         const unchanged =
           inputs &&
-          JSON.stringify(events) === JSON.stringify(current.events) &&
-          JSON.stringify(next) ===
-            JSON.stringify(formOf(event, event.strategies[variant]));
+          sameData(events, current.events) &&
+          sameData(next, formOf(event, event.strategies[variant]));
         if (!unchanged) {
           forms[key] = next;
           edit({ events });

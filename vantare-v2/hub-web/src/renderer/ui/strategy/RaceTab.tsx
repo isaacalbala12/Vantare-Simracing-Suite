@@ -8,9 +8,11 @@ import {
 import type {
   StrategyComputeForm,
   StrategyField,
+  StrategyPlanView,
 } from "../../../contract/generated/strategy";
 import { Icon } from "../../assets/icons/Icon";
 import { strategy as t } from "../../i18n/strategy";
+import { isTrialPlan, planCard } from "../../screens/strategy/planText";
 import { Button } from "../Button";
 import {
   decimal,
@@ -212,6 +214,9 @@ type EditorActions = {
 
 export function RaceTab({
   form,
+  plan,
+  trial,
+  viewPlan,
   editing,
   draft,
   pending,
@@ -222,6 +227,11 @@ export function RaceTab({
   calculate,
 }: EditorActions & {
   form: StrategyComputeForm | null;
+  // the plan, to say in a card what it is; `viewPlan` goes to the Plan tab
+  plan: StrategyPlanView;
+  // the plan is a recalculation of this session, not the file's
+  trial: boolean;
+  viewPlan: () => void;
   editing: boolean;
   draft?: Draft;
   edit: () => void;
@@ -247,8 +257,28 @@ export function RaceTab({
         calculate={calculate}
       />
     );
+  const card = planCard(plan);
   return (
     <div className="strategy-grid strategy-grid-two strategy-race-cards">
+      {card && (
+        <section className="strategy-card strategy-plan-card">
+          <div>
+            <div className="strategy-kicker">{t.calc.card.eyebrow}</div>
+            <h3>{card.title}</h3>
+            {card.certificate && <p>{card.certificate}</p>}
+            {isTrialPlan(plan, trial) && (
+              <p className="strategy-trial">
+                <Icon name="info" />
+                {t.calc.adjust.trial}
+              </p>
+            )}
+          </div>
+          <Button disabled={pending} onClick={viewPlan}>
+            {t.calc.card.view}
+            <Icon name="right" />
+          </Button>
+        </section>
+      )}
       {summary(form).map(([title, icon, rows], index) => (
         <section key={title} className="strategy-card strategy-review">
           <div className="strategy-review-head">

@@ -11,9 +11,11 @@ export function create(context: MockContext): MockHandler {
   const fixture = (
     sceneName === "actualizacion-lista" ? updatesReady : updatesBase
   ) as UpdatesView;
-  const channel = sceneName.startsWith("analysis-qa-")
-    ? "nightly"
-    : /^privacidad-beta-(nightly|testers|master)$/.exec(sceneName)?.[1];
+  // «strategy-menu»: Estrategia opened from the menu (beta on, nightly channel)
+  const channel =
+    sceneName.startsWith("analysis-qa-") || sceneName === "strategy-menu"
+      ? "nightly"
+      : /^privacidad-beta-(nightly|testers|master)$/.exec(sceneName)?.[1];
   const view = channel ? { ...fixture, channel } : fixture;
   return (value: UiToHost): HostToUi | null | undefined => {
     if (value.kind === "subscribe" && value.topic === "updates")

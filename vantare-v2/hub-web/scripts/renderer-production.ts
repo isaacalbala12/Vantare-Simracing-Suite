@@ -12,6 +12,7 @@ const outputs = Array.isArray(result) ? result : [result];
 let code = "";
 let css = "";
 const modules: string[] = [];
+const startup: string[] = [];
 for (const output of outputs) {
   assert.ok("output" in output, "Expected a completed renderer build");
   for (const chunk of output.output) {
@@ -24,6 +25,10 @@ for (const output of outputs) {
       continue;
     }
     code += chunk.code;
+    if (chunk.isEntry)
+      startup.push(
+        ...Object.keys(chunk.modules).map((id) => id.replaceAll("\\", "/")),
+      );
     modules.push(
       ...Object.keys(chunk.modules).map((id) => id.replaceAll("\\", "/")),
     );
@@ -52,6 +57,20 @@ assert.ok(
       /DialogAuditFixtures|dialog-audit/.test(id),
   ),
   "Production renderer includes mock modules or frozen Hub fixtures",
+);
+// Strategy ships in production behind «Funciones en pruebas», loaded lazily and
+// without the QA fixture.
+assert.ok(
+  modules.some((id) => id.endsWith("/screens/strategy/StrategyReal.tsx")),
+  "Production renderer misses the Strategy screen",
+);
+assert.ok(
+  !startup.some((id) => id.includes("/ui/strategy/")),
+  "Strategy loads at start-up instead of lazily",
+);
+assert.ok(
+  !modules.some((id) => id.endsWith("/qa/StrategyFixture.tsx")),
+  "Production renderer includes the Strategy QA fixture",
 );
 console.log(
   `Production renderer isolation verified: ${modules.length} modules, no mocks or frozen fixtures.`,

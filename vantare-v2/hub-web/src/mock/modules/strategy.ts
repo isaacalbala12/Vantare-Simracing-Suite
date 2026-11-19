@@ -951,6 +951,7 @@ export function create(context: MockContext): MockHandler {
   }
   // the recalculation, reason, file, data and error scenes (QA) start from a ready document
   const opening = [
+    "menu",
     "recalc",
     "reason",
     "file",

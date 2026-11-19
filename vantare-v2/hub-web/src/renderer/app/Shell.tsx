@@ -44,7 +44,13 @@ import { useAccountSession } from "./AccountSession";
 import { useAccount } from "./AccountState";
 import { coreKey, offline, useHost } from "./Host";
 import { launcherAccess, useLauncherLaunch } from "./LauncherLaunch";
-import { isSection, lock, navigation, visible } from "./navigation";
+import {
+  isSection,
+  lock,
+  navigation,
+  strategyOpen,
+  visible,
+} from "./navigation";
 import { profileCommands } from "./profile-commands";
 import { RegisteredScreen } from "./ScreenRegistry";
 import { useSettings } from "./SettingsState";
@@ -171,7 +177,8 @@ function ShellContent() {
     pending: profileWaiting,
   } = useLauncherLaunch(core, launcher);
   const isUpcoming = (section: Section) =>
-    section === "strategy" || section === "engineer";
+    section === "engineer" ||
+    (section === "strategy" && !strategyOpen(channel, analisisBeta));
   const items = navigation(core.access, channel, analisisBeta).map((item) =>
     isUpcoming(item.id)
       ? {
@@ -191,20 +198,24 @@ function ShellContent() {
         }
       : item.id === "studio"
         ? { ...item, label: shellText.studioName }
-        : item.id === "launcher"
-          ? {
-              ...item,
-              badge: launcher?.profiles.length ? (
-                <span className="v-nav-count">{launcher.profiles.length}</span>
-              ) : undefined,
-            }
-          : item,
+        : item.id === "strategy"
+          ? { ...item, label: shellText.strategyName }
+          : item.id === "launcher"
+            ? {
+                ...item,
+                badge: launcher?.profiles.length ? (
+                  <span className="v-nav-count">
+                    {launcher.profiles.length}
+                  </span>
+                ) : undefined,
+              }
+            : item,
   );
   function navigate(section: Section) {
     if (
       isUpcoming(section) ||
       (visible(section, core.access, channel, analisisBeta) &&
-        !lock(section, core.access))
+        !lock(section, core.access, channel, analisisBeta))
     )
       ui.navigate(section);
   }
@@ -408,7 +419,7 @@ function ShellContent() {
                       locked: isUpcoming(item.id),
                       disabled: isUpcoming(item.id)
                         ? false
-                        : !!lock(item.id, core.access),
+                        : !!lock(item.id, core.access, channel, analisisBeta),
                       run: () => navigate(item.id),
                     })),
                   ...(

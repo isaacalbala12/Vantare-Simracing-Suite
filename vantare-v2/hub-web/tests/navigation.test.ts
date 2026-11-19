@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { AccessView } from "../src/contract/generated/contract";
-import { lock, navigation, visible } from "../src/renderer/app/navigation";
+import {
+  lock,
+  navigation,
+  strategyOpen,
+  visible,
+} from "../src/renderer/app/navigation";
 
 const anonymous: AccessView = {
   verified: false,
@@ -62,3 +67,26 @@ it.each(["nightly", "testers", "master", undefined])(
     }
   },
 );
+
+it.each(["nightly", "testers", "master", undefined])(
+  "opens Strategy only with the beta preference on channel %s, like Analysis",
+  (channel) => {
+    for (const enabled of [true, false, undefined]) {
+      const open = channel === "nightly" && enabled === true;
+      expect(strategyOpen(channel, enabled)).toBe(open);
+      // the menu entry stays visible in every case; only the lock changes
+      expect(visible("strategy", anonymous, channel, enabled)).toBe(true);
+      expect(lock("strategy", anonymous, channel, enabled)).toBe(
+        open ? undefined : "Próximamente",
+      );
+      expect(
+        navigation(anonymous, channel, enabled).some(
+          ({ id }) => id === "strategy",
+        ),
+      ).toBe(true);
+    }
+  },
+);
+it("never opens Engineer, whatever the beta preference or channel", () => {
+  expect(lock("engineer", anonymous, "nightly", true)).toBe("Próximamente");
+});

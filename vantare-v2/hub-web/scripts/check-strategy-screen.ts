@@ -104,6 +104,10 @@ async function navigate(
   scene: string,
   conflict = false,
 ) {
+  await open(page, base, scene, conflict);
+  await press(page.getByRole("button", { name: /^(Estrategia|Strategy)/ }));
+}
+async function open(page: Page, base: string, scene: string, conflict = false) {
   await page.goto(`${base}?escena=${scene}${conflict ? "&conflict" : ""}`);
   const sidebar = page.locator(".v-sidebar");
   await visible(sidebar);
@@ -122,7 +126,54 @@ async function navigate(
       "strategy sidebar expanded",
     );
   }
-  await press(page.getByRole("button", { name: /^(Estrategia|Strategy)/ }));
+}
+// «Funciones en pruebas» on nightly opens the real screen from the menu; without
+// it the entry stays «Próximamente». The scene is the person: it is not a door.
+async function checkMenuEntry(
+  page: Page,
+  base: string,
+  scheme: Scheme,
+  evidence?: string,
+) {
+  const shot = async (name: string) => {
+    if (evidence)
+      await page.screenshot({
+        path: resolve(
+          evidence,
+          `${name}-${scheme === "dark" ? "oscuro" : "claro"}.png`,
+        ),
+      });
+  };
+  const entry = page.locator(".v-sidebar [data-nav=strategy]");
+  await open(page, base, "strategy-menu");
+  await visible(entry);
+  assert.equal(await entry.getAttribute("aria-disabled"), "false");
+  assert.equal(await entry.locator(".v-nav-soon").count(), 0);
+  await shot("menu-desbloqueada");
+  await press(entry);
+  await visible(page.getByRole("heading", { name: "Tus estrategias" }));
+  assert.equal(await entry.getAttribute("aria-current"), "page");
+  assert.equal(await page.locator(".v-upcoming").count(), 0);
+  await verify(page, "menu", scheme, 1440);
+  await shot("estrategia-desde-menu");
+
+  await open(page, base, "proximamente-base");
+  await visible(entry.locator(".v-nav-soon"));
+  await shot("menu-sin-beta");
+  await press(entry);
+  await visible(page.locator(".v-upcoming"));
+  assert.equal(await page.locator(".strategy-screen").count(), 0);
+
+  if (!evidence) return;
+  await open(page, base, "privacidad-beta-nightly");
+  await press(page.getByRole("button", { name: "Ajustes", exact: true }));
+  await press(page.getByRole("tab", { name: "Privacidad" }));
+  const beta = page.getByRole("switch", {
+    name: "Análisis y Estrategia (beta)",
+  });
+  await visible(beta);
+  await beta.scrollIntoViewIfNeeded();
+  await shot("ajustes-funciones-en-pruebas");
 }
 async function collection(
   page: Page,
@@ -948,6 +999,19 @@ async function checkPages(
         }
       }),
     ),
+  );
+
+  await Promise.all(
+    (["light", "dark"] as const).map(async (scheme) => {
+      const page = await newPage();
+      try {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await setup(page, scheme, 100);
+        await checkMenuEntry(page, base, scheme, evidence);
+      } finally {
+        await page.close();
+      }
+    }),
   );
 
   const page = await newPage();

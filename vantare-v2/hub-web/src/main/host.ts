@@ -2,11 +2,17 @@ import { connect } from "node:net";
 import { app } from "electron";
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
 import {
+  invalidReplyLog,
+  invalidResponseFailure,
+  readReplyEnvelope,
+} from "../contract/local-failure";
+import {
   bounded,
   FRAME_LIMIT,
   isHostMessage,
   isUiMessage,
 } from "../contract/validation";
+import { record } from "../contract/validation-common";
 import { createMockHostWithTrustedReview, helloForScene } from "./mock-host";
 import { mockAllowed } from "./security";
 export type Hello = Extract<HostToUi, { kind: "hello" }>;
@@ -58,6 +64,7 @@ export function createHost(): HostLink {
   const socket = connect(`\\\\.\\pipe\\${name}`);
   let pending = Buffer.alloc(0);
   let settled = false;
+  const logInvalid = invalidReplyLog();
   let acceptHello: (value: Hello) => void = () => {};
   let rejectHello: (error: Error) => void = () => {};
   const hello = new Promise<Hello>((accept, reject) => {
@@ -98,8 +105,22 @@ export function createHost(): HostLink {
       }
       pending = pending.subarray(length + 4);
       if (!isHostMessage(value)) {
-        socket.destroy(new Error("Invalid host message"));
-        return;
+        // Well-formed frame and JSON but the content breaks the contract: a
+        // fault of this one reply, not of the connection (#2697).
+        const kind = record(value) ? value.kind : undefined;
+        // Without a handshake, or a close request that may be lost, the session
+        // cannot go on: fail the connection as before.
+        if ((kind === "hello" && !settled) || kind === "closeRequested") {
+          socket.destroy(new Error("Invalid host message"));
+          return;
+        }
+        const envelope = readReplyEnvelope(value);
+        // Only the envelope kind and id are logged, never the content.
+        logInvalid(
+          envelope ? `${envelope.kind} id=${envelope.id}` : "unreadable",
+        );
+        if (envelope) emit(invalidResponseFailure(envelope.id));
+        continue;
       }
       if (value.kind === "hello" && !settled) {
         settled = true;

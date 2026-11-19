@@ -59,6 +59,7 @@ export const launcherText = {
   busy: "El residente está ocupado. Vuelve a intentarlo en unos segundos.",
   coreUnavailable:
     "El residente no está disponible. Abre Vantare y vuelve a intentarlo.",
+  invalidResponse: "La respuesta del núcleo no es válida. Vuelve a intentarlo.",
   denied:
     "No se puede lanzar este perfil con el estado actual. Vuelve a cargar y revísalo.",
   failed:

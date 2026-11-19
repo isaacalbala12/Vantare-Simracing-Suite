@@ -1,6 +1,9 @@
 import {
   type StrategyFields,
   type StrategySolverFields,
+  strategyAcceptedMarks,
+  strategyAcceptedStates,
+  strategyChangeTextLimit,
   strategyEditErrors,
   strategyFields,
   strategyFileModes,
@@ -10,6 +13,7 @@ import {
   strategyPickPathMax,
   strategyReasons,
   strategyStates,
+  strategyUnreachableCauses,
 } from "../generated/strategy";
 import { exact, integer, oneOf, record } from "../validation-common";
 
@@ -87,6 +91,7 @@ function event(value: unknown): boolean {
       "drivers",
       "strategies",
       "hasInputs",
+      "acceptedPlan",
     ]) &&
     id(value.id) &&
     text(value.name) &&
@@ -99,7 +104,9 @@ function event(value: unknown): boolean {
     value.strategies.every(variant) &&
     // some variant keeps plain stored inputs that are valid for the solver; it
     // is not a plan (the document keeps none) nor a promise that compute takes them
-    typeof value.hasInputs === "boolean"
+    typeof value.hasInputs === "boolean" &&
+    // the accepted plans of its variants: stale when any of them is
+    oneOf(value.acceptedPlan, strategyAcceptedMarks)
   );
 }
 function count(value: unknown): value is number {
@@ -160,12 +167,21 @@ function timeline(value: unknown): boolean {
           "vePercent",
           "changeTyres",
           "service",
+          "pitSeconds",
+          "pinned",
         ]) &&
         count(pit.lap) &&
         number(pit.fuelLiters) &&
         number(pit.vePercent) &&
         typeof pit.changeTyres === "boolean" &&
-        oneOf(pit.service, ["parallel", "sequential"]),
+        oneOf(pit.service, ["parallel", "sequential"]) &&
+        number(pit.pitSeconds) &&
+        // which amounts were fixed by hand (reserved: always false for now)
+        record(pit.pinned) &&
+        exact(pit.pinned, ["fuelLiters", "vePercent", "changeTyres"]) &&
+        typeof pit.pinned.fuelLiters === "boolean" &&
+        typeof pit.pinned.vePercent === "boolean" &&
+        typeof pit.pinned.changeTyres === "boolean",
     )
   );
 }
@@ -250,6 +266,112 @@ function edit(value: unknown): boolean {
       number(stop.vePercent),
   );
 }
+// A finite number, negative or not: the seconds of a proposal minus those of the accepted plan.
+function signed(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+function rfc3339(value: unknown): boolean {
+  return (
+    text(value) &&
+    /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d+)?(Z|[+-]\d\d:\d\d)$/.test(
+      value as string,
+    )
+  );
+}
+// Names and notes are labels: they never make a plan stale.
+const labels = ["name", "variantName", "variantNote"];
+function change(value: unknown): boolean {
+  const shown = (entry: unknown) =>
+    entry === null ||
+    (typeof entry === "string" &&
+      bytes.encode(entry).length <= strategyChangeTextLimit &&
+      !/\p{Cc}/u.test(entry));
+  return (
+    record(value) &&
+    exact(value, ["field", "before", "after"]) &&
+    oneOf(value.field, strategyFields) &&
+    !labels.includes(value.field as string) &&
+    shown(value.before) &&
+    shown(value.after)
+  );
+}
+type Kept = {
+  certificate: unknown;
+  metrics: unknown;
+  timeline: {
+    stints: { fromLap: number; toLap: number }[];
+    pits: { lap: number }[];
+  } | null;
+};
+// The plan accepted for the active variant, apart from the proposal: its metrics
+// and timeline are never null, and what it says of the changes agrees with its state.
+function accepted(value: unknown): boolean {
+  if (
+    !record(value) ||
+    !exact(value, [
+      "state",
+      "acceptedAt",
+      "saved",
+      "result",
+      "changes",
+      "unreachable",
+      "compare",
+    ]) ||
+    !oneOf(value.state, strategyAcceptedStates) ||
+    !rfc3339(value.acceptedAt) ||
+    typeof value.saved !== "boolean" ||
+    !result(value.result) ||
+    !Array.isArray(value.changes)
+  )
+    return false;
+  const kept = value.result as Kept;
+  if (
+    !(kept.certificate === "proven" || kept.certificate === "not_proven") ||
+    kept.metrics === null ||
+    kept.timeline === null ||
+    kept.timeline.stints.length !== kept.timeline.pits.length + 1 ||
+    // contiguous from lap 1, each stop on the last lap of its stint
+    !kept.timeline.stints.every(
+      (stint, index, all) =>
+        stint.toLap >= stint.fromLap &&
+        stint.fromLap === (index === 0 ? 1 : all[index - 1].toLap + 1),
+    ) ||
+    !kept.timeline.pits.every(
+      (pit, index) => pit.lap === kept.timeline?.stints[index].toLap,
+    )
+  )
+    return false;
+  const fields = value.changes.map((entry) =>
+    record(entry) ? entry.field : 0,
+  );
+  if (
+    value.changes.length > strategyFields.length ||
+    !value.changes.every(change) ||
+    new Set(fields).size !== fields.length
+  )
+    return false;
+  const unreachable = value.unreachable;
+  if (value.state === "accepted") {
+    if (value.changes.length !== 0 || unreachable !== null) return false;
+  } else if (value.changes.length === 0) return false;
+  if (value.state === "staleUnreachable") {
+    if (
+      !record(unreachable) ||
+      !exact(unreachable, ["cause", "failLap"]) ||
+      !oneOf(unreachable.cause, strategyUnreachableCauses) ||
+      !(unreachable.failLap === null || count(unreachable.failLap))
+    )
+      return false;
+  } else if (unreachable !== null) return false;
+  const { compare } = value;
+  return (
+    compare === null ||
+    (record(compare) &&
+      exact(compare, ["same", "deltaSeconds"]) &&
+      typeof compare.same === "boolean" &&
+      signed(compare.deltaSeconds))
+  );
+}
 function plan(value: unknown): boolean {
   if (
     !record(value) ||
@@ -260,7 +382,9 @@ function plan(value: unknown): boolean {
       "error",
       "errorField",
       "edit",
-    ])
+      "accepted",
+    ]) ||
+    !(value.accepted === null || accepted(value.accepted))
   )
     return false;
   const noError = value.error === null && value.errorField === null;
@@ -310,6 +434,23 @@ function plan(value: unknown): boolean {
       return false;
   }
 }
+// The accepted plan belongs to the active variant, whose event says so in the
+// collection: stale exactly when the plan is.
+function acceptedAgrees(value: Record<string, unknown>): boolean {
+  const { accepted: kept } = value.plan as {
+    accepted: { state: string } | null;
+  };
+  if (kept === null) return true;
+  if (value.activeEventId === null || value.activeStrategyId === null)
+    return false;
+  const event = (value.events as { id: string; acceptedPlan: string }[]).find(
+    ({ id }) => id === value.activeEventId,
+  );
+  if (!event) return false;
+  return kept.state === "accepted"
+    ? event.acceptedPlan !== "none"
+    : event.acceptedPlan === "stale";
+}
 function view(value: unknown): boolean {
   return (
     record(value) &&
@@ -333,6 +474,7 @@ function view(value: unknown): boolean {
     (value.activeStrategyId === null || id(value.activeStrategyId)) &&
     typeof value.dirty === "boolean" &&
     plan(value.plan) &&
+    acceptedAgrees(value) &&
     // the entries of the active variant: only with an active event and variant
     // (and null when a stored text is over the limit)
     (value.form === null ||
@@ -488,6 +630,14 @@ export function isRequest(value: Record<string, unknown>): boolean {
         oneOf(value.mode, strategyFileModes) &&
         revision(value.revision)
       );
+    case "strategy.accept":
+      return (
+        exact(value, ["method", "revision", "computeId"]) &&
+        revision(value.revision) &&
+        computeId(value.computeId)
+      );
+    case "strategy.unaccept":
+    case "strategy.showAccepted":
     case "strategy.save":
     case "strategy.discard":
       return exact(value, ["method", "revision"]) && revision(value.revision);
@@ -513,6 +663,8 @@ export function isError(value: Record<string, unknown>): boolean {
       "strategyFileTooLarge",
       "strategyTargetExists",
       "strategyPickExpired",
+      "strategyNotAcceptable",
+      "strategyNoAcceptedPlan",
     ])
   )
     return exact(value, ["kind"]);

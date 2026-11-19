@@ -1,5 +1,9 @@
 import type { PrivacyView } from "../../../contract/generated/contract";
-import { type Client, HostFailure } from "../../bridge/client";
+import {
+  type Client,
+  HostFailure,
+  InvalidHostResponse,
+} from "../../bridge/client";
 export const privacyReady = (value: PrivacyView) =>
   value.crashesDecided &&
   value.usageDecided &&
@@ -9,6 +13,8 @@ export const privacyReady = (value: PrivacyView) =>
 export function canEnterPrivate(error: unknown, value?: PrivacyView): boolean {
   return (
     error instanceof HostFailure &&
+    // An invalid reply to a write leaves the outcome unknown, not "not applied".
+    !(error instanceof InvalidHostResponse) &&
     ["io", "protected", "busy"].includes(error.detail.kind) &&
     !!value &&
     !value.protected &&

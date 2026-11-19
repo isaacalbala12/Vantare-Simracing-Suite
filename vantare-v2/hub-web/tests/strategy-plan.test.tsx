@@ -160,6 +160,8 @@ const result = (patch: Partial<StrategyCalculationView> = {}) =>
         vePercent,
         changeTyres: true,
         service: "parallel" as const,
+        pitSeconds: 60,
+        pinned: { fuelLiters: false, vePercent: false, changeTyres: false },
       })),
     },
     ...patch,
@@ -173,6 +175,7 @@ const plan = (
   result: result(),
   error: null,
   errorField: null,
+  accepted: null,
   edit: null,
   ...patch,
 });
@@ -229,6 +232,7 @@ describe("states of the plan", () => {
         result: null,
         error: null,
         errorField: null,
+        accepted: null,
         edit: null,
       }),
     );
@@ -461,6 +465,7 @@ describe("states of the plan", () => {
         result: null,
         error: null,
         errorField: null,
+        accepted: null,
         edit: null,
       })(map(view)),
     );

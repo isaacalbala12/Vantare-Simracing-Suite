@@ -1,6 +1,7 @@
-import { HostFailure } from "../../bridge/client";
+import { HostFailure, InvalidHostResponse } from "../../bridge/client";
 import { profileText as text } from "../../i18n/profile-editor";
 export function profileFailure(failure: unknown, opening = false): string {
+  if (failure instanceof InvalidHostResponse) return text.invalidResponse;
   if (failure instanceof HostFailure)
     switch (failure.detail.kind) {
       case "protected":

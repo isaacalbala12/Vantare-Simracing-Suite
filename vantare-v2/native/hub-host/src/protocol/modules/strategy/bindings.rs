@@ -5,13 +5,18 @@ use crate::strategy::{
     STRATEGY_PICK_PATH_MAX, STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate,
     StrategyComputeForm, StrategyEditError, StrategyEditStop, StrategyEditView,
     StrategyEventSummary, StrategyField, StrategyFields, StrategyFile, StrategyFileMode,
-    StrategyFileSelection, StrategyMetrics, StrategyPit, StrategyPitService, StrategyPlanError,
-    StrategyPlanState, StrategyPlanView, StrategyReason, StrategyServiceSteps,
+    StrategyFileSelection, StrategyMetrics, StrategyPit, StrategyPitPinned, StrategyPitService,
+    StrategyPlanError, StrategyPlanState, StrategyPlanView, StrategyReason, StrategyServiceSteps,
     StrategySolverFields, StrategyState, StrategyStint, StrategyTimeline, StrategyVariant,
     StrategyView, TEXT_LIMIT,
 };
+use crate::strategy::{
+    STRATEGY_CHANGE_TEXT_LIMIT, StrategyAcceptedMark, StrategyAcceptedState, StrategyAcceptedView,
+    StrategyChange, StrategyCompare, StrategyUnreachable, StrategyUnreachableCause,
+};
 use serde_json::json;
 
+#[allow(clippy::too_many_lines)] // One flat list of declarations.
 pub(crate) fn typescript() -> String {
     let mut text = String::new();
     declare::<StrategyState>(&mut text);
@@ -40,6 +45,47 @@ pub(crate) fn typescript() -> String {
     declare::<StrategyFile>(&mut text);
     declare::<StrategyFileMode>(&mut text);
     declare::<StrategyFileSelection>(&mut text);
+    declare::<StrategyPitPinned>(&mut text);
+    declare::<StrategyAcceptedMark>(&mut text);
+    declare::<StrategyAcceptedState>(&mut text);
+    declare::<StrategyAcceptedView>(&mut text);
+    declare::<StrategyChange>(&mut text);
+    declare::<StrategyCompare>(&mut text);
+    declare::<StrategyUnreachable>(&mut text);
+    declare::<StrategyUnreachableCause>(&mut text);
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "strategyChangeTextLimit",
+        STRATEGY_CHANGE_TEXT_LIMIT
+    );
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "strategyAcceptedStates",
+        [
+            StrategyAcceptedState::Accepted,
+            StrategyAcceptedState::Stale,
+            StrategyAcceptedState::StaleUnreachable
+        ]
+    );
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "strategyAcceptedMarks",
+        [
+            StrategyAcceptedMark::None,
+            StrategyAcceptedMark::Accepted,
+            StrategyAcceptedMark::Stale
+        ]
+    );
+    crate::protocol::bindings::constants!(
+        &mut text,
+        "strategyUnreachableCauses",
+        [
+            StrategyUnreachableCause::ResourceExhausted,
+            StrategyUnreachableCause::ReserveNotMet,
+            StrategyUnreachableCause::ScheduleMismatch,
+            StrategyUnreachableCause::Other
+        ]
+    );
     crate::protocol::bindings::constants!(&mut text, "strategyReasons", StrategyReason::ALL);
     crate::protocol::bindings::constants!(&mut text, "strategyFileModes", StrategyFileMode::ALL);
     crate::protocol::bindings::constants!(
@@ -104,6 +150,7 @@ fn ready_sample() -> StrategyView {
                 },
             ],
             has_inputs: true,
+            accepted_plan: StrategyAcceptedMark::None,
         }],
         active_event_id: Some("event-1".into()),
         active_strategy_id: Some("variant-1".into()),
@@ -191,6 +238,8 @@ pub(crate) fn corpus() -> serde_json::Value {
             HostError::StrategyFileTooLarge,
             HostError::StrategyTargetExists,
             HostError::StrategyPickExpired,
+            HostError::StrategyNotAcceptable,
+            HostError::StrategyNoAcceptedPlan,
         ]
         .map(|error| HostToUi::Failure { id: 1, error }),
     );
@@ -198,6 +247,7 @@ pub(crate) fn corpus() -> serde_json::Value {
     host.extend(calculation_samples(&dirty));
     host.extend(edit_samples(&dirty));
     host.extend(reason_samples(&dirty));
+    host.extend(accepted_samples(&dirty));
     host.push(sample_response(Reply::StrategyView {
         value: no_inputs_sample(),
     }));
@@ -283,6 +333,16 @@ pub(crate) fn corpus() -> serde_json::Value {
             },
             Request::StrategyPickFile {
                 mode: StrategyFileMode::SaveAs,
+                revision: "b".repeat(64),
+            },
+            Request::StrategyAccept {
+                revision: "b".repeat(64),
+                compute_id: 7,
+            },
+            Request::StrategyUnaccept {
+                revision: "b".repeat(64),
+            },
+            Request::StrategyShowAccepted {
                 revision: "b".repeat(64),
             },
             Request::StrategySave {
@@ -408,6 +468,8 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                 ve_percent: 5.into(),
                 change_tyres: true,
                 service: StrategyPitService::Parallel,
+                pit_seconds: 52.into(),
+                pinned: StrategyPitPinned::default(),
             }],
         }),
     };
@@ -430,6 +492,7 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                 result: Some(Box::new(completed.clone())),
                 error: None,
                 error_field: None,
+                accepted: None,
                 edit: Some(StrategyEditView {
                     stints: vec![
                         StrategyStint {
@@ -467,6 +530,7 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                 })),
                 error: None,
                 error_field: None,
+                accepted: None,
                 edit: None,
             }),
         }),
@@ -477,6 +541,7 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                 result: None,
                 error: Some(StrategyPlanError::InvalidInput),
                 error_field: Some(StrategyField::RaceLaps),
+                accepted: None,
                 edit: None,
             }),
         }),
@@ -487,6 +552,7 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                 result: None,
                 error: Some(StrategyPlanError::InvalidInput),
                 error_field: None,
+                accepted: None,
                 edit: None,
             }),
         }),
@@ -631,6 +697,8 @@ fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
         ve_percent: 5.into(),
         change_tyres: true,
         service: StrategyPitService::Parallel,
+        pit_seconds: 52.into(),
+        pinned: StrategyPitPinned::default(),
     };
     let result = |feasible: bool| StrategyCalculationView {
         certificate: Some(if feasible {
@@ -693,6 +761,7 @@ fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
         result: Some(Box::new(result(feasible))),
         error: None,
         error_field: None,
+        accepted: None,
         edit: Some(edit(error)),
     };
     let with_plan = |plan| StrategyView {
@@ -722,6 +791,211 @@ fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
         }),
         sample_response(Reply::StrategyResetEdit {
             value: with_plan(plan(StrategyPlanState::Calculated, 7, true, None)),
+        }),
+    ]
+}
+
+/// The accepted plan next to the proposal: each state, a comparison in each
+/// direction, changes with and without their texts, each cause, and the marks of
+/// the collection.
+#[allow(clippy::too_many_lines)] // One flat list of wire samples.
+fn accepted_samples(dirty: &StrategyView) -> Vec<HostToUi> {
+    // the calculated plan the earlier samples show, as the base of the accepted one
+    let base = StrategyView {
+        plan: match calculation_samples(dirty).get(1) {
+            Some(HostToUi::Response {
+                result: Reply::StrategyView { value },
+                ..
+            }) => value.plan.clone(),
+            _ => unreachable!("the second calculation sample is the calculated plan"),
+        },
+        ..dirty.clone()
+    };
+    let accepted_result = base
+        .plan
+        .result
+        .as_deref()
+        .cloned()
+        .unwrap_or_else(|| unreachable!("the sample plan has a result"));
+    let view =
+        |state, changes: Vec<StrategyChange>, unreachable, compare, saved| StrategyAcceptedView {
+            state,
+            accepted_at: "2026-11-19T18:42:00Z".into(),
+            saved,
+            result: accepted_result.clone(),
+            changes,
+            unreachable,
+            compare,
+        };
+    let change = |field, before: Option<&str>, after: Option<&str>| StrategyChange {
+        field,
+        before: before.map(str::to_owned),
+        after: after.map(str::to_owned),
+    };
+    // the view with that accepted plan, the mark of the event following it
+    let with = |accepted: Option<StrategyAcceptedView>, plan: &StrategyPlanView| {
+        let mark = match accepted.as_ref().map(|view| view.state) {
+            None => StrategyAcceptedMark::None,
+            Some(StrategyAcceptedState::Accepted) => StrategyAcceptedMark::Accepted,
+            Some(_) => StrategyAcceptedMark::Stale,
+        };
+        StrategyView {
+            plan: StrategyPlanView {
+                accepted: accepted.map(Box::new),
+                ..plan.clone()
+            },
+            events: base
+                .events
+                .iter()
+                .map(|event| crate::strategy::StrategyEventSummary {
+                    accepted_plan: mark,
+                    ..event.clone()
+                })
+                .collect(),
+            ..base.clone()
+        }
+    };
+    let uncalculated = StrategyPlanView::default();
+    let seconds = |value: f64| serde_json::Number::from_f64(value).unwrap_or_else(|| 0.into());
+    let unreachable = |cause, fail_lap| Some(StrategyUnreachable { cause, fail_lap });
+    vec![
+        // open: only the accepted plan, saved
+        sample_response(Reply::StrategyOpen {
+            value: with(
+                Some(view(
+                    StrategyAcceptedState::Accepted,
+                    vec![],
+                    None,
+                    None,
+                    true,
+                )),
+                &uncalculated,
+            ),
+        }),
+        // accepted in this session, the proposal on screen is the same plan
+        sample_response(Reply::StrategyAccept {
+            value: with(
+                Some(view(
+                    StrategyAcceptedState::Accepted,
+                    vec![],
+                    None,
+                    Some(StrategyCompare {
+                        same: true,
+                        delta_seconds: 0.into(),
+                    }),
+                    false,
+                )),
+                &base.plan,
+            ),
+        }),
+        // a new proposal, slower and then faster than the accepted plan
+        sample_response(Reply::StrategyView {
+            value: with(
+                Some(view(
+                    StrategyAcceptedState::Accepted,
+                    vec![],
+                    None,
+                    Some(StrategyCompare {
+                        same: false,
+                        delta_seconds: seconds(2.5),
+                    }),
+                    true,
+                )),
+                &base.plan,
+            ),
+        }),
+        sample_response(Reply::StrategyView {
+            value: with(
+                Some(view(
+                    StrategyAcceptedState::Accepted,
+                    vec![],
+                    None,
+                    Some(StrategyCompare {
+                        same: false,
+                        delta_seconds: seconds(-1.0),
+                    }),
+                    false,
+                )),
+                &base.plan,
+            ),
+        }),
+        // stale and still reaching: the changes, two of them without their texts
+        sample_response(Reply::StrategyView {
+            value: with(
+                Some(view(
+                    StrategyAcceptedState::Stale,
+                    vec![
+                        change(StrategyField::BasePaceSeconds, Some("90.472"), Some("90.9")),
+                        change(StrategyField::Track, Some("Fuji"), None),
+                        change(StrategyField::Class, None, None),
+                    ],
+                    None,
+                    None,
+                    true,
+                )),
+                &uncalculated,
+            ),
+        }),
+        // stale and not reaching, one sample per cause
+        sample_response(Reply::StrategyShowAccepted {
+            value: with(
+                Some(view(
+                    StrategyAcceptedState::StaleUnreachable,
+                    vec![change(
+                        StrategyField::FuelPerLapLiters,
+                        Some("1.83"),
+                        Some("1.85"),
+                    )],
+                    unreachable(StrategyUnreachableCause::ResourceExhausted, None),
+                    None,
+                    true,
+                )),
+                &uncalculated,
+            ),
+        }),
+        sample_response(Reply::StrategyView {
+            value: with(
+                Some(view(
+                    StrategyAcceptedState::StaleUnreachable,
+                    vec![change(StrategyField::ReserveLaps, Some("1"), Some("3"))],
+                    unreachable(StrategyUnreachableCause::ReserveNotMet, Some(2)),
+                    None,
+                    false,
+                )),
+                &uncalculated,
+            ),
+        }),
+        sample_response(Reply::StrategyView {
+            value: with(
+                Some(view(
+                    StrategyAcceptedState::StaleUnreachable,
+                    vec![change(StrategyField::RaceLaps, Some("3"), Some("4"))],
+                    unreachable(StrategyUnreachableCause::ScheduleMismatch, None),
+                    None,
+                    true,
+                )),
+                &uncalculated,
+            ),
+        }),
+        sample_response(Reply::StrategyView {
+            value: with(
+                Some(view(
+                    StrategyAcceptedState::StaleUnreachable,
+                    vec![change(
+                        StrategyField::ServiceMode,
+                        Some("parallel"),
+                        Some("sequential"),
+                    )],
+                    unreachable(StrategyUnreachableCause::Other, None),
+                    None,
+                    true,
+                )),
+                &uncalculated,
+            ),
+        }),
+        // the plan removed: the view has none again
+        sample_response(Reply::StrategyUnaccept {
+            value: with(None, &base.plan),
         }),
     ]
 }

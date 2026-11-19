@@ -11,6 +11,7 @@
           "dirty": false,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -67,6 +68,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -94,6 +96,7 @@
           },
           "form": null,
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -121,6 +124,7 @@
           },
           "form": null,
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -148,6 +152,7 @@
           },
           "form": null,
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -175,6 +180,7 @@
           },
           "form": null,
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -198,6 +204,7 @@
           "dirty": false,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -254,6 +261,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -277,6 +285,7 @@
           "dirty": false,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -333,6 +342,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -356,6 +366,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -412,6 +423,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -435,6 +447,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -491,6 +504,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -514,6 +528,7 @@
           "dirty": false,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -570,6 +585,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -593,6 +609,7 @@
           "dirty": false,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -649,6 +666,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -669,6 +687,7 @@
           "dirty": false,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -725,6 +744,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -813,6 +833,20 @@
       "kind": "failure"
     },
     {
+      "error": {
+        "kind": "strategyNotAcceptable"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
+      "error": {
+        "kind": "strategyNoAcceptedPlan"
+      },
+      "id": 1,
+      "kind": "failure"
+    },
+    {
       "id": 1,
       "kind": "response",
       "result": {
@@ -823,6 +857,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -879,6 +914,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": null,
             "error": null,
@@ -902,6 +938,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -958,6 +995,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": {
               "canReset": false,
@@ -1009,6 +1047,12 @@
                     "changeTyres": true,
                     "fuelLiters": 3,
                     "lap": 2,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   }
@@ -1045,6 +1089,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -1101,6 +1146,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": null,
             "error": null,
@@ -1134,6 +1180,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -1190,6 +1237,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": null,
             "error": "invalidInput",
@@ -1213,6 +1261,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -1269,6 +1318,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 8,
             "edit": null,
             "error": "invalidInput",
@@ -1292,6 +1342,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -1348,6 +1399,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -1371,6 +1423,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -1427,6 +1480,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -1450,6 +1504,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -1506,6 +1561,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": {
               "canReset": true,
@@ -1568,6 +1624,12 @@
                     "changeTyres": true,
                     "fuelLiters": 12,
                     "lap": 3,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   },
@@ -1575,6 +1637,12 @@
                     "changeTyres": true,
                     "fuelLiters": 13,
                     "lap": 6,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   }
@@ -1615,6 +1683,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -1671,6 +1740,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": {
               "canReset": true,
@@ -1733,6 +1803,12 @@
                     "changeTyres": true,
                     "fuelLiters": 12,
                     "lap": 3,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   },
@@ -1740,6 +1816,12 @@
                     "changeTyres": true,
                     "fuelLiters": 13,
                     "lap": 6,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   }
@@ -1780,6 +1862,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -1836,6 +1919,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 8,
             "edit": {
               "canReset": true,
@@ -1898,6 +1982,12 @@
                     "changeTyres": true,
                     "fuelLiters": 12,
                     "lap": 3,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   },
@@ -1905,6 +1995,12 @@
                     "changeTyres": true,
                     "fuelLiters": 13,
                     "lap": 6,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   }
@@ -1945,6 +2041,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -2001,6 +2098,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 8,
             "edit": {
               "canReset": true,
@@ -2063,6 +2161,12 @@
                     "changeTyres": true,
                     "fuelLiters": 12,
                     "lap": 3,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   },
@@ -2070,6 +2174,12 @@
                     "changeTyres": true,
                     "fuelLiters": 13,
                     "lap": 6,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   }
@@ -2110,6 +2220,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -2166,6 +2277,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 8,
             "edit": {
               "canReset": true,
@@ -2232,6 +2344,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -2288,6 +2401,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": {
               "canReset": true,
@@ -2350,6 +2464,12 @@
                     "changeTyres": true,
                     "fuelLiters": 12,
                     "lap": 3,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   },
@@ -2357,6 +2477,12 @@
                     "changeTyres": true,
                     "fuelLiters": 13,
                     "lap": 6,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
                     "service": "parallel",
                     "vePercent": 5
                   }
@@ -2397,6 +2523,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -2453,6 +2580,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": {
               "canReset": true,
@@ -2514,6 +2642,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -2570,6 +2699,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": {
               "canReset": true,
@@ -2631,6 +2761,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -2687,6 +2818,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": null,
             "error": null,
@@ -2726,6 +2858,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -2782,6 +2915,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": null,
             "error": null,
@@ -2815,6 +2949,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -2871,6 +3006,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": null,
             "error": null,
@@ -2904,6 +3040,7 @@
           "dirty": true,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -2960,6 +3097,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": 7,
             "edit": null,
             "error": null,
@@ -2986,6 +3124,1661 @@
       "id": 1,
       "kind": "response",
       "result": {
+        "method": "strategy.open",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "accepted",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": {
+              "acceptedAt": "2026-11-19T18:42:00Z",
+              "changes": [],
+              "compare": null,
+              "result": {
+                "certificate": "proven",
+                "degraded": false,
+                "metrics": {
+                  "fuelReserveRealLaps": 10,
+                  "fuelReserveRequiredLaps": 1,
+                  "laps": 3,
+                  "pitCount": 1,
+                  "totalSeconds": 301
+                },
+                "reason": null,
+                "steps": {
+                  "fuelLiters": 1,
+                  "vePercent": 1
+                },
+                "timeline": {
+                  "basePaceSeconds": 90,
+                  "fuelFinishLiters": 24,
+                  "fuelStartLiters": 30,
+                  "pilot": "Pilot",
+                  "pits": [
+                    {
+                      "changeTyres": true,
+                      "fuelLiters": 3,
+                      "lap": 2,
+                      "pinned": {
+                        "changeTyres": false,
+                        "fuelLiters": false,
+                        "vePercent": false
+                      },
+                      "pitSeconds": 52,
+                      "service": "parallel",
+                      "vePercent": 5
+                    }
+                  ],
+                  "stints": [
+                    {
+                      "fromLap": 1,
+                      "toLap": 2
+                    },
+                    {
+                      "fromLap": 3,
+                      "toLap": 3
+                    }
+                  ],
+                  "veFinishPercent": 85,
+                  "veStartPercent": 100
+                }
+              },
+              "saved": true,
+              "state": "accepted",
+              "unreachable": null
+            },
+            "computeId": null,
+            "edit": null,
+            "error": null,
+            "errorField": null,
+            "result": null,
+            "state": "uncalculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.accept",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "accepted",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": {
+              "acceptedAt": "2026-11-19T18:42:00Z",
+              "changes": [],
+              "compare": {
+                "deltaSeconds": 0,
+                "same": true
+              },
+              "result": {
+                "certificate": "proven",
+                "degraded": false,
+                "metrics": {
+                  "fuelReserveRealLaps": 10,
+                  "fuelReserveRequiredLaps": 1,
+                  "laps": 3,
+                  "pitCount": 1,
+                  "totalSeconds": 301
+                },
+                "reason": null,
+                "steps": {
+                  "fuelLiters": 1,
+                  "vePercent": 1
+                },
+                "timeline": {
+                  "basePaceSeconds": 90,
+                  "fuelFinishLiters": 24,
+                  "fuelStartLiters": 30,
+                  "pilot": "Pilot",
+                  "pits": [
+                    {
+                      "changeTyres": true,
+                      "fuelLiters": 3,
+                      "lap": 2,
+                      "pinned": {
+                        "changeTyres": false,
+                        "fuelLiters": false,
+                        "vePercent": false
+                      },
+                      "pitSeconds": 52,
+                      "service": "parallel",
+                      "vePercent": 5
+                    }
+                  ],
+                  "stints": [
+                    {
+                      "fromLap": 1,
+                      "toLap": 2
+                    },
+                    {
+                      "fromLap": 3,
+                      "toLap": 3
+                    }
+                  ],
+                  "veFinishPercent": 85,
+                  "veStartPercent": 100
+                }
+              },
+              "saved": false,
+              "state": "accepted",
+              "unreachable": null
+            },
+            "computeId": 7,
+            "edit": {
+              "canReset": false,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 3
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 3,
+                  "lap": 2,
+                  "maxLap": 2,
+                  "minLap": 1,
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 3,
+                "pitCount": 1,
+                "totalSeconds": 301
+              },
+              "reason": null,
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 3,
+                    "lap": 2,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 2
+                  },
+                  {
+                    "fromLap": 3,
+                    "toLap": 3
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "calculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "accepted",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": {
+              "acceptedAt": "2026-11-19T18:42:00Z",
+              "changes": [],
+              "compare": {
+                "deltaSeconds": 2.5,
+                "same": false
+              },
+              "result": {
+                "certificate": "proven",
+                "degraded": false,
+                "metrics": {
+                  "fuelReserveRealLaps": 10,
+                  "fuelReserveRequiredLaps": 1,
+                  "laps": 3,
+                  "pitCount": 1,
+                  "totalSeconds": 301
+                },
+                "reason": null,
+                "steps": {
+                  "fuelLiters": 1,
+                  "vePercent": 1
+                },
+                "timeline": {
+                  "basePaceSeconds": 90,
+                  "fuelFinishLiters": 24,
+                  "fuelStartLiters": 30,
+                  "pilot": "Pilot",
+                  "pits": [
+                    {
+                      "changeTyres": true,
+                      "fuelLiters": 3,
+                      "lap": 2,
+                      "pinned": {
+                        "changeTyres": false,
+                        "fuelLiters": false,
+                        "vePercent": false
+                      },
+                      "pitSeconds": 52,
+                      "service": "parallel",
+                      "vePercent": 5
+                    }
+                  ],
+                  "stints": [
+                    {
+                      "fromLap": 1,
+                      "toLap": 2
+                    },
+                    {
+                      "fromLap": 3,
+                      "toLap": 3
+                    }
+                  ],
+                  "veFinishPercent": 85,
+                  "veStartPercent": 100
+                }
+              },
+              "saved": true,
+              "state": "accepted",
+              "unreachable": null
+            },
+            "computeId": 7,
+            "edit": {
+              "canReset": false,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 3
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 3,
+                  "lap": 2,
+                  "maxLap": 2,
+                  "minLap": 1,
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 3,
+                "pitCount": 1,
+                "totalSeconds": 301
+              },
+              "reason": null,
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 3,
+                    "lap": 2,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 2
+                  },
+                  {
+                    "fromLap": 3,
+                    "toLap": 3
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "calculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "accepted",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": {
+              "acceptedAt": "2026-11-19T18:42:00Z",
+              "changes": [],
+              "compare": {
+                "deltaSeconds": -1.0,
+                "same": false
+              },
+              "result": {
+                "certificate": "proven",
+                "degraded": false,
+                "metrics": {
+                  "fuelReserveRealLaps": 10,
+                  "fuelReserveRequiredLaps": 1,
+                  "laps": 3,
+                  "pitCount": 1,
+                  "totalSeconds": 301
+                },
+                "reason": null,
+                "steps": {
+                  "fuelLiters": 1,
+                  "vePercent": 1
+                },
+                "timeline": {
+                  "basePaceSeconds": 90,
+                  "fuelFinishLiters": 24,
+                  "fuelStartLiters": 30,
+                  "pilot": "Pilot",
+                  "pits": [
+                    {
+                      "changeTyres": true,
+                      "fuelLiters": 3,
+                      "lap": 2,
+                      "pinned": {
+                        "changeTyres": false,
+                        "fuelLiters": false,
+                        "vePercent": false
+                      },
+                      "pitSeconds": 52,
+                      "service": "parallel",
+                      "vePercent": 5
+                    }
+                  ],
+                  "stints": [
+                    {
+                      "fromLap": 1,
+                      "toLap": 2
+                    },
+                    {
+                      "fromLap": 3,
+                      "toLap": 3
+                    }
+                  ],
+                  "veFinishPercent": 85,
+                  "veStartPercent": 100
+                }
+              },
+              "saved": false,
+              "state": "accepted",
+              "unreachable": null
+            },
+            "computeId": 7,
+            "edit": {
+              "canReset": false,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 3
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 3,
+                  "lap": 2,
+                  "maxLap": 2,
+                  "minLap": 1,
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 3,
+                "pitCount": 1,
+                "totalSeconds": 301
+              },
+              "reason": null,
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 3,
+                    "lap": 2,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 2
+                  },
+                  {
+                    "fromLap": 3,
+                    "toLap": 3
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "calculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "stale",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": {
+              "acceptedAt": "2026-11-19T18:42:00Z",
+              "changes": [
+                {
+                  "after": "90.9",
+                  "before": "90.472",
+                  "field": "basePaceSeconds"
+                },
+                {
+                  "after": null,
+                  "before": "Fuji",
+                  "field": "track"
+                },
+                {
+                  "after": null,
+                  "before": null,
+                  "field": "class"
+                }
+              ],
+              "compare": null,
+              "result": {
+                "certificate": "proven",
+                "degraded": false,
+                "metrics": {
+                  "fuelReserveRealLaps": 10,
+                  "fuelReserveRequiredLaps": 1,
+                  "laps": 3,
+                  "pitCount": 1,
+                  "totalSeconds": 301
+                },
+                "reason": null,
+                "steps": {
+                  "fuelLiters": 1,
+                  "vePercent": 1
+                },
+                "timeline": {
+                  "basePaceSeconds": 90,
+                  "fuelFinishLiters": 24,
+                  "fuelStartLiters": 30,
+                  "pilot": "Pilot",
+                  "pits": [
+                    {
+                      "changeTyres": true,
+                      "fuelLiters": 3,
+                      "lap": 2,
+                      "pinned": {
+                        "changeTyres": false,
+                        "fuelLiters": false,
+                        "vePercent": false
+                      },
+                      "pitSeconds": 52,
+                      "service": "parallel",
+                      "vePercent": 5
+                    }
+                  ],
+                  "stints": [
+                    {
+                      "fromLap": 1,
+                      "toLap": 2
+                    },
+                    {
+                      "fromLap": 3,
+                      "toLap": 3
+                    }
+                  ],
+                  "veFinishPercent": 85,
+                  "veStartPercent": 100
+                }
+              },
+              "saved": true,
+              "state": "stale",
+              "unreachable": null
+            },
+            "computeId": null,
+            "edit": null,
+            "error": null,
+            "errorField": null,
+            "result": null,
+            "state": "uncalculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.showAccepted",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "stale",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": {
+              "acceptedAt": "2026-11-19T18:42:00Z",
+              "changes": [
+                {
+                  "after": "1.85",
+                  "before": "1.83",
+                  "field": "fuelPerLapLiters"
+                }
+              ],
+              "compare": null,
+              "result": {
+                "certificate": "proven",
+                "degraded": false,
+                "metrics": {
+                  "fuelReserveRealLaps": 10,
+                  "fuelReserveRequiredLaps": 1,
+                  "laps": 3,
+                  "pitCount": 1,
+                  "totalSeconds": 301
+                },
+                "reason": null,
+                "steps": {
+                  "fuelLiters": 1,
+                  "vePercent": 1
+                },
+                "timeline": {
+                  "basePaceSeconds": 90,
+                  "fuelFinishLiters": 24,
+                  "fuelStartLiters": 30,
+                  "pilot": "Pilot",
+                  "pits": [
+                    {
+                      "changeTyres": true,
+                      "fuelLiters": 3,
+                      "lap": 2,
+                      "pinned": {
+                        "changeTyres": false,
+                        "fuelLiters": false,
+                        "vePercent": false
+                      },
+                      "pitSeconds": 52,
+                      "service": "parallel",
+                      "vePercent": 5
+                    }
+                  ],
+                  "stints": [
+                    {
+                      "fromLap": 1,
+                      "toLap": 2
+                    },
+                    {
+                      "fromLap": 3,
+                      "toLap": 3
+                    }
+                  ],
+                  "veFinishPercent": 85,
+                  "veStartPercent": 100
+                }
+              },
+              "saved": true,
+              "state": "staleUnreachable",
+              "unreachable": {
+                "cause": "resourceExhausted",
+                "failLap": null
+              }
+            },
+            "computeId": null,
+            "edit": null,
+            "error": null,
+            "errorField": null,
+            "result": null,
+            "state": "uncalculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "stale",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": {
+              "acceptedAt": "2026-11-19T18:42:00Z",
+              "changes": [
+                {
+                  "after": "3",
+                  "before": "1",
+                  "field": "reserveLaps"
+                }
+              ],
+              "compare": null,
+              "result": {
+                "certificate": "proven",
+                "degraded": false,
+                "metrics": {
+                  "fuelReserveRealLaps": 10,
+                  "fuelReserveRequiredLaps": 1,
+                  "laps": 3,
+                  "pitCount": 1,
+                  "totalSeconds": 301
+                },
+                "reason": null,
+                "steps": {
+                  "fuelLiters": 1,
+                  "vePercent": 1
+                },
+                "timeline": {
+                  "basePaceSeconds": 90,
+                  "fuelFinishLiters": 24,
+                  "fuelStartLiters": 30,
+                  "pilot": "Pilot",
+                  "pits": [
+                    {
+                      "changeTyres": true,
+                      "fuelLiters": 3,
+                      "lap": 2,
+                      "pinned": {
+                        "changeTyres": false,
+                        "fuelLiters": false,
+                        "vePercent": false
+                      },
+                      "pitSeconds": 52,
+                      "service": "parallel",
+                      "vePercent": 5
+                    }
+                  ],
+                  "stints": [
+                    {
+                      "fromLap": 1,
+                      "toLap": 2
+                    },
+                    {
+                      "fromLap": 3,
+                      "toLap": 3
+                    }
+                  ],
+                  "veFinishPercent": 85,
+                  "veStartPercent": 100
+                }
+              },
+              "saved": false,
+              "state": "staleUnreachable",
+              "unreachable": {
+                "cause": "reserveNotMet",
+                "failLap": 2
+              }
+            },
+            "computeId": null,
+            "edit": null,
+            "error": null,
+            "errorField": null,
+            "result": null,
+            "state": "uncalculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "stale",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": {
+              "acceptedAt": "2026-11-19T18:42:00Z",
+              "changes": [
+                {
+                  "after": "4",
+                  "before": "3",
+                  "field": "raceLaps"
+                }
+              ],
+              "compare": null,
+              "result": {
+                "certificate": "proven",
+                "degraded": false,
+                "metrics": {
+                  "fuelReserveRealLaps": 10,
+                  "fuelReserveRequiredLaps": 1,
+                  "laps": 3,
+                  "pitCount": 1,
+                  "totalSeconds": 301
+                },
+                "reason": null,
+                "steps": {
+                  "fuelLiters": 1,
+                  "vePercent": 1
+                },
+                "timeline": {
+                  "basePaceSeconds": 90,
+                  "fuelFinishLiters": 24,
+                  "fuelStartLiters": 30,
+                  "pilot": "Pilot",
+                  "pits": [
+                    {
+                      "changeTyres": true,
+                      "fuelLiters": 3,
+                      "lap": 2,
+                      "pinned": {
+                        "changeTyres": false,
+                        "fuelLiters": false,
+                        "vePercent": false
+                      },
+                      "pitSeconds": 52,
+                      "service": "parallel",
+                      "vePercent": 5
+                    }
+                  ],
+                  "stints": [
+                    {
+                      "fromLap": 1,
+                      "toLap": 2
+                    },
+                    {
+                      "fromLap": 3,
+                      "toLap": 3
+                    }
+                  ],
+                  "veFinishPercent": 85,
+                  "veStartPercent": 100
+                }
+              },
+              "saved": true,
+              "state": "staleUnreachable",
+              "unreachable": {
+                "cause": "scheduleMismatch",
+                "failLap": null
+              }
+            },
+            "computeId": null,
+            "edit": null,
+            "error": null,
+            "errorField": null,
+            "result": null,
+            "state": "uncalculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "stale",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": {
+              "acceptedAt": "2026-11-19T18:42:00Z",
+              "changes": [
+                {
+                  "after": "sequential",
+                  "before": "parallel",
+                  "field": "serviceMode"
+                }
+              ],
+              "compare": null,
+              "result": {
+                "certificate": "proven",
+                "degraded": false,
+                "metrics": {
+                  "fuelReserveRealLaps": 10,
+                  "fuelReserveRequiredLaps": 1,
+                  "laps": 3,
+                  "pitCount": 1,
+                  "totalSeconds": 301
+                },
+                "reason": null,
+                "steps": {
+                  "fuelLiters": 1,
+                  "vePercent": 1
+                },
+                "timeline": {
+                  "basePaceSeconds": 90,
+                  "fuelFinishLiters": 24,
+                  "fuelStartLiters": 30,
+                  "pilot": "Pilot",
+                  "pits": [
+                    {
+                      "changeTyres": true,
+                      "fuelLiters": 3,
+                      "lap": 2,
+                      "pinned": {
+                        "changeTyres": false,
+                        "fuelLiters": false,
+                        "vePercent": false
+                      },
+                      "pitSeconds": 52,
+                      "service": "parallel",
+                      "vePercent": 5
+                    }
+                  ],
+                  "stints": [
+                    {
+                      "fromLap": 1,
+                      "toLap": 2
+                    },
+                    {
+                      "fromLap": 3,
+                      "toLap": 3
+                    }
+                  ],
+                  "veFinishPercent": 85,
+                  "veStartPercent": 100
+                }
+              },
+              "saved": true,
+              "state": "staleUnreachable",
+              "unreachable": {
+                "cause": "other",
+                "failLap": null
+              }
+            },
+            "computeId": null,
+            "edit": null,
+            "error": null,
+            "errorField": null,
+            "result": null,
+            "state": "uncalculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.unaccept",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "none",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": null,
+            "computeId": 7,
+            "edit": {
+              "canReset": false,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 3
+                }
+              ],
+              "stops": [
+                {
+                  "fuelLiters": 3,
+                  "lap": 2,
+                  "maxLap": 2,
+                  "minLap": 1,
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 3,
+                "pitCount": 1,
+                "totalSeconds": 301
+              },
+              "reason": null,
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 3,
+                    "lap": 2,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 2
+                  },
+                  {
+                    "fromLap": 3,
+                    "toLap": 3
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "calculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
         "method": "strategy.view",
         "value": {
           "activeEventId": "event-1",
@@ -2993,6 +4786,7 @@
           "dirty": false,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": false,
@@ -3049,6 +4843,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -3072,6 +4867,7 @@
           "dirty": false,
           "events": [
             {
+              "acceptedPlan": "none",
               "class": "GT3",
               "drivers": 1,
               "hasInputs": true,
@@ -3128,6 +4924,7 @@
             }
           },
           "plan": {
+            "accepted": null,
             "computeId": null,
             "edit": null,
             "error": null,
@@ -3409,6 +5206,31 @@
       "request": {
         "method": "strategy.pickFile",
         "mode": "saveAs",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "computeId": 7,
+        "method": "strategy.accept",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "strategy.unaccept",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "method": "strategy.showAccepted",
         "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
     },

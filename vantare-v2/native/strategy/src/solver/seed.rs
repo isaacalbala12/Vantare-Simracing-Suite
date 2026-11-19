@@ -60,6 +60,19 @@ pub(super) fn greedy(
             let mut repaired_last_stint = false;
             while lap < m.input.race_laps {
                 let mut selected = None;
+                // La semilla monta otro juego en cada parada. Sin inventario son
+                // ruedas nuevas; con él, un juego que ya rodó sigue con su edad.
+                let mounted = super::model::Mounted {
+                    compound: &tyre.compound,
+                    age: tyre.fitment.as_ref().map_or(0, |fitment| {
+                        decision
+                            .stints
+                            .iter()
+                            .filter(|stint| stint.tyre_fitment.as_ref() == Some(fitment))
+                            .map(|stint| stint.laps)
+                            .sum()
+                    }),
+                };
                 for driver in &m.drivers {
                     if !m.sequence_allows(decision.stints.len(), &driver.id) {
                         continue;
@@ -107,7 +120,7 @@ pub(super) fn greedy(
                             && laps > 1
                         {
                             let before_last = m
-                                .stint(lap + 1, laps - 1, fuel, &driver.id, level, &tyre.compound)?
+                                .stint(lap + 1, laps - 1, fuel, &driver.id, level, mounted)?
                                 .total_seconds;
                             if m.dims.race_duration_seconds.is_some_and(|d| {
                                 time_cmp(elapsed + before_last, d) != Ordering::Less

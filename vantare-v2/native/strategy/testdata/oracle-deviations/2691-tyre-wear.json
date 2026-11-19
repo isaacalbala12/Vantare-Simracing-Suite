@@ -1,0 +1,531 @@
+{
+  "issue": 2691,
+  "title": "Desviación del oráculo Go #2691: el desgaste de neumáticos se acumula si no se cambian ruedas",
+  "explanation": [
+    "El oráculo Go contaba el desgaste de cada tramo desde cero aunque la parada no cambiara ruedas.",
+    "El cálculo cuenta ahora cada vuelta con la edad real de las ruedas; la edad solo vuelve a cero al montar ruedas nuevas.",
+    "Estos son los únicos casos de testdata/oracle cuyo resultado cambia. Los ficheros de Go no se tocan: sus tests de paridad comparan estos casos con `result`, y comprueban que Go sigue diciendo `go.expected` y que el plan de Go vale ahora `goPlanNow.expected`."
+  ],
+  "cases": [
+    {
+      "file": "solver-tyres.json",
+      "name": "tyres-parallel-life0-sets1",
+      "go": {
+        "plan": "blando, tramos de 2 y 3 vueltas, sin cambiar ruedas en la parada",
+        "expected": {
+          "degradationSeconds": 3.2,
+          "totalSeconds": 461.7
+        }
+      },
+      "goPlanNow": {
+        "why": "el mismo plan con el desgaste acumulado: 0,8 x (0+1+2+3+4) = 8,0 s",
+        "expected": {
+          "degradationSeconds": 8.0,
+          "totalSeconds": 466.5
+        }
+      },
+      "now": {
+        "plan": "duro, tramos de 1 y 4 vueltas, sin cambiar ruedas en la parada",
+        "why": "Solo hay un juego de cada compuesto. Estirar el blando cuesta 8,0 s de desgaste; el duro pierde 0,1 s por vuelta y con las cinco vueltas seguidas paga 1,0 s. Cambiar de blando a duro costaría 465,1 s."
+      },
+      "result": {
+        "feasible": true,
+        "expected": {
+          "compoundSeconds": 0.0,
+          "degradationSeconds": 1.0,
+          "formationSeconds": 3.0,
+          "fuelWeightSeconds": 0.0,
+          "greenSeconds": 450.0,
+          "pitSeconds": 10.5,
+          "savingSeconds": 0.0,
+          "totalSeconds": 464.5,
+          "weatherSeconds": 0.0
+        },
+        "reserve": {
+          "effectiveLaps": 0.0,
+          "fuel": {
+            "active": false,
+            "configured": false,
+            "effectiveLaps": 0.0,
+            "effectiveLapsAvailable": false,
+            "evidence": {
+              "confidence": {
+                "level": ""
+              },
+              "provenance": {
+                "kind": ""
+              }
+            },
+            "remainingAmount": 0.0,
+            "requestedLaps": 0.0,
+            "requiredAmount": 0.0,
+            "resource": "fuel",
+            "satisfied": true
+          },
+          "satisfied": true,
+          "virtualEnergy": {
+            "active": false,
+            "configured": false,
+            "effectiveLaps": 0.0,
+            "effectiveLapsAvailable": false,
+            "evidence": {
+              "confidence": {
+                "level": ""
+              },
+              "provenance": {
+                "kind": ""
+              }
+            },
+            "remainingAmount": 0.0,
+            "requestedLaps": 0.0,
+            "requiredAmount": 0.0,
+            "resource": "virtual_energy",
+            "satisfied": true
+          }
+        },
+        "worstCase": {
+          "compoundSeconds": 0.0,
+          "degradationSeconds": 1.0,
+          "formationSeconds": 3.0,
+          "fuelWeightSeconds": 0.0,
+          "greenSeconds": 450.0,
+          "pitSeconds": 10.5,
+          "savingSeconds": 0.0,
+          "totalSeconds": 464.5,
+          "weatherSeconds": 0.0
+        },
+        "best": {
+          "stints": [
+            {
+              "index": 0,
+              "laps": 1,
+              "compound": "hard",
+              "tyreFitment": {
+                "frontLeft": "hard-0-0",
+                "frontRight": "hard-0-1",
+                "rearLeft": "hard-0-2",
+                "rearRight": "hard-0-3"
+              }
+            },
+            {
+              "index": 1,
+              "laps": 4,
+              "compound": "hard",
+              "tyreFitment": {
+                "frontLeft": "hard-0-0",
+                "frontRight": "hard-0-1",
+                "rearLeft": "hard-0-2",
+                "rearRight": "hard-0-3"
+              }
+            }
+          ],
+          "pitStops": [
+            {
+              "lap": 1,
+              "fuelLiters": 1.0,
+              "vePercent": 0.0,
+              "compound": "hard",
+              "changeTyres": false,
+              "tyreFitment": {
+                "frontLeft": "hard-0-0",
+                "frontRight": "hard-0-1",
+                "rearLeft": "hard-0-2",
+                "rearRight": "hard-0-3"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "solver-tyres.json",
+      "name": "tyres-parallel-life0-sets2",
+      "go": {
+        "plan": "blando, tramos de 2 y 3 vueltas, sin cambiar ruedas en la parada",
+        "expected": {
+          "degradationSeconds": 3.2,
+          "totalSeconds": 461.7
+        }
+      },
+      "goPlanNow": {
+        "why": "el mismo plan con el desgaste acumulado: 0,8 x (0+1+2+3+4) = 8,0 s",
+        "expected": {
+          "degradationSeconds": 8.0,
+          "totalSeconds": 466.5
+        }
+      },
+      "now": {
+        "plan": "blando 2 vueltas y otro juego de blando nuevo 3 vueltas",
+        "why": "Hay dos juegos de blando. Montar el segundo cuesta 2,5 s más en boxes (las ruedas tardan 3 s y la carga 0,5 s, en paralelo) y deja el desgaste en 3,2 s: 464,2 s, mejor que el duro sin cambiar (464,5 s)."
+      },
+      "result": {
+        "feasible": true,
+        "expected": {
+          "compoundSeconds": -5.0,
+          "degradationSeconds": 3.2,
+          "formationSeconds": 3.0,
+          "fuelWeightSeconds": 0.0,
+          "greenSeconds": 450.0,
+          "pitSeconds": 13.0,
+          "savingSeconds": 0.0,
+          "totalSeconds": 464.2,
+          "weatherSeconds": 0.0
+        },
+        "reserve": {
+          "effectiveLaps": 0.0,
+          "fuel": {
+            "active": false,
+            "configured": false,
+            "effectiveLaps": 0.0,
+            "effectiveLapsAvailable": false,
+            "evidence": {
+              "confidence": {
+                "level": ""
+              },
+              "provenance": {
+                "kind": ""
+              }
+            },
+            "remainingAmount": 0.0,
+            "requestedLaps": 0.0,
+            "requiredAmount": 0.0,
+            "resource": "fuel",
+            "satisfied": true
+          },
+          "satisfied": true,
+          "virtualEnergy": {
+            "active": false,
+            "configured": false,
+            "effectiveLaps": 0.0,
+            "effectiveLapsAvailable": false,
+            "evidence": {
+              "confidence": {
+                "level": ""
+              },
+              "provenance": {
+                "kind": ""
+              }
+            },
+            "remainingAmount": 0.0,
+            "requestedLaps": 0.0,
+            "requiredAmount": 0.0,
+            "resource": "virtual_energy",
+            "satisfied": true
+          }
+        },
+        "worstCase": {
+          "compoundSeconds": -5.0,
+          "degradationSeconds": 3.2,
+          "formationSeconds": 3.0,
+          "fuelWeightSeconds": 0.0,
+          "greenSeconds": 450.0,
+          "pitSeconds": 13.0,
+          "savingSeconds": 0.0,
+          "totalSeconds": 464.2,
+          "weatherSeconds": 0.0
+        },
+        "best": {
+          "stints": [
+            {
+              "index": 0,
+              "laps": 2,
+              "compound": "soft",
+              "tyreFitment": {
+                "frontLeft": "soft-0-0",
+                "frontRight": "soft-0-1",
+                "rearLeft": "soft-0-2",
+                "rearRight": "soft-0-3"
+              }
+            },
+            {
+              "index": 1,
+              "laps": 3,
+              "compound": "soft",
+              "tyreFitment": {
+                "frontLeft": "soft-1-0",
+                "frontRight": "soft-1-1",
+                "rearLeft": "soft-1-2",
+                "rearRight": "soft-1-3"
+              }
+            }
+          ],
+          "pitStops": [
+            {
+              "lap": 2,
+              "fuelLiters": 1.0,
+              "vePercent": 0.0,
+              "compound": "soft",
+              "changeTyres": true,
+              "tyreFitment": {
+                "frontLeft": "soft-1-0",
+                "frontRight": "soft-1-1",
+                "rearLeft": "soft-1-2",
+                "rearRight": "soft-1-3"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "solver-tyres.json",
+      "name": "tyres-sequential-life0-sets1",
+      "go": {
+        "plan": "blando, tramos de 2 y 3 vueltas, sin cambiar ruedas en la parada",
+        "expected": {
+          "degradationSeconds": 3.2,
+          "totalSeconds": 461.7
+        }
+      },
+      "goPlanNow": {
+        "why": "el mismo plan con el desgaste acumulado: 0,8 x (0+1+2+3+4) = 8,0 s",
+        "expected": {
+          "degradationSeconds": 8.0,
+          "totalSeconds": 466.5
+        }
+      },
+      "now": {
+        "plan": "duro, tramos de 1 y 4 vueltas, sin cambiar ruedas en la parada",
+        "why": "Solo hay un juego de cada compuesto. Con el servicio en serie cambiar ruedas suma sus 3 s enteros: gana el duro sin cambiar."
+      },
+      "result": {
+        "feasible": true,
+        "expected": {
+          "compoundSeconds": 0.0,
+          "degradationSeconds": 1.0,
+          "formationSeconds": 3.0,
+          "fuelWeightSeconds": 0.0,
+          "greenSeconds": 450.0,
+          "pitSeconds": 10.5,
+          "savingSeconds": 0.0,
+          "totalSeconds": 464.5,
+          "weatherSeconds": 0.0
+        },
+        "reserve": {
+          "effectiveLaps": 0.0,
+          "fuel": {
+            "active": false,
+            "configured": false,
+            "effectiveLaps": 0.0,
+            "effectiveLapsAvailable": false,
+            "evidence": {
+              "confidence": {
+                "level": ""
+              },
+              "provenance": {
+                "kind": ""
+              }
+            },
+            "remainingAmount": 0.0,
+            "requestedLaps": 0.0,
+            "requiredAmount": 0.0,
+            "resource": "fuel",
+            "satisfied": true
+          },
+          "satisfied": true,
+          "virtualEnergy": {
+            "active": false,
+            "configured": false,
+            "effectiveLaps": 0.0,
+            "effectiveLapsAvailable": false,
+            "evidence": {
+              "confidence": {
+                "level": ""
+              },
+              "provenance": {
+                "kind": ""
+              }
+            },
+            "remainingAmount": 0.0,
+            "requestedLaps": 0.0,
+            "requiredAmount": 0.0,
+            "resource": "virtual_energy",
+            "satisfied": true
+          }
+        },
+        "worstCase": {
+          "compoundSeconds": 0.0,
+          "degradationSeconds": 1.0,
+          "formationSeconds": 3.0,
+          "fuelWeightSeconds": 0.0,
+          "greenSeconds": 450.0,
+          "pitSeconds": 10.5,
+          "savingSeconds": 0.0,
+          "totalSeconds": 464.5,
+          "weatherSeconds": 0.0
+        },
+        "best": {
+          "stints": [
+            {
+              "index": 0,
+              "laps": 1,
+              "compound": "hard",
+              "tyreFitment": {
+                "frontLeft": "hard-0-0",
+                "frontRight": "hard-0-1",
+                "rearLeft": "hard-0-2",
+                "rearRight": "hard-0-3"
+              }
+            },
+            {
+              "index": 1,
+              "laps": 4,
+              "compound": "hard",
+              "tyreFitment": {
+                "frontLeft": "hard-0-0",
+                "frontRight": "hard-0-1",
+                "rearLeft": "hard-0-2",
+                "rearRight": "hard-0-3"
+              }
+            }
+          ],
+          "pitStops": [
+            {
+              "lap": 1,
+              "fuelLiters": 1.0,
+              "vePercent": 0.0,
+              "compound": "hard",
+              "changeTyres": false,
+              "tyreFitment": {
+                "frontLeft": "hard-0-0",
+                "frontRight": "hard-0-1",
+                "rearLeft": "hard-0-2",
+                "rearRight": "hard-0-3"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "solver-tyres.json",
+      "name": "tyres-sequential-life0-sets2",
+      "go": {
+        "plan": "blando, tramos de 2 y 3 vueltas, sin cambiar ruedas en la parada",
+        "expected": {
+          "degradationSeconds": 3.2,
+          "totalSeconds": 461.7
+        }
+      },
+      "goPlanNow": {
+        "why": "el mismo plan con el desgaste acumulado: 0,8 x (0+1+2+3+4) = 8,0 s",
+        "expected": {
+          "degradationSeconds": 8.0,
+          "totalSeconds": 466.5
+        }
+      },
+      "now": {
+        "plan": "duro, tramos de 1 y 4 vueltas, sin cambiar ruedas en la parada",
+        "why": "Con el servicio en serie montar el segundo juego de blando cuesta 3 s enteros (464,7 s): gana el duro sin cambiar (464,5 s)."
+      },
+      "result": {
+        "feasible": true,
+        "expected": {
+          "compoundSeconds": 0.0,
+          "degradationSeconds": 1.0,
+          "formationSeconds": 3.0,
+          "fuelWeightSeconds": 0.0,
+          "greenSeconds": 450.0,
+          "pitSeconds": 10.5,
+          "savingSeconds": 0.0,
+          "totalSeconds": 464.5,
+          "weatherSeconds": 0.0
+        },
+        "reserve": {
+          "effectiveLaps": 0.0,
+          "fuel": {
+            "active": false,
+            "configured": false,
+            "effectiveLaps": 0.0,
+            "effectiveLapsAvailable": false,
+            "evidence": {
+              "confidence": {
+                "level": ""
+              },
+              "provenance": {
+                "kind": ""
+              }
+            },
+            "remainingAmount": 0.0,
+            "requestedLaps": 0.0,
+            "requiredAmount": 0.0,
+            "resource": "fuel",
+            "satisfied": true
+          },
+          "satisfied": true,
+          "virtualEnergy": {
+            "active": false,
+            "configured": false,
+            "effectiveLaps": 0.0,
+            "effectiveLapsAvailable": false,
+            "evidence": {
+              "confidence": {
+                "level": ""
+              },
+              "provenance": {
+                "kind": ""
+              }
+            },
+            "remainingAmount": 0.0,
+            "requestedLaps": 0.0,
+            "requiredAmount": 0.0,
+            "resource": "virtual_energy",
+            "satisfied": true
+          }
+        },
+        "worstCase": {
+          "compoundSeconds": 0.0,
+          "degradationSeconds": 1.0,
+          "formationSeconds": 3.0,
+          "fuelWeightSeconds": 0.0,
+          "greenSeconds": 450.0,
+          "pitSeconds": 10.5,
+          "savingSeconds": 0.0,
+          "totalSeconds": 464.5,
+          "weatherSeconds": 0.0
+        },
+        "best": {
+          "stints": [
+            {
+              "index": 0,
+              "laps": 1,
+              "compound": "hard",
+              "tyreFitment": {
+                "frontLeft": "hard-0-0",
+                "frontRight": "hard-0-1",
+                "rearLeft": "hard-0-2",
+                "rearRight": "hard-0-3"
+              }
+            },
+            {
+              "index": 1,
+              "laps": 4,
+              "compound": "hard",
+              "tyreFitment": {
+                "frontLeft": "hard-0-0",
+                "frontRight": "hard-0-1",
+                "rearLeft": "hard-0-2",
+                "rearRight": "hard-0-3"
+              }
+            }
+          ],
+          "pitStops": [
+            {
+              "lap": 1,
+              "fuelLiters": 1.0,
+              "vePercent": 0.0,
+              "compound": "hard",
+              "changeTyres": false,
+              "tyreFitment": {
+                "frontLeft": "hard-0-0",
+                "frontRight": "hard-0-1",
+                "rearLeft": "hard-0-2",
+                "rearRight": "hard-0-3"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

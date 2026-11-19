@@ -126,8 +126,12 @@ fn multi_pit_bound(
     let driver = &m.drivers[0];
     let mut costs = vec![0.0; n as usize + 1];
     for length in 1..=n {
+        let fresh = super::model::Mounted {
+            compound: "",
+            age: 0,
+        };
         costs[length as usize] = m
-            .stint(1, length, m.fuel.capacity, &driver.id, &m.levels[0], "")?
+            .stint(1, length, m.fuel.capacity, &driver.id, &m.levels[0], fresh)?
             .degradation_seconds;
     }
     let fixed = m.pit(&PitDecision::default()).1;

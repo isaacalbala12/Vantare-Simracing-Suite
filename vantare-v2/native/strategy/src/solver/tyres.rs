@@ -354,6 +354,21 @@ fn assign(
     }
     false
 }
+/// Las ruedas montadas y su edad, para evaluar un tramo con ellas.
+pub(super) fn mounted<'a>(
+    choice: &'a Choice,
+    usage: &BTreeMap<String, u32>,
+    scalar_age: u32,
+) -> super::model::Mounted<'a> {
+    super::model::Mounted {
+        compound: &choice.compound,
+        age: age(choice, usage, scalar_age),
+    }
+}
+/// Vueltas que llevan rodadas las ruedas montadas. Es la edad que cuenta para
+/// la vida máxima y para el desgaste (#2691). Con inventario físico es lo que
+/// ha rodado ese juego en el plan, aunque se haya desmontado entre medias; sin
+/// inventario, `scalar_age`: las vueltas desde el último cambio de ruedas.
 pub(super) fn age(choice: &Choice, usage: &BTreeMap<String, u32>, scalar_age: u32) -> u32 {
     choice.fitment.as_ref().map_or(scalar_age, |f| {
         f.ids()

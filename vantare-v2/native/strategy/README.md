@@ -106,8 +106,44 @@ cambio de resultado intencionado y revisado.
   no hay plan. Con pasos finos (búsqueda extendida) no se señala parada.
 - «Cabe» se mide con el depósito lleno en la salida, que es como simula la
   búsqueda; el plan publicado informa después de la salida mínima (#2692).
-- Los neumáticos no se fijan: el modelo reinicia el desgaste en cada tramo
-  aunque no se cambien ruedas (#2691).
+
+### Desgaste de neumáticos acumulado (#2691)
+
+El desgaste de cada vuelta depende de la **edad de las ruedas** en esa vuelta:
+las vueltas que llevan rodadas. La edad solo vuelve a cero al montar ruedas
+nuevas. Un tramo de `n` vueltas que empieza con ruedas de edad `e` paga
+`w(e+1) + … + w(e+n)`, donde `w(a)` es la pérdida de la vuelta en que las
+ruedas hacen su vuelta número `a`:
+
+- desgaste lineal (`degradationPerLapSeconds`, o la pendiente de un compuesto):
+  `w(a) = pérdida × (a − 1)`. El tramo paga lo de siempre más
+  `pérdida × e × n`;
+- curva de un compuesto o curva combinada de la proyección: el valor de la
+  curva en la edad `a` (`sorted_curve_delta`), con su extrapolación de siempre
+  más allá del último punto;
+- compuesto con valores propios en un tramo de clima: su corrección se mira
+  también en la edad `a`.
+
+Con ruedas nuevas (`e = 0`) son exactamente las cuentas anteriores: un plan en
+que todas las paradas montan ruedas nuevas se evalúa igual, bit a bit. La edad
+es la misma que ya contaba para la vida máxima (`tyres::age`): sin inventario
+físico, las vueltas desde el último cambio de ruedas; con inventario, lo que ha
+rodado ese juego en el plan, aunque se haya desmontado entre medias (un juego
+usado que se vuelve a montar sigue con su edad). El tiempo en boxes no cambia:
+sin cambio de ruedas no se paga su servicio.
+
+Límites conocidos: una rueda que el inventario declara usada antes de la
+carrera (`stints > 0`) empieza con edad 0, porque el inventario no trae sus
+vueltas; y la curva combinada de la proyección mezcla combustible y ruedas
+(`combined_only`), así que al seguir con las mismas ruedas continúa entera por
+la edad de las ruedas.
+
+Antes de #2691 el desgaste de cada tramo se contaba desde cero aunque la parada
+no cambiara ruedas (herencia de Go). Cuatro casos del oráculo Go elegían por eso
+un plan sin cambio de ruedas y cambian de resultado: están en
+`testdata/oracle-deviations/2691-tyre-wear.json`, con lo que decía Go y lo que
+se espera ahora, y explicados en `docs/desviaciones-oraculo-go.md`. Los ficheros
+de Go no se tocan.
 
 ### Límites de lo que se puede fijar (#2692, #2709)
 

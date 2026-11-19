@@ -213,7 +213,9 @@ pub(super) fn solve(
             s.evaluation.total_seconds,
         )
     });
-    // These models have no negative or age-dependent pace adjustments.
+    // These models have no negative pace adjustments: no lap is faster than
+    // the base pace. Tyres that are not changed keep wearing (#2691), which
+    // only adds time, so the bound stays optimistic.
     // Other dimensions retain the original enumeration without this bound.
     let minimum_lap_seconds = (!risk
         && m.dims.weather.is_none()
@@ -329,7 +331,7 @@ pub(super) fn solve(
                             node.fuel,
                             &driver.id,
                             level,
-                            &node.tyre.compound,
+                            super::tyres::mounted(&node.tyre, &node.tyre_usage, node.age),
                         )?;
                         after.evaluation.add(&eval);
                         if m.apply_driver(

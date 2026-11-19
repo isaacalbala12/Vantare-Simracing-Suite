@@ -194,7 +194,7 @@ fn parity_case(case: &Value) {
                 "{name}"
             );
         }
-        let e = &case["result"];
+        let e = &expected_result(case, name);
         assert_eq!(a.result.feasible, e["feasible"], "{name}/feasible");
         if a.result.feasible {
             fields(&json!(a.result.expected), &e["expected"], name);
@@ -221,6 +221,105 @@ fn parity_case(case: &Value) {
         }
     }
 }
+/// Desviación del oráculo Go #2691. Go contaba el desgaste de cada tramo desde
+/// cero aunque la parada no cambiara ruedas; el cálculo lo acumula. Los
+/// ficheros de Go no se tocan: los casos cuyo resultado cambia y lo que se
+/// espera ahora de cada uno están en este fichero aparte.
+const GO_DEVIATIONS: &str = include_str!("../../testdata/oracle-deviations/2691-tyre-wear.json");
+
+fn go_deviations() -> Vec<Value> {
+    let file: Value = serde_json::from_str(GO_DEVIATIONS).expect("desviaciones del oráculo");
+    file["cases"].as_array().expect("casos").clone()
+}
+
+/// Lo que se espera de la búsqueda de un caso: lo que dice Go, salvo en las
+/// desviaciones #2691, que se comparan con lo esperado ahora tras comprobar que
+/// Go sigue diciendo lo que quedó anotado.
+fn expected_result(case: &Value, name: &str) -> Value {
+    let Some(deviation) = go_deviations()
+        .into_iter()
+        .find(|deviation| deviation["name"] == name)
+    else {
+        return case["result"].clone();
+    };
+    fields(
+        &case["result"]["expected"],
+        &deviation["go"]["expected"],
+        name,
+    );
+    deviation["result"].clone()
+}
+
+/// Las desviaciones son las cuatro revisadas y ninguna más, cada una con su
+/// porqué comprobado: Go elegía un plan sin cambio de ruedas, ese plan vale
+/// ahora lo anotado y lo esperado ahora queda entre los dos.
+#[test]
+fn deviations_from_the_go_oracle_are_the_four_reviewed_tyre_cases() {
+    use sha2::{Digest, Sha256};
+    // Git fija eol=lf; un checkout Windows antiguo puede conservar CRLF.
+    let text = GO_DEVIATIONS.replace("\r\n", "\n");
+    assert_eq!(
+        format!("{:x}", Sha256::digest(text.as_bytes())),
+        "f0bdfd6986ce4e637f9000e741b94806475793d726b219609187e96f54750386",
+        "el fichero de desviaciones cambia: revísalo y actualiza su huella"
+    );
+    let deviations = go_deviations();
+    let names: Vec<&str> = deviations
+        .iter()
+        .map(|deviation| deviation["name"].as_str().expect("nombre"))
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "tyres-parallel-life0-sets1",
+            "tyres-parallel-life0-sets2",
+            "tyres-sequential-life0-sets1",
+            "tyres-sequential-life0-sets2",
+        ]
+    );
+    let oracle: Vec<Value> =
+        serde_json::from_str(include_str!("../../testdata/oracle/solver-tyres.json"))
+            .expect("oráculo");
+    let seconds = |value: &Value| value["totalSeconds"].as_f64().expect("segundos");
+    for deviation in &deviations {
+        let name = deviation["name"].as_str().expect("nombre");
+        assert_eq!(deviation["file"], "solver-tyres.json", "{name}");
+        let case = oracle
+            .iter()
+            .find(|case| case["name"] == name)
+            .unwrap_or_else(|| panic!("{name}: no está en el oráculo"));
+        let go = &case["result"];
+        // Go: un plan con una parada sin cambio de ruedas.
+        assert!(
+            go["best"]["pitStops"]
+                .as_array()
+                .expect("paradas")
+                .iter()
+                .any(|stop| stop["changeTyres"] == false),
+            "{name}: el plan de Go cambia ruedas en todas las paradas"
+        );
+        fields(&go["expected"], &deviation["go"]["expected"], name);
+        // Ese mismo plan, evaluado ahora.
+        let input: Input = serde_json::from_value(case["input"].clone()).expect("entrada");
+        let plan: DecisionVector =
+            serde_json::from_value(semantic_decision(go["best"].clone())).expect("plan de Go");
+        let replayed = replay_decision_v2(&input, &plan).expect("replay");
+        assert!(replayed.feasible, "{name}");
+        fields(
+            &json!(replayed.evaluation),
+            &deviation["goPlanNow"]["expected"],
+            name,
+        );
+        // Lo esperado ahora es más lento que lo que decía Go y más rápido que
+        // el plan de Go con su desgaste real.
+        let now = seconds(&deviation["result"]["expected"]);
+        assert!(
+            seconds(&go["expected"]) < now && now < replayed.evaluation.total_seconds,
+            "{name}: {now} s"
+        );
+    }
+}
+
 #[test]
 fn go_resource_and_replay_parity() {
     parity_cases(include_str!("../../testdata/oracle/solver-resources.json"));

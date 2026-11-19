@@ -425,7 +425,20 @@ function editedPlan(
 }
 
 // What the solver returns for a schedule: the mock always keeps it as given.
-function recalculated(editing: Editing, computeId: number): StrategyPlanView {
+//
+// In the Fuji scenes (`fuji`) it also says what the real solver says. The crate
+// test `fuji_with_virtual_energy_recalculates_the_edited_schedule_with_the_fallback`
+// shows that the exact search ends without a plan for a Fuji race with virtual
+// energy and an edited calendar, and that the greedy fallback then keeps the
+// calendar: the plan is valid but not proven (`partial`, reason
+// `searchBudgetExhausted`). A proven plan is the fastest of all calendars, so
+// another calendar is never faster: the QA figure adds two seconds per lap a
+// stop moved. The loads of each stop are not recalculated here (hand-made QA data).
+function recalculated(
+  editing: Editing,
+  computeId: number,
+  fuji: boolean,
+): StrategyPlanView {
   const plan = structuredClone(editing.base);
   const edit = editView(editing);
   const timeline = plan.result?.timeline;
@@ -435,8 +448,27 @@ function recalculated(editing: Editing, computeId: number): StrategyPlanView {
       pit.lap = editing.laps[index];
     });
   }
+  if (fuji && plan.result?.metrics) {
+    const moved = editing.laps.reduce(
+      (laps, lap, index) =>
+        laps +
+        Math.abs(
+          lap - (editing.base.result?.timeline?.pits[index]?.lap ?? lap),
+        ),
+      0,
+    );
+    plan.state = "partial";
+    plan.result.certificate = "not_proven";
+    plan.result.reason = "searchBudgetExhausted";
+    plan.result.metrics.totalSeconds += 2 * moved;
+  }
   return { ...plan, computeId, edit };
 }
+
+// The one Fuji calendar the crate test `an_edit_that_needs_an_extra_stop_is_refused_with_max_stops`
+// proves has no plan: the second stop one lap later (stints 43-43-41-43-42-24).
+// On the 1 % grid a second 43-lap stint is impossible, so the answer is «no plan».
+const fujiNoPlanLaps = [43, 86, 127, 170, 212];
 
 // What the solver answers when no plan has the schedule: no metrics, no timeline.
 function noSolution(
@@ -620,6 +652,8 @@ export function create(context: MockContext): MockHandler {
   ].some((prefix) => scenario.startsWith(prefix))
     ? "ready"
     : scenario;
+  // the scenes of Opus' Fuji case: the plan and, later, the accepted plan
+  const fuji = /^(planned|accepted)Fuji/.test(scenario);
   let saved =
     scenario === "noInputs"
       ? withoutInputs()
@@ -632,7 +666,7 @@ export function create(context: MockContext): MockHandler {
               ? opening
               : "empty",
           );
-  if (scenario.startsWith("plannedFuji")) saved = fujiDocument(saved);
+  if (fuji) saved = fujiDocument(saved);
   let current = structuredClone(saved);
   // The entries of each variant written in this session (create, confirm and a
   // calculation), as the host keeps them in the document; the others are the
@@ -1179,14 +1213,16 @@ export function create(context: MockContext): MockHandler {
         editing.error = failure;
       } else if (
         scenario === "recalcNoSolution" ||
-        scenario === "plannedFujiNoSolution"
+        scenario === "plannedFujiNoSolution" ||
+        (fuji &&
+          JSON.stringify(editing.laps) === JSON.stringify(fujiNoPlanLaps))
       ) {
         // QA: no plan for this schedule; the plan it started from stays the base
         editing.shown = noSolution(editing.base, finished);
         editing.pending = false;
         editing.error = null;
       } else {
-        const done = recalculated(editing, finished);
+        const done = recalculated(editing, finished, fuji);
         editing.base = done;
         editing.shown = done;
         editing.pending = false;

@@ -666,13 +666,16 @@ async function adjustStates(
     0,
   );
 
-  // a recalculated plan says it is a trial, in the summary and in Carrera
+  // a recalculated plan says it is a trial, in the summary and in Carrera. The
+  // first stop goes one lap earlier: the solver has a plan for that calendar (and
+  // not for the second stop one lap later), and does not prove it.
   await button(page, "Ajustar paradas").click();
-  await button(page, "+ 1 vuelta").press("Enter");
+  await page.getByRole("radio", { name: "Parada 1, vuelta 43" }).focus();
+  await button(page, "− 1 vuelta").press("Enter");
   await modified();
   await button(page, "Recalcular").press("Enter");
   await page
-    .getByText("Plan recalculado: 6 horas y 1 minuto; 5 paradas.", {
+    .getByText("Plan recalculado sin garantía de ser el más rápido.", {
       exact: true,
     })
     .waitFor({ state: "attached" });
@@ -687,7 +690,7 @@ async function adjustStates(
   await saveShot("plan-recalculado");
   await page.getByRole("tab", { name: "Carrera", exact: true }).click();
   await page
-    .getByText("Calculado · 6:01:04 · 5 paradas", { exact: true })
+    .getByText("Calculado · 6:01:06 · 5 paradas", { exact: true })
     .waitFor();
   assert.equal(await trial.count(), 1);
   await saveShot("carrera-plan-recalculado");
@@ -894,43 +897,37 @@ export async function checkStrategyScreen(
   } finally {
     await page.close();
   }
-
-  // Recorrido a 125 % con todas sus comprobaciones; el PNG solo bajo demanda.
-  {
-    await Promise.all(
-      (["light", "dark"] as const).map(async (scheme) => {
-        const page = await parent.context().newPage();
-        try {
-          const width = 1600;
-          await page.setViewportSize({ width, height: 900 });
-          await setup(page, scheme, 125);
-          await collection(page, base, "ready");
-          await until(
-            () =>
-              page.evaluate(
-                () => document.documentElement.style.zoom === "1.25",
-              ),
-            5000,
-            "Strategy zoom 125%",
-          );
-          await button(page, "Continuar").click();
-          const shot = async (name: string) => {
-            await verify(page, name, scheme, width);
-            const suffix = scheme === "dark" ? "oscuro" : "claro";
-            if (evidence)
-              await page.screenshot({
-                path: resolve(evidence, `zoom125-${name}-${suffix}.png`),
-              });
-          };
-          await shot("carrera");
-          await editRace(page, shot);
-          await planStates(page, base, scheme, width, shot, true);
-        } finally {
-          await page.close();
-        }
-      }),
-    );
-  }
+  await Promise.all(
+    (["light", "dark"] as const).map(async (scheme) => {
+      const page = await parent.context().newPage();
+      try {
+        const width = 1600;
+        await page.setViewportSize({ width, height: 900 });
+        await setup(page, scheme, 125);
+        await collection(page, base, "ready");
+        await until(
+          () =>
+            page.evaluate(() => document.documentElement.style.zoom === "1.25"),
+          5000,
+          "Strategy zoom 125%",
+        );
+        await button(page, "Continuar").click();
+        const shot = async (name: string) => {
+          await verify(page, name, scheme, width);
+          const suffix = scheme === "dark" ? "oscuro" : "claro";
+          if (evidence)
+            await page.screenshot({
+              path: resolve(evidence, `zoom125-${name}-${suffix}.png`),
+            });
+        };
+        await shot("carrera");
+        await editRace(page, shot);
+        await planStates(page, base, scheme, width, shot, true);
+      } finally {
+        await page.close();
+      }
+    }),
+  );
 
   for (const [scheme, zoom, folded] of [
     ["light", 125, false],

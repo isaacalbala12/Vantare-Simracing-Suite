@@ -121,6 +121,15 @@ async function moveSecondStop() {
   click("+ 1 vuelta");
   await heading("Plan modificado");
 }
+// Brings the first stop one lap forward (lap 43 to 42). The crate test
+// `fuji_with_virtual_energy_recalculates_the_edited_schedule_with_the_fallback`
+// shows the solver gives a plan for it, and not for the second stop one lap
+// later (`an_edit_that_needs_an_extra_stop_is_refused_with_max_stops`).
+async function moveFirstStopEarlier() {
+  fireEvent.click(screen.getByRole("radio", { name: "Parada 1, vuelta 43" }));
+  click("− 1 vuelta");
+  await heading("Plan modificado");
+}
 const notSaved = "Estos ajustes son para probar. No se guardan en el archivo.";
 
 // ---- the selector ----
@@ -511,13 +520,13 @@ describe("a plan with pending changes", () => {
         .querySelector(".strategy-file-state")
         ?.getAttribute("data-state");
     expect(fileState()).toBe("saved");
-    await moveSecondStop();
+    await moveFirstStopEarlier();
     expect(fileState()).toBe("saved");
     expect((button("Guardar") as HTMLButtonElement).disabled).toBe(true);
     click("Recalcular");
     await waitFor(() => expect(status()).toContain("Plan recalculado"));
     expect(fileState()).toBe("saved");
-    click("+ 1 vuelta");
+    click("− 1 vuelta");
     await heading("Plan modificado");
     click("Restablecer");
     await waitFor(() => expect(status()).toBe("Ajustes restablecidos."));
@@ -572,16 +581,19 @@ describe("a plan with pending changes", () => {
   it("applies the recalculated plan: new figures, announced, with no Restablecer left", async () => {
     mount("plannedFuji");
     await stops();
-    await moveSecondStop();
+    await moveFirstStopEarlier();
     click("Recalcular");
+    // the solver does not prove a recalculated Fuji calendar: it says so
     await waitFor(() =>
-      expect(status()).toBe("Plan recalculado: 6 horas y 1 minuto; 5 paradas."),
+      expect(status()).toBe(
+        "Plan recalculado sin garantía de ser el más rápido.",
+      ),
     );
     expect(screen.getAllByRole("status")).toHaveLength(1);
     expect(screen.queryByText("valor anterior")).toBeNull();
     expect(screen.queryByRole("button", { name: "Restablecer" })).toBeNull();
-    // the adjusted schedule is now the plan's
-    expect(screen.getByText("Vuelta 86")).toBeTruthy();
+    // the adjusted schedule is now the plan's, and no faster than the proven one
+    expect(screen.getByText("Vuelta 42")).toBeTruthy();
     expect(screen.queryByText(/pendiente de recalcular/)).toBeNull();
     // it can be adjusted again and the new ids are the ones the requests carry
     expect(
@@ -593,7 +605,7 @@ describe("a plan with pending changes", () => {
   it("says a recalculated plan has no guarantee, with the same words as a calculated one", async () => {
     mount("plannedFujiPartial");
     await stops();
-    await moveSecondStop();
+    await moveFirstStopEarlier();
     click("Recalcular");
     await waitFor(() =>
       expect(status()).toBe(
@@ -614,11 +626,11 @@ describe("a plan with pending changes", () => {
   it("uses the id of the recalculated plan for the next move", async () => {
     const request = mount("plannedFuji");
     await stops();
-    await moveSecondStop();
+    await moveFirstStopEarlier();
     click("Recalcular");
     await waitFor(() => expect(status()).toContain("Plan recalculado"));
     const [recalculated] = calls(request, "strategy.recalculate");
-    click("+ 1 vuelta");
+    click("− 1 vuelta");
     await waitFor(() =>
       expect(calls(request, "strategy.moveStop")).toHaveLength(2),
     );
@@ -630,7 +642,7 @@ describe("a plan with pending changes", () => {
   it("sends a single request for a double click on Recalcular", async () => {
     const request = mount("plannedFuji");
     await stops();
-    await moveSecondStop();
+    await moveFirstStopEarlier();
     const recalculate = button("Recalcular");
     fireEvent.click(recalculate);
     fireEvent.click(recalculate);
@@ -1252,10 +1264,10 @@ describe("Confirmar y calcular with adjustments pending", () => {
 const trial = "Plan recalculado de prueba: no se guarda en el archivo.";
 const fileState = () =>
   document.querySelector(".strategy-file-state")?.getAttribute("data-state");
-// Moves the second stop, recalculates and waits for the new plan.
+// Moves the first stop, recalculates and waits for the new plan.
 async function recalculated() {
   await stops();
-  await moveSecondStop();
+  await moveFirstStopEarlier();
   click("Recalcular");
   await waitFor(() => expect(status()).toContain("Plan recalculado"));
 }
@@ -1272,7 +1284,7 @@ describe("the mark of a recalculated plan", () => {
     expect(fileState()).toBe("saved");
     fireEvent.click(tab("Carrera"));
     expect(screen.getAllByText(trial)).toHaveLength(1);
-    expect(screen.getByText("Calculado · 6:01:04 · 5 paradas")).toBeTruthy();
+    expect(screen.getByText("Calculado · 6:01:06 · 5 paradas")).toBeTruthy();
     expect(fileState()).toBe("saved");
   });
 
@@ -1436,7 +1448,7 @@ describe("the mark of a recalculated plan", () => {
     );
     const view = render(shell(first));
     await stops();
-    await moveSecondStop();
+    await moveFirstStopEarlier();
     click("Recalcular");
     await waitFor(() => expect(status()).toContain("Plan recalculado"));
     click("Resumen");
@@ -1456,8 +1468,8 @@ describe("the mark of a recalculated plan", () => {
     await heading("Plan modificado");
     click("Restablecer");
     await waitFor(() => expect(status()).toBe("Ajustes restablecidos."));
-    // Vuelta 86 is the recalculated plan: Restablecer does not go back to the file's
-    expect(screen.getByText("Vuelta 86")).toBeTruthy();
+    // Vuelta 42 is the recalculated plan: Restablecer does not go back to the file's
+    expect(screen.getByText("Vuelta 42")).toBeTruthy();
     click("Resumen");
     expect(screen.getAllByText(trial)).toHaveLength(1);
   });
@@ -1613,8 +1625,8 @@ describe("the mock host adjusts the plan in memory only", () => {
       method: "strategy.moveStop",
       revision,
       computeId,
-      index: 1,
-      delta: 1,
+      index: 0,
+      delta: -1,
     }).view;
     expect(moved?.plan.state).toBe("edited");
     expect([moved?.revision, moved?.dirty]).toEqual([revision, false]);
@@ -1626,22 +1638,24 @@ describe("the mock host adjusts the plan in memory only", () => {
     expect(started?.plan.state).toBe("calculating");
     expect([started?.revision, started?.dirty]).toEqual([revision, false]);
     const done = send({ method: "strategy.view" }).view;
-    expect(done?.plan.state).toBe("calculated");
-    expect(done?.plan.edit?.stops[1].lap).toBe(86);
+    // not proven: the solver keeps the calendar but does not prove it
+    expect(done?.plan.state).toBe("partial");
+    expect(done?.plan.result?.certificate).toBe("not_proven");
+    expect(done?.plan.edit?.stops[0].lap).toBe(42);
     expect([done?.revision, done?.dirty]).toEqual([revision, false]);
     const again = send({
       method: "strategy.moveStop",
       revision,
       computeId: done?.plan.computeId ?? 0,
-      index: 1,
-      delta: 1,
+      index: 0,
+      delta: -1,
     }).view;
     const reset = send({
       method: "strategy.resetEdit",
       revision,
       computeId: again?.plan.computeId ?? 0,
     }).view;
-    expect(reset?.plan.edit?.stops[1].lap).toBe(86);
+    expect(reset?.plan.edit?.stops[0].lap).toBe(42);
     expect(reset?.plan.edit?.canReset).toBe(false);
     expect([reset?.revision, reset?.dirty]).toEqual([revision, false]);
   });
@@ -1706,4 +1720,58 @@ describe("the mock host adjusts the plan in memory only", () => {
       }).error?.kind,
     ).toBe("strategyConflict");
   });
+});
+
+// ---- what the real solver answers to a recalculated Fuji calendar ----
+
+describe("the recalculation of the Fuji scenes", () => {
+  function host(scene = "plannedFuji") {
+    const run = createMockHost(`strategy-${scene}`);
+    let id = 1;
+    return (request: Request) => {
+      const reply = run({ kind: "request", id: id++, request });
+      if (reply?.kind === "failure") return { error: reply.error };
+      if (reply?.kind !== "response") throw Error("no reply");
+      return { view: (reply.result as { value: StrategyView }).value };
+    };
+  }
+  function recalculate(index: number, delta: -1 | 1) {
+    const send = host();
+    const opened = send({ method: "strategy.open" }).view;
+    const computeId = opened?.plan.computeId;
+    if (!opened || !computeId) throw Error("no plan");
+    const { revision } = opened;
+    send({ method: "strategy.moveStop", revision, computeId, index, delta });
+    send({ method: "strategy.recalculate", revision, computeId });
+    return {
+      before: opened.plan.result?.metrics?.totalSeconds,
+      done: send({ method: "strategy.view" }).view,
+    };
+  }
+
+  it("has no plan for the second stop one lap later, as the crate proves", () => {
+    const { done } = recalculate(1, 1);
+    expect(done?.plan.result?.certificate).toBe("no_solution");
+    expect(done?.plan.result?.reason).toBe("constraintsUnsatisfiable");
+    expect(done?.plan.result?.metrics).toBeNull();
+    expect(done?.plan.result?.timeline).toBeNull();
+  });
+
+  it.each([
+    [0, -1, 42],
+    [3, -1, 169],
+    [4, -1, 211],
+  ] as const)(
+    "gives a plan that keeps the calendar but is not proven when stop %i moves %i lap",
+    (index, delta, lap) => {
+      const { before, done } = recalculate(index, delta);
+      const plan = done?.plan;
+      expect(plan?.state).toBe("partial");
+      expect(plan?.result?.certificate).toBe("not_proven");
+      expect(plan?.result?.reason).toBe("searchBudgetExhausted");
+      expect(plan?.result?.timeline?.pits[index].lap).toBe(lap);
+      // a proven plan is the fastest of all calendars: another one is never faster
+      expect(plan?.result?.metrics?.totalSeconds).toBeGreaterThan(before ?? 0);
+    },
+  );
 });

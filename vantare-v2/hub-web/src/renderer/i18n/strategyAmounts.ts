@@ -30,6 +30,7 @@ export const amounts = {
   pitTime: "Tiempo en boxes",
   pitBefore: (time: string) => `antes ${time}`,
   unused: "Este coche no usa energía virtual.",
+  unusedFuel: "Este coche no usa combustible.",
   limits: {
     arrival: (a: string, b: string, unit: string) =>
       a === b
@@ -48,14 +49,14 @@ export const amounts = {
   issue: {
     // la vuelta es la del anfitrión; sin ella, solo se dice que no llega con reserva
     belowMinLap: (value: string, what: "fuel" | "ve", lap: number) =>
-      `Con ${value} no hay plan: te quedarías sin ${what === "fuel" ? "combustible" : "energía"} en la vuelta ${lap}, aunque cargues lo máximo en las otras paradas.`,
+      `Con ${value} no hay plan: te quedarías sin ${what === "fuel" ? "combustible" : "energía"} en la vuelta ${lap}, aunque las paradas automáticas de antes carguen lo máximo.`,
     belowMinReserve: (value: string) =>
       `Con ${value} llegas a meta, pero sin la reserva que pediste.`,
     needsAtLeast: (value: string) => `Hace falta al menos ${value}.`,
     aboveMax: (value: string, max: string) =>
       `Con ${value} no hay plan: aquí se puede fijar como mucho ${max}.`,
     noRange:
-      "Con lo que has fijado en las otras paradas, aquí no hay ninguna cantidad que dé plan. Prueba a volver alguna parada a automático.",
+      "Con lo demás como está, aquí no hay ninguna cantidad que dé plan. Prueba a mover una parada o a volver alguna cantidad a automático.",
   },
   // what a refused amount leaves: the host keeps the last valid one
   keeps: (value: string) => `El plan se queda con ${value}.`,
@@ -78,17 +79,16 @@ export const amounts = {
     notInUseFuel: "Este coche no usa combustible: no se puede fijar.",
     notInUseEnergy: "Este coche no usa energía virtual: no se puede fijar.",
   },
-  foot: "Lo que fijes a mano se respeta al recalcular; el resto lo decide el cálculo. Las ruedas y el modo de servicio los decide siempre el cálculo.",
+  foot: "Lo que fijes a mano se respeta al recalcular; el resto lo decide el cálculo. Al pasar a «A mano» se fija el valor que ha calculado Vantare; luego puedes cambiarlo. Las ruedas y el modo de servicio los decide siempre el cálculo.",
   clear: "Volver todo a automático",
   announce: {
     fixed: (stop: number, what: "fuel" | "ve", value: string) =>
-      `Parada ${stop}: ${what === "fuel" ? "combustible" : "energía"} fijado en ${value}.`,
+      `Parada ${stop}: ${what === "fuel" ? "combustible fijado" : "energía fijada"} en ${value}.`,
     automatic: (stop: number, what: "fuel" | "ve") =>
       `Parada ${stop}: ${what === "fuel" ? "combustible" : "energía"} en automático.`,
     cleared: "Todo vuelve a automático. Recalcula para ver el plan.",
     noPlanFor: (stop: number) =>
       `Ningún plan cumple lo que fijaste: mira la parada ${stop}.`,
-    noPlan: "Ningún plan cumple lo que fijaste.",
   },
   summary: {
     one: (stop: number, value: string) =>
@@ -97,16 +97,15 @@ export const amounts = {
   },
   pending:
     "«Restablecer» vuelve al último plan válido, con las cantidades que tuviera fijadas; para quitar todo lo fijado, usa «Volver todo a automático».",
-  pendingFixed:
-    "Al recalcular, Vantare respeta lo que fijaste y decide el resto.",
   certificate: {
-    title: "Comprobado: es el plan más rápido respetando lo que fijaste",
+    // a plan with amounts fixed always comes from a recalculation of fixed stops
+    title:
+      "Comprobado: con estas paradas y lo que fijaste, es el plan más rápido",
     detail: (steps: string) =>
-      `Vantare ha dejado tal cual lo que fijaste y ha revisado todas las formas de repartir el resto${steps ? `, ${steps}` : ""}.`,
+      `Vantare ha dejado las paradas y lo que fijaste tal cual y ha revisado todas las formas de repartir el resto${steps ? `, ${steps}` : ""}.`,
   },
   figure: {
     slower: (amount: string) => `${amount} más que el automático`,
-    faster: (amount: string) => `${amount} menos que el automático`,
     fixedStops: (count: number) =>
       count === 1
         ? "1 con cantidades fijadas"

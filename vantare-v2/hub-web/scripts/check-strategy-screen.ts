@@ -1691,7 +1691,9 @@ const modeRadio = (page: Page, what: string, stop: number, label: string) =>
     .getByRole("radio", { name: label, exact: true });
 // the stop chips are radios: the first takes the focus, the arrows walk to the rest
 async function pickStop(page: Page, stop: number) {
-  await page.getByRole("radio", { name: /^Parada 1, vuelta/ }).focus();
+  const first = page.getByRole("radio", { name: /^Parada 1, vuelta/ });
+  await first.focus();
+  await focused(first);
   for (let step = 1; step < stop; step++)
     await page.keyboard.press("ArrowRight");
   await visible(
@@ -1703,15 +1705,13 @@ async function pickStop(page: Page, stop: number) {
 }
 // «A mano» with the arrow key from «Automático»: the box opens with the focus in it
 async function toManual(page: Page, what: string, stop: number) {
-  await modeRadio(page, what, stop, "Automático").focus();
+  const from = modeRadio(page, what, stop, "Automático");
+  await from.focus();
+  await focused(from);
   await page.keyboard.press("ArrowRight");
   const box = amountBox(page, what, stop);
   await visible(box);
-  await until(
-    () => box.evaluate((node) => node === document.activeElement),
-    5000,
-    "the amount box takes the focus",
-  );
+  await focused(box);
   return box;
 }
 async function typeAmount(box: Locator, text: string) {
@@ -1838,7 +1838,9 @@ async function amountStates(
   await shot("m-error");
 
   // m-rejilla: the nearest amounts the grid takes
-  await modeRadio(page, "Energía", 2, "A mano").focus();
+  const manualEnergy = modeRadio(page, "Energía", 2, "A mano");
+  await manualEnergy.focus();
+  await focused(manualEnergy);
   await page.keyboard.press("ArrowLeft");
   await visible(page.getByText("lo decide el cálculo", { exact: true }));
   await typeAmount(fuel, "70,5");
@@ -1884,7 +1886,7 @@ async function amountStates(
   await press(button(page, "Resumen"));
   await visible(
     page.getByText(
-      "Comprobado: es el plan más rápido respetando lo que fijaste",
+      "Comprobado: con estas paradas y lo que fijaste, es el plan más rápido",
       { exact: true },
     ),
   );
@@ -1912,7 +1914,9 @@ async function amountStates(
     name: "¿Calcular de nuevo y perder lo que fijaste?",
   });
   await visible(question);
-  await focusVisible(question.getByRole("button", { name: "Cancelar" }));
+  const cancel = question.getByRole("button", { name: "Cancelar" });
+  await focused(cancel);
+  await focusVisible(cancel);
   assert.equal(await computes(), 0);
   await shot("m-calcular");
   await page.keyboard.press("Escape");
@@ -1921,6 +1925,7 @@ async function amountStates(
     5000,
     "the question closes",
   );
+  await focused(button(page, "Calcular de nuevo"));
   await focusVisible(button(page, "Calcular de nuevo"));
   assert.equal(await computes(), 0);
 

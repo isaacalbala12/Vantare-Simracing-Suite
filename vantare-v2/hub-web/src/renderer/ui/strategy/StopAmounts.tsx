@@ -35,7 +35,8 @@ export type AmountActions = {
     fuelLiters: number | null,
     vePercent: number | null,
   ) => Promise<AmountAnswer | undefined>;
-  clearStopServices: () => void;
+  // resolves to whether the host took it
+  clearStopServices: () => Promise<boolean>;
 };
 
 // The mark of an amount (or a stop) the person fixed by hand.
@@ -113,14 +114,17 @@ function AmountRow(row: Row) {
   const name = useId();
   const described = [
     `${id}-limits`,
-    lines?.issue ? `${id}-issue` : undefined,
+    lines?.issue && !message ? `${id}-issue` : undefined,
     message ? `${id}-error` : undefined,
     message ? `${id}-kept` : undefined,
   ]
     .filter(Boolean)
     .join(" ");
   const shown = draft ?? (fixed === null ? "" : amountText(fixed));
-  const spelled = step === null ? null : amountText(step);
+  const spelled =
+    step === null || !Number.isFinite(step) || step <= 0
+      ? null
+      : amountText(step);
 
   function commit() {
     // what was refused is not sent again until it changes
@@ -150,7 +154,10 @@ function AmountRow(row: Row) {
       row.setDraft(undefined);
     }
   }
-  // the buttons move the amount that is on the box by a step of the grid
+  // The buttons move the amount that is on the box by the step of the grid. The step is
+  // the host's (`steps` of the plan: what the calculation really loads by), never one
+  // written here, and without it there are no buttons. It is the person's own number
+  // moved a step; the host is who says whether it is valid (`offGrid`, with the nearest).
   function nudge(direction: -1 | 1) {
     if (step === null) return;
     const base = parseAmount(draft ?? "") ?? fixed ?? planned;
@@ -206,18 +213,16 @@ function AmountRow(row: Row) {
           </>
         ) : (
           <div className="strategy-amount-stepper">
-            <Button
-              size="sm"
-              disabled={disabled || step === null}
-              aria-label={
-                spelled === null
-                  ? undefined
-                  : amounts.less(spelled, unit, unitName, n)
-              }
-              onClick={() => nudge(-1)}
-            >
-              {amounts.symbols.minus}
-            </Button>
+            {spelled !== null && (
+              <Button
+                size="sm"
+                disabled={disabled}
+                aria-label={amounts.less(spelled, unit, unitName, n)}
+                onClick={() => nudge(-1)}
+              >
+                {amounts.symbols.minus}
+              </Button>
+            )}
             <span className="strategy-input">
               <input
                 ref={row.focusRef}
@@ -237,18 +242,16 @@ function AmountRow(row: Row) {
               />
               <span aria-hidden="true">{unit}</span>
             </span>
-            <Button
-              size="sm"
-              disabled={disabled || step === null}
-              aria-label={
-                spelled === null
-                  ? undefined
-                  : amounts.more(spelled, unit, unitName, n)
-              }
-              onClick={() => nudge(1)}
-            >
-              {amounts.symbols.plus}
-            </Button>
+            {spelled !== null && (
+              <Button
+                size="sm"
+                disabled={disabled}
+                aria-label={amounts.more(spelled, unit, unitName, n)}
+                onClick={() => nudge(1)}
+              >
+                {amounts.symbols.plus}
+              </Button>
+            )}
           </div>
         )}
       </div>
@@ -393,7 +396,9 @@ export function StopAmounts({
     unused[amount] ? (
       <div key={amount} className="strategy-amount" data-unused="">
         <span className="strategy-amount-name">{rowName(amount)}</span>
-        <p className="strategy-amount-unused">{amounts.unused}</p>
+        <p className="strategy-amount-unused">
+          {amount === "fuel" ? amounts.unusedFuel : amounts.unused}
+        </p>
       </div>
     ) : (
       <AmountRow

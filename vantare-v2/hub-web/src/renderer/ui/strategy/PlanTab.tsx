@@ -496,6 +496,25 @@ function Result({
       againRef.current?.focus();
     }
   }, [asking]);
+  // the fixed «no plan» screen was on view (see `fixedNoPlan`)
+  const keptFixed = useRef(false);
+  // Going back to automatic takes away the button that was pressed: the focus goes to
+  // Recalcular, which is what comes next.
+  const recalcRef = useRef<HTMLButtonElement>(null);
+  const [focusRecalc, setFocusRecalc] = useState(false);
+  useEffect(() => {
+    if (!focusRecalc || !recalcRef.current) return;
+    setFocusRecalc(false);
+    recalcRef.current.focus();
+  }, [focusRecalc]);
+  const clearAll = async () => {
+    const answer = await actions.edit.clearStopServices();
+    if (answer) setFocusRecalc(true);
+  };
+  const backToAutomatic = async (stop: number) => {
+    const answer = await actions.edit.setStopService(stop, null, null);
+    if (answer && "value" in answer) setFocusRecalc(true);
+  };
   const cancelRef = useRef<HTMLButtonElement>(null);
   const acceptRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLButtonElement>(null);
@@ -569,6 +588,23 @@ function Result({
     exporting.retry();
     exportRef.current?.focus();
   };
+  // «Calcular de nuevo» throws away what was fixed: the question is the same wherever
+  // the button is (the plan, or a calculation that did not finish)
+  const askCard = asking && (
+    <AgainCard
+      stops={fixedCount}
+      cancelRef={againCancel}
+      cancel={() => {
+        backToAgain.current = true;
+        setAskAgain(false);
+      }}
+      confirm={() => {
+        setAskAgain(false);
+        actions.calculate();
+      }}
+      pending={actions.pending}
+    />
+  );
   const again = (
     <Button
       ref={againRef}
@@ -595,10 +631,17 @@ function Result({
       {strategy.calc.accept.compare.back}
     </Button>
   );
+  // The screen of «no plan with what you fixed» stays while the person edits it, even
+  // once nothing is fixed any more (they went back to automatic), but a plan that
+  // never had anything fixed is the plain «no plan» one.
+  const noPlan = result.certificate === "no_solution" && !!edit;
   const fixedNoPlan =
-    result.certificate === "no_solution" &&
-    !!edit &&
-    (edit.cause !== null || fixedCount > 0 || edited);
+    noPlan &&
+    (edit.cause !== null || fixedCount > 0 || (edited && keptFixed.current));
+  useEffect(() => {
+    if (!noPlan) keptFixed.current = false;
+    else if (edit?.cause != null || fixedCount > 0) keptFixed.current = true;
+  });
   if (fixedNoPlan && edit)
     return (
       <>
@@ -613,6 +656,7 @@ function Result({
                 {reset}
                 {edited && (
                   <Button
+                    ref={recalcRef}
                     variant="primary"
                     onClick={() => setWantsRecalculation(true)}
                   >
@@ -632,6 +676,7 @@ function Result({
           edited={edited}
           locked={recalculating}
           set={actions.edit.setStopService}
+          back={backToAutomatic}
         />
       </>
     );
@@ -667,8 +712,9 @@ function Result({
           name={name}
           title={t.unfinished.heading}
           sub={t.unfinished.sub}
-          actions={again}
+          actions={asking ? undefined : again}
         />
+        {askCard}
         <Notice result={result} />
         <div className="strategy-actions">
           {reset}
@@ -702,7 +748,11 @@ function Result({
   const headActions = recalculating ? undefined : edited ? (
     <>
       {reset}
-      <Button variant="primary" onClick={() => setWantsRecalculation(true)}>
+      <Button
+        ref={recalcRef}
+        variant="primary"
+        onClick={() => setWantsRecalculation(true)}
+      >
         <Icon name="refresh" />
         {t.adjust.recalculate}
       </Button>
@@ -780,21 +830,7 @@ function Result({
           </div>
         </div>
       )}
-      {asking && (
-        <AgainCard
-          stops={fixedCount}
-          cancelRef={againCancel}
-          cancel={() => {
-            backToAgain.current = true;
-            setAskAgain(false);
-          }}
-          confirm={() => {
-            setAskAgain(false);
-            actions.calculate();
-          }}
-          pending={actions.pending}
-        />
-      )}
+      {askCard}
       {edit && (
         <EditNotices
           edit={edit}
@@ -819,7 +855,7 @@ function Result({
       {!edited && !recalculating && view === "summary" && gap && (
         <SlowerLine
           text={amounts.slower(gap.text, gap.automatic)}
-          clear={actions.edit.clearStopServices}
+          clear={() => void clearAll()}
           disabled={actions.pending}
         />
       )}
@@ -935,9 +971,7 @@ function Result({
                 }
                 move={actions.edit.moveStop}
                 set={actions.edit.setStopService}
-                clear={
-                  fixedCount > 0 ? actions.edit.clearStopServices : undefined
-                }
+                clear={fixedCount > 0 ? () => void clearAll() : undefined}
               />
               {!edited && <p className="strategy-help">{t.adjust.notSaved}</p>}
             </>

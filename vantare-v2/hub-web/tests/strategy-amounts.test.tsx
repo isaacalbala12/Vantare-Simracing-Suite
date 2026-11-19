@@ -571,7 +571,7 @@ describe("a recalculation with something fixed", () => {
     click("Resumen");
     expect(
       screen.getByText(
-        "Comprobado: es el plan más rápido respetando lo que fijaste",
+        "Comprobado: con estas paradas y lo que fijaste, es el plan más rápido",
       ),
     ).toBeTruthy();
   });
@@ -787,5 +787,435 @@ describe("the texts of the amounts", () => {
     expect(
       amountMessage(refusal("vePercent", "notInUse", null, null), null),
     ).toBe("Este coche no usa energía virtual: no se puede fijar.");
+  });
+});
+
+// ---- the review of #2723 ----
+
+const noMetrics = (view: StrategyView) => {
+  const { result } = view.plan;
+  if (result) {
+    result.certificate = "not_proven";
+    result.reason = "searchBudgetExhausted";
+    result.metrics = null;
+    result.timeline = null;
+  }
+  return view;
+};
+const withFixed = (view: StrategyView) => {
+  if (view.plan.edit) view.plan.edit.stops[1].fixed.fuelLiters = 77;
+  return view;
+};
+const question = "¿Calcular de nuevo y perder lo que fijaste?";
+
+describe("«Calcular de nuevo» in every state that offers it", () => {
+  it("asks in «Cálculo sin terminar» too, and sends nothing until it is confirmed", async () => {
+    const request = mount("plannedFuji", undefined, (view) =>
+      withFixed(noMetrics(view)),
+    );
+    await screen.findByRole("heading", { name: "Tus estrategias" });
+    click("Continuar");
+    fireEvent.click(tab("Plan"));
+    await heading("Cálculo sin terminar");
+    click("Calcular de nuevo");
+    const ask = await screen.findByRole("group", { name: question });
+    expect(document.activeElement).toBe(
+      within(ask).getByRole("button", { name: "Cancelar" }),
+    );
+    expect(calls(request, "strategy.compute")).toHaveLength(0);
+    fireEvent.keyDown(ask, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("group", { name: question })).toBeNull(),
+    );
+    expect(document.activeElement).toBe(button("Calcular de nuevo"));
+    click("Calcular de nuevo");
+    fireEvent.click(
+      within(await screen.findByRole("group", { name: question })).getByRole(
+        "button",
+        { name: "Calcular de nuevo" },
+      ),
+    );
+    await waitFor(() =>
+      expect(calls(request, "strategy.compute")).toHaveLength(1),
+    );
+  });
+
+  it("does not offer it while a recalculation runs", async () => {
+    await stops("plannedFujiRecalculating");
+    pick(2, 85);
+    await fix("Combustible", 2, "75");
+    await heading("Plan modificado");
+    click("Recalcular");
+    await heading("Recalculando…");
+    expect(
+      screen.queryByRole("button", { name: "Calcular de nuevo" }),
+    ).toBeNull();
+  });
+
+  it("does not offer it when no plan fits what was fixed: there are other ways out", async () => {
+    await stops();
+    pick(2, 85);
+    await fix("Combustible", 2, "40");
+    await heading("Plan modificado");
+    click("Recalcular");
+    await heading("Sin plan con lo que fijaste");
+    expect(
+      screen.queryByRole("button", { name: "Calcular de nuevo" }),
+    ).toBeNull();
+  });
+
+  it("does not ask when the accepted plan is on its own: nothing is fixed in the session there", async () => {
+    const request = mount("acceptedFujiStale");
+    await screen.findByRole("heading", { name: "Tus estrategias" });
+    click("Continuar");
+    fireEvent.click(tab("Plan"));
+    await heading("Plan aceptado");
+    // the accepted plan has no edit, so no fixed amount to lose
+    const view = await lastView(request);
+    expect(view.plan.edit).toBeNull();
+    click("Calcular con los datos nuevos");
+    await waitFor(() =>
+      expect(calls(request, "strategy.compute")).toHaveLength(1),
+    );
+    expect(screen.queryByRole("group", { name: question })).toBeNull();
+  });
+
+  it("has nothing fixed in the session after a failed calculation, so retrying asks nothing", async () => {
+    const request = mount("computeFailed");
+    await screen.findByRole("heading", { name: "Tus estrategias" });
+    click("Continuar");
+    fireEvent.click(tab("Plan"));
+    click("Calcular plan");
+    await screen.findByRole("alert");
+    const view = await lastView(request);
+    expect(view.plan.edit).toBeNull();
+    click("Reintentar");
+    await waitFor(() =>
+      expect(calls(request, "strategy.compute").length).toBeGreaterThan(1),
+    );
+    expect(screen.queryByRole("group", { name: question })).toBeNull();
+  });
+});
+
+describe("the plan with no plan and what was fixed", () => {
+  it("is not the fixed screen when nothing was ever fixed, even if it is edited", async () => {
+    await stops("plannedFuji", undefined, (view) => {
+      const { result, edit } = view.plan;
+      if (result && edit) {
+        result.certificate = "no_solution";
+        result.reason = "constraintsUnsatisfiable";
+        result.metrics = null;
+        result.timeline = null;
+        view.plan.state = "edited";
+      }
+      return view;
+    }).catch(() => undefined);
+    await heading("Sin plan posible");
+    expect(
+      screen.queryByRole("heading", { name: "Sin plan con lo que fijaste" }),
+    ).toBeNull();
+  });
+
+  it("keeps the stop selector on the one the host points at, also when it changes", async () => {
+    const { FixedNoPlan } = await import(
+      "../src/renderer/ui/strategy/FixedNoPlan"
+    );
+    const host = createMockHost("strategy-plannedFuji");
+    const opened = host({
+      kind: "request",
+      id: 1,
+      request: { method: "strategy.open" },
+    });
+    const edit =
+      opened?.kind === "response"
+        ? (opened.result as unknown as { value: StrategyView }).value.plan.edit
+        : null;
+    if (!edit) throw Error("no edit");
+    for (const stop of edit.stops) stop.fixed.fuelLiters = 70;
+    const props = {
+      steps: { fuelLiters: 1, vePercent: 1 },
+      edited: false,
+      locked: false,
+      set: async () => undefined,
+      back: () => undefined,
+    };
+    const cause = (stop: number) =>
+      ({
+        ...edit,
+        cause: { kind: "fixedAmountUnreachable", stop },
+      }) as typeof edit;
+    const view = render(<FixedNoPlan {...props} edit={cause(1)} />);
+    const selected = (stop: number) =>
+      (
+        screen.getByRole("radio", {
+          name: new RegExp(`^Parada ${stop}, vuelta`),
+        }) as HTMLInputElement
+      ).checked;
+    expect(selected(2)).toBe(true);
+    view.rerender(<FixedNoPlan {...props} edit={cause(3)} />);
+    await waitFor(() => expect(selected(4)).toBe(true));
+  });
+});
+
+describe("what the host says, said as it says it", () => {
+  it("says a fixed amount above what the others admit, with the most the host gives", async () => {
+    await stops();
+    pick(2, 85);
+    await fix("Combustible", 2, "82");
+    expect(
+      await screen.findByText(
+        "Con 82 L no hay plan: aquí se puede fijar como mucho 81 L.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("says no amount gives a plan «with what is as it is», not that other stops are fixed", async () => {
+    await stops("plannedFuji", undefined, (view) => {
+      const limits = view.plan.edit?.stops[1].limits;
+      if (limits?.kind === "exact" && limits.fuel.kind === "used") {
+        limits.fuel.range = null;
+        if (view.plan.edit?.stops[1].fixed.fuelLiters !== null)
+          limits.fuel.issue = "noRange";
+      }
+      return view;
+    });
+    pick(2, 85);
+    expect(
+      screen.getByText(
+        "Con lo demás como está, aquí no sirve ninguna cantidad.",
+      ),
+    ).toBeTruthy();
+    await fix("Combustible", 2, "75");
+    const note = await screen.findByText(
+      /^Con lo demás como está, aquí no hay ninguna cantidad que dé plan\./,
+    );
+    expect(note.textContent).not.toContain("fijado en las otras paradas");
+  });
+
+  it("says that only the automatic stops before are loaded to the most", async () => {
+    await stops();
+    pick(2, 85);
+    await fix("Combustible", 2, "60");
+    expect(
+      (
+        await screen.findByText(
+          /^Con 60 L no hay plan: te quedarías sin combustible/,
+        )
+      ).textContent,
+    ).toContain("aunque las paradas automáticas de antes carguen lo máximo");
+  });
+
+  it("says no arrival when the stop is not reached", async () => {
+    await stops("plannedFuji", undefined, (view) => {
+      const limits = view.plan.edit?.stops[1].limits;
+      if (limits?.kind === "exact" && limits.fuel.kind === "used")
+        limits.fuel.arrival = null;
+      return view;
+    });
+    pick(2, 85);
+    expect(
+      screen.getByText(
+        "Con lo que fijaste en las paradas de antes, no se llega a esta parada.",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("says the car does not use fuel, and the energy line stays", async () => {
+    await stops("plannedFuji", undefined, (view) => {
+      for (const stop of view.plan.edit?.stops ?? [])
+        if (stop.limits.kind === "exact") stop.limits.fuel = { kind: "unused" };
+      if (view.plan.result) view.plan.result.steps.fuelLiters = null;
+      return view;
+    });
+    pick(2, 85);
+    expect(screen.getByText("Este coche no usa combustible.")).toBeTruthy();
+    expect(screen.queryByText("Este coche no usa energía virtual.")).toBeNull();
+    expect(
+      screen.queryByRole("group", { name: /Combustible de la parada 2/ }),
+    ).toBeNull();
+    expect(mode("Energía", 2)).toBeTruthy();
+  });
+
+  it("describes a box only by what is drawn", async () => {
+    await stops();
+    pick(2, 85);
+    await fix("Combustible", 2, "60");
+    await screen.findByText(/^Con 60 L no hay plan/);
+    const described = () =>
+      (amount("Combustible", 2).getAttribute("aria-describedby") ?? "")
+        .split(" ")
+        .filter(Boolean);
+    for (const id of described())
+      expect(document.getElementById(id)).not.toBeNull();
+    // refused: the issue of the held amount is not drawn, so it is not described
+    type(amount("Combustible", 2), "90");
+    await screen.findByRole("alert");
+    expect(described().length).toBeGreaterThan(0);
+    for (const id of described())
+      expect(document.getElementById(id)).not.toBeNull();
+  });
+});
+
+describe("the certificate with what was fixed", () => {
+  it("says it is the fastest with these stops: a plan with fixed amounts always has its stops fixed", async () => {
+    await stops("plannedFujiFixedProven");
+    pick(5, 212);
+    await fix("Energía", 5, "80");
+    await heading("Plan modificado");
+    click("Recalcular");
+    await waitFor(() => expect(status()).toContain("Plan recalculado"));
+    click("Resumen");
+    expect(
+      screen.getByText(
+        "Comprobado: con estas paradas y lo que fijaste, es el plan más rápido",
+      ),
+    ).toBeTruthy();
+  });
+});
+
+describe("what is announced when the stop goes back to automatic", () => {
+  it("announces both amounts of the stop", async () => {
+    await stops();
+    pick(2, 85);
+    await fix("Combustible", 2, "40");
+    await screen.findByText(/^Con 40 L no hay plan/);
+    await fix("Energía", 2, "98");
+    await waitFor(() =>
+      expect(status()).toMatch(/^Parada 2: energía fijada en 98 %/),
+    );
+    await heading("Plan modificado");
+    click("Recalcular");
+    await screen.findByRole("alert");
+    click("Volver la parada 2 a automático");
+    await waitFor(() =>
+      expect(status()).toBe(
+        "Parada 2: combustible en automático. Parada 2: energía en automático.",
+      ),
+    );
+  });
+});
+
+describe("the steps of the buttons", () => {
+  async function withSteps(fuelStep: number | null) {
+    const request = await stops("plannedFuji", undefined, (view) => {
+      if (view.plan.result) view.plan.result.steps.fuelLiters = fuelStep;
+      return view;
+    });
+    pick(2, 85);
+    return request;
+  }
+
+  it.each([0.5, 2])("moves by the step the host says (%s)", async (step) => {
+    const request = await withSteps(step);
+    manual("Combustible", 2);
+    await waitFor(() => amount("Combustible", 2));
+    click(
+      `Añadir ${String(step).replace(".", ",")} L al combustible de la parada 2`,
+    );
+    await waitFor(() =>
+      expect(calls(request, "strategy.setStopService").at(-1)?.fuelLiters).toBe(
+        77 + step,
+      ),
+    );
+  });
+
+  it("offers no buttons, and invents no step, when the host gives none", async () => {
+    await withSteps(null);
+    manual("Combustible", 2);
+    await waitFor(() => amount("Combustible", 2));
+    expect(
+      screen.queryByRole("button", { name: /Añadir .* al combustible/ }),
+    ).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /Quitar .* al combustible/ }),
+    ).toBeNull();
+  });
+});
+
+describe("«A mano» says what it does", () => {
+  it("says that choosing it fixes the value the calculation gave", async () => {
+    await stops();
+    pick(2, 85);
+    expect(
+      screen.getByText(
+        /Al pasar a «A mano» se fija el valor que ha calculado Vantare; luego puedes cambiarlo\./,
+      ),
+    ).toBeTruthy();
+  });
+});
+
+describe("what the host refuses of a fixed amount", () => {
+  it.each(["busy", "protected", "rejected"] as const)(
+    "%s changes nothing and says it in the screen, not in the box",
+    async (kind) => {
+      const request = await stops("plannedFuji", (req) =>
+        req.method === "strategy.setStopService" ? { kind } : undefined,
+      );
+      pick(2, 85);
+      manual("Combustible", 2);
+      await screen.findAllByRole("alert");
+      expect(screen.queryByText("fijado por ti")).toBeNull();
+      expect(
+        screen.queryByRole("textbox", { name: "Combustible de la parada 2" }),
+      ).toBeNull();
+      const view = await lastView(request);
+      expect(view.plan.edit?.stops[1].fixed).toEqual({
+        fuelLiters: null,
+        vePercent: null,
+      });
+    },
+  );
+});
+
+describe("«Restablecer» when the last valid plan had amounts fixed", () => {
+  it("goes back to what that plan had fixed", async () => {
+    const request = await stops();
+    pick(5, 212);
+    await fix("Energía", 5, "80");
+    await heading("Plan modificado");
+    click("Recalcular");
+    await waitFor(() => expect(status()).toContain("Plan recalculado"));
+    click("Ajustar paradas");
+    pick(2, 85);
+    await fix("Combustible", 2, "75");
+    await heading("Plan modificado");
+    click("Restablecer");
+    await waitFor(() => expect(status()).toBe("Ajustes restablecidos."));
+    const fixed = (await lastView(request)).plan.edit?.stops.map(
+      (stop) => stop.fixed,
+    );
+    expect(fixed?.[1]).toEqual({ fuelLiters: null, vePercent: null });
+    expect(fixed?.[4]).toEqual({ fuelLiters: null, vePercent: 80 });
+  });
+});
+
+describe("the focus after going back to automatic", () => {
+  it("goes to Recalcular when «Volver todo a automático» disappears", async () => {
+    await stops();
+    pick(2, 85);
+    await fix("Combustible", 2, "75");
+    await heading("Plan modificado");
+    const clear = button("Volver todo a automático");
+    clear.focus();
+    fireEvent.click(clear);
+    await waitFor(() => expect(screen.queryByText("fijado por ti")).toBeNull());
+    await waitFor(() =>
+      expect(document.activeElement).toBe(button("Recalcular")),
+    );
+  });
+
+  it("goes to Recalcular when «Volver la parada N a automático» disappears", async () => {
+    await stops();
+    pick(2, 85);
+    await fix("Combustible", 2, "40");
+    await heading("Plan modificado");
+    click("Recalcular");
+    await screen.findByRole("alert");
+    const back = button("Volver la parada 2 a automático");
+    back.focus();
+    fireEvent.click(back);
+    await waitFor(() =>
+      expect(document.activeElement).toBe(button("Recalcular")),
+    );
   });
 });

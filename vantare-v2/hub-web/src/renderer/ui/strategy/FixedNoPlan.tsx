@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   StrategyEditView,
   StrategyServiceSteps,
@@ -22,6 +22,7 @@ export function FixedNoPlan({
   edited,
   locked,
   set,
+  back,
 }: {
   edit: StrategyEditView;
   steps: StrategyServiceSteps;
@@ -29,11 +30,17 @@ export function FixedNoPlan({
   edited: boolean;
   locked: boolean;
   set: AmountActions["setStopService"];
+  // the stop the host points at goes back to automatic
+  back: (stop: number) => void;
 }) {
   const cause = edit.cause?.stop;
   const [selected, setSelected] = useState(
     cause ?? Math.max(0, edit.stops.findIndex(stopIsFixed)),
   );
+  // the host may point at another stop after another recalculation
+  useEffect(() => {
+    if (cause !== undefined) setSelected(cause);
+  }, [cause]);
   const index = Math.min(selected, edit.stops.length - 1);
   const n = amounts.noPlan;
   return (
@@ -66,7 +73,7 @@ export function FixedNoPlan({
                   size="sm"
                   variant="primary"
                   disabled={locked}
-                  onClick={() => void set(cause, null, null)}
+                  onClick={() => back(cause)}
                 >
                   {n.backStop(cause + 1)}
                 </Button>

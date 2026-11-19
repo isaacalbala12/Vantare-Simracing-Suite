@@ -183,6 +183,9 @@ export function automaticGap(
 ) {
   const total = result?.metrics?.totalSeconds;
   if (total === undefined || !automatic) return null;
+  // Decided by the root (#2723): this subtraction of two figures the host sent is
+  // formatting, not a calculation of the plan; the host stays the one that works out
+  // both durations. 0,05 s is what «0,0 s» rounds to, so it is not said.
   const gap = total - automatic.totalSeconds;
   if (!(gap >= 0.05)) return null;
   return { text: secondsText(gap), automatic: clock(automatic.totalSeconds) };

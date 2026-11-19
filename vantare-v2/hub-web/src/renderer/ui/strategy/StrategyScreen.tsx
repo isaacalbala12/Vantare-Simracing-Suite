@@ -312,39 +312,41 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     if (!result) return undefined;
     planAnswered(result);
     if ("value" in result) {
+      // every amount of the stop that changed (going back to automatic can be both)
       const before = view.plan.edit?.stops[index]?.fixed;
-      const changed =
-        before?.fuelLiters !== fuelLiters ? "fuel" : ("ve" as const);
-      const value = changed === "fuel" ? fuelLiters : vePercent;
-      // what the host now says of the amount: it may leave no plan
       const limits = result.value.plan.edit?.stops[index]?.limits;
-      const issue =
-        value !== null && limits?.kind === "exact"
-          ? limitLines(changed, limits[changed], value).issue
-          : null;
-      setAnnouncement(
-        [
-          value === null
-            ? amounts.announce.automatic(index + 1, changed)
-            : amounts.announce.fixed(
-                index + 1,
-                changed,
-                `${amountText(value)} ${amounts.unit[changed]}`,
-              ),
-          issue,
-        ]
-          .filter(Boolean)
-          .join(" "),
-      );
+      const said = (["fuel", "ve"] as const).flatMap((amount) => {
+        const was = amount === "fuel" ? before?.fuelLiters : before?.vePercent;
+        const value = amount === "fuel" ? fuelLiters : vePercent;
+        if (was === value) return [];
+        if (value === null)
+          return [amounts.announce.automatic(index + 1, amount)];
+        // what the host now says of the amount: it may leave no plan
+        const issue =
+          limits?.kind === "exact"
+            ? limitLines(amount, limits[amount], value).issue
+            : null;
+        return [
+          amounts.announce.fixed(
+            index + 1,
+            amount,
+            `${amountText(value)} ${amounts.unit[amount]}`,
+          ),
+          ...(issue ? [issue] : []),
+        ];
+      });
+      if (said.length > 0) setAnnouncement(said.join(" "));
     }
     return result;
   }
   async function clearStopServices() {
-    if (!view) return;
+    if (!view) return false;
     setAnnouncement("");
     const result = await strategyClearStopServices(act, view.plan);
     planAnswered(result);
-    if (result && "value" in result) setAnnouncement(amounts.announce.cleared);
+    const taken = !!result && "value" in result;
+    if (taken) setAnnouncement(amounts.announce.cleared);
+    return taken;
   }
   // Accepting, removing and showing the accepted plan act on the plan on view,
   // so a conflict is a conflict of the plan, not of the file.
@@ -758,7 +760,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
                       recalculate: () => void recalculate(),
                       reset: () => void resetEdit(),
                       setStopService,
-                      clearStopServices: () => void clearStopServices(),
+                      clearStopServices,
                     },
                     acceptance: {
                       accept: () => void acceptPlan(),

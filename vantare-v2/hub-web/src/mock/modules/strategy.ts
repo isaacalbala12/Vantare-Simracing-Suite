@@ -7,8 +7,11 @@ import corpus from "../../contract/generated/corpus/strategy.json";
 import type {
   StrategyAcceptedMark,
   StrategyAcceptedView,
+  StrategyAmountLimits,
+  StrategyAutomaticPlan,
   StrategyCalculationView,
   StrategyChange,
+  StrategyEditCause,
   StrategyEditError,
   StrategyExportFileValue,
   StrategyExportTarget,
@@ -17,6 +20,8 @@ import type {
   StrategyPlanView,
   StrategyReason,
   StrategySolverFields,
+  StrategyStopFixed,
+  StrategyStopLimits,
   StrategyUnreachableCause,
   StrategyView,
 } from "../../contract/generated/strategy";
@@ -257,10 +262,113 @@ function reasonPlan(reason: StrategyReason): StrategyPlanView {
   return structuredClone(plan) as StrategyPlanView;
 }
 
+// QA: the stops of the Fuji case and what each admits with nothing else fixed.
+// These numbers ARE the solver's (`fixed_stop_bounds` of the crate for 82 L at
+// 1,83012 L per lap and 100 % at 2,3158 % per lap, steps of 1, a reserve of 0,8
+// laps and the calendar 43-42-42-43-42-24): per stop, the levels one arrives
+// with and the least and the most that can be fixed.
+const fujiStops = [43, 85, 127, 170, 212];
+const fujiLimits: [fuel: number[], ve: number[]][] = [
+  [
+    [3.3, 3.3, 74, 78],
+    [0.42, 0.42, 97, 99],
+  ],
+  [
+    [0.44, 4.44, 73, 81],
+    [0.16, 2.16, 96, 99],
+  ],
+  [
+    [0.57, 4.57, 75, 81],
+    [0.89, 1.89, 98, 99],
+  ],
+  [
+    [0.88, 2.88, 74, 81],
+    [0.31, 0.31, 97, 99],
+  ],
+  [
+    [0.01, 5.01, 41, 81],
+    [0.05, 2.05, 56, 99],
+  ],
+];
+const fujiPerLap = { fuel: 1.83012, ve: 2.3158 };
+const nothingFixed: StrategyStopFixed = { fuelLiters: null, vePercent: null };
+
+function fujiStopLimits(index: number): StrategyStopLimits {
+  const used = ([arrivalMin, arrivalMax, min, max]: number[]) => ({
+    kind: "used" as const,
+    arrival: { min: arrivalMin, max: arrivalMax },
+    range: { min, max },
+    issue: null,
+    failLap: null,
+  });
+  return {
+    kind: "exact",
+    fuel: used(fujiLimits[index][0]),
+    ve: used(fujiLimits[index][1]),
+  };
+}
+
+// The limits of an amount with what they say of the amount fixed in it. The
+// mock does not work limits out: it keeps those of the plan the edit started
+// from and only compares. The lap it runs out in is the best case of the next
+// stint, and only the Fuji case has the consumption to give it (QA data).
+function withIssue(
+  limits: StrategyAmountLimits,
+  fixed: number | null,
+  lap: number,
+  perLap: number | null,
+): StrategyAmountLimits {
+  if (limits.kind !== "used") return limits;
+  const { arrival, range } = limits;
+  const issue =
+    fixed === null
+      ? null
+      : range === null
+        ? "noRange"
+        : fixed < range.min
+          ? "belowMin"
+          : fixed > range.max
+            ? "aboveMax"
+            : null;
+  return {
+    ...limits,
+    issue,
+    failLap:
+      issue === "belowMin" && fixed !== null && arrival && perLap
+        ? lap + Math.floor((arrival.max + fixed) / perLap) + 1
+        : null,
+  };
+}
+
+// The first stop whose fixed amount leaves no plan, as the limits say it.
+function unreachableStop(limits: StrategyStopLimits[]): number | undefined {
+  const index = limits.findIndex(
+    (stop) =>
+      stop.kind === "exact" &&
+      [stop.fuel, stop.ve].some(
+        (amount) => amount.kind === "used" && amount.issue !== null,
+      ),
+  );
+  return index < 0 ? undefined : index;
+}
+
+// The figures a plan with fixed amounts is compared with.
+function figures(plan: StrategyPlanView): StrategyAutomaticPlan | null {
+  const metrics = plan.result?.metrics;
+  const timeline = plan.result?.timeline;
+  return metrics && timeline
+    ? {
+        totalSeconds: metrics.totalSeconds,
+        fuelFinishLiters: timeline.fuelFinishLiters,
+        veFinishPercent: timeline.veFinishPercent,
+      }
+    : null;
+}
+
 // QA: the plan of Opus' Fuji case (236 laps, 6 stints, 5 stops), to see a plan
 // of a real size. Its figures were worked out by hand in the design, not by the solver.
 function fujiPlan(unproven: boolean): StrategyPlanView {
-  const stops = [43, 85, 127, 170, 212];
+  const stops = fujiStops;
   const loads = [
     [78, 99],
     [77, 97],
@@ -317,9 +425,14 @@ function fujiPlan(unproven: boolean): StrategyPlanView {
         maxLap: (stops[index + 1] ?? 236) - 1,
         fuelLiters: loads[index][0],
         vePercent: loads[index][1],
+        fixed: { ...nothingFixed },
+        pitSeconds: 1 + index + 60,
+        limits: fujiStopLimits(index),
       })),
       canReset: false,
       error: null,
+      cause: null,
+      automatic: null,
     },
   };
 }
@@ -341,6 +454,8 @@ function fujiMovedPlan(): StrategyPlanView {
   plan.edit.stops[0].lap = 42;
   plan.edit.stops[0].maxLap = 84;
   plan.edit.stops[1].minLap = 43;
+  // the mock has the limits of the Fuji calendar only, and this is another one
+  for (const stop of plan.edit.stops) stop.limits = { kind: "unavailable" };
   return plan;
 }
 
@@ -413,25 +528,99 @@ interface Editing {
   raceLaps: number;
   pending: boolean;
   error: StrategyEditError | null;
+  // what the person fixed by hand in each stop, and what the base plan had fixed
+  fixed: StrategyStopFixed[];
+  baseFixed: StrategyStopFixed[];
+  cause: StrategyEditCause | null;
+  // the last plan calculated with nothing fixed: its stop laps and its figures
+  automatic: { laps: number[]; figures: StrategyAutomaticPlan } | null;
+  // the limits of the plan the edit started from, and the calendar they are of
+  limits: { laps: number[]; stops: StrategyStopLimits[] };
+  // QA: the Fuji case, the only one with a consumption to say where it runs out
+  fuji: boolean;
 }
 
-function startEditing(plan: StrategyPlanView): Editing | undefined {
+// The seconds a fixed amount adds to its stop and to the plan (a QA figure,
+// not the pit model): two per amount that is not the one the plan loads.
+function fixedSeconds(
+  fixed: StrategyStopFixed | undefined,
+  pit: { fuelLiters: number; vePercent: number },
+): number {
+  const differs = (value: number | null | undefined, planned: number) =>
+    value !== null && value !== undefined && value !== planned;
+  return (
+    2 *
+    (Number(differs(fixed?.fuelLiters, pit.fuelLiters)) +
+      Number(differs(fixed?.vePercent, pit.vePercent)))
+  );
+}
+
+function somethingFixed(fixed: StrategyStopFixed[]): boolean {
+  return fixed.some(
+    (stop) => stop.fuelLiters !== null || stop.vePercent !== null,
+  );
+}
+
+function startEditing(
+  plan: StrategyPlanView,
+  fuji: boolean,
+): Editing | undefined {
   const pits = plan.result?.timeline?.pits;
   const stints = plan.result?.timeline?.stints;
   if (!pits || !stints || !plan.edit) return undefined;
+  const laps = pits.map((pit) => pit.lap);
+  const automatic = figures(plan);
   return {
     base: plan,
     shown: plan,
-    laps: pits.map((pit) => pit.lap),
+    laps,
     raceLaps: stints[stints.length - 1].toLap,
     pending: false,
     error: null,
+    fixed: laps.map(() => ({ ...nothingFixed })),
+    baseFixed: laps.map(() => ({ ...nothingFixed })),
+    cause: null,
+    automatic: automatic && { laps: [...laps], figures: automatic },
+    limits: {
+      laps: plan.edit.stops.map((stop) => stop.lap),
+      stops: plan.edit.stops.map((stop) => structuredClone(stop.limits)),
+    },
+    fuji,
   };
+}
+
+// The limits of the stops of the edit: those of the calendar the edit started
+// from, or none for any other calendar (as with a service step the calculation
+// coarsens).
+function stopLimits(editing: Editing): StrategyStopLimits[] {
+  if (JSON.stringify(editing.laps) !== JSON.stringify(editing.limits.laps))
+    return editing.laps.map(() => ({ kind: "unavailable" }));
+  const perLap = editing.fuji ? fujiPerLap : null;
+  return editing.limits.stops.map((stop, index) =>
+    stop.kind !== "exact"
+      ? stop
+      : {
+          kind: "exact",
+          fuel: withIssue(
+            stop.fuel,
+            editing.fixed[index].fuelLiters,
+            editing.laps[index],
+            perLap?.fuel ?? null,
+          ),
+          ve: withIssue(
+            stop.ve,
+            editing.fixed[index].vePercent,
+            editing.laps[index],
+            perLap?.ve ?? null,
+          ),
+        },
+  );
 }
 
 function editView(editing: Editing) {
   const bounds = [0, ...editing.laps, editing.raceLaps];
   const pits = editing.base.result?.timeline?.pits ?? [];
+  const limits = stopLimits(editing);
   return {
     stints: bounds.slice(1).map((toLap, index) => ({
       fromLap: bounds[index] + 1,
@@ -443,9 +632,21 @@ function editView(editing: Editing) {
       maxLap: (editing.laps[index + 1] ?? editing.raceLaps) - 1,
       fuelLiters: pits[index].fuelLiters,
       vePercent: pits[index].vePercent,
+      fixed: { ...editing.fixed[index] },
+      pitSeconds:
+        pits[index].pitSeconds -
+        fixedSeconds(editing.baseFixed[index], pits[index]) +
+        fixedSeconds(editing.fixed[index], pits[index]),
+      limits: limits[index],
     })),
     canReset: editing.pending || editing.shown !== editing.base,
     error: editing.error,
+    cause: editing.cause,
+    automatic:
+      somethingFixed(editing.fixed) &&
+      JSON.stringify(editing.automatic?.laps) === JSON.stringify(editing.laps)
+        ? (editing.automatic?.figures ?? null)
+        : null,
   };
 }
 
@@ -474,6 +675,8 @@ function editedPlan(
 // `searchBudgetExhausted`). A proven plan is the fastest of all calendars, so
 // another calendar is never faster: the QA figure adds two seconds per lap a
 // stop moved. The loads of each stop are not recalculated here (hand-made QA data).
+// A fixed amount is carried as it is, marked as fixed by hand, and each one
+// that is not what the plan loaded adds two seconds to its stop and to the plan.
 function recalculated(
   editing: Editing,
   computeId: number,
@@ -485,7 +688,20 @@ function recalculated(
   if (timeline) {
     timeline.stints = edit.stints;
     timeline.pits.forEach((pit, index) => {
+      const fixed = editing.fixed[index];
       pit.lap = editing.laps[index];
+      pit.pitSeconds = edit.stops[index].pitSeconds;
+      if (plan.result?.metrics)
+        plan.result.metrics.totalSeconds +=
+          fixedSeconds(fixed, pit) -
+          fixedSeconds(editing.baseFixed[index], pit);
+      pit.fuelLiters = fixed.fuelLiters ?? pit.fuelLiters;
+      pit.vePercent = fixed.vePercent ?? pit.vePercent;
+      pit.pinned = {
+        fuelLiters: fixed.fuelLiters !== null,
+        vePercent: fixed.vePercent !== null,
+        changeTyres: false,
+      };
     });
   }
   if (fuji && plan.result?.metrics) {
@@ -544,6 +760,39 @@ const recalculationErrors: Record<string, StrategyEditError> = {
   plannedFujiEventRules: "eventRulesConflict",
   plannedFujiEditFailed: "failed",
 };
+
+// Why an amount cannot be fixed whatever the other stops do, with the nearest
+// amounts that can; `undefined` when it can. The same closed reasons as the host.
+function invalidAmount(
+  amount: "fuelLiters" | "vePercent",
+  value: number | null,
+  step: number | null,
+  capacity: number,
+): HostError | undefined {
+  if (value === null) return undefined;
+  const refusal = (
+    reason: "negative" | "aboveCapacity" | "offGrid" | "notInUse",
+    below: number | null,
+    above: number | null,
+  ): HostError => ({
+    kind: "strategyInvalidStopService",
+    amount,
+    reason,
+    below,
+    above,
+  });
+  if (step === null || !(step > 0)) return refusal("notInUse", null, null);
+  if (!(value >= 0)) return refusal("negative", null, 0);
+  const top = Number.isFinite(capacity)
+    ? Math.floor(capacity / step + 1e-9) * step
+    : Number.MAX_VALUE;
+  if (value > top + 1e-9 && value > capacity)
+    return refusal("aboveCapacity", top, null);
+  const steps = value / step;
+  if (Math.abs(steps - Math.round(steps)) <= 1e-6) return undefined;
+  const below = Math.floor(steps) * step;
+  return refusal("offGrid", below, below + step <= top ? below + step : null);
+}
 
 function validNumber(value: string, minimum: number): boolean {
   return (
@@ -1166,6 +1415,8 @@ export function create(context: MockContext): MockHandler {
       request.method !== "strategy.cancel" &&
       request.method !== "strategy.moveBoundary" &&
       request.method !== "strategy.moveStop" &&
+      request.method !== "strategy.setStopService" &&
+      request.method !== "strategy.clearStopServices" &&
       request.method !== "strategy.recalculate" &&
       request.method !== "strategy.resetEdit" &&
       request.method !== "strategy.save" &&
@@ -1259,7 +1510,7 @@ export function create(context: MockContext): MockHandler {
         );
         // QA: a plan with no editable schedule (a race by time)
         if (scenario === "plannedFujiNoEdit") current.plan.edit = null;
-        editing = startEditing(current.plan);
+        editing = startEditing(current.plan, fuji);
       }
     }
     if (!opened) return failure({ kind: "denied" });
@@ -1344,6 +1595,8 @@ export function create(context: MockContext): MockHandler {
     if (
       request.method === "strategy.moveBoundary" ||
       request.method === "strategy.moveStop" ||
+      request.method === "strategy.setStopService" ||
+      request.method === "strategy.clearStopServices" ||
       request.method === "strategy.recalculate" ||
       request.method === "strategy.resetEdit"
     ) {
@@ -1366,9 +1619,50 @@ export function create(context: MockContext): MockHandler {
         recalculating = undefined;
         editing.laps =
           editing.base.result?.timeline?.pits.map((pit) => pit.lap) ?? [];
+        // back to the last plan with a calendar, and to what was fixed in it
+        editing.fixed = structuredClone(editing.baseFixed);
         editing.shown = editing.base;
         editing.pending = false;
         editing.error = null;
+        editing.cause = null;
+        current.plan = editedPlan(editing, request.computeId);
+      } else if (
+        request.method === "strategy.setStopService" ||
+        request.method === "strategy.clearStopServices"
+      ) {
+        if (recalculating !== undefined) return failure({ kind: "busy" });
+        const before = JSON.stringify(editing.fixed);
+        if (request.method === "strategy.clearStopServices") {
+          editing.fixed = editing.laps.map(() => ({ ...nothingFixed }));
+        } else {
+          if (!editing.fixed[request.index])
+            return failure({ kind: "rejected" });
+          const steps = editing.base.result?.steps;
+          const form = activeForm(current);
+          const refusal =
+            invalidAmount(
+              "fuelLiters",
+              request.fuelLiters,
+              steps?.fuelLiters ?? null,
+              Number(form?.fields.fuelCapacityLiters),
+            ) ??
+            invalidAmount(
+              "vePercent",
+              request.vePercent,
+              steps?.vePercent ?? null,
+              Number(form?.inputs.veCapacityPercent),
+            );
+          if (refusal) return failure(refusal);
+          editing.fixed[request.index] = {
+            fuelLiters: request.fuelLiters,
+            vePercent: request.vePercent,
+          };
+        }
+        if (JSON.stringify(editing.fixed) !== before) {
+          editing.pending = true;
+          editing.error = null;
+          editing.cause = null;
+        }
         current.plan = editedPlan(editing, request.computeId);
       } else if (request.method === "strategy.recalculate") {
         if (recalculating !== undefined || pending)
@@ -1399,6 +1693,7 @@ export function create(context: MockContext): MockHandler {
           editing.laps[request.index] = lap;
           editing.pending = true;
           editing.error = null;
+          editing.cause = null;
         }
         current.plan = editedPlan(editing, request.computeId);
       }
@@ -1465,12 +1760,27 @@ export function create(context: MockContext): MockHandler {
         editing.shown = noSolution(editing.base, finished);
         editing.pending = false;
         editing.error = null;
+        editing.cause = null;
+      } else if (unreachableStop(stopLimits(editing)) !== undefined) {
+        // no plan respects what is fixed: the first stop the limits point at
+        editing.shown = noSolution(editing.base, finished);
+        editing.pending = false;
+        editing.error = null;
+        editing.cause = {
+          kind: "fixedAmountUnreachable",
+          stop: unreachableStop(stopLimits(editing)) ?? 0,
+        };
       } else {
         const done = recalculated(editing, finished, fuji);
+        const automatic = figures(done);
+        if (!somethingFixed(editing.fixed) && automatic)
+          editing.automatic = { laps: [...editing.laps], figures: automatic };
         editing.base = done;
+        editing.baseFixed = structuredClone(editing.fixed);
         editing.shown = done;
         editing.pending = false;
         editing.error = null;
+        editing.cause = null;
       }
       current.plan = editedPlan(editing, finished);
     } else if (
@@ -1521,7 +1831,7 @@ export function create(context: MockContext): MockHandler {
       };
       // a real refusal names its field; the QA scene keeps the sample's
       if (!valid && field) current.plan.errorField = field;
-      editing = valid ? startEditing(current.plan) : undefined;
+      editing = valid ? startEditing(current.plan, fuji) : undefined;
     }
     if (request.method === "strategy.accept") {
       // another or an old plan, or none: the caller restarts from this view

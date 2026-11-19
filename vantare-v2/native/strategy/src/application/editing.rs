@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use serde::{Deserialize, Serialize};
 
 use super::Fallback;
-use super::solver::{self, FixedStop, GreedyRefusal, Input, SolverOutcome, Window};
+use super::solver::{self, FixedStop, GreedyRefusal, Input, SolverOutcome, StopBounds, Window};
 
 const MAX_PIT_STOPS: usize = 16;
 
@@ -61,6 +61,48 @@ pub fn recalculate_edited_plan_fixed(
     fixed: &[FixedStop],
     cancel: &AtomicBool,
 ) -> Result<FixedRecalculation, String> {
+    let constrained = constrain(input, edited, fixed)?;
+    let (outcome, fallback) = solve_with_fallback(&constrained, fixed, cancel)?;
+    // This guard is for the scalar solver. A greedy plan cannot trip it: the edited stops
+    // are fixed (min = max = their count, one exact window each), so a plan with that many
+    // stops has every stop on a window lap, and the greedy plan refuses (`MaxStops`) as
+    // soon as it needs one more.
+    if outcome.result.feasible
+        && (outcome.result.stints != edited.stints
+            || outcome
+                .result
+                .pit_stops
+                .iter()
+                .map(|stop| stop.lap)
+                .collect::<Vec<_>>()
+                != edited.pit_stop_laps)
+    {
+        return Err("solver_did_not_preserve_edited_schedule".into());
+    }
+    // Defensa: la búsqueda y el respaldo solo prueban la cantidad fijada.
+    if outcome.result.feasible
+        && outcome
+            .result
+            .pit_stops
+            .iter()
+            .zip(fixed)
+            .any(|(stop, fixed)| !fixed.kept_by(stop))
+    {
+        return Err("solver_did_not_preserve_fixed_stops".into());
+    }
+    let unreachable_stop = unreachable_stop(&constrained, fixed, &outcome, fallback);
+    Ok(FixedRecalculation {
+        outcome,
+        fallback,
+        unreachable_stop,
+    })
+}
+
+/// La entrada con el calendario editado como restricción: tantas paradas como
+/// las editadas y una ventana exacta en la vuelta de cada una. Comprueba antes
+/// la entrada, el calendario y que nada esté fijado fuera de él. El recálculo y
+/// los límites parten de aquí, así que rechazan lo mismo y con el mismo texto.
+fn constrain(input: &Input, edited: &EditedPlan, fixed: &[FixedStop]) -> Result<Input, String> {
     input.validate()?;
     validate_edited_plan(input.race_laps, edited)?;
 
@@ -103,41 +145,28 @@ pub fn recalculate_edited_plan_fixed(
     if constrained.event_rules.required_windows.len() > MAX_PIT_STOPS {
         return Err("too_many_required_pit_windows".into());
     }
+    Ok(constrained)
+}
 
-    let (outcome, fallback) = solve_with_fallback(&constrained, fixed, cancel)?;
-    // This guard is for the scalar solver. A greedy plan cannot trip it: the edited stops
-    // are fixed (min = max = their count, one exact window each), so a plan with that many
-    // stops has every stop on a window lap, and the greedy plan refuses (`MaxStops`) as
-    // soon as it needs one more.
-    if outcome.result.feasible
-        && (outcome.result.stints != edited.stints
-            || outcome
-                .result
-                .pit_stops
-                .iter()
-                .map(|stop| stop.lap)
-                .collect::<Vec<_>>()
-                != edited.pit_stop_laps)
-    {
-        return Err("solver_did_not_preserve_edited_schedule".into());
+/// Límites de lo que se puede fijar a mano en cada parada del calendario
+/// editado (una entrada por parada, en orden), con lo fijado en las demás, en
+/// el mismo modelo que [`recalculate_edited_plan_fixed`]: salida con el depósito
+/// lleno, misma rejilla y misma tolerancia. Los límites son por recurso: los de
+/// combustible no miran la energía, ni las ruedas o las reglas del calendario.
+///
+/// `Ok(None)`: con pasos finos decide la búsqueda extendida y no hay límites
+/// exactos (tampoco parada culpable, como en el recálculo). Los errores son los
+/// del recálculo con la misma entrada.
+pub fn fixed_stop_bounds(
+    input: &Input,
+    edited: &EditedPlan,
+    fixed: &[FixedStop],
+) -> Result<Option<Vec<StopBounds>>, String> {
+    let constrained = constrain(input, edited, fixed)?;
+    if solver::runs_extended_search(&constrained) {
+        return Ok(None);
     }
-    // Defensa: la búsqueda y el respaldo solo prueban la cantidad fijada.
-    if outcome.result.feasible
-        && outcome
-            .result
-            .pit_stops
-            .iter()
-            .zip(fixed)
-            .any(|(stop, fixed)| !fixed.kept_by(stop))
-    {
-        return Err("solver_did_not_preserve_fixed_stops".into());
-    }
-    let unreachable_stop = unreachable_stop(&constrained, fixed, &outcome, fallback);
-    Ok(FixedRecalculation {
-        outcome,
-        fallback,
-        unreachable_stop,
-    })
+    solver::stop_bounds(&constrained, &edited.stints, fixed).map(Some)
 }
 
 /// La parada fijada que impide el plan. El respaldo ya la trae cuando se negó

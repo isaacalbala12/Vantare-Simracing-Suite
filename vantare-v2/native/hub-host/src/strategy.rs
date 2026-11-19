@@ -26,7 +26,11 @@ mod calculation;
 use calculation::Calculation;
 #[path = "strategy_editing.rs"]
 mod editing;
-pub use editing::{StrategyEditError, StrategyEditStop, StrategyEditView};
+pub use editing::{
+    StrategyAmountIssue, StrategyAmountLimits, StrategyAmountRange, StrategyAutomaticPlan,
+    StrategyEditCause, StrategyEditError, StrategyEditStop, StrategyEditView, StrategyStopAmount,
+    StrategyStopFixed, StrategyStopLimits, StrategyStopServiceReason,
+};
 pub use calculation::{
     STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyComputeForm,
     StrategyField, StrategyMetrics, StrategyPit, StrategyPitService, StrategyPlanError,
@@ -48,6 +52,15 @@ pub use file::{
     STRATEGY_FILE_NAME_MAX, STRATEGY_PICK_COOLDOWN_MS, STRATEGY_PICK_LIFETIME_SECONDS,
     STRATEGY_PICK_PATH_MAX, StrategyFile, StrategyFileMode, StrategyFileSelection,
 };
+
+/// A `number | null` whose key must be present. serde reads a missing `Option`
+/// as `None`, and in `strategy.setStopService` that would return an amount to
+/// automatic without anyone asking for it.
+pub(crate) fn stated_amount<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<serde_json::Number>, D::Error> {
+    Option::deserialize(deserializer)
+}
 
 const PRIMARY: &str = "strategy-v2.json";
 const OPTIONS: Options = Options {
@@ -650,6 +663,44 @@ impl State {
         })
     }
 
+    /// Fixes by hand what stop `index` loads (`None` leaves an amount to the
+    /// calculation). See `Editing::set_stop_service`.
+    ///
+    /// The checks run in this order, and the first to fail answers: a protected
+    /// document (`protected`), a document not open (`denied`), a malformed revision
+    /// (`rejected`), an outdated one, another `compute_id` or no editable plan
+    /// (`strategyConflict`), a recalculation running (`busy`), a stop that does not
+    /// exist or a number that is not one (`rejected`) and an amount the calculation
+    /// cannot take (`strategyInvalidStopService`, fuel before energy).
+    pub(crate) fn set_stop_service(
+        &mut self,
+        revision: &str,
+        compute_id: u32,
+        index: u32,
+        fuel_liters: Option<&serde_json::Number>,
+        ve_percent: Option<&serde_json::Number>,
+    ) -> Result<StrategyView, HostError> {
+        let number = |value: Option<&serde_json::Number>| match value {
+            None => Ok(None),
+            Some(value) => value.as_f64().map(Some).ok_or(HostError::Rejected),
+        };
+        self.edit(revision, compute_id, |editing| {
+            editing.set_stop_service(index, number(fuel_liters)?, number(ve_percent)?)
+        })
+    }
+
+    /// Returns every stop of the edited plan to automatic.
+    pub(crate) fn clear_stop_services(
+        &mut self,
+        revision: &str,
+        compute_id: u32,
+    ) -> Result<StrategyView, HostError> {
+        self.edit(revision, compute_id, |editing| {
+            editing.clear_stop_services();
+            Ok(())
+        })
+    }
+
     /// Edits only the plan `compute_id` names, and only in memory: the document,
     /// its revision and `dirty` do not change.
     fn edit(
@@ -665,7 +716,8 @@ impl State {
         }
     }
 
-    /// Recalculates the edited schedule as a constraint, in the calculation worker.
+    /// Recalculates with the edited schedule and what is fixed by hand as
+    /// constraints, in the calculation worker.
     pub(crate) fn recalculate(
         &mut self,
         revision: &str,
@@ -679,7 +731,8 @@ impl State {
         Ok(self.view())
     }
 
-    /// Discards the edit and returns to the last feasible plan.
+    /// Discards the edit and returns to the last feasible plan, with what was
+    /// fixed by hand in it.
     pub(crate) fn reset_edit(
         &mut self,
         revision: &str,

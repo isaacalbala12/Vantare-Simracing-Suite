@@ -5,7 +5,7 @@ use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 
 use vantare_strategy::application::{
-    EditedPlan, recalculate_edited_plan_detailed, recalculate_edited_plan_fixed,
+    EditedPlan, fixed_stop_bounds, recalculate_edited_plan_detailed, recalculate_edited_plan_fixed,
 };
 use vantare_strategy::solver::{FixedStop, Input, Window, solve_v2_cancellable};
 
@@ -112,6 +112,44 @@ fn recalculating_the_fuji_witness_with_fixed_amounts() {
                     .map(|stop| stop.fuel_liters)
                     .collect::<Vec<_>>(),
                 recalculation.outcome.result.expected.total_seconds,
+            );
+        }
+    }
+}
+
+/// Medición de los límites de lo que se puede fijar (#2709), sobre el mismo
+/// calendario de Fuji: lo que tarda `fixed_stop_bounds` para las cinco paradas,
+/// sin nada fijado y con la segunda parada fijada. Es lo que el anfitrión paga
+/// en cada cambio de la edición, sin worker.
+#[test]
+#[ignore = "measurement"]
+fn the_bounds_of_the_fuji_witness() {
+    const CALLS: u32 = 10_000;
+    let input = manual();
+    let edited = EditedPlan {
+        stints: vec![43, 42, 42, 43, 42, 24],
+        pit_stop_laps: vec![43, 85, 127, 170, 212],
+    };
+    let second = vec![
+        FixedStop::default(),
+        FixedStop {
+            fuel_liters: Some(73.0),
+            ve_percent: Some(97.0),
+        },
+    ];
+    for (name, fixed) in [("sin fijar", Vec::new()), ("parada 2 fijada", second)] {
+        for repetition in 1..=3 {
+            let started = Instant::now();
+            let mut stops = 0;
+            for _ in 0..CALLS {
+                stops += fixed_stop_bounds(&input, &edited, &fixed)
+                    .expect("entrada válida")
+                    .expect("cálculo escalar")
+                    .len();
+            }
+            println!(
+                "{name} rep={repetition} por llamada={:?} ({stops} paradas en {CALLS} llamadas)",
+                started.elapsed() / CALLS
             );
         }
     }

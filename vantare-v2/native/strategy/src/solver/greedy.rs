@@ -135,15 +135,15 @@ fn laps_with(resource: Resource, level: i64, keep: i64) -> u32 {
 /// carguen las paradas automáticas anteriores: todos los de la «escalera» de la
 /// rejilla entre `lo` y `hi`.
 #[derive(Clone, Copy)]
-struct Span {
-    lo: i64,
-    hi: i64,
+pub(super) struct Span {
+    pub lo: i64,
+    pub hi: i64,
 }
 
 impl Span {
     /// Tras el servicio de una parada. `None`: la cantidad fijada no cabe ni
     /// llegando con el nivel más bajo posible.
-    fn serviced(self, resource: Resource, fixed: Option<i64>) -> Option<Self> {
+    pub(super) fn serviced(self, resource: Resource, fixed: Option<i64>) -> Option<Self> {
         let Some(amount) = fixed else {
             // Automática: desde no cargar nada hasta el tope de la rejilla.
             return Some(Self {
@@ -164,7 +164,7 @@ impl Span {
 
     /// Tras un tramo. Quien llegaría por debajo de cero tuvo que cargar antes:
     /// el mínimo es el nivel más bajo de la escalera que no es negativo.
-    fn driven(self, resource: Resource, laps: i64) -> Self {
+    pub(super) fn driven(self, resource: Resource, laps: i64) -> Self {
         let used = laps * resource.per_lap;
         let lo = self.lo - used;
         Self {

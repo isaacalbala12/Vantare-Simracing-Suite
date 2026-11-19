@@ -82,8 +82,9 @@ export type StrategyPit = { lap: number, fuelLiters: number, vePercent: number, 
  */
 pitSeconds: number, 
 /**
- * Which amounts the person fixed by hand. Reserved: the calculation decides
- * everything today, so every flag is `false` until the amounts can be fixed.
+ * Which amounts the person fixed by hand (`strategy.setStopService`): a
+ * recalculation with fixed amounts sets them. Tyres cannot be fixed, so
+ * `changeTyres` is always `false`.
  */
 pinned: StrategyPitPinned, };
 export type StrategyPitService = "parallel" | "sequential";
@@ -103,7 +104,19 @@ canReset: boolean,
 /**
  * Why the last recalculation of this schedule failed; `null` otherwise.
  */
-error: StrategyEditError | null, };
+error: StrategyEditError | null, 
+/**
+ * Why the last recalculation of this schedule found no plan, when the crate
+ * can name it; `null` otherwise (also after any later change of the edit).
+ */
+cause: StrategyEditCause | null, 
+/**
+ * The figures of the last feasible plan calculated with nothing fixed and
+ * with this very schedule, to compare with. `null` while nothing is fixed
+ * or when there is no such plan (a stop was also moved). No calculation
+ * runs to fill it.
+ */
+automatic: StrategyAutomaticPlan | null, };
 export type StrategyEditStop = { 
 /**
  * The lap completed immediately before the stop.
@@ -112,8 +125,55 @@ lap: number,
 /**
  * The earliest and latest lap the stop can move to without emptying a stint.
  */
-minLap: number, maxLap: number, fuelLiters: number, vePercent: number, };
+minLap: number, maxLap: number, 
+/**
+ * What the last feasible plan loads in this stop (what "automatic" shows).
+ */
+fuelLiters: number, vePercent: number, 
+/**
+ * What the person fixed by hand in this stop.
+ */
+fixed: StrategyStopFixed, 
+/**
+ * The time in the pits with the fixed amounts (and the plan's for the rest).
+ */
+pitSeconds: number, 
+/**
+ * What can be fixed in this stop, in the model of the recalculation.
+ */
+limits: StrategyStopLimits, };
 export type StrategyEditError = "invalidSchedule" | "eventRulesConflict" | "scheduleNotPreserved" | "failed";
+export type StrategyEditCause = { "kind": "fixedAmountUnreachable", stop: number, };
+export type StrategyAutomaticPlan = { totalSeconds: number, fuelFinishLiters: number, veFinishPercent: number, };
+export type StrategyStopFixed = { fuelLiters: number | null, vePercent: number | null, };
+export type StrategyStopLimits = { "kind": "unavailable" } | { "kind": "exact", fuel: StrategyAmountLimits, ve: StrategyAmountLimits, };
+export type StrategyAmountLimits = { "kind": "unused" } | { "kind": "used", 
+/**
+ * The levels one can arrive at the stop with, as the calculation models
+ * them (it starts with a full tank). `null`: with what is fixed before,
+ * the stop is not reached.
+ */
+arrival: StrategyAmountRange | null, 
+/**
+ * The least and the most that can be fixed here for a plan to exist,
+ * with the other stops as they are. `null`: no amount gives a plan.
+ */
+range: StrategyAmountRange | null, 
+/**
+ * What happens to the amount fixed here; `null` when it is automatic or
+ * inside `range`.
+ */
+issue: StrategyAmountIssue | null, 
+/**
+ * With `belowMin`: the first lap that cannot be completed even loading
+ * the most in the automatic stops. `null` when the finish is reached
+ * without the reserve, and with any other `issue`.
+ */
+failLap: number | null, };
+export type StrategyAmountRange = { min: number, max: number, };
+export type StrategyAmountIssue = "belowMin" | "aboveMax" | "noRange";
+export type StrategyStopAmount = "fuelLiters" | "vePercent";
+export type StrategyStopServiceReason = "negative" | "aboveCapacity" | "offGrid" | "notInUse";
 export type StrategyReason = "searchBudgetExhausted" | "fineGridNoFallback" | "constraintsUnsatisfiable" | "noFeasiblePlan";
 export type StrategyFile = { 
 /**
@@ -180,7 +240,8 @@ same: boolean,
 deltaSeconds: number, };
 export type StrategyUnreachable = { cause: StrategyUnreachableCause, 
 /**
- * The lap where it fails. `null` until the solver crate reports it (E5e).
+ * With `resourceExhausted`, the first lap the plan cannot complete, when the
+ * replay of the crate names it; `null` otherwise.
  */
 failLap: number | null, };
 export type StrategyUnreachableCause = "resourceExhausted" | "reserveNotMet" | "scheduleMismatch" | "other";
@@ -193,6 +254,9 @@ export const strategyAcceptedStates = ["accepted","stale","staleUnreachable"] as
 export const strategyAcceptedMarks = ["none","accepted","stale"] as const;
 export const strategyUnreachableCauses = ["resourceExhausted","reserveNotMet","scheduleMismatch","other"] as const;
 export const strategyReasons = ["searchBudgetExhausted","fineGridNoFallback","constraintsUnsatisfiable","noFeasiblePlan"] as const;
+export const strategyAmountIssues = ["belowMin","aboveMax","noRange"] as const;
+export const strategyStopAmounts = ["fuelLiters","vePercent"] as const;
+export const strategyStopServiceReasons = ["negative","aboveCapacity","offGrid","notInUse"] as const;
 export const strategyFileModes = ["open","saveAs"] as const;
 export const strategyPickLifetimeSeconds = 120 as const;
 export const strategyPickCooldownMs = 1500 as const;
@@ -217,7 +281,11 @@ inputs: StrategySolverFields | null, } | { "method": "strategy.confirm", eventId
  * the fields only and keeps the stored inputs. With inputs they replace
  * the stored ones as a whole, and nothing is calculated.
  */
-inputs: StrategySolverFields | null, } | { "method": "strategy.save", revision: string, } | { "method": "strategy.discard", revision: string, } | { "method": "strategy.compute", eventId: string, strategyId: string, revision: string, form: StrategyComputeForm, } | { "method": "strategy.cancel", computeId: number, } | { "method": "strategy.moveBoundary", revision: string, computeId: number, index: number, lap: number, } | { "method": "strategy.moveStop", revision: string, computeId: number, index: number, delta: number, } | { "method": "strategy.recalculate", revision: string, computeId: number, } | { "method": "strategy.resetEdit", revision: string, computeId: number, } | { "method": "strategy.pickFile", mode: StrategyFileMode, revision: string, } | { "method": "strategy.accept", revision: string, computeId: number, } | { "method": "strategy.unaccept", revision: string, } | { "method": "strategy.showAccepted", revision: string, } | { "method": "strategy.export", revision: string, target: StrategyExportTarget, } | { "method": "strategy.exportFile", revision: string, target: StrategyExportTarget, };
-export type StrategyReply = { "method": "strategy.open", value: StrategyView, } | { "method": "strategy.view", value: StrategyView, } | { "method": "strategy.select", value: StrategyView, } | { "method": "strategy.create", value: StrategyView, } | { "method": "strategy.confirm", value: StrategyView, } | { "method": "strategy.save", value: StrategyView, } | { "method": "strategy.discard", value: StrategyView, } | { "method": "strategy.compute", value: StrategyView, } | { "method": "strategy.cancel", value: StrategyView, } | { "method": "strategy.moveBoundary", value: StrategyView, } | { "method": "strategy.moveStop", value: StrategyView, } | { "method": "strategy.recalculate", value: StrategyView, } | { "method": "strategy.resetEdit", value: StrategyView, } | { "method": "strategy.pickFile", value: StrategyView, } | { "method": "strategy.accept", value: StrategyView, } | { "method": "strategy.unaccept", value: StrategyView, } | { "method": "strategy.showAccepted", value: StrategyView, } | { "method": "strategy.export", value: StrategyExportText, } | { "method": "strategy.exportFile", value: StrategyExportFileValue, };
-export type StrategyHostError = { "kind": "strategyDirty" } | { "kind": "strategyEditPending" } | { "kind": "strategyImportFailed" } | { "kind": "strategyInvalidText" } | { "kind": "strategyInvalidInput", field: StrategyField | null, } | { "kind": "strategyFileUnavailable" } | { "kind": "strategyFileTooLarge" } | { "kind": "strategyTargetExists" } | { "kind": "strategyPickExpired" } | { "kind": "strategyNotAcceptable" } | { "kind": "strategyNoAcceptedPlan" } | { "kind": "strategyNothingToExport" } | { "kind": "strategyExportNotCsv" } | { "kind": "strategyFileInUse" } | { "kind": "strategyConflict", current: StrategyView, };
-export const strategyMethods = ["strategy.accept","strategy.cancel","strategy.compute","strategy.confirm","strategy.create","strategy.discard","strategy.export","strategy.exportFile","strategy.moveBoundary","strategy.moveStop","strategy.open","strategy.pickFile","strategy.recalculate","strategy.resetEdit","strategy.save","strategy.select","strategy.showAccepted","strategy.unaccept","strategy.view"] as const;
+inputs: StrategySolverFields | null, } | { "method": "strategy.save", revision: string, } | { "method": "strategy.discard", revision: string, } | { "method": "strategy.compute", eventId: string, strategyId: string, revision: string, form: StrategyComputeForm, } | { "method": "strategy.cancel", computeId: number, } | { "method": "strategy.moveBoundary", revision: string, computeId: number, index: number, lap: number, } | { "method": "strategy.moveStop", revision: string, computeId: number, index: number, delta: number, } | { "method": "strategy.setStopService", revision: string, computeId: number, index: number, 
+/**
+ * The key is required (in Rust too): leaving it out is not «automatic».
+ */
+fuelLiters: number | null, vePercent: number | null, } | { "method": "strategy.clearStopServices", revision: string, computeId: number, } | { "method": "strategy.recalculate", revision: string, computeId: number, } | { "method": "strategy.resetEdit", revision: string, computeId: number, } | { "method": "strategy.pickFile", mode: StrategyFileMode, revision: string, } | { "method": "strategy.accept", revision: string, computeId: number, } | { "method": "strategy.unaccept", revision: string, } | { "method": "strategy.showAccepted", revision: string, } | { "method": "strategy.export", revision: string, target: StrategyExportTarget, } | { "method": "strategy.exportFile", revision: string, target: StrategyExportTarget, };
+export type StrategyReply = { "method": "strategy.open", value: StrategyView, } | { "method": "strategy.view", value: StrategyView, } | { "method": "strategy.select", value: StrategyView, } | { "method": "strategy.create", value: StrategyView, } | { "method": "strategy.confirm", value: StrategyView, } | { "method": "strategy.save", value: StrategyView, } | { "method": "strategy.discard", value: StrategyView, } | { "method": "strategy.compute", value: StrategyView, } | { "method": "strategy.cancel", value: StrategyView, } | { "method": "strategy.moveBoundary", value: StrategyView, } | { "method": "strategy.moveStop", value: StrategyView, } | { "method": "strategy.setStopService", value: StrategyView, } | { "method": "strategy.clearStopServices", value: StrategyView, } | { "method": "strategy.recalculate", value: StrategyView, } | { "method": "strategy.resetEdit", value: StrategyView, } | { "method": "strategy.pickFile", value: StrategyView, } | { "method": "strategy.accept", value: StrategyView, } | { "method": "strategy.unaccept", value: StrategyView, } | { "method": "strategy.showAccepted", value: StrategyView, } | { "method": "strategy.export", value: StrategyExportText, } | { "method": "strategy.exportFile", value: StrategyExportFileValue, };
+export type StrategyHostError = { "kind": "strategyDirty" } | { "kind": "strategyEditPending" } | { "kind": "strategyImportFailed" } | { "kind": "strategyInvalidText" } | { "kind": "strategyInvalidInput", field: StrategyField | null, } | { "kind": "strategyFileUnavailable" } | { "kind": "strategyFileTooLarge" } | { "kind": "strategyTargetExists" } | { "kind": "strategyPickExpired" } | { "kind": "strategyNotAcceptable" } | { "kind": "strategyNoAcceptedPlan" } | { "kind": "strategyNothingToExport" } | { "kind": "strategyExportNotCsv" } | { "kind": "strategyFileInUse" } | { "kind": "strategyInvalidStopService", amount: StrategyStopAmount, reason: StrategyStopServiceReason, below: number | null, above: number | null, } | { "kind": "strategyConflict", current: StrategyView, };
+export const strategyMethods = ["strategy.accept","strategy.cancel","strategy.clearStopServices","strategy.compute","strategy.confirm","strategy.create","strategy.discard","strategy.export","strategy.exportFile","strategy.moveBoundary","strategy.moveStop","strategy.open","strategy.pickFile","strategy.recalculate","strategy.resetEdit","strategy.save","strategy.select","strategy.setStopService","strategy.showAccepted","strategy.unaccept","strategy.view"] as const;

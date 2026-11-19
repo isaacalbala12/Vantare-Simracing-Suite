@@ -70,7 +70,8 @@ pub enum StrategyUnreachableCause {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct StrategyUnreachable {
     pub cause: StrategyUnreachableCause,
-    /// The lap where it fails. `null` until the solver crate reports it (E5e).
+    /// With `resourceExhausted`, the first lap the plan cannot complete, when the
+    /// replay of the crate names it; `null` otherwise.
     pub fail_lap: Option<u32>,
 }
 
@@ -413,7 +414,10 @@ pub(super) fn reach(
     };
     Some(StrategyUnreachable {
         cause,
-        fail_lap: None,
+        fail_lap: (cause == StrategyUnreachableCause::ResourceExhausted)
+            .then_some(replay.failure)
+            .flatten()
+            .map(|failure| failure.lap),
     })
 }
 

@@ -122,6 +122,27 @@ pub(super) fn dispatch(
             } => strategy
                 .move_stop(revision, *compute_id, *index, *delta)
                 .map(|value| Reply::StrategyMoveStop { value }),
+            Request::StrategySetStopService {
+                revision,
+                compute_id,
+                index,
+                fuel_liters,
+                ve_percent,
+            } => strategy
+                .set_stop_service(
+                    revision,
+                    *compute_id,
+                    *index,
+                    fuel_liters.as_ref(),
+                    ve_percent.as_ref(),
+                )
+                .map(|value| Reply::StrategySetStopService { value }),
+            Request::StrategyClearStopServices {
+                revision,
+                compute_id,
+            } => strategy
+                .clear_stop_services(revision, *compute_id)
+                .map(|value| Reply::StrategyClearStopServices { value }),
             Request::StrategyRecalculate {
                 revision,
                 compute_id,

@@ -2121,3 +2121,110 @@ fn a_file_an_editor_holds_open_for_reading_and_writing_is_in_use_not_unavailable
     write_for_tests(&path, b"nuevo").unwrap();
     assert_eq!(fs::read(&path).unwrap(), b"nuevo");
 }
+
+// ------------------------------------------------- amounts really fixed by hand (E5f)
+
+/// Recalculates the edit of the session and waits for it.
+fn recalculated(state: &mut State) -> StrategyView {
+    let view = state.view();
+    state
+        .recalculate(&view.revision, view.plan.compute_id.unwrap())
+        .unwrap();
+    state.test_join_calculation();
+    state.view()
+}
+
+// The marks of the export come from what the session fixed, not from a plan made
+// by hand: fix an amount, recalculate, and the stop says so in the text, in the
+// CSV and, once accepted and saved, in the accepted plan too.
+#[test]
+fn an_amount_fixed_in_the_session_is_marked_in_the_text_the_csv_and_the_accepted_plan() {
+    let root = Root::new();
+    let (mut state, _) = planned(&root);
+    // 20 laps in stints of five: the tank holds six, so a stop has room for more
+    compute(
+        &mut state,
+        &event_form(|form| form.inputs.race_laps = "20".into()),
+    );
+    for (index, lap) in [(0, 5), (1, 10), (2, 15)] {
+        let view = state.view();
+        state
+            .move_boundary(&view.revision, view.plan.compute_id.unwrap(), index, lap)
+            .unwrap();
+    }
+    let automatic = recalculated(&mut state);
+    let before = export(&state, &proposal_of(&automatic)).unwrap();
+    assert_eq!(before.matches("(fijado a mano)").count(), 0);
+
+    // one litre more than the plan loads in the first stop
+    let loads = automatic.plan.edit.as_ref().unwrap().stops[0]
+        .fuel_liters
+        .as_f64()
+        .unwrap();
+    let amount = n(loads + 1.0);
+    let pending = state
+        .set_stop_service(
+            &automatic.revision,
+            automatic.plan.compute_id.unwrap(),
+            0,
+            Some(&amount),
+            None,
+        )
+        .unwrap();
+    // what is fixed is not a plan to export until it is recalculated
+    assert_eq!(
+        export(&state, &proposal_of(&pending)),
+        Err(HostError::StrategyEditPending)
+    );
+    let done = recalculated(&mut state);
+    assert_eq!(done.plan.state, StrategyPlanState::Calculated);
+    let target = proposal_of(&done);
+    let text = export(&state, &target).unwrap();
+    let stops: Vec<_> = text
+        .lines()
+        .filter(|line| line.starts_with("Parada "))
+        .collect();
+    assert_eq!(stops.len(), 3);
+    assert!(
+        stops[0].contains(&format!("+{} L (fijado a mano)", loads + 1.0)),
+        "{}",
+        stops[0]
+    );
+    assert_eq!(text.matches("(fijado a mano)").count(), 1, "{text}");
+    let origins = |bytes: &[u8]| -> Vec<String> {
+        parsed(bytes)
+            .iter()
+            .filter(|row| row[0] == "Parada")
+            .map(|row| row[11].clone())
+            .collect()
+    };
+    let expected = ["Fijado a mano: combustible", "Automático", "Automático"];
+    choose(&mut state, &target, &root.text("propuesta.csv")).unwrap();
+    assert_eq!(
+        origins(&fs::read(root.file("propuesta.csv")).unwrap()),
+        expected
+    );
+    // accepted and saved, the plan of the file says the same
+    let accepted = accept(&mut state);
+    state.save(&accepted.revision).unwrap();
+    let kept = export(&state, &StrategyExportTarget::Accepted {}).unwrap();
+    assert_eq!(kept.matches("(fijado a mano)").count(), 1, "{kept}");
+    choose(
+        &mut state,
+        &StrategyExportTarget::Accepted {},
+        &root.text("aceptado.csv"),
+    )
+    .unwrap();
+    assert_eq!(
+        origins(&fs::read(root.file("aceptado.csv")).unwrap()),
+        expected
+    );
+    // back to automatic and recalculated: no mark is left in the proposal
+    let view = state.view();
+    state
+        .clear_stop_services(&view.revision, view.plan.compute_id.unwrap())
+        .unwrap();
+    let cleared = recalculated(&mut state);
+    let text = export(&state, &proposal_of(&cleared)).unwrap();
+    assert_eq!(text.matches("(fijado a mano)").count(), 0, "{text}");
+}

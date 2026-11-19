@@ -1,9 +1,12 @@
 //! Deterministic Strategy solver, with shared search and fixed-plan replay models.
+mod bounds;
 mod budget;
 mod certified;
 mod drivers;
 mod fixed;
 mod greedy;
+pub(crate) use bounds::stop_bounds;
+pub use bounds::{AmountRange, FixedProblem, ResourceBounds, StopBounds};
 pub use drivers::{DriverLimit, DriverProfile, ManualDriverProfile, TimeWindow};
 pub use fixed::{FixedResource, FixedStop, FixedStopProblem, InvalidFixedStop, check_fixed_stops};
 mod model;

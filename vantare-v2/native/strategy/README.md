@@ -109,6 +109,31 @@ cambio de resultado intencionado y revisado.
 - Los neumáticos no se fijan: el modelo reinicia el desgaste en cada tramo
   aunque no se cambien ruedas (#2691).
 
+### Límites de lo que se puede fijar (#2692, #2709)
+
+`application::fixed_stop_bounds(input, edited, fixed)` devuelve, para cada
+parada del calendario editado y por recurso (`StopBounds`):
+
+- `arrival`: los niveles con los que se puede llegar a la parada;
+- `service`: el mínimo y el máximo de la rejilla que se puede fijar en ella para
+  que ese recurso tenga plan, con lo fijado en las demás paradas (no depende de
+  lo fijado en la propia parada). `None`: ninguna cantidad vale;
+- `problem`: qué le pasa a la cantidad fijada hoy si queda fuera
+  (`BelowMin { fail_lap }`, `AboveMax`, `NoRange`). `fail_lap` es la primera
+  vuelta que no se completa aun cargando lo máximo en las paradas automáticas;
+  `None`, cuando se llega a meta sin la reserva.
+
+Usa el modelo de `recalculate_edited_plan_fixed` (salida con el depósito lleno,
+misma rejilla y tolerancia, mismas comprobaciones de entrada y mismos textos de
+error) y los niveles alcanzables del respaldo. Con el calendario fijo,
+combustible y energía no dependen uno del otro, así que los límites son por
+recurso: los de combustible no ven un problema de energía, de ruedas o de
+reglas. Hay plan exactamente cuando el calendario lo tiene sin fijar nada y
+ninguna cantidad fijada lleva `problem`; `tests/fixed_bounds.rs` lo comprueba
+cantidad a cantidad contra el recálculo. Con pasos finos (búsqueda extendida)
+devuelve `Ok(None)`. No hay límites con calendario libre: dependerían del
+calendario que eligiera la búsqueda.
+
 El `replay` añade `ReplayResult.failure` cuando el motivo es
 `resource_exhausted`: tramo, primera vuelta de carrera que no se puede completar
 y recurso (combustible, energía o ruedas). No forma parte del JSON del replay.
@@ -150,6 +175,15 @@ Hub usa el camino manual y presenta resultados probados, parciales o sin soluci�
 Este crate no proporciona adquisición de Analysis, catálogos firmados ni su
 transporte, y no certifica por sí solo la integración visual/operativa de Hub.
 La UI v5 Go completa queda fuera de este corte.
+
+El anfitrión del Hub deja fijar a mano el combustible y la energía de cada
+parada del calendario editado (`strategy.setStopService` y
+`strategy.clearStopServices`, #2709). Lo fijado vive en la sesión, no en el
+documento: solo llega a él dentro de un plan aceptado, como `pinned` por parada.
+El anfitrión no copia ninguna regla del cálculo: valida cada cantidad con
+`check_fixed_stops`, enseña los límites de `fixed_stop_bounds` y recalcula con
+`recalculate_edited_plan_fixed`, que le dice la parada culpable cuando no hay
+plan. Un cálculo nuevo es libre y descarta lo fijado.
 
 ## Verificación
 

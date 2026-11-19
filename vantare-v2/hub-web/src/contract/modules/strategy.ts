@@ -3,6 +3,7 @@ import {
   type StrategySolverFields,
   strategyAcceptedMarks,
   strategyAcceptedStates,
+  strategyAmountIssues,
   strategyChangeTextLimit,
   strategyEditErrors,
   strategyExportLimit,
@@ -14,6 +15,8 @@ import {
   strategyPickPathMax,
   strategyReasons,
   strategyStates,
+  strategyStopAmounts,
+  strategyStopServiceReasons,
   strategyUnreachableCauses,
 } from "../generated/strategy";
 import { exact, integer, oneOf, record } from "../validation-common";
@@ -177,12 +180,12 @@ function timeline(value: unknown): boolean {
         typeof pit.changeTyres === "boolean" &&
         oneOf(pit.service, ["parallel", "sequential"]) &&
         number(pit.pitSeconds) &&
-        // which amounts were fixed by hand (reserved: always false for now)
+        // which amounts were fixed by hand; tyres cannot be fixed
         record(pit.pinned) &&
         exact(pit.pinned, ["fuelLiters", "vePercent", "changeTyres"]) &&
         typeof pit.pinned.fuelLiters === "boolean" &&
         typeof pit.pinned.vePercent === "boolean" &&
-        typeof pit.pinned.changeTyres === "boolean",
+        pit.pinned.changeTyres === false,
     )
   );
 }
@@ -224,12 +227,69 @@ function result(value: unknown): boolean {
     (value.timeline === null || timeline(value.timeline))
   );
 }
+// A range of litres or of percentage points, both ends inside.
+function amountRange(value: unknown): value is { min: number; max: number } {
+  return (
+    record(value) &&
+    exact(value, ["min", "max"]) &&
+    number(value.min) &&
+    number(value.max) &&
+    (value.min as number) <= (value.max as number)
+  );
+}
+// The limits of one amount of a stop and what they say of the amount fixed in
+// it (`fixed`, null when automatic). They agree with each other: an issue only
+// for a fixed amount, and the one its range gives.
+function amountLimits(value: unknown, fixed: unknown, lap: number): boolean {
+  if (!record(value)) return false;
+  // a resource the car does not use has nothing to fix
+  if (value.kind === "unused") return exact(value, ["kind"]) && fixed === null;
+  if (
+    value.kind !== "used" ||
+    !exact(value, ["kind", "arrival", "range", "issue", "failLap"]) ||
+    !(value.arrival === null || amountRange(value.arrival)) ||
+    !(value.range === null || amountRange(value.range)) ||
+    !(value.issue === null || oneOf(value.issue, strategyAmountIssues)) ||
+    !(value.failLap === null || count(value.failLap))
+  )
+    return false;
+  const { range, issue, failLap } = value;
+  // the lap it runs out in comes only with too little, and after this stop
+  if (failLap !== null && (issue !== "belowMin" || failLap <= lap))
+    return false;
+  if (typeof fixed !== "number") return issue === null;
+  if (range === null) return issue === "noRange";
+  const { min, max } = range as { min: number; max: number };
+  return issue === (fixed < min ? "belowMin" : fixed > max ? "aboveMax" : null);
+}
+function stopLimits(
+  value: unknown,
+  fixed: Record<string, unknown>,
+  lap: number,
+): boolean {
+  if (!record(value)) return false;
+  if (value.kind === "unavailable") return exact(value, ["kind"]);
+  return (
+    value.kind === "exact" &&
+    exact(value, ["kind", "fuel", "ve"]) &&
+    amountLimits(value.fuel, fixed.fuelLiters, lap) &&
+    amountLimits(value.ve, fixed.vePercent, lap)
+  );
+}
 // The edited schedule: contiguous stints from lap 1, one stop between each two,
-// every stop on the last lap of its stint and inside its own range.
+// every stop on the last lap of its stint and inside its own range, with what
+// is fixed by hand in it and its limits.
 function edit(value: unknown): boolean {
   if (
     !record(value) ||
-    !exact(value, ["stints", "stops", "canReset", "error"]) ||
+    !exact(value, [
+      "stints",
+      "stops",
+      "canReset",
+      "error",
+      "cause",
+      "automatic",
+    ]) ||
     typeof value.canReset !== "boolean" ||
     !(value.error === null || oneOf(value.error, strategyEditErrors)) ||
     !Array.isArray(value.stints) ||
@@ -253,18 +313,61 @@ function edit(value: unknown): boolean {
       return false;
     next = stint.toLap + 1;
   }
-  return stops.every(
-    (stop, index) =>
-      record(stop) &&
-      exact(stop, ["lap", "minLap", "maxLap", "fuelLiters", "vePercent"]) &&
-      count(stop.lap) &&
-      count(stop.minLap) &&
-      count(stop.maxLap) &&
-      stop.lap === stints[index].toLap &&
-      stop.minLap <= stop.lap &&
-      stop.lap <= stop.maxLap &&
-      number(stop.fuelLiters) &&
-      number(stop.vePercent),
+  if (
+    !stops.every(
+      (stop, index) =>
+        record(stop) &&
+        exact(stop, [
+          "lap",
+          "minLap",
+          "maxLap",
+          "fuelLiters",
+          "vePercent",
+          "fixed",
+          "pitSeconds",
+          "limits",
+        ]) &&
+        count(stop.lap) &&
+        count(stop.minLap) &&
+        count(stop.maxLap) &&
+        stop.lap === stints[index].toLap &&
+        stop.minLap <= stop.lap &&
+        stop.lap <= stop.maxLap &&
+        number(stop.fuelLiters) &&
+        number(stop.vePercent) &&
+        record(stop.fixed) &&
+        exact(stop.fixed, ["fuelLiters", "vePercent"]) &&
+        measure(stop.fixed.fuelLiters) &&
+        measure(stop.fixed.vePercent) &&
+        number(stop.pitSeconds) &&
+        stopLimits(stop.limits, stop.fixed, stop.lap),
+    )
+  )
+    return false;
+  const fixed = (stops as { fixed: Record<string, unknown> }[]).map(
+    (stop) => stop.fixed.fuelLiters !== null || stop.fixed.vePercent !== null,
+  );
+  const { cause, automatic } = value;
+  return (
+    // the stop to blame exists and has something fixed
+    (cause === null ||
+      (record(cause) &&
+        exact(cause, ["kind", "stop"]) &&
+        cause.kind === "fixedAmountUnreachable" &&
+        count(cause.stop) &&
+        fixed[cause.stop] === true)) &&
+    // the plan with nothing fixed is there to compare only while something is
+    (automatic === null ||
+      (fixed.includes(true) &&
+        record(automatic) &&
+        exact(automatic, [
+          "totalSeconds",
+          "fuelFinishLiters",
+          "veFinishPercent",
+        ]) &&
+        number(automatic.totalSeconds) &&
+        number(automatic.fuelFinishLiters) &&
+        number(automatic.veFinishPercent)))
   );
 }
 // A finite number, negative or not: the seconds of a proposal minus those of the accepted plan.
@@ -667,6 +770,25 @@ export function isRequest(value: Record<string, unknown>): boolean {
         count(value.index) &&
         (value.delta === -1 || value.delta === 1)
       );
+    case "strategy.setStopService":
+      return (
+        exact(value, [
+          "method",
+          "revision",
+          "computeId",
+          "index",
+          "fuelLiters",
+          "vePercent",
+        ]) &&
+        revision(value.revision) &&
+        computeId(value.computeId) &&
+        count(value.index) &&
+        // both keys are required: a number fixes the amount, `null` leaves it to
+        // the calculation. Whether the number can be fixed is the host's answer.
+        (value.fuelLiters === null || signed(value.fuelLiters)) &&
+        (value.vePercent === null || signed(value.vePercent))
+      );
+    case "strategy.clearStopServices":
     case "strategy.recalculate":
     case "strategy.resetEdit":
       return (
@@ -730,6 +852,23 @@ export function isError(value: Record<string, unknown>): boolean {
       exact(value, ["kind", "field"]) &&
       (value.field === null || oneOf(value.field, strategyFields))
     );
+  if (value.kind === "strategyInvalidStopService") {
+    const { reason, below, above } = value;
+    return (
+      exact(value, ["kind", "amount", "reason", "below", "above"]) &&
+      oneOf(value.amount, strategyStopAmounts) &&
+      oneOf(reason, strategyStopServiceReasons) &&
+      measure(below) &&
+      measure(above) &&
+      // the nearest amounts that can be fixed, in order; each reason has its own
+      (below === null ||
+        above === null ||
+        (below as number) < (above as number)) &&
+      (reason !== "notInUse" || (below === null && above === null)) &&
+      (reason !== "negative" || below === null) &&
+      (reason !== "aboveCapacity" || above === null)
+    );
+  }
   return (
     value.kind === "strategyConflict" &&
     exact(value, ["kind", "current"]) &&

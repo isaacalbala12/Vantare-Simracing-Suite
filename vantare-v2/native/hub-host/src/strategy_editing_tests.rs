@@ -5,7 +5,6 @@ use crate::strategy::calculation::{StrategyCertificate, StrategyPlanState, proje
 use vantare_strategy::{
     application::{self, EditedPlan, SourceStatus, recalculate_edited_plan},
     document::Document,
-    solver::Input,
 };
 
 fn fuji() -> Input {
@@ -440,7 +439,7 @@ fn the_wire_names_are_the_documented_ones() {
             .keys()
             .cloned()
             .collect::<std::collections::BTreeSet<_>>(),
-        ["stints", "stops", "canReset", "error"]
+        ["stints", "stops", "canReset", "error", "cause", "automatic"]
             .map(String::from)
             .into()
     );
@@ -451,9 +450,18 @@ fn the_wire_names_are_the_documented_ones() {
             .keys()
             .cloned()
             .collect::<std::collections::BTreeSet<_>>(),
-        ["lap", "minLap", "maxLap", "fuelLiters", "vePercent"]
-            .map(String::from)
-            .into()
+        [
+            "lap",
+            "minLap",
+            "maxLap",
+            "fuelLiters",
+            "vePercent",
+            "fixed",
+            "pitSeconds",
+            "limits"
+        ]
+        .map(String::from)
+        .into()
     );
     assert_eq!(
         serde_json::to_value(StrategyEditError::ScheduleNotPreserved).unwrap(),
@@ -499,8 +507,14 @@ fn fuji_with_ve_recalculates_an_edited_witness_schedule() {
             edited.stints[index] = edited.stints[index].checked_add_signed(delta).unwrap();
             edited.stints[index + 1] = edited.stints[index + 1].checked_add_signed(-delta).unwrap();
         }
-        let done = recalculate(prepared.input(), &edited, "Pilot", &AtomicBool::new(false))
-            .expect("the edited Fuji schedule is solved");
+        let done = recalculate(
+            prepared.input(),
+            &edited,
+            &[],
+            "Pilot",
+            &AtomicBool::new(false),
+        )
+        .expect("the edited Fuji schedule is solved");
         assert!(done.feasible, "{edited:?}");
         let timeline = done.view.result.unwrap().timeline.unwrap();
         assert_eq!(
@@ -671,10 +685,598 @@ fn a_fine_grid_recalculation_reports_fine_grid_no_fallback() {
         application::Fallback::Refused(vantare_strategy::solver::GreedyRefusal::NotScalar),
         "the precondition: the extended search ends without a plan"
     );
-    let done = recalculate(&input, &edited, "Pilot", &AtomicBool::new(false)).unwrap();
+    let done = recalculate(&input, &edited, &[], "Pilot", &AtomicBool::new(false)).unwrap();
     assert!(!done.feasible);
     assert_eq!(
         done.view.result.unwrap().reason,
         Some(StrategyReason::FineGridNoFallback)
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Fuel and energy fixed by hand in a stop (E5f, #2709).
+// ---------------------------------------------------------------------------
+
+type FuelLimits = (Option<(f64, f64)>, Option<StrategyAmountIssue>, Option<u32>);
+
+/// The range, the issue and the failing lap of the fuel of a stop.
+fn fuel_limits(stop: &StrategyEditStop) -> FuelLimits {
+    let StrategyStopLimits::Exact {
+        fuel:
+            StrategyAmountLimits::Used {
+                range,
+                issue,
+                fail_lap,
+                ..
+            },
+        ..
+    } = &stop.limits
+    else {
+        panic!("exact fuel limits: {:?}", stop.limits);
+    };
+    (
+        range
+            .as_ref()
+            .map(|range| (range.min.as_f64().unwrap(), range.max.as_f64().unwrap())),
+        *issue,
+        *fail_lap,
+    )
+}
+
+/// A stop whose fuel can be fixed to something else than what the plan loads,
+/// with that amount (inside its limits) and its limits.
+fn a_stop_with_room(editing: &Editing) -> (u32, f64, (f64, f64)) {
+    editing
+        .edit_view()
+        .stops
+        .iter()
+        .enumerate()
+        .find_map(|(index, stop)| {
+            let (min, max) = fuel_limits(stop).0?;
+            let planned = stop.fuel_liters.as_f64().unwrap();
+            let other = if planned < max {
+                planned + 1.0
+            } else {
+                planned - 1.0
+            };
+            (min < max).then_some((u32::try_from(index).unwrap(), other, (min, max)))
+        })
+        .expect("some stop admits more than one amount")
+}
+
+fn fixed_fuel(editing: &Editing) -> Vec<Option<f64>> {
+    editing
+        .edit_view()
+        .stops
+        .iter()
+        .map(|stop| {
+            stop.fixed
+                .fuel_liters
+                .as_ref()
+                .map(|fuel| fuel.as_f64().unwrap())
+        })
+        .collect()
+}
+
+/// Recalculates the edit as the worker does; `true` when there is a plan.
+fn run(editing: &mut Editing) -> bool {
+    let job = editing.job();
+    let done = job(&AtomicBool::new(false)).expect("a recalculation");
+    let feasible = done.feasible;
+    editing.apply(Ok(done));
+    feasible
+}
+
+/// The plan of `editable()` moved to stints of five laps (5-5-5-5-4) and
+/// recalculated: a tank of six laps leaves room in every stop, so more than one
+/// amount can be fixed in them.
+fn roomy() -> Editing {
+    let mut editing = editable();
+    for (index, lap) in [(0, 5), (1, 10), (2, 15), (3, 20)] {
+        editing.move_boundary(index, lap).unwrap();
+    }
+    assert!(run(&mut editing), "five laps fit the tank");
+    assert!(!editing.edit_view().can_reset);
+    editing
+}
+
+fn nudge_first_stop(editing: &mut Editing) {
+    editing
+        .move_stop(0, 1)
+        .or_else(|_| editing.move_stop(0, -1))
+        .unwrap();
+}
+
+#[test]
+fn nothing_is_fixed_in_a_new_plan_and_every_stop_has_its_limits() {
+    let editing = editable();
+    let view = editing.edit_view();
+    assert_eq!((view.cause, view.automatic.clone()), (None, None));
+    let pits = editing
+        .base
+        .result
+        .as_ref()
+        .unwrap()
+        .timeline
+        .clone()
+        .unwrap()
+        .pits;
+    let bounds = fixed_stop_bounds(&editing.input, &editing.edited, &[])
+        .unwrap()
+        .expect("a scalar input has limits");
+    assert_eq!(view.stops.len(), bounds.len());
+    for ((stop, pit), bounds) in view.stops.iter().zip(&pits).zip(&bounds) {
+        assert_eq!(stop.fixed, StrategyStopFixed::default());
+        assert_eq!(stop.pit_seconds, pit.pit_seconds, "the time of that stop");
+        let StrategyStopLimits::Exact { fuel, ve } = &stop.limits else {
+            panic!("exact limits");
+        };
+        // this car has no virtual energy
+        assert_eq!(*ve, StrategyAmountLimits::Unused);
+        let StrategyAmountLimits::Used {
+            arrival,
+            range,
+            issue,
+            fail_lap,
+        } = fuel
+        else {
+            panic!("fuel is in use");
+        };
+        // the numbers are those of the crate, and the amount of the plan is inside
+        let service = bounds.fuel.service.expect("a feasible plan has a range");
+        let range = range.as_ref().unwrap();
+        assert_eq!(range.min.as_f64(), Some(service.min));
+        assert_eq!(range.max.as_f64(), Some(service.max));
+        let arrives = bounds.fuel.arrival.unwrap();
+        let arrival = arrival.as_ref().unwrap();
+        assert_eq!(arrival.min.as_f64(), Some(arrives.min));
+        assert_eq!(arrival.max.as_f64(), Some(arrives.max));
+        let planned = pit.fuel_liters.as_f64().unwrap();
+        assert!(service.min <= planned && planned <= service.max);
+        assert_eq!((*issue, *fail_lap), (None, None));
+    }
+}
+
+#[test]
+fn a_car_with_virtual_energy_has_limits_for_it_too() {
+    let editing = calculate(manual(RACE, true)).2.expect("a feasible plan");
+    let view = editing.edit_view();
+    assert_ne!(view.stops.len(), 0, "the case needs a stop");
+    for stop in &view.stops {
+        let StrategyStopLimits::Exact {
+            ve: StrategyAmountLimits::Used { range, .. },
+            ..
+        } = &stop.limits
+        else {
+            panic!("energy limits: {:?}", stop.limits);
+        };
+        let range = range.as_ref().unwrap();
+        let planned = stop.ve_percent.as_f64().unwrap();
+        assert!(range.min.as_f64().unwrap() <= planned && planned <= range.max.as_f64().unwrap());
+    }
+}
+
+#[test]
+fn fixing_an_amount_keeps_it_in_the_session_and_leaves_the_plan_pending() {
+    let mut editing = roomy();
+    let before = editing.plan_view(Some(1));
+    let (index, amount, _) = a_stop_with_room(&editing);
+    let at = usize::try_from(index).unwrap();
+    editing.set_stop_service(index, Some(amount), None).unwrap();
+    assert!(editing.pending());
+    let view = editing.plan_view(Some(1));
+    assert_eq!(view.state, StrategyPlanState::Edited);
+    assert_eq!(view.result, before.result, "the plan on screen stays");
+    let edit = view.edit.unwrap();
+    assert!(edit.can_reset);
+    let mut expected = vec![None; edit.stops.len()];
+    expected[at] = Some(amount);
+    assert_eq!(fixed_fuel(&editing), expected);
+    assert_eq!(edit.stops[at].fixed.ve_percent, None);
+    // what "automatic" shows is still the amount of the plan
+    let old = &before.edit.as_ref().unwrap().stops[at];
+    assert_eq!(edit.stops[at].fuel_liters, old.fuel_liters);
+    assert_eq!(fuel_limits(&edit.stops[at]).1, None, "inside its limits");
+    // the limits of a stop do not depend on what is fixed in it
+    assert_eq!(fuel_limits(&edit.stops[at]).0, fuel_limits(old).0);
+    // the time in the pits follows the fixed amount at once: at most the litre
+    // of difference at the refuelling rate, and never the other way
+    let rate = editing.input.pit_cost.refuel_rate_l_per_s.value;
+    let delta = edit.stops[at].pit_seconds.as_f64().unwrap() - old.pit_seconds.as_f64().unwrap();
+    let litres = amount - old.fuel_liters.as_f64().unwrap();
+    assert!(
+        delta.abs() <= (litres / rate).abs() + 1e-9 && delta * litres >= 0.0,
+        "{delta} s for {litres} L"
+    );
+    // nothing was moved, so the automatic plan of this schedule is the one before
+    let automatic = edit.automatic.expect("the plan with nothing fixed");
+    let result = before.result.as_ref().unwrap();
+    assert_eq!(
+        automatic.total_seconds,
+        result.metrics.as_ref().unwrap().total_seconds
+    );
+    assert_eq!(
+        automatic.fuel_finish_liters,
+        result.timeline.as_ref().unwrap().fuel_finish_liters
+    );
+    // fixing the same again changes nothing; back to automatic clears it
+    editing.set_stop_service(index, Some(amount), None).unwrap();
+    assert_eq!(fixed_fuel(&editing), expected);
+    editing.set_stop_service(index, None, None).unwrap();
+    assert_eq!(fixed_fuel(&editing), vec![None; expected.len()]);
+    assert_eq!(
+        editing.edit_view().automatic,
+        None,
+        "nothing fixed, nothing to compare"
+    );
+    assert!(
+        editing.pending(),
+        "like a stop moved back: the edit stays pending"
+    );
+}
+
+#[test]
+fn an_amount_the_calculation_cannot_take_is_refused_with_its_reason_and_neighbours() {
+    let mut editing = editable();
+    let refusal = |amount, reason, below: Option<f64>, above: Option<f64>| {
+        Err(HostError::StrategyInvalidStopService {
+            amount,
+            reason,
+            below: below.and_then(Number::from_f64),
+            above: above.and_then(Number::from_f64),
+        })
+    };
+    let fuel = StrategyStopAmount::FuelLiters;
+    let off_grid = StrategyStopServiceReason::OffGrid;
+    let above_capacity = StrategyStopServiceReason::AboveCapacity;
+    let negative = StrategyStopServiceReason::Negative;
+    // the tank holds 12 L and the calculation loads whole litres
+    for (value, reason, below, above) in [
+        (7.5, off_grid, Some(7.0), Some(8.0)),
+        (11.25, off_grid, Some(11.0), Some(12.0)),
+        (0.000_4, off_grid, Some(0.0), Some(1.0)),
+        (12.5, above_capacity, Some(12.0), None),
+        (90.0, above_capacity, Some(12.0), None),
+        (f64::MAX, above_capacity, Some(12.0), None),
+        (f64::INFINITY, above_capacity, Some(12.0), None),
+        (-1.0, negative, None, Some(0.0)),
+        (-0.5, negative, None, Some(0.0)),
+        (f64::NEG_INFINITY, negative, None, Some(0.0)),
+        (f64::NAN, negative, None, Some(0.0)),
+    ] {
+        assert_eq!(
+            editing.set_stop_service(0, Some(value), None),
+            refusal(fuel, reason, below, above),
+            "{value}"
+        );
+    }
+    // this car has no virtual energy: not even zero can be fixed
+    for value in [0.0, 50.0, -1.0] {
+        assert_eq!(
+            editing.set_stop_service(0, None, Some(value)),
+            refusal(
+                StrategyStopAmount::VePercent,
+                StrategyStopServiceReason::NotInUse,
+                None,
+                None
+            ),
+            "{value}"
+        );
+    }
+    // fuel is checked before energy, and a refusal of either fixes nothing
+    assert_eq!(
+        editing.set_stop_service(0, Some(7.5), Some(50.0)),
+        refusal(fuel, off_grid, Some(7.0), Some(8.0))
+    );
+    assert!(editing.set_stop_service(0, Some(7.0), Some(50.0)).is_err());
+    assert_eq!(
+        fixed_fuel(&editing),
+        vec![None; editing.edit_view().stops.len()]
+    );
+    assert!(!editing.pending());
+    // a stop that does not exist
+    let count = u32::try_from(editing.edit_view().stops.len()).unwrap();
+    for index in [count, u32::MAX] {
+        assert_eq!(
+            editing.set_stop_service(index, Some(7.0), None),
+            Err(HostError::Rejected)
+        );
+    }
+    // the edges are valid: nothing and a full tank (whether a plan exists is
+    // what the limits say, not a refusal)
+    editing.set_stop_service(0, Some(0.0), None).unwrap();
+    editing.set_stop_service(0, Some(12.0), None).unwrap();
+    // a number a rounding away from the grid is the number of the grid
+    editing
+        .set_stop_service(0, Some(0.1 + 0.2 + 6.7), None)
+        .unwrap();
+    assert_eq!(fixed_fuel(&editing)[0], Some(7.0));
+    editing.set_stop_service(0, Some(-0.0), None).unwrap();
+    assert_eq!(
+        serde_json::to_string(&editing.edit_view().stops[0].fixed.fuel_liters).unwrap(),
+        "0.0"
+    );
+}
+
+#[test]
+fn with_virtual_energy_its_amount_is_checked_on_its_own_grid() {
+    let mut editing = calculate(manual(RACE, true)).2.expect("a feasible plan");
+    editing.set_stop_service(0, None, Some(97.0)).unwrap();
+    assert_eq!(
+        editing.edit_view().stops[0].fixed.ve_percent,
+        Number::from_f64(97.0)
+    );
+    assert_eq!(
+        editing.set_stop_service(0, None, Some(103.0)),
+        Err(HostError::StrategyInvalidStopService {
+            amount: StrategyStopAmount::VePercent,
+            reason: StrategyStopServiceReason::AboveCapacity,
+            below: Number::from_f64(100.0),
+            above: None,
+        })
+    );
+    assert_eq!(
+        editing.set_stop_service(0, None, Some(96.5)),
+        Err(HostError::StrategyInvalidStopService {
+            amount: StrategyStopAmount::VePercent,
+            reason: StrategyStopServiceReason::OffGrid,
+            below: Number::from_f64(96.0),
+            above: Number::from_f64(97.0),
+        })
+    );
+    assert_eq!(
+        editing.edit_view().stops[0].fixed.ve_percent,
+        Number::from_f64(97.0),
+        "a refusal keeps the last valid amount"
+    );
+}
+
+#[test]
+fn a_valid_amount_outside_its_limits_is_kept_and_the_view_says_what_happens() {
+    let mut editing = roomy();
+    let (index, _, (min, max)) = a_stop_with_room(&editing);
+    let at = usize::try_from(index).unwrap();
+    assert!(min >= 1.0, "the case needs room below the least amount");
+    // too little: the lap it runs out in comes with it
+    editing
+        .set_stop_service(index, Some(min - 1.0), None)
+        .unwrap();
+    let stop = editing.edit_view().stops[at].clone();
+    let (range, issue, fail_lap) = fuel_limits(&stop);
+    assert_eq!(
+        range,
+        Some((min, max)),
+        "the limits do not move with the amount"
+    );
+    assert_eq!(issue, Some(StrategyAmountIssue::BelowMin));
+    let lap = fail_lap.expect("a lap: without a reserve it runs out on track");
+    assert!(stop.lap < lap && lap <= RACE, "after this stop: {lap}");
+    // the crate says the same, and so does the recalculation
+    let bounds = fixed_stop_bounds(&editing.input, &editing.edited, &editing.fixed)
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        bounds[at].fuel.problem,
+        Some(FixedProblem::BelowMin {
+            fail_lap: Some(lap)
+        })
+    );
+    assert!(!run(&mut editing), "no plan with too little");
+    // too much, when the tank leaves room above the most
+    if max < 12.0 {
+        editing
+            .set_stop_service(index, Some(max + 1.0), None)
+            .unwrap();
+        let (range, issue, fail_lap) = fuel_limits(&editing.edit_view().stops[at]);
+        assert_eq!(range, Some((min, max)));
+        assert_eq!(
+            (issue, fail_lap),
+            (Some(StrategyAmountIssue::AboveMax), None)
+        );
+        assert!(!run(&mut editing), "no plan with too much");
+    }
+    // the two ends of the limits do have a plan
+    for amount in [min, max] {
+        editing.set_stop_service(index, Some(amount), None).unwrap();
+        assert_eq!(fuel_limits(&editing.edit_view().stops[at]).1, None);
+        assert!(run(&mut editing), "{amount} L is inside the limits");
+    }
+}
+
+#[test]
+fn recalculating_keeps_what_is_fixed_and_the_plan_says_which_amounts_are_fixed() {
+    let mut editing = roomy();
+    let automatic = editing.plan_view(Some(1));
+    let (index, amount, _) = a_stop_with_room(&editing);
+    let at = usize::try_from(index).unwrap();
+    editing.set_stop_service(index, Some(amount), None).unwrap();
+    assert!(run(&mut editing));
+    let view = editing.plan_view(Some(2));
+    assert_ne!(view.state, StrategyPlanState::Edited);
+    let timeline = view.result.as_ref().unwrap().timeline.as_ref().unwrap();
+    for (stop, pit) in timeline.pits.iter().enumerate() {
+        assert_eq!(pit.pinned.fuel_liters, stop == at, "stop {stop}");
+        assert!(!pit.pinned.ve_percent && !pit.pinned.change_tyres);
+    }
+    assert_eq!(timeline.pits[at].fuel_liters.as_f64(), Some(amount));
+    // the edit keeps it fixed, and the recalculated plan is the new base
+    let edit = view.edit.as_ref().unwrap();
+    assert_eq!(fixed_fuel(&editing)[at], Some(amount));
+    assert!(!edit.can_reset);
+    assert_eq!(edit.cause, None);
+    assert_eq!(edit.stops[at].pit_seconds, timeline.pits[at].pit_seconds);
+    // the comparison is with the plan that had nothing fixed
+    let before = automatic.result.as_ref().unwrap().metrics.as_ref().unwrap();
+    assert_eq!(
+        edit.automatic.as_ref().unwrap().total_seconds,
+        before.total_seconds
+    );
+    // "Restablecer" returns to the last feasible plan, with what was fixed in it
+    editing.set_stop_service(index, None, None).unwrap();
+    nudge_first_stop(&mut editing);
+    editing.reset();
+    assert_eq!(editing.plan_view(Some(2)), view);
+    assert_eq!(fixed_fuel(&editing)[at], Some(amount));
+    // "Volver todo a automático" is what clears it
+    editing.clear_stop_services();
+    assert!(editing.pending());
+    assert_eq!(fixed_fuel(&editing), vec![None; edit.stops.len()]);
+    assert!(run(&mut editing));
+    let cleared = editing.plan_view(Some(3));
+    assert_eq!(cleared.result, automatic.result, "the automatic plan again");
+    assert_eq!(cleared.edit.unwrap().automatic, None);
+    editing.clear_stop_services();
+    assert!(!editing.pending(), "nothing to clear changes nothing");
+}
+
+#[test]
+fn with_nothing_fixed_the_recalculation_is_the_one_of_the_schedule_alone() {
+    let mut editing = editable();
+    nudge_first_stop(&mut editing);
+    let job = editing.job();
+    let done = job(&AtomicBool::new(false)).unwrap();
+    let (outcome, fallback) = vantare_strategy::application::recalculate_edited_plan_detailed(
+        &editing.input,
+        &editing.edited,
+        &AtomicBool::new(false),
+    )
+    .unwrap();
+    let expected = project_with(&editing.input, &outcome, "Pilot", true, fallback).unwrap();
+    assert_eq!(done.view, expected);
+    assert_eq!(done.unreachable_stop, None);
+}
+
+#[test]
+fn a_fixed_amount_no_plan_respects_names_its_stop_until_the_edit_changes() {
+    let mut editing = roomy();
+    let base = editing.plan_view(Some(1));
+    // an empty load in a stop that needs one
+    let (index, _, (min, _)) = a_stop_with_room(&editing);
+    assert!(min > 0.0);
+    editing.set_stop_service(index, Some(0.0), None).unwrap();
+    assert!(!run(&mut editing));
+    let view = editing.plan_view(Some(2));
+    let edit = view.edit.as_ref().unwrap();
+    assert_eq!(
+        edit.cause,
+        Some(StrategyEditCause::FixedAmountUnreachable { stop: index })
+    );
+    assert_eq!(edit.error, None, "the recalculation ran: this is its answer");
+    let result = view.result.as_ref().unwrap();
+    assert!(result.metrics.is_none() && result.timeline.is_none());
+    assert!(edit.can_reset);
+    assert_eq!(
+        fixed_fuel(&editing)[usize::try_from(index).unwrap()],
+        Some(0.0)
+    );
+    // any change of the edit is a new question
+    editing.set_stop_service(index, Some(min), None).unwrap();
+    assert_eq!(editing.edit_view().cause, None);
+    // and so is a reset, which returns to the plan that had nothing fixed
+    editing.set_stop_service(index, Some(0.0), None).unwrap();
+    assert!(!run(&mut editing));
+    assert!(editing.edit_view().cause.is_some());
+    editing.reset();
+    assert_eq!(editing.plan_view(Some(1)), base);
+}
+
+#[test]
+fn a_schedule_without_a_plan_names_no_stop_when_nothing_fixed_is_to_blame() {
+    let mut editing = roomy();
+    let (index, amount, _) = a_stop_with_room(&editing);
+    editing.set_stop_service(index, Some(amount), None).unwrap();
+    // stretch a stint beyond the tank: the schedule has no plan whatever is fixed
+    let stops = editing.edit_view().stops;
+    let (stretched, stop) = stops
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, stop)| stop.max_lap - stop.lap)
+        .unwrap();
+    editing
+        .move_boundary(u32::try_from(stretched).unwrap(), stop.max_lap)
+        .unwrap();
+    assert_eq!(
+        editing.edit_view().automatic,
+        None,
+        "another schedule: nothing to compare with"
+    );
+    assert!(!run(&mut editing));
+    assert_eq!(editing.edit_view().cause, None);
+}
+
+#[test]
+fn a_step_the_calculation_coarsens_has_no_limits() {
+    let mut editing = editable();
+    editing.input.discretization.fuel_liters = 0.01; // 1.200 levels: the extended search
+    assert!(vantare_strategy::solver::runs_extended_search(
+        &editing.input
+    ));
+    for stop in editing.edit_view().stops {
+        assert_eq!(stop.limits, StrategyStopLimits::Unavailable);
+    }
+}
+
+#[test]
+fn the_wire_names_of_what_is_fixed_are_the_documented_ones() {
+    let mut editing = roomy();
+    let (index, _, (min, _)) = a_stop_with_room(&editing);
+    editing
+        .set_stop_service(index, Some(min - 1.0), None)
+        .unwrap();
+    let json = serde_json::to_value(editing.edit_view()).unwrap();
+    let stop = &json["stops"][usize::try_from(index).unwrap()];
+    assert_eq!(
+        stop["fixed"],
+        serde_json::json!({"fuelLiters": min - 1.0, "vePercent": null})
+    );
+    assert_eq!(stop["limits"]["kind"], "exact");
+    assert_eq!(stop["limits"]["ve"], serde_json::json!({"kind": "unused"}));
+    let fuel = &stop["limits"]["fuel"];
+    assert_eq!(
+        fuel.as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect::<std::collections::BTreeSet<_>>(),
+        ["kind", "arrival", "range", "issue", "failLap"]
+            .map(String::from)
+            .into()
+    );
+    assert_eq!(fuel["kind"], "used");
+    assert_eq!(fuel["issue"], "belowMin");
+    assert!(fuel["failLap"].is_u64());
+    assert!(fuel["range"]["min"].is_number() && fuel["arrival"]["max"].is_number());
+    assert_eq!(
+        serde_json::to_value(StrategyStopLimits::Unavailable).unwrap(),
+        serde_json::json!({"kind": "unavailable"})
+    );
+    assert_eq!(
+        serde_json::to_value(StrategyEditCause::FixedAmountUnreachable { stop: 1 }).unwrap(),
+        serde_json::json!({"kind": "fixedAmountUnreachable", "stop": 1})
+    );
+    assert_eq!(
+        serde_json::to_value(StrategyAmountIssue::ALL).unwrap(),
+        serde_json::json!(["belowMin", "aboveMax", "noRange"])
+    );
+    let error = serde_json::to_value(HostError::StrategyInvalidStopService {
+        amount: StrategyStopAmount::VePercent,
+        reason: StrategyStopServiceReason::AboveCapacity,
+        below: Number::from_f64(100.0),
+        above: None,
+    })
+    .unwrap();
+    assert_eq!(
+        error,
+        serde_json::json!({
+            "kind": "strategyInvalidStopService",
+            "amount": "vePercent",
+            "reason": "aboveCapacity",
+            "below": 100.0,
+            "above": null
+        })
+    );
+    assert_eq!(
+        serde_json::to_value(StrategyStopServiceReason::ALL).unwrap(),
+        serde_json::json!(["negative", "aboveCapacity", "offGrid", "notInUse"])
     );
 }

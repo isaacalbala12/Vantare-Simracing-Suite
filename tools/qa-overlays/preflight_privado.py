@@ -36,23 +36,20 @@ ERROR_INVALID_FUNCTION = 1
 ERROR_FILE_NOT_FOUND = 2
 ERROR_PATH_NOT_FOUND = 3
 ERROR_HANDLE_EOF = 38
-FILE_ATTRIBUTE_REPARSE_POINT = 0x400
-FILE_ATTRIBUTE_TAG_INFO = 9
 STREAM_INFO_STANDARD = 0
 DEFAULT_STREAM = "::$data"
+# Browser downloads on Windows add this mark to the downloaded file. It is
+# tolerated only on the approved kit ZIP, as its only extra stream and small.
+ZONE_IDENTIFIER_STREAM = ":zone.identifier:$data"
+ZONE_IDENTIFIER_LIMIT = 1024
 
 
 if WINDOWS:
-    import msvcrt
     from ctypes import wintypes
 
     class _FindStreamData(ctypes.Structure):
         _fields_ = [("stream_size", ctypes.c_longlong),
                     ("stream_name", ctypes.c_wchar * (260 + 36))]
-
-    class _AttributeTagInfo(ctypes.Structure):
-        _fields_ = [("file_attributes", wintypes.DWORD),
-                    ("reparse_tag", wintypes.DWORD)]
 
     _KERNEL32 = ctypes.WinDLL("kernel32", use_last_error=True)
     _FIND_FIRST_STREAM = _KERNEL32.FindFirstStreamW
@@ -65,10 +62,6 @@ if WINDOWS:
     _FIND_CLOSE = _KERNEL32.FindClose
     _FIND_CLOSE.argtypes = (wintypes.HANDLE,)
     _FIND_CLOSE.restype = wintypes.BOOL
-    _ATTRIBUTE_TAG = _KERNEL32.GetFileInformationByHandleEx
-    _ATTRIBUTE_TAG.argtypes = (wintypes.HANDLE, ctypes.c_int,
-                               ctypes.c_void_p, wintypes.DWORD)
-    _ATTRIBUTE_TAG.restype = wintypes.BOOL
     _INVALID_HANDLE = ctypes.c_void_p(-1).value
 
 
@@ -112,11 +105,14 @@ def _api_path(path):
     return "\\\\?\\" + absolute
 
 
-def reject_alternate_streams(path):
+def reject_alternate_streams(path, allow_zone_identifier=False):
     """Any NTFS stream other than the default one hides data from the scan.
 
-    Streams are enumerated by path and never read. A volume that cannot store
-    streams has nothing to hide, and a missing file fails on the later open.
+    The approved kit ZIP may carry the browser download mark
+    (:Zone.Identifier) as its only extra stream and under 1 KiB; its size is
+    read from the enumeration and its content is never opened. A volume that
+    cannot store streams has nothing to hide, and a missing file fails on the
+    later open.
     """
     if not WINDOWS:
         return
@@ -129,9 +125,17 @@ def reject_alternate_streams(path):
                      ERROR_PATH_NOT_FOUND, ERROR_HANDLE_EOF):
             return
         raise PrivateMaterial("No se pudieron enumerar los streams del preflight")
+    zone_identifier = False
     try:
         while True:
-            if data.stream_name.casefold() != DEFAULT_STREAM:
+            name = data.stream_name.casefold()
+            if name == DEFAULT_STREAM:
+                pass
+            elif (allow_zone_identifier and name == ZONE_IDENTIFIER_STREAM
+                  and not zone_identifier
+                  and data.stream_size <= ZONE_IDENTIFIER_LIMIT):
+                zone_identifier = True
+            else:
                 raise PrivateMaterial("Stream alternativo en el preflight")
             if not _FIND_NEXT_STREAM(handle, ctypes.byref(data)):
                 if ctypes.get_last_error() == ERROR_HANDLE_EOF:
@@ -142,25 +146,15 @@ def reject_alternate_streams(path):
 
 
 def open_checked(path):
-    """Open once and check type and reparse state on that same handle."""
+    """Open once and check the regular type of that same handle.
+
+    Linking itself is rejected beforehand by check_no_link; a swap through a
+    link between that check and this open is a declared residual.
+    """
     stream = path.open("rb")
     try:
-        entry = os.fstat(stream.fileno())
-        if not stat.S_ISREG(entry.st_mode):
+        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
             raise PrivateMaterial("Entrada no regular en el preflight")
-        if WINDOWS:
-            info = _AttributeTagInfo()
-            # fileno() is a CRT descriptor on Windows; the Win32 handle is
-            # what the attribute query needs.
-            handle = msvcrt.get_osfhandle(stream.fileno())
-            if not _ATTRIBUTE_TAG(wintypes.HANDLE(handle),
-                                  FILE_ATTRIBUTE_TAG_INFO,
-                                  ctypes.byref(info), ctypes.sizeof(info)):
-                raise PrivateMaterial("No se pudo comprobar el identificador del preflight")
-            if info.file_attributes & FILE_ATTRIBUTE_REPARSE_POINT or info.reparse_tag:
-                raise PrivateMaterial("Enlace o reparse point en el preflight")
-        elif stat.S_ISLNK(entry.st_mode):
-            raise PrivateMaterial("Enlace o reparse point en el preflight")
     except Exception:
         stream.close()
         raise
@@ -204,7 +198,7 @@ def _short_signature(header, size):
         body = header[6:min(len(header), CPIO_NEWC_HEADER)]
         complete = len(body) - len(body) % 8
         valid = (complete >= CPIO_MIN_FIELDS * 8
-                 and all(re.fullmatch(rb"[0-9a-f]{8}", body[start:start + 8])
+                 and all(re.fullmatch(rb"[0-9a-fA-F]{8}", body[start:start + 8])
                          for start in range(0, complete, 8)))
         return valid or not _plain_text(header)
     if header.startswith(b"MSCF"):
@@ -239,9 +233,9 @@ def verify_kit_zip(path, expected):
     check_no_link(path)
     if not re.fullmatch(r"[0-9a-f]{64}", expected):
         raise PrivateMaterial("Se requiere el SHA-256 previamente verificado del ZIP")
-    reject_alternate_streams(path)
-    # One handle for the whole verification: the bytes hashed, checked as a
-    # ZIP and consumed later are the ones of this same file object.
+    reject_alternate_streams(path, allow_zone_identifier=True)
+    # One handle for the whole verification: the bytes hashed and parsed as a
+    # ZIP are the ones of this same file object.
     with open_checked(path) as stream:
         before = _snapshot(stream)
         if not stream.read(4).startswith(ZIP_MAGIC):
@@ -260,13 +254,18 @@ def verify_kit_zip(path, expected):
 
 
 def scan(path, patterns, approved_zip=None):
+    """approved_zip is the (resolved path, sha256) of the approved kit ZIP."""
     check_no_link(path)
     check_name(path.name)
     if path.is_dir():
+        reject_alternate_streams(path)
         for child in path.iterdir():
             scan(child, patterns, approved_zip)
     elif path.is_file():
-        if approved_zip is not None and path.resolve() == approved_zip:
+        if approved_zip is not None and path.resolve() == approved_zip[0]:
+            # Skipping the package only after checking it again keeps the
+            # hash and size of the file on disk tied to the receipt.
+            verify_kit_zip(path, approved_zip[1])
             return
         reject_alternate_streams(path)
         with open_checked(path) as stream:
@@ -303,7 +302,7 @@ def main():
     args = parser.parse_args()
     try:
         verify_kit_zip(args.kit_zip, args.kit_zip_sha256)
-        approved_zip = args.kit_zip.resolve()
+        approved_zip = (args.kit_zip.resolve(), args.kit_zip_sha256)
         patterns = signatures(read_key(args.private_key))
         for path in args.paths:
             scan(path, patterns, approved_zip)

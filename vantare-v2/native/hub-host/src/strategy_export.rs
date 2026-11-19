@@ -894,16 +894,12 @@ pub(super) fn suggested_name(race: &str, strategy: &str) -> String {
 fn write_error(error: &std::io::Error, replacing: Option<&Path>) -> HostError {
     // Replacing a file another program has open without sharing deletion says
     // «access denied» (5), as a permission that forbids it does. Asking to open the
-    // file for writing, without changing it, tells them apart: only a program
-    // holding it answers with a sharing violation.
+    // file for DELETE, which is what the rename needs, tells them apart: it fails
+    // with a sharing violation exactly when someone holds the file without sharing
+    // deletion (a spreadsheet, Notepad), whatever else they share.
     let held = match error.raw_os_error() {
         Some(32 | 33) => true,
-        Some(5) => replacing.is_some_and(|target| {
-            std::fs::OpenOptions::new()
-                .write(true)
-                .open(target)
-                .is_err_and(|probe| matches!(probe.raw_os_error(), Some(32 | 33)))
-        }),
+        Some(5) => replacing.is_some_and(held_without_sharing_deletion),
         _ => false,
     };
     if held {
@@ -911,6 +907,27 @@ fn write_error(error: &std::io::Error, replacing: Option<&Path>) -> HostError {
     } else {
         HostError::StrategyFileUnavailable
     }
+}
+
+/// Opens the file for `DELETE` only (no read, no write, nothing changes) and the
+/// default sharing: it is refused with a sharing violation when another handle
+/// does not share deletion.
+#[cfg(windows)]
+fn held_without_sharing_deletion(target: &Path) -> bool {
+    use std::os::windows::fs::OpenOptionsExt;
+    const DELETE: u32 = 0x0001_0000;
+    const OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    std::fs::OpenOptions::new()
+        .access_mode(DELETE)
+        .custom_flags(OPEN_REPARSE_POINT)
+        .open(target)
+        .is_err_and(|probe| matches!(probe.raw_os_error(), Some(32 | 33)))
+}
+
+/// Only Windows answers «access denied» for a file that is in use.
+#[cfg(not(windows))]
+fn held_without_sharing_deletion(_: &Path) -> bool {
+    false
 }
 
 static TEMPORARY: AtomicU32 = AtomicU32::new(0);

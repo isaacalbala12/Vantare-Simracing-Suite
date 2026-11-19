@@ -2084,3 +2084,40 @@ fn the_accepted_plan_that_was_asked_for_is_the_one_written() {
     answer(&mut state, Some(&root.text("a.csv")), now).unwrap();
     assert!(root.file("a.csv").is_file());
 }
+
+#[cfg(windows)]
+#[test]
+fn a_file_an_editor_holds_open_for_reading_and_writing_is_in_use_not_unavailable() {
+    use std::os::windows::fs::OpenOptionsExt;
+    let root = Root::new();
+    let path = root.file("plan.csv");
+    fs::write(&path, b"abierto en un editor").unwrap();
+    // what Notepad or an editor does: it shares reading and writing, never deleting
+    let held = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .share_mode(3)
+        .open(&path)
+        .unwrap();
+    let before = root.listing();
+    assert_eq!(
+        write_for_tests(&path, b"nuevo"),
+        Err(HostError::StrategyFileInUse)
+    );
+    assert_eq!(root.listing(), before);
+    drop(held);
+    // a read-only file nobody holds is a permission, not a program
+    let mut permissions = fs::metadata(&path).unwrap().permissions();
+    permissions.set_readonly(true);
+    fs::set_permissions(&path, permissions.clone()).unwrap();
+    assert_eq!(
+        write_for_tests(&path, b"nuevo"),
+        Err(HostError::StrategyFileUnavailable)
+    );
+    #[allow(clippy::permissions_set_readonly_false)]
+    permissions.set_readonly(false);
+    fs::set_permissions(&path, permissions).unwrap();
+    // and a plain one is replaced
+    write_for_tests(&path, b"nuevo").unwrap();
+    assert_eq!(fs::read(&path).unwrap(), b"nuevo");
+}

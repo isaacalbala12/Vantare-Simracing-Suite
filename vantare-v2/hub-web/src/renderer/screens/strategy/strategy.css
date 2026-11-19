@@ -1564,6 +1564,11 @@
   color: var(--warn-text, var(--warn));
 }
 
+.strategy-compare-icon[data-tone="error"] {
+  background: color-mix(in srgb, var(--err) 16%, var(--surface-1));
+  color: var(--err);
+}
+
 .strategy-card.strategy-compare[data-tone="warn"] {
   border-color: color-mix(in srgb, var(--warn) 60%, var(--line-2));
 }

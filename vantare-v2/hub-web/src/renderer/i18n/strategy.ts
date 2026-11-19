@@ -555,7 +555,10 @@ export const strategy = {
           `Esta propuesta: ${summary}${sameStops ? " · mismas paradas" : ""}${difference ? ` · ${difference}` : ""}`,
         // the plan accepted is outdated and the proposal has its stops
         outdatedHint:
-          "Los datos de la carrera han cambiado desde que lo aceptaste. Si aceptas esta propuesta, el plan aceptado pasa a ser este.",
+          "Los datos de la carrera han cambiado desde que lo aceptaste. Si aceptas esta propuesta, esta pasa a ser tu plan aceptado.",
+        // the accepted plan no longer reaches the finish with the new data
+        unreachableHint:
+          "Con los datos nuevos, el plan aceptado ya no llega a meta.",
         slower: (amount: string) => `${amount} más lenta`,
         faster: (amount: string) => `${amount} más rápida`,
         same: "misma duración",

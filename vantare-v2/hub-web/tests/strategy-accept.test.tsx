@@ -1062,6 +1062,83 @@ describe("a proposal with the same calendar as an outdated accepted plan", () =>
   });
 });
 
+// ---- the card of the accepted plan tells how outdated it is (#2708) ----
+// An outdated plan is a warning, not a tick: the icon and the words follow the
+// state of the plan, also when the new proposal sits next to it.
+
+describe("the card of an outdated accepted plan next to a proposal", () => {
+  const cardIcon = () => {
+    const card = screen.getByRole("region", {
+      name: "Ya tienes un plan aceptado",
+    });
+    return card.querySelector(".strategy-compare-icon");
+  };
+  // the icons are inline SVG: tell them apart by their first stroke
+  const drawn = (icon: Element | null) =>
+    icon?.querySelector("path")?.getAttribute("d");
+  const tick = "M20 6 9 17l-5-5";
+  const triangle = "M12 4l9 15.5H3z";
+  const alertCircle = "M12 8v5M12 16h.01";
+
+  it("is a tick while the accepted plan is up to date", async () => {
+    mount("acceptedFujiNew");
+    await openPlan();
+    const icon = cardIcon();
+    expect(icon?.getAttribute("data-tone")).toBeNull();
+    expect(drawn(icon)).toBe(tick);
+  });
+
+  it("is a warning, not a tick, when the data changed but the plan still reaches the finish", async () => {
+    mount("acceptedFujiStaleSame");
+    await openPlan();
+    const icon = cardIcon();
+    expect(icon?.getAttribute("data-tone")).toBe("warn");
+    expect(drawn(icon)).toBe(triangle);
+    // the hint says WHICH plan is this one: the proposal, not «este»
+    const card = screen.getByRole("region", {
+      name: "Ya tienes un plan aceptado",
+    });
+    expect(card.textContent).toContain(
+      "Si aceptas esta propuesta, esta pasa a ser tu plan aceptado.",
+    );
+    expect(card.textContent).not.toContain("ya no llega a meta");
+  });
+
+  it("is a strong warning and says the old plan no longer reaches the finish", async () => {
+    mount("acceptedFujiNew", undefined, (view) => {
+      const next = structuredClone(view);
+      if (next.plan.accepted) {
+        next.plan.accepted.state = "staleUnreachable";
+        next.plan.accepted.unreachable = {
+          cause: "resourceExhausted",
+          failLap: null,
+        };
+        next.plan.accepted.changes = [
+          { field: "fuelPerLapLiters", before: "1,83", after: "1,85" },
+        ];
+      }
+      return next;
+    });
+    await openPlan();
+    const card = screen.getByRole("region", {
+      name: "Ya tienes un plan aceptado",
+    });
+    const icon = cardIcon();
+    expect(icon?.getAttribute("data-tone")).toBe("error");
+    expect(drawn(icon)).toBe(alertCircle);
+    expect(card.textContent).toContain("no llega a meta");
+    expect(card.textContent).toContain(
+      "Se quedaría sin combustible, energía o neumáticos antes de llegar a meta.",
+    );
+    expect(card.textContent).toContain(
+      "Si aceptas esta propuesta, esta pasa a ser tu plan aceptado.",
+    );
+    // still one live region, and the stale notice of the lone plan is not here
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
 // ---- the words of the question tell the truth about «Descartar cambios» ----
 // `strategy.discard` goes back to the FILE: it brings back a plan only if the
 // file holds it (`accepted.saved`).

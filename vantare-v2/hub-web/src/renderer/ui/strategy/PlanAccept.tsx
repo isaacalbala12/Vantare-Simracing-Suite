@@ -101,14 +101,22 @@ export function CompareCard({
   // the plan accepted is outdated: say what changed, and that accepting this
   // proposal brings it up to date
   const outdated = accepted.state !== "accepted";
+  // a tick only while the plan is up to date; an outdated one is a warning, and
+  // a plan that no longer reaches the finish is the strong one
+  const unreachable = accepted.state === "staleUnreachable";
+  const tone = unreachable ? "error" : outdated ? "warn" : undefined;
   const shown = accepted.changes.slice(0, shownChanges);
   return (
     <section
       className="strategy-card strategy-compare"
       aria-labelledby={`${id}-title`}
     >
-      <span className="strategy-compare-icon" aria-hidden="true">
-        <Icon name="check" />
+      <span
+        className="strategy-compare-icon"
+        data-tone={tone}
+        aria-hidden="true"
+      >
+        <Icon name={unreachable ? "alert" : outdated ? "warn" : "check"} />
       </span>
       <div>
         <strong id={`${id}-title`}>{c.title}</strong>
@@ -128,6 +136,11 @@ export function CompareCard({
               <li key={change.field}>{changeLine(change)}</li>
             ))}
           </ul>
+        )}
+        {unreachable && accepted.unreachable && (
+          <p>
+            {c.unreachableHint} {unreachableText(accepted.unreachable)}
+          </p>
         )}
         {outdated && <p>{c.outdatedHint}</p>}
       </div>

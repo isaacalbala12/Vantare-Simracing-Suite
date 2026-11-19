@@ -53,10 +53,10 @@ pasan la proyección resultante a shell::sync; no los vuelven a abrir al activar
 resincronizar. La extracción autentica el SHA externo del ZIP en el mismo handle,
 deriva los nombres de su manifiesto y mantiene límites y validación central de
 duplicados. Así un recurso nuevo no requiere modificar el instalador (#1795).
-Los archivos ajenos en bin/ se conservan al desinstalar. Los binarios de generaciones
-huérfanas sin referencia SHA también se conservan, con ruta y motivo en el log;
-K3 se evaluó en el paso 8 y quedó diferido: falta atribuirlos con SHA antes de
-retirarlos. No se crea otra lista ni marcador.
+Los archivos ajenos en bin/ se conservan al desinstalar. Los binarios de las
+generaciones que ya no nombra `state.json` se retiran al confirmar un arranque
+y al desinstalar (K3, #2740; véase «Generaciones sin referencia»). No se crea
+otra lista ni marcador.
 
 Context mantiene HKCU y carpetas QA inyectados y el guard. Dentro de ese contexto
 se usan los nombres del producto, sin identidad QA paralela. El validador Rust del
@@ -312,7 +312,56 @@ de `hub-ui` (recibo de P3) y bytes inertes, con HKCU y carpetas inyectados y el
 | Desinstalar | Retira todos los miembros propios y conserva `data` y lo ajeno; reinstalar recupera los datos |
 | Motor 1 | No vuelve al lanzador antiguo; tras un arranque fallido pide Reparar y conserva los datos |
 
-Límites conocidos que este paso no cambia: el lector compartido rechaza una
+Límite conocido que este paso no cambia: el lector compartido rechaza una
 generación con archivos no enumerados (Setup y Reparar se detienen; desinstalar
-y volver a instalar conserva los datos), y las generaciones que dejan de estar
-referenciadas no se retiran solas.
+y volver a instalar conserva los datos).
+
+## Generaciones sin referencia — #2740 (K3)
+
+`state.json` solo nombra la generación activa y la anterior. Cada actualización
+(A → B → C deja A), cada Reparar y cada arranque fallido con vuelta atrás dejan
+una carpeta `generations/<id>` que ya nadie nombra. Con Electron son unos
+320 MiB de binarios cada una.
+
+Qué hace ahora el motor, en `operations::confirm` y en `operations::uninstall`:
+
+- **Cuándo.** Solo después de confirmar un arranque correcto (cuando ya se ha
+  borrado `boot-pending.json` y no hay vuelta atrás) y al desinstalar. Nunca al
+  aplicar una actualización, al reparar ni al volver atrás.
+- **Qué carpetas.** Las que están en `generations/`, tienen nombre de 32
+  caracteres hexadecimales y no son ni la activa ni la anterior. Si
+  `state.json` no deja claras esas dos referencias, no se retira nada.
+- **Cómo se sabe que son nuestras.** `state.json` no guarda el SHA de una
+  generación que ya no nombra, así que se comprueba por contenido: la carpeta
+  debe tener un `manifest.json` válido de este producto y de este canal, y cada
+  archivo se retira solo si su tamaño y su SHA-256 coinciden con lo que declara
+  ese manifiesto.
+- **Qué se conserva siempre.** La carpeta `data/` de la generación: no se abre,
+  no se lista y no se borra. También la activa y la anterior, enteras.
+- **Qué se conserva y se anota en el registro, con ruta y motivo:** una carpeta
+  con otro nombre, una sin manifiesto válido o de otro canal, un archivo que no
+  figura en el manifiesto, uno cuyo contenido ya no coincide, uno abierto por
+  otro programa o sin permiso de lectura, y la generación entera si alguno de
+  sus `.exe` está en uso. No se cierra ni se mata ningún proceso.
+- **Orden.** `manifest.json` es lo último que se retira, y solo cuando no queda
+  nada más fuera de `data/`. Si el barrido se corta a medias, el siguiente lo
+  termina; no hay archivos temporales ni estados intermedios.
+- **Fallos.** Nada de esto puede hacer fallar la confirmación ni la
+  desinstalación: lo que no se puede retirar se queda y se anota.
+
+Al confirmar, las notas salen por la salida de errores del lanzador; al
+desinstalar, van al registro del desinstalador. Las generaciones sin referencia
+que ya existan en una instalación anterior se retiran igual en su siguiente
+confirmación.
+
+Qué sigue sin hacerse:
+
+- La carpeta `data/` de esas generaciones sigue en disco (segundo PR de #2740).
+- Los binarios de la generación anterior no se tocan.
+- Tras desinstalar y volver a instalar no hay confirmación de arranque: lo que
+  quede se retira en la primera actualización confirmada.
+
+Tests en el último bloque de `tests/installation_write.rs`: A → B → C, Reparar
+(sana y dañada), vuelta atrás, carpetas ajenas, manifiesto roto o de otro canal,
+archivo alterado o no enumerado, archivo ocupado, permiso de lectura denegado,
+imagen en uso, barrido cortado y desinstalación.

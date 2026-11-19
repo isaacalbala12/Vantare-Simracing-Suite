@@ -1375,13 +1375,12 @@ fn uninstall_keeps_unreferenced_binaries_with_their_path_and_reason_in_the_log()
         b"foreign bytes"
     );
     assert_eq!(disk::data_index(&active.join("data")).unwrap(), before);
-    assert!(
-        diagnostics
-            .iter()
-            .any(|message| message.contains(&orphan.display().to_string())
-                && message.contains("sin referencia SHA")
-                && message.contains("retención aplazada"))
-    );
+    // Its manifest does not list that binary, so nothing proves it is ours.
+    assert!(noted(
+        &diagnostics,
+        &executable,
+        "no figura en el manifiesto"
+    ));
 }
 
 #[test]
@@ -2270,4 +2269,381 @@ fn motor_one_relay_never_returns_to_the_old_launcher_and_repair_keeps_the_data()
     );
     assert_eq!(index(&repaired.join("data")), before);
     assert_eq!(index(&old.join("data")), before);
+}
+
+// Generations left without a reference (#2740, PR 1 of 2). Confirm and
+// Uninstall retire their binaries, by content, and never their `data`.
+impl Fixture {
+    fn confirm(&self) -> Vec<String> {
+        let mut notes = Vec::new();
+        operations::confirm_reporting(&self.root, &mut |note| notes.push(note.to_owned()))
+            .expect("confirmed boot");
+        notes
+    }
+    fn upgrade(&self, version: &str, mode: Mode) -> PathBuf {
+        self.install(&self.electron(version), mode, false, false)
+            .expect(version);
+        self.active()
+    }
+    /// A (1.0.0) is `previous` and B (1.0.1) is active with its boot confirmed;
+    /// each keeps its own snapshot of the documents. One more update leaves A
+    /// without a reference.
+    fn two_generations(&self) -> [PathBuf; 2] {
+        let a = self.upgrade("1.0.0", Mode::Auto);
+        self.write_documents();
+        let b = self.upgrade("1.0.1", Mode::Auto);
+        assert_eq!(self.confirm(), [] as [String; 0]);
+        fs::write(a.join("data/solo en A.bin"), b"only in A").expect("unique document");
+        [a, b]
+    }
+}
+fn names(directory: &Path) -> Vec<String> {
+    let mut names: Vec<_> = fs::read_dir(directory)
+        .expect("directory")
+        .map(|entry| {
+            entry
+                .expect("entry")
+                .file_name()
+                .into_string()
+                .expect("name")
+        })
+        .collect();
+    names.sort();
+    names
+}
+fn noted(notes: &[String], path: &Path, reason: &str) -> bool {
+    let path = disk::path(path).expect("path").display().to_string();
+    notes
+        .iter()
+        .any(|note| note.contains(&path) && note.contains(reason))
+}
+
+#[test]
+fn confirm_retires_the_binaries_of_the_generation_without_reference_and_keeps_its_data() {
+    let fixture = Fixture::new();
+    let [a, b] = fixture.two_generations();
+    let (whole_a, data_a) = (index(&a), index(&a.join("data")));
+    let c = fixture.upgrade("1.0.2", Mode::Auto);
+    assert_eq!(index(&a), whole_a, "applying an update retires nothing");
+    let whole_b = index(&b);
+    let notes = fixture.confirm();
+    assert_eq!(names(&a), ["data"]);
+    assert_eq!(index(&a.join("data")), data_a);
+    assert_eq!(index(&b), whole_b, "previous keeps the way back");
+    let view = verified(&fixture.root).unwrap();
+    assert_eq!(fixture.active(), c);
+    assert!(view.usable_previous().is_some());
+    assert!(noted(&notes, &a, "retirados") && notes.len() == 1);
+    // Repairing a healthy C keeps it as `previous`: B is the next one retired,
+    // and nothing is said again about A, which only holds data.
+    let whole_c = index(&c);
+    let repaired = fixture.upgrade("1.0.2", Mode::Repair);
+    assert_eq!(index(&b), whole_b);
+    let notes = fixture.confirm();
+    assert_eq!([names(&a), names(&b)], [["data"], ["data"]]);
+    assert_eq!(index(&a.join("data")), data_a);
+    assert_eq!(index(&c), whole_c);
+    assert_eq!(fixture.active(), repaired);
+    assert!(noted(&notes, &b, "retirados") && notes.len() == 1);
+}
+
+#[test]
+fn confirm_after_repair_retires_the_damaged_generation_except_what_no_longer_matches() {
+    let fixture = Fixture::new();
+    let damaged = fixture.upgrade("1.0.0", Mode::Auto);
+    fixture.write_documents();
+    fs::write(damaged.join(ASAR), b"tampered").unwrap();
+    fs::remove_file(damaged.join("hub-ui/locales/es.pak")).unwrap();
+    let (whole, data) = (index(&damaged), index(&damaged.join("data")));
+    let repaired = fixture.upgrade("1.0.0", Mode::Repair);
+    assert_eq!(index(&damaged), whole, "repairing retires nothing");
+    let notes = fixture.confirm();
+    assert_eq!(names(&damaged), ["data", "hub-ui", "manifest.json"]);
+    assert_eq!(
+        index(&damaged.join("hub-ui"))
+            .into_keys()
+            .collect::<Vec<_>>(),
+        [
+            PathBuf::from("resources"),
+            PathBuf::from("resources/app.asar")
+        ]
+    );
+    assert_eq!(fs::read(damaged.join(ASAR)).unwrap(), b"tampered");
+    assert!(noted(&notes, &damaged.join(ASAR), "SHA-256"));
+    assert_eq!(index(&damaged.join("data")), data);
+    assert_eq!(fixture.active(), repaired);
+    let view = verified(&fixture.root).unwrap();
+    assert!(view.state.unwrap().previous.is_none());
+}
+
+#[test]
+fn a_failed_generation_survives_the_rollback_and_is_retired_at_the_next_confirm() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    fixture.write_documents();
+    let a = fixture.active();
+    let b = fixture.upgrade("1.0.1", Mode::Auto);
+    // B wrote its own documents before failing to confirm its boot.
+    fs::write(b.join("data/hub/hub-settings.json"), b"{\"by\":\"B\"}").unwrap();
+    let (whole_b, data_b) = (index(&b), index(&b.join("data")));
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    assert_eq!(fixture.active(), a);
+    assert_eq!(index(&b), whole_b, "the rollback retires nothing");
+    let c = fixture.upgrade("1.0.2", Mode::Auto);
+    assert_eq!(index(&b), whole_b, "nor does the next update");
+    let whole_a = index(&a);
+    let notes = fixture.confirm();
+    assert_eq!(names(&b), ["data"]);
+    assert_eq!(index(&b.join("data")), data_b, "what B wrote is kept");
+    assert_eq!(index(&a), whole_a);
+    assert_eq!(fixture.active(), c);
+    assert!(verified(&fixture.root).is_ok() && noted(&notes, &b, "retirados"));
+}
+
+#[test]
+fn a_rejected_confirmation_a_rollback_or_an_unreadable_reference_retire_nothing() {
+    let fixture = Fixture::new();
+    let [a, b] = fixture.two_generations();
+    let c = fixture.upgrade("1.0.2", Mode::Auto);
+    let whole = [&a, &b, &c].map(|generation| index(generation));
+    let unchanged = || assert_eq!([&a, &b, &c].map(|generation| index(generation)), whole);
+    let marker = fixture.root.join("boot-pending.json");
+    let pending = fs::read(&marker).unwrap();
+    let mut foreign = disk::read_json(&marker, None).unwrap();
+    foreign["version"] = "9.9.9".into();
+    fs::write(&marker, foreign.to_string()).unwrap();
+    let mut notes = Vec::new();
+    let mut note = |text: &str| notes.push(text.to_owned());
+    assert!(operations::confirm_reporting(&fixture.root, &mut note).is_err());
+    unchanged();
+    assert_eq!(notes, [] as [String; 0]);
+    // C never confirms: going back to B leaves A, already without a reference, alone.
+    fs::write(&marker, pending).unwrap();
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    unchanged();
+    // `previous` can no longer be decoded: nobody knows which folder it meant.
+    fixture.upgrade("1.0.3", Mode::Auto);
+    let path = fixture.root.join("state.json");
+    let mut state = disk::read_json(&path, None).unwrap();
+    state["previous"]["manifest_sha256"] = json!(5);
+    fs::write(&path, state.to_string()).unwrap();
+    let notes = fixture.confirm();
+    unchanged();
+    assert!(noted(
+        &notes,
+        &fixture.root.join("generations"),
+        "state.json"
+    ));
+    assert!(!marker.exists());
+}
+
+#[test]
+fn foreign_folders_inside_generations_are_left_alone_and_logged() {
+    let fixture = Fixture::new();
+    let [a, _] = fixture.two_generations();
+    let generations = fixture.root.join("generations");
+    let foreign = [
+        ("copia de seguridad", "nombre"),
+        ("ABCDEFABCDEFABCDEFABCDEFABCDEFAB", "nombre"),
+        ("ffffffffffffffffffffffffffffffff", "manifiesto"),
+    ]
+    .map(|(name, reason)| (generations.join(name), reason));
+    // Two are whole copies of A, manifest included, under a name that is not
+    // a generation's; the third has the right name and no manifest.
+    for (folder, _) in &foreign[..2] {
+        disk::copy_data(&a, folder).unwrap();
+    }
+    let unknown = &foreign[2].0;
+    fs::create_dir_all(unknown.join("bin")).unwrap();
+    fs::create_dir_all(unknown.join("data")).unwrap();
+    fs::write(unknown.join("bin/tool.exe"), inert_pe()).unwrap();
+    fs::write(unknown.join("data/user.bin"), b"user bytes").unwrap();
+    fs::write(generations.join("nota.txt"), b"loose file").unwrap();
+    let before: Vec<_> = foreign.iter().map(|(folder, _)| index(folder)).collect();
+    fixture.upgrade("1.0.2", Mode::Auto);
+    let notes = fixture.confirm();
+    for ((folder, reason), before) in foreign.iter().zip(before) {
+        assert_eq!(index(folder), before, "{}", folder.display());
+        assert!(noted(&notes, folder, reason), "{reason}: {notes:?}");
+    }
+    assert_eq!(
+        fs::read(generations.join("nota.txt")).unwrap(),
+        b"loose file"
+    );
+    assert_eq!(names(&a), ["data"], "the real orphan is still retired");
+}
+
+#[test]
+fn an_orphan_without_a_trustworthy_manifest_is_kept_whole_and_logged() {
+    for fault in ["corrupt", "other-channel", "missing"] {
+        let fixture = Fixture::new();
+        let [a, _] = fixture.two_generations();
+        fixture.upgrade("1.0.2", Mode::Auto);
+        let manifest = a.join("manifest.json");
+        match fault {
+            "corrupt" => fs::write(&manifest, b"{ not a manifest").unwrap(),
+            "missing" => fs::remove_file(&manifest).unwrap(),
+            _ => {
+                let mut other = disk::read_json(&manifest, None).unwrap();
+                other["channel"] = "nightly".into();
+                fs::write(&manifest, other.to_string()).unwrap();
+            }
+        }
+        let whole = index(&a);
+        let notes = fixture.confirm();
+        assert_eq!(index(&a), whole, "{fault}");
+        assert!(noted(&notes, &a, "manifiesto"), "{fault}: {notes:?}");
+    }
+}
+
+#[test]
+fn altered_and_unlisted_files_of_an_orphan_are_kept_and_logged() {
+    let fixture = Fixture::new();
+    let [a, _] = fixture.two_generations();
+    fixture.upgrade("1.0.2", Mode::Auto);
+    let data = index(&a.join("data"));
+    // Same size as the declared member: the size alone proves nothing.
+    let kept = [
+        ("hub-ui/version", b"FIXTURE".as_slice(), "SHA-256"),
+        (ASAR, b"edited by someone", "SHA-256"),
+        (
+            "hub-ui/debug.log",
+            b"unlisted",
+            "no figura en el manifiesto",
+        ),
+    ];
+    for (name, bytes, _) in kept {
+        fs::write(a.join(name), bytes).unwrap();
+    }
+    let notes = fixture.confirm();
+    for (name, bytes, reason) in kept {
+        assert_eq!(fs::read(a.join(name)).unwrap(), bytes, "{name}");
+        assert!(noted(&notes, &a.join(name), reason), "{name}: {notes:?}");
+    }
+    assert_eq!(names(&a), ["data", "hub-ui", "manifest.json"]);
+    assert_eq!(index(&a.join("hub-ui")).len(), 4, "three files, one folder");
+    assert_eq!(index(&a.join("data")), data);
+}
+
+/// One member of the orphan cannot be retired now. The sweep keeps and logs
+/// it without failing the confirmation, and the next sweep finishes the job.
+fn orphan_fault(fault: &str) {
+    let fixture = Fixture::new();
+    let [a, _] = fixture.two_generations();
+    fixture.upgrade("1.0.2", Mode::Auto);
+    let (whole, data) = (index(&a), index(&a.join("data")));
+    let member = a.join(if fault == "open-image" {
+        ELECTRON
+    } else {
+        ASAR
+    });
+    let denied = (fault == "access-denied").then(|| Denied::new(&member));
+    let busy = (fault != "access-denied").then(|| hold(&member));
+    let notes = fixture.confirm();
+    drop((denied, busy));
+    assert!(noted(&notes, &member, "motivo"), "{fault}: {notes:?}");
+    if fault == "open-image" {
+        assert_eq!(index(&a), whole, "a live image keeps the whole generation");
+    } else {
+        assert_eq!(names(&a), ["data", "hub-ui", "manifest.json"], "{fault}");
+        assert_eq!(fs::read(&member).expect("member"), b"fixture", "{fault}");
+    }
+    assert_eq!(index(&a.join("data")), data, "{fault}");
+    fixture.upgrade("1.0.2", Mode::Repair);
+    fixture.confirm();
+    assert_eq!(names(&a), ["data"], "{fault}");
+    assert_eq!(index(&a.join("data")), data, "{fault}");
+}
+
+#[test]
+fn busy_member_of_an_orphan_is_kept_until_the_next_sweep() {
+    orphan_fault("busy-member");
+}
+
+#[test]
+fn denied_member_of_an_orphan_is_kept_until_the_next_sweep() {
+    orphan_fault("access-denied");
+}
+
+#[test]
+fn open_image_keeps_the_whole_orphan_until_the_next_sweep() {
+    orphan_fault("open-image");
+}
+
+#[test]
+fn a_sweep_cut_short_is_finished_by_the_next_one() {
+    // What an interruption leaves on disk: some members already gone, or all
+    // of them and their folders; the manifest is always the last to go.
+    for cut in ["half", "all-but-manifest"] {
+        let fixture = Fixture::new();
+        let [a, _] = fixture.two_generations();
+        fixture.upgrade("1.0.2", Mode::Auto);
+        let data = index(&a.join("data"));
+        let step = if cut == "half" { 2 } else { 1 };
+        for member in electron_members().iter().step_by(step) {
+            fs::remove_file(a.join(member)).unwrap();
+        }
+        if cut == "all-but-manifest" {
+            for folder in names(&a) {
+                if a.join(&folder).is_dir() && folder != "data" {
+                    fs::remove_dir_all(a.join(folder)).unwrap();
+                }
+            }
+            assert_eq!(names(&a), ["data", "manifest.json"]);
+        }
+        assert_eq!(fixture.confirm().len(), usize::from(cut == "half"), "{cut}");
+        assert_eq!(names(&a), ["data"], "{cut}");
+        assert_eq!(index(&a.join("data")), data, "{cut}");
+    }
+}
+
+#[test]
+fn uninstall_retires_orphan_binaries_and_never_touches_a_data_folder() {
+    let fixture = Fixture::new();
+    let [a, b] = fixture.two_generations();
+    let c = fixture.upgrade("1.0.2", Mode::Auto);
+    fs::write(a.join("bin/ajeno.dll"), b"foreign bytes").unwrap();
+    let data = [&a, &b, &c].map(|generation| index(&generation.join("data")));
+    let cancel = AtomicBool::new(false);
+    let (mut count, mut notes) = (0, Vec::new());
+    // The first attempt is interrupted while it retires the referenced members.
+    let mut checkpoint = |_: &str| {
+        count += 1;
+        if count == 3 {
+            return Err(engine::WriteError::new(1, "injected interruption"));
+        }
+        Ok(())
+    };
+    let mut warning = |note: &str| notes.push(note.to_owned());
+    let mut control = Control {
+        cancel: &cancel,
+        progress: &mut |_| {},
+        checkpoint: &mut checkpoint,
+        warning: &mut warning,
+    };
+    assert!(operations::uninstall(&fixture.root, &mut control, |_| Ok(())).is_err());
+    operations::uninstall(&fixture.root, &mut control, |_| Ok(())).expect("resumed");
+    assert!(!fixture.root.join("state.json").exists());
+    assert_eq!(names(&a), ["bin", "data", "manifest.json"]);
+    assert_eq!(names(&a.join("bin")), ["ajeno.dll"]);
+    assert_eq!(fs::read(a.join("bin/ajeno.dll")).unwrap(), b"foreign bytes");
+    assert_eq!([names(&b), names(&c)], [["data"], ["data"]]);
+    assert_eq!(
+        [&a, &b, &c].map(|generation| index(&generation.join("data"))),
+        data
+    );
+    assert!(noted(
+        &notes,
+        &a.join("bin/ajeno.dll"),
+        "no figura en el manifiesto"
+    ));
+    assert!(noted(&notes, &a, "retirados"));
 }

@@ -155,6 +155,13 @@ pub fn lock(root: &Path, name: &str) -> Result<fs::File> {
     let file = options.open(root.join(name))?;
     Ok(file)
 }
+/// Fails while any other handle is open; a mapped image refuses write access.
+pub fn open_exclusive(path: &Path) -> io::Result<fs::File> {
+    let mut options = fs::OpenOptions::new();
+    options.read(true).write(true);
+    exclusive(&mut options);
+    options.open(path)
+}
 pub fn binary_guard(root: &Path) -> Result<Vec<fs::File>> {
     binary_guard_except(root, None)
 }
@@ -181,10 +188,7 @@ fn binary_guard_except(root: &Path, running: Option<&PathBuf>) -> Result<Vec<fs:
                 .as_ref()
                 .is_some_and(|image| super::context::same_path(image, &file).unwrap_or(false))
         {
-            let mut options = fs::OpenOptions::new();
-            options.read(true).write(true);
-            exclusive(&mut options);
-            handles.push(options.open(file).map_err(|_| {
+            handles.push(open_exclusive(&file).map_err(|_| {
                 WriteError::new(
                     2,
                     "Cierra los procesos de esta instalación; no se mata la aplicación",

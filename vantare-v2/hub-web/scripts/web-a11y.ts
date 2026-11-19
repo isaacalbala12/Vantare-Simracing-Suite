@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
-import { chromium, type Locator } from "playwright-core";
+import { chromium, type Locator, type Page } from "playwright-core";
 import { checkAccessGate } from "./check-access-gate.ts";
 import { checkAccessStates } from "./check-access-states.ts";
 import { checkAccount } from "./check-account.ts";
@@ -41,10 +41,11 @@ import { checkStudioCatalogPhotos } from "./check-studio-catalog-photos";
 import { checkStudioPreview } from "./check-studio-preview";
 import { checkStudioStates } from "./check-studio-states.ts";
 import { checkTestingDensity } from "./check-testing-density.ts";
-import { printTimingSummary, timed } from "./check-timing";
+import { printTimingSummary, timed, timedNames } from "./check-timing";
 import { checkWorkshopScreen } from "./check-workshop-screen";
 import { collectPageFailures, pageFailuresReport } from "./page-failures";
 import { until } from "./wait-for";
+import { comprobarEjecutados, leerParte } from "./web-a11y-partes";
 
 async function focused(locator: Locator) {
   await until(
@@ -61,6 +62,9 @@ const evidence = resolve(
   process.env.VANTARE_HUB_EVIDENCE ?? "test-results/web",
 );
 await mkdir(evidence, { recursive: true });
+// --parte=todo (por defecto, local) | paginas | analisis: el workflow reparte
+// la línea de páginas y la de análisis (+ Estrategia) en jobs distintos.
+const parte = leerParte(process.argv);
 const server = await webQaPreview();
 const browser = await chromium.launch();
 // Analysis owns its context and page, so it runs beside the main page's checks
@@ -115,10 +119,11 @@ async function runAnalysis() {
     return { failures, error };
   }
 }
-const analysisRun = runAnalysis();
+const analysisRun = parte === "todo" ? runAnalysis() : undefined;
 let failures: string[] = [];
+let strategyFailures: string[] = [];
 const startedAt = performance.now();
-try {
+async function runPaginas() {
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
   });
@@ -243,16 +248,7 @@ try {
   await timed("checkHomePhotos", () =>
     checkHomePhotos(page, server.resolvedUrls?.local[0] ?? ""),
   );
-  await timed("checkStrategyScreen", () =>
-    checkStrategyScreen(
-      page,
-      server.resolvedUrls?.local[0] ?? "",
-      // Capturas solo bajo demanda (#2682): STRATEGY_SHOTS=1.
-      process.env.STRATEGY_SHOTS === "1"
-        ? resolve(evidence, "strategy")
-        : undefined,
-    ),
-  );
+  if (parte === "todo") await runStrategy(page);
   await timed("checkWorkshopScreen", () =>
     checkWorkshopScreen(page, server.resolvedUrls?.local[0] ?? ""),
   );
@@ -386,9 +382,11 @@ try {
   await timed("checkLightContrast", () =>
     checkLightContrast(page, server.resolvedUrls?.local[0] ?? "", evidence),
   );
-  const analysis = await analysisRun;
-  failures.push(...analysis.failures);
-  if (analysis.error !== undefined) throw analysis.error;
+  if (analysisRun) {
+    const analysis = await analysisRun;
+    failures.push(...analysis.failures);
+    if (analysis.error !== undefined) throw analysis.error;
+  }
   await timed("checkStudioCanvas", () =>
     checkStudioCanvas(page, server.resolvedUrls?.local[0] ?? "", evidence),
   );
@@ -409,9 +407,44 @@ try {
       onboarding: true,
     }),
   );
+}
+// Estrategia crea sus propios contextos y páginas (hora de Madrid): la página
+// que recibe solo le sirve para llegar al navegador, así que puede ir sola.
+async function runStrategy(page: Page) {
+  await timed("checkStrategyScreen", () =>
+    checkStrategyScreen(
+      page,
+      server.resolvedUrls?.local[0] ?? "",
+      // Capturas solo bajo demanda (#2682): STRATEGY_SHOTS=1.
+      process.env.STRATEGY_SHOTS === "1"
+        ? resolve(evidence, "strategy")
+        : undefined,
+    ),
+  );
+}
+async function runAnalisis() {
+  const analysis = await runAnalysis();
+  failures = analysis.failures;
+  if (analysis.error !== undefined) throw analysis.error;
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 1000 },
+  });
+  try {
+    const page = await context.newPage();
+    strategyFailures = collectPageFailures(page);
+    page.setDefaultTimeout(20000);
+    await runStrategy(page);
+  } finally {
+    await context.close();
+  }
+}
+try {
+  if (parte === "analisis") await runAnalisis();
+  else await runPaginas();
+  comprobarEjecutados(parte, timedNames());
 } catch (error) {
   // Playwright only reports the wait that expired; the page's own errors say why.
-  console.error(pageFailuresReport(failures));
+  console.error(pageFailuresReport([...failures, ...strategyFailures]));
   throw error;
 } finally {
   printTimingSummary((performance.now() - startedAt) / 1000);

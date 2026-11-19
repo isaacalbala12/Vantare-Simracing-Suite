@@ -318,3 +318,142 @@ describe("wiring of the main process", () => {
     expect(main).toContain("pickStrategyFile.cancel()");
   });
 });
+
+describe("export dialog of the plan in the main process", () => {
+  const target = { kind: "accepted" } as const;
+  const ticket = (id: number, suggestedName = "Fuji - Base.csv"): HostToUi => ({
+    kind: "response",
+    id,
+    result: {
+      method: "strategy.exportFile",
+      value: { kind: "ticket", suggestedName },
+    },
+  });
+  const saved = (id: number): HostToUi => ({
+    kind: "response",
+    id,
+    result: {
+      method: "strategy.exportFile",
+      value: { kind: "saved", file: { name: "Fuji - Base.csv" } },
+    },
+  });
+
+  it("asks the host, opens the dialog with the name the host suggested and hands over only the file name", async () => {
+    let finish: (path: string | undefined) => void = () => {};
+    const open = vi.fn(
+      (_mode: string, _name?: string) =>
+        new Promise<string | undefined>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const host = vi.fn(),
+      renderer = vi.fn();
+    const pick = strategyFilePicker(open, host);
+    pick.requestExport(5, revision, target, renderer, () => true);
+    expect(host).toHaveBeenCalledWith({
+      kind: "request",
+      id: 0x80000000,
+      request: { method: "strategy.exportFile", revision, target },
+    });
+    // another id, or the answer of another method, does not open anything
+    expect(pick.receive(ticket(5))).toBe(false);
+    expect(pick.receive(ack(0x80000000))).toBe(false);
+    expect(open).not.toHaveBeenCalled();
+    expect(pick.receive(ticket(0x80000000))).toBe(true);
+    pick.receive(ticket(0x80000000));
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith("export", "Fuji - Base.csv");
+    // busy while it is open, for an export and for a file dialog
+    pick.requestExport(6, revision, target, renderer, () => true);
+    pick.request(7, "open", revision, renderer, () => true);
+    expect(renderer).toHaveBeenCalledTimes(2);
+    for (const [message] of renderer.mock.calls)
+      expect(message).toMatchObject({
+        kind: "failure",
+        error: { kind: "busy" },
+      });
+    finish("D:/private/Fuji - Base.csv");
+    await wait();
+    expect(host).toHaveBeenLastCalledWith({
+      kind: "pickedStrategyFile",
+      id: 0x80000000,
+      path: "D:/private/Fuji - Base.csv",
+    });
+    // the final answer reaches the renderer with its own id, once, without the path
+    const result = saved(0x80000000);
+    expect(pick.receive(result)).toBe(true);
+    expect(renderer).toHaveBeenLastCalledWith({ ...result, id: 5 });
+    expect(JSON.stringify(renderer.mock.calls)).not.toContain("private");
+    expect(pick.receive(result)).toBe(false);
+  });
+
+  it("does not open a dialog for an acknowledgement that is not a ticket, and voids it", () => {
+    const open = vi.fn(async () => undefined);
+    const host = vi.fn(),
+      renderer = vi.fn();
+    const pick = strategyFilePicker(open, host);
+    pick.requestExport(1, revision, target, renderer, () => true);
+    pick.receive({
+      kind: "response",
+      id: 0x80000000,
+      result: {
+        method: "strategy.exportFile",
+        value: { kind: "cancelled" },
+      },
+    });
+    expect(open).not.toHaveBeenCalled();
+    expect(host).toHaveBeenLastCalledWith({
+      kind: "pickedStrategyFile",
+      id: 0x80000000,
+      path: null,
+    });
+  });
+
+  it("tells the host a cancelled dialog is void and forwards host failures with the renderer id", async () => {
+    const open = vi.fn(async () => undefined);
+    const host = vi.fn(),
+      renderer = vi.fn();
+    const pick = strategyFilePicker(open, host);
+    pick.requestExport(2, revision, target, renderer, () => true);
+    pick.receive(ticket(0x80000000));
+    await wait();
+    expect(host).toHaveBeenLastCalledWith({
+      kind: "pickedStrategyFile",
+      id: 0x80000000,
+      path: null,
+    });
+    const other = strategyFilePicker(async () => undefined, vi.fn());
+    other.requestExport(3, revision, target, renderer, () => true);
+    other.receive({
+      kind: "failure",
+      id: 0x80000000,
+      error: { kind: "strategyNothingToExport" },
+    });
+    expect(renderer).toHaveBeenLastCalledWith({
+      kind: "failure",
+      id: 3,
+      error: { kind: "strategyNothingToExport" },
+    });
+  });
+
+  it("gives up with an input-output failure when the dialog breaks", async () => {
+    const host = vi.fn(),
+      renderer = vi.fn();
+    const pick = strategyFilePicker(async () => {
+      throw new Error("window gone");
+    }, host);
+    pick.requestExport(4, revision, target, renderer, () => true);
+    pick.receive(ticket(0x80000000));
+    await wait();
+    expect(host).toHaveBeenLastCalledWith({
+      kind: "pickedStrategyFile",
+      id: 0x80000000,
+      path: null,
+    });
+    expect(renderer).toHaveBeenLastCalledWith({
+      kind: "failure",
+      id: 4,
+      error: { kind: "io" },
+    });
+  });
+});

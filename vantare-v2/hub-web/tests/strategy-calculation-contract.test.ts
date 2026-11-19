@@ -83,7 +83,12 @@ type Loose = {
   };
 };
 const planWith = (state: string, errorField?: unknown): Loose => {
-  const found = views.find((m) => m.result?.value.plan.state === state);
+  const found = views.find(
+    (m) =>
+      m.result?.value &&
+      "plan" in m.result.value &&
+      m.result.value.plan?.state === state,
+  );
   if (!found?.result) throw Error(`Missing ${state} sample`);
   const reply = structuredClone(found.result) as unknown as Loose;
   if (errorField !== undefined) reply.value.plan.errorField = errorField;

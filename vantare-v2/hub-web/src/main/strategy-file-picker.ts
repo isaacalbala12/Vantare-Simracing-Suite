@@ -1,5 +1,6 @@
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
 import {
+  type StrategyExportTarget,
   type StrategyFileMode,
   strategyPickCooldownMs,
   strategyPickLifetimeSeconds,
@@ -8,12 +9,17 @@ import { bounded, isUiMessage } from "../contract/validation";
 import { internalIds } from "./launcher-picker";
 
 /**
- * «Abrir otro archivo…» and «Guardar como…». The host records a ticket and
- * acknowledges before main opens a dialog; the path goes from main to the host
- * and never to the renderer, which only receives the final view or an error.
+ * «Abrir otro archivo…», «Guardar como…» and «Guardar como hoja de cálculo…».
+ * The host records a ticket and acknowledges before main opens a dialog; the path
+ * goes from main to the host and never to the renderer, which only receives the
+ * final answer (the view, or the NAME of the exported file) or an error.
  */
 export function strategyFilePicker(
-  open: (mode: StrategyFileMode) => Promise<string | undefined>,
+  // `export` is the dialog that saves the plan as a CSV; the host suggests its name
+  open: (
+    mode: StrategyFileMode | "export",
+    suggestedName?: string,
+  ) => Promise<string | undefined>,
   sendHost: (message: UiToHost) => void,
   now: () => number = Date.now,
   ids = internalIds(),
@@ -23,7 +29,11 @@ export function strategyFilePicker(
     | {
         id: number;
         rendererId: number;
-        mode: StrategyFileMode;
+        // the method of the request and of every answer to it
+        method: "strategy.pickFile" | "strategy.exportFile";
+        mode: StrategyFileMode | "export";
+        // the name the host suggested for an export, once it acknowledged
+        suggestedName?: string;
         phase: "ack" | "dialog" | "result";
         expires: number;
         reply: (message: HostToUi) => void;
@@ -40,7 +50,10 @@ export function strategyFilePicker(
   }
   async function show(current: NonNullable<typeof pending>) {
     try {
-      const path = await open(current.mode);
+      const path =
+        current.mode === "export"
+          ? await open("export", current.suggestedName)
+          : await open(current.mode);
       if (pending !== current) return;
       if (!current.connected() || now() >= current.expires) {
         cancel();
@@ -67,6 +80,32 @@ export function strategyFilePicker(
         });
     }
   }
+  function begin(
+    id: number,
+    method: "strategy.pickFile" | "strategy.exportFile",
+    mode: StrategyFileMode | "export",
+    request: Extract<UiToHost, { kind: "request" }>["request"],
+    reply: (message: HostToUi) => void,
+    connected: () => boolean,
+  ) {
+    if (!connected()) return;
+    if (pending && now() >= pending.expires) cancel();
+    if (pending || now() < nextDialog) {
+      reply({ kind: "failure", id, error: { kind: "busy" } });
+      return;
+    }
+    pending = {
+      id: ids.next(),
+      rendererId: id,
+      method,
+      mode,
+      reply,
+      connected,
+      phase: "ack",
+      expires: now() + strategyPickLifetimeSeconds * 1000,
+    };
+    sendHost({ kind: "request", id: pending.id, request });
+  }
   return {
     cancel,
     request(
@@ -76,26 +115,31 @@ export function strategyFilePicker(
       reply: (message: HostToUi) => void,
       connected: () => boolean,
     ) {
-      if (!connected()) return;
-      if (pending && now() >= pending.expires) cancel();
-      if (pending || now() < nextDialog) {
-        reply({ kind: "failure", id, error: { kind: "busy" } });
-        return;
-      }
-      pending = {
-        id: ids.next(),
-        rendererId: id,
+      begin(
+        id,
+        "strategy.pickFile",
         mode,
+        { method: "strategy.pickFile", mode, revision },
         reply,
         connected,
-        phase: "ack",
-        expires: now() + strategyPickLifetimeSeconds * 1000,
-      };
-      sendHost({
-        kind: "request",
-        id: pending.id,
-        request: { method: "strategy.pickFile", mode, revision },
-      });
+      );
+    },
+    /** «Guardar como hoja de cálculo…»: the CSV of the plan `target` names. */
+    requestExport(
+      id: number,
+      revision: string,
+      target: StrategyExportTarget,
+      reply: (message: HostToUi) => void,
+      connected: () => boolean,
+    ) {
+      begin(
+        id,
+        "strategy.exportFile",
+        "export",
+        { method: "strategy.exportFile", revision, target },
+        reply,
+        connected,
+      );
     },
     /** `true` only for a message of the pending pick; others are not taken. */
     receive(message: HostToUi): boolean {
@@ -110,7 +154,7 @@ export function strategyFilePicker(
       }
       if (
         message.kind !== "response" ||
-        message.result.method !== "strategy.pickFile"
+        message.result.method !== current.method
       )
         return false;
       if (current.phase === "result") {
@@ -123,6 +167,18 @@ export function strategyFilePicker(
       if (!current.connected() || now() >= current.expires) {
         cancel();
         return true;
+      }
+      if (current.method === "strategy.exportFile") {
+        // the acknowledgement of an export carries the name to suggest
+        const value =
+          message.result.method === "strategy.exportFile"
+            ? message.result.value
+            : undefined;
+        if (value?.kind !== "ticket") {
+          cancel();
+          return true;
+        }
+        current.suggestedName = value.suggestedName;
       }
       current.phase = "dialog";
       void show(current);

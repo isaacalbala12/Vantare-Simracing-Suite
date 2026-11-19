@@ -2251,3 +2251,226 @@ fn confirm_reads_a_missing_inputs_key_as_null_and_the_largest_request_fits_the_f
     // and it is still a request the host reads
     assert!(serde_json::from_slice::<UiToHost>(&bytes).is_ok());
 }
+
+// ---- E5c: exporting the plan
+
+fn export_target(view: &StrategyView) -> crate::strategy::StrategyExportTarget {
+    crate::strategy::StrategyExportTarget::Proposal {
+        compute_id: view.plan.compute_id.unwrap(),
+    }
+}
+fn export_file_request(session: &mut Session, id: u32, view: &StrategyView) -> HostToUi {
+    let mut pipe = Pipe::new(Vec::new());
+    session
+        .request(
+            &mut pipe,
+            id,
+            &Request::StrategyExportFile {
+                revision: view.revision.clone(),
+                target: export_target(view),
+            },
+        )
+        .unwrap();
+    read_one(pipe)
+}
+
+#[test]
+fn the_plan_is_exported_as_text_and_as_a_csv_through_the_ticket_of_the_main_process() {
+    use crate::strategy::StrategyExportFileValue;
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    let view = planned_strategy(&mut session);
+    // the text answers the renderer's own request
+    let HostToUi::Response {
+        result: Reply::StrategyExport { value },
+        ..
+    } = request(
+        &mut session,
+        &Request::StrategyExport {
+            revision: view.revision.clone(),
+            target: export_target(&view),
+        },
+    )
+    else {
+        panic!("the text of the plan");
+    };
+    assert!(value.text.starts_with("PROPUESTA SIN ACEPTAR\n"));
+    // the dialog: the ticket is acknowledged with a name and nothing else happens
+    let before = session.strategy.view();
+    let HostToUi::Response {
+        id,
+        result:
+            Reply::StrategyExportFile {
+                value: StrategyExportFileValue::Ticket { suggested_name },
+            },
+    } = export_file_request(&mut session, INTERNAL, &view)
+    else {
+        panic!("a ticket");
+    };
+    assert_eq!(id, INTERNAL);
+    assert_eq!(suggested_name.rsplit('.').next(), Some("csv"));
+    assert_eq!(session.strategy.view(), before);
+    let target = data.join("plan.csv");
+    assert!(!target.exists());
+    // the trusted answer writes the file and tells only its name
+    let answer = picked(&mut session, INTERNAL, Some(&target));
+    assert_eq!(
+        answer,
+        HostToUi::Response {
+            id: INTERNAL,
+            result: Reply::StrategyExportFile {
+                value: StrategyExportFileValue::Saved {
+                    file: crate::strategy::StrategyFile {
+                        name: "plan.csv".into()
+                    }
+                }
+            }
+        }
+    );
+    assert!(
+        std::fs::read(&target)
+            .unwrap()
+            .starts_with(&[0xEF, 0xBB, 0xBF])
+    );
+    let wire = serde_json::to_string(&answer).unwrap();
+    assert!(!wire.contains(fixture.0.to_str().unwrap()), "{wire}");
+    // nothing of the document moved
+    assert_eq!(session.strategy.view(), before);
+    // a second ticket, cancelled: nothing is written and the answer says so
+    assert!(matches!(
+        export_file_request(&mut session, INTERNAL, &before),
+        HostToUi::Response { .. }
+    ));
+    assert_eq!(
+        picked(&mut session, INTERNAL, None),
+        HostToUi::Response {
+            id: INTERNAL,
+            result: Reply::StrategyExportFile {
+                value: StrategyExportFileValue::Cancelled
+            }
+        }
+    );
+}
+
+#[test]
+fn the_renderer_cannot_hold_an_export_ticket_and_every_failure_is_typed() {
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    // no plan on screen: nothing to export
+    let view = session.strategy.view();
+    let accepted = Request::StrategyExport {
+        revision: view.revision.clone(),
+        target: crate::strategy::StrategyExportTarget::Accepted {},
+    };
+    assert!(matches!(
+        request(&mut session, &accepted),
+        HostToUi::Failure {
+            error: HostError::StrategyNothingToExport,
+            ..
+        }
+    ));
+    // an id of the renderer never holds a ticket, plan or no plan
+    let planned = planned_strategy(&mut session);
+    for id in [0, 1, 0x7fff_ffff] {
+        assert_eq!(
+            export_file_request(&mut session, id, &planned),
+            HostToUi::Failure {
+                id,
+                error: HostError::Denied
+            }
+        );
+    }
+    // an answer with a path that is not a CSV is a typed failure and writes nothing
+    assert!(matches!(
+        export_file_request(&mut session, INTERNAL, &planned),
+        HostToUi::Response { .. }
+    ));
+    let not_csv = data.join("plan.json");
+    assert_eq!(
+        picked(&mut session, INTERNAL, Some(&not_csv)),
+        HostToUi::Failure {
+            id: INTERNAL,
+            error: HostError::StrategyExportNotCsv
+        }
+    );
+    assert!(!not_csv.exists());
+    // the ticket is consumed by the failure
+    assert_eq!(
+        picked(&mut session, INTERNAL, Some(&data.join("plan.csv"))),
+        HostToUi::Failure {
+            id: INTERNAL,
+            error: HostError::Denied
+        }
+    );
+    assert!(!data.join("plan.csv").exists());
+}
+
+#[test]
+fn an_export_needs_the_access_of_every_strategy_request_and_dies_with_the_account() {
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    let planned = planned_strategy(&mut session);
+    export_file_request(&mut session, INTERNAL, &planned);
+    session.current.account_generation = Some("b".repeat(64));
+    let denied = HostToUi::Failure {
+        id: INTERNAL,
+        error: HostError::Denied,
+    };
+    assert_eq!(
+        picked(&mut session, INTERNAL, Some(&data.join("plan.csv"))),
+        denied
+    );
+    session.current.account_generation = Some("a".repeat(64));
+    assert_eq!(
+        picked(&mut session, INTERNAL, Some(&data.join("plan.csv"))),
+        denied
+    );
+    assert!(!data.join("plan.csv").exists());
+    // a blocked session is not served the text either
+    session.current.access.blocked = true;
+    assert!(matches!(
+        request(
+            &mut session,
+            &Request::StrategyExport {
+                revision: planned.revision.clone(),
+                target: crate::strategy::StrategyExportTarget::Accepted {},
+            }
+        ),
+        HostToUi::Failure {
+            error: HostError::Denied,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn the_export_requests_carry_a_target_and_nothing_else() {
+    let revision = "a".repeat(64);
+    for method in ["strategy.export", "strategy.exportFile"] {
+        for sent in [
+            format!(r#"{{"method":"{method}","revision":"{revision}"}}"#),
+            format!(
+                r#"{{"method":"{method}","revision":"{revision}","target":{{"kind":"accepted"}},"path":"C:/x.csv"}}"#
+            ),
+            format!(
+                r#"{{"method":"{method}","revision":"{revision}","target":{{"kind":"accepted","path":"C:/x.csv"}}}}"#
+            ),
+            format!(
+                r#"{{"method":"{method}","revision":"{revision}","target":{{"kind":"file","name":"x.csv"}}}}"#
+            ),
+        ] {
+            assert!(serde_json::from_str::<Request>(&sent).is_err(), "{sent}");
+        }
+        for target in [
+            r#"{"kind":"accepted"}"#,
+            r#"{"kind":"proposal","computeId":3}"#,
+        ] {
+            assert!(
+                serde_json::from_str::<Request>(&format!(
+                    r#"{{"method":"{method}","revision":"{revision}","target":{target}}}"#
+                ))
+                .is_ok()
+            );
+        }
+    }
+}

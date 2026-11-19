@@ -119,6 +119,21 @@ pub enum Request {
     /// Drops the proposal on screen so that the accepted plan is shown.
     #[serde(rename = "strategy.showAccepted")]
     StrategyShowAccepted { revision: String },
+    /// The plan `target` names, as text ready to copy. Nothing changes in the host.
+    #[serde(rename = "strategy.export")]
+    StrategyExport {
+        revision: String,
+        target: crate::strategy::StrategyExportTarget,
+    },
+    /// Asks for «Guardar como hoja de cálculo…». As `strategy.pickFile`, the host
+    /// only records a ticket and acknowledges (with the name to suggest); the main
+    /// process opens the dialog and answers with `PickedStrategyFile`, and the host
+    /// writes the CSV there.
+    #[serde(rename = "strategy.exportFile")]
+    StrategyExportFile {
+        revision: String,
+        target: crate::strategy::StrategyExportTarget,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -193,6 +208,15 @@ pub enum Reply {
     StrategyShowAccepted {
         value: crate::strategy::StrategyView,
     },
+    #[serde(rename = "strategy.export")]
+    StrategyExport {
+        value: crate::strategy::StrategyExportText,
+    },
+    /// The acknowledgement (the name to suggest) and, later, the final answer.
+    #[serde(rename = "strategy.exportFile")]
+    StrategyExportFile {
+        value: crate::strategy::StrategyExportFileValue,
+    },
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -222,6 +246,14 @@ pub enum HostError {
     StrategyNotAcceptable,
     /// `strategy.unaccept` or `strategy.showAccepted` on a variant with no accepted plan.
     StrategyNoAcceptedPlan,
+    /// `strategy.export` or `strategy.exportFile` found no plan to write: none, not
+    /// a calculated or partial one with a timeline, or no accepted plan.
+    StrategyNothingToExport,
+    /// The CSV was to be written to a file that does not end in `.csv`.
+    StrategyExportNotCsv,
+    /// Another program (a spreadsheet, usually) has the CSV open and it cannot be
+    /// replaced: close it and try again. Never `busy`, which means «wait a moment».
+    StrategyFileInUse,
     StrategyConflict {
         current: Box<crate::strategy::StrategyView>,
     },

@@ -2,7 +2,7 @@
 //! process and travels only main → host: the renderer asks for a dialog with a
 //! mode and a revision and gets back the name of the file, never its path.
 use super::{
-    OPTIONS, PRIMARY, State, StrategyState, StrategyView, document_state,
+    OPTIONS, PRIMARY, State, StrategyExportTarget, StrategyState, StrategyView, document_state,
     files::{self, Mode},
     hash, parse_primary, validate_projection,
 };
@@ -25,7 +25,9 @@ pub const STRATEGY_PICK_PATH_MAX: usize = 32768;
 pub const STRATEGY_FILE_NAME_MAX: usize = 256;
 /// The requests of the main process use these ids; the renderer's are below and
 /// `u32::MAX` is the host's own background traffic.
-const INTERNAL_IDS: std::ops::Range<u32> = 0x8000_0000..u32::MAX;
+pub(super) const INTERNAL_IDS: std::ops::Range<u32> = 0x8000_0000..u32::MAX;
+pub(super) const STRATEGY_PICK_LIFETIME: Duration =
+    Duration::from_secs(STRATEGY_PICK_LIFETIME_SECONDS);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
@@ -77,16 +79,29 @@ pub struct StrategyFile {
     pub name: String,
 }
 
+/// What the dialog the ticket stands for is for.
+pub(super) enum Kind {
+    /// «Abrir otro archivo…» or «Guardar como…».
+    File(StrategyFileMode),
+    /// «Guardar como hoja de cálculo…»: the plan to write and, for the accepted
+    /// plan, the moment it was accepted (its identity: a plan accepted again
+    /// during the dialog is another plan).
+    Export {
+        target: StrategyExportTarget,
+        accepted_at: Option<String>,
+    },
+}
+
 /// One at a time, single use, bound to the revision it was asked for.
 pub(super) struct Ticket {
-    id: u32,
-    mode: StrategyFileMode,
-    revision: String,
-    expires: Instant,
+    pub(super) id: u32,
+    pub(super) kind: Kind,
+    pub(super) revision: String,
+    pub(super) expires: Instant,
 }
 
 /// Format and bidirectional controls that `char::is_control` does not cover.
-fn invisible(c: char) -> bool {
+pub(super) fn invisible(c: char) -> bool {
     matches!(c, '\u{061c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
 }
 
@@ -121,10 +136,10 @@ fn plain_path(path: &Path) -> bool {
 
 /// Names Windows turns into devices (`CON` hangs a read, `NUL` swallows a write),
 /// with or without an extension.
-fn device_name(name: &std::ffi::OsStr) -> bool {
+pub(super) fn device_name(name: &std::ffi::OsStr) -> bool {
     let name = name.to_string_lossy().to_ascii_uppercase();
     let stem = name.split('.').next().unwrap_or_default().trim_end();
-    matches!(stem, "CON" | "PRN" | "AUX" | "NUL")
+    matches!(stem, "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$")
         || stem
             .strip_prefix("COM")
             .or_else(|| stem.strip_prefix("LPT"))
@@ -159,7 +174,7 @@ fn environment_file(path: &Path) -> bool {
 /// The path as the main process could have chosen it, for opening and saving
 /// alike: plain, on a local disk, with a name the view can carry, and neither a
 /// device nor an environment file.
-fn checked_path(path: &str) -> Result<PathBuf, HostError> {
+pub(super) fn checked_path(path: &str) -> Result<PathBuf, HostError> {
     let chosen = Path::new(path);
     if path.len() > STRATEGY_PICK_PATH_MAX
         || path.contains('\0')
@@ -211,7 +226,7 @@ pub(super) fn same_file(a: &Path, b: &Path) -> bool {
 /// The file is where the user chose it: no link, junction, `subst` drive or short
 /// name on the way. Reading and writing use this one check; a file that does not
 /// exist yet is judged by its folder.
-fn direct(path: &Path) -> bool {
+pub(super) fn direct(path: &Path) -> bool {
     let real = match std::fs::canonicalize(path) {
         Ok(real) => real,
         Err(_) => match (path.parent().map(std::fs::canonicalize), path.file_name()) {
@@ -312,9 +327,9 @@ impl State {
         }
         self.ticket = Some(Ticket {
             id,
-            mode,
+            kind: Kind::File(mode),
             revision: revision.to_owned(),
-            expires: now + Duration::from_secs(STRATEGY_PICK_LIFETIME_SECONDS),
+            expires: now + STRATEGY_PICK_LIFETIME,
         });
         Ok(self.view())
     }
@@ -334,7 +349,18 @@ impl State {
         {
             return Err(HostError::Denied);
         }
+        // the ticket of an export is answered by `picked`, never as a file dialog
+        if self
+            .ticket
+            .as_ref()
+            .is_some_and(|ticket| matches!(ticket.kind, Kind::Export { .. }))
+        {
+            return Err(HostError::Denied);
+        }
         let ticket = self.ticket.take().ok_or(HostError::Denied)?;
+        let Kind::File(mode) = ticket.kind else {
+            return Err(HostError::Denied);
+        };
         if now >= ticket.expires {
             return Err(HostError::StrategyPickExpired);
         }
@@ -346,7 +372,7 @@ impl State {
             return Err(self.conflict());
         }
         let path = checked_path(path)?;
-        match ticket.mode {
+        match mode {
             StrategyFileMode::Open => {
                 self.require_free()?;
                 self.open_file(path)

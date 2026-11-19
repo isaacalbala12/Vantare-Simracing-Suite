@@ -8,7 +8,15 @@ import type {
 import { type Client, HostFailure } from "../../bridge/client";
 
 export type StrategyClient = Pick<Client, "request">;
-type Operation = Extract<StrategyRequest, { revision: string }>;
+// The export requests answer with a text or a file name, not a view: they are the
+// export menu's own (E5d), not an action of this hook.
+type Operation = Extract<
+  Exclude<
+    StrategyRequest,
+    { method: "strategy.export" | "strategy.exportFile" }
+  >,
+  { revision: string }
+>;
 type Cancel = Extract<StrategyRequest, { method: "strategy.cancel" }>;
 // Every action but a cancellation carries the revision of the view it acts on;
 // the hook adds it. A cancellation names the calculation instead.
@@ -34,7 +42,10 @@ async function send(
   try {
     const reply = await client.request(request);
     if (reply.method !== request.method) return { error: { kind: "rejected" } };
-    return { value: (reply as StrategyReply).value };
+    const { value } = reply as StrategyReply;
+    // only the replies that carry a view belong here
+    if (!("revision" in value)) return { error: { kind: "rejected" } };
+    return { value };
   } catch (error) {
     return {
       error: error instanceof HostFailure ? error.detail : { kind: "io" },

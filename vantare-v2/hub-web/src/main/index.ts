@@ -32,6 +32,7 @@ import { appText } from "../renderer/i18n/launcher-apps";
 import { paintWindow, resolveTheme, zoomWindow } from "./appearance";
 import { calendarExportSession } from "./calendar-export";
 import { calendarExportQa } from "./calendar-export-qa";
+import { copyLimiter } from "./copy-limit";
 import { externalPages } from "./external-pages";
 import { createHost } from "./host";
 import { executablePicker, internalIds } from "./launcher-picker";
@@ -241,9 +242,19 @@ async function start() {
   });
   const pickerIds = internalIds();
   const pickStrategyFile = strategyFilePicker(
-    async (mode) => {
+    async (mode, suggestedName) => {
       if (!window || window.isDestroyed())
         throw new Error("Window unavailable");
+      if (mode === "export") {
+        // the host chose the suggestion (a plain name); Windows asks before it
+        // replaces a file that exists
+        const picked = await dialog.showSaveDialog(window, {
+          title: "Guardar el plan como hoja de cálculo",
+          defaultPath: suggestedName,
+          filters: [{ name: "Hoja de cálculo (CSV)", extensions: ["csv"] }],
+        });
+        return picked.canceled ? undefined : picked.filePath;
+      }
       const filters = [{ name: "JSON", extensions: ["json"] }];
       if (mode === "open") {
         const picked = await dialog.showOpenDialog(window, {
@@ -297,7 +308,10 @@ async function start() {
     disconnect?.();
     const { port1, port2 } = new MessageChannelMain();
     let portAlive = true;
-    const copies = new Set<number>();
+    // the requests whose answer carries a text that main puts on the clipboard
+    const copies = new Map<number, "diagnostics.copy" | "strategy.export">();
+    // one copy of the plan to the clipboard per second
+    const planCopies = copyLimiter();
     const reportExport = reportExportSession(async () => {
       if (!window || window.isDestroyed()) return undefined;
       const result = await dialog.showSaveDialog(window, {
@@ -334,13 +348,16 @@ async function start() {
       if (pickExecutable.receive(message)) return;
       message = reportExport.observe(message);
       message = calendarExport.observe(message);
-      if (
-        message.kind === "response" &&
-        message.result.method === "diagnostics.copy" &&
-        copies.delete(message.id)
-      ) {
+      if (message.kind === "response" && copies.has(message.id)) {
+        const method = copies.get(message.id);
+        copies.delete(message.id);
+        const result = message.result;
         try {
-          clipboard.writeText(message.result.text);
+          if (result.method !== method) throw new Error("Unexpected answer");
+          if (result.method === "diagnostics.copy")
+            clipboard.writeText(result.text);
+          else if (result.method === "strategy.export")
+            clipboard.writeText(result.value.text);
         } catch {
           port1.postMessage({
             kind: "failure",
@@ -414,6 +431,19 @@ async function start() {
           data.id,
           data.request.mode,
           data.request.revision,
+          (message) => port1.postMessage(message),
+          () => portAlive,
+        );
+        return;
+      }
+      if (
+        data.kind === "request" &&
+        data.request.method === "strategy.exportFile"
+      ) {
+        pickStrategyFile.requestExport(
+          data.id,
+          data.request.revision,
+          data.request.target,
           (message) => port1.postMessage(message),
           () => portAlive,
         );
@@ -539,7 +569,22 @@ async function start() {
         return;
       }
       if (data.kind === "request" && data.request.method === "diagnostics.copy")
-        copies.add(data.id);
+        copies.set(data.id, "diagnostics.copy");
+      // the plan as text goes to the clipboard from here, like the report
+      if (
+        data.kind === "request" &&
+        data.request.method === "strategy.export"
+      ) {
+        if (!planCopies.allow()) {
+          port1.postMessage({
+            kind: "failure",
+            id: data.id,
+            error: { kind: "busy" },
+          });
+          return;
+        }
+        copies.set(data.id, "strategy.export");
+      }
       if (QA_DRIVER && data.kind === "closeAnswer" && !data.allow)
         console.error("HUB_QA_CLOSE_BLOCKED");
       if (QA_DRIVER && data.kind === "closeAnswer" && data.allow)

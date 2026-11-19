@@ -1737,6 +1737,7 @@ async function amountStates(
     // (the summary and the plan with no plan start at the heading)
     const timeline = page.locator(".strategy-timeline-card");
     const fromHeading =
+      name === "m-fijado" ||
       name === "m-recalculado" ||
       name === "m-calcular" ||
       (await timeline.count()) === 0;
@@ -1807,7 +1808,12 @@ async function amountStates(
     await page.locator(".strategy-file-state").getAttribute("data-state"),
     "saved",
   );
+  // from the heading (with «Plan modificado», «Restablecer» and «Recalcular»), as
+  // Opus', and again from the timeline so the whole editor is on the shot
+  assert.equal(await button(page, "Recalcular").isVisible(), true);
+  assert.equal(await button(page, "Restablecer").isVisible(), true);
   await shot("m-fijado");
+  await shot("m-fijado-editor");
 
   // m-error: it does not fit; nothing changes but the message
   const before = (await setStopRequests(page)).length;

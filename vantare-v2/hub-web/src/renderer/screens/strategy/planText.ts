@@ -1,10 +1,12 @@
 import type {
   StrategyCalculationView,
+  StrategyEditView,
   StrategyMetrics,
   StrategyPit,
   StrategyPlanState,
   StrategyPlanView,
   StrategyServiceSteps,
+  StrategyTimeline,
 } from "../../../contract/generated/strategy";
 import { strategy } from "../../i18n/strategy";
 
@@ -147,34 +149,120 @@ export function addedLoad(pit: StrategyPit) {
 export const reserveFigure = (value: number | null) =>
   value === null ? "—" : lapsOf(value);
 
+// The timeline of the plan as it is edited: the stints and the stop laps of the
+// schedule, with the amounts each stop had in the plan it started from.
+export function scheduleTimeline(
+  timeline: StrategyTimeline,
+  edit: StrategyEditView | null,
+): StrategyTimeline {
+  if (
+    !edit ||
+    edit.stints.length !== timeline.stints.length ||
+    edit.stops.length !== timeline.pits.length
+  )
+    return timeline;
+  return {
+    ...timeline,
+    stints: edit.stints,
+    pits: timeline.pits.map((pit, index) => ({
+      ...pit,
+      lap: edit.stops[index].lap,
+    })),
+  };
+}
+
+// The stops that are not on the lap the plan has: «Parada 2: de la 85 a la 86».
+export function movedStops(
+  timeline: StrategyTimeline | null,
+  edit: StrategyEditView | null,
+) {
+  if (!timeline || !edit) return [];
+  return edit.stops.flatMap((stop, index) => {
+    const from = timeline.pits[index]?.lap;
+    return from === undefined || from === stop.lap
+      ? []
+      : [{ stop: index + 1, from, to: stop.lap }];
+  });
+}
+
+export function editSummary(moves: ReturnType<typeof movedStops>) {
+  const a = t.adjust;
+  const [only] = moves;
+  if (!only) return a.backAtStart;
+  return moves.length === 1
+    ? a.moved(only.stop, only.from, only.to)
+    : a.movedMany(moves.length);
+}
+
+// The card of the Carrera tab: what the plan says in a line, or nothing.
+export function planCard(plan: StrategyPlanView) {
+  const { result } = plan;
+  if (!result) return null;
+  const c = t.card;
+  const notice = certificateNotice(result);
+  const certificate = `${notice.title}.`;
+  if (result.certificate === "no_solution")
+    return { title: c.noSolution, certificate };
+  if (!result.metrics) return { title: c.unfinished, certificate };
+  if (plan.state === "calculating")
+    return { title: c.recalculating, certificate: "" };
+  if (plan.state === "edited") return { title: c.modified, certificate: "" };
+  return {
+    title: c.done(
+      clock(result.metrics.totalSeconds),
+      t.time.stops(result.metrics.pitCount),
+    ),
+    certificate,
+  };
+}
+
+// The plan on view is a recalculated one of this session, and no adjustment is
+// pending on it (the warning of the editor says it then): it is not in the file.
+export function isTrialPlan(plan: StrategyPlanView, recalculated: boolean) {
+  return (
+    recalculated &&
+    (plan.state === "calculated" || plan.state === "partial") &&
+    plan.result?.metrics != null
+  );
+}
+
 // The line for the single role="status": says what changed in the plan since
 // the screen last saw it. A plan that was already there on opening is silent.
+// `hadResult`: the plan before already had a result, so a calculation that ends
+// is a recalculation.
 export function planAnnouncement(
   plan: StrategyPlanView,
   before: StrategyPlanState | undefined,
+  hadResult = false,
 ): string | undefined {
   const a = t.announce;
-  if (plan.state === "calculating")
-    return before === "calculating" ? undefined : a.calculating;
+  if (plan.state === "calculating") {
+    if (before === "calculating") return undefined;
+    return plan.result ? a.recalculating : a.calculating;
+  }
   if (before !== "calculating") return undefined;
+  const recalculated = hadResult;
   switch (plan.state) {
     case "uncalculated":
       return a.cancelled;
     case "error":
       return a.failed;
+    case "edited":
+      // a cancelled recalculation; one that failed says why in its own alert
+      return plan.edit?.error ? undefined : a.recalcCancelled;
     case "calculated":
-    case "partial":
-    case "edited": {
+    case "partial": {
       const { result } = plan;
       if (!result) return undefined;
       if (result.certificate === "no_solution") return a.noSolution;
       if (!result.metrics) return a.unfinished;
-      return result.certificate === "proven"
-        ? a.done(
-            durationWords(result.metrics.totalSeconds),
-            t.time.stops(result.metrics.pitCount),
-          )
-        : a.unproven;
+      if (result.certificate !== "proven")
+        return recalculated ? a.recalculatedUnproven : a.unproven;
+      const duration = durationWords(result.metrics.totalSeconds);
+      const stops = t.time.stops(result.metrics.pitCount);
+      return recalculated
+        ? a.recalculated(duration, stops)
+        : a.done(duration, stops);
     }
     default:
       return undefined;

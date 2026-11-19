@@ -310,10 +310,31 @@ veredicto no imprime contenido ni rutas de los ficheros que coinciden.
 El ensayo sin GPU ejecuta `PROBAR_CREDENCIAL_TANDA.ps1` y el descubrimiento
 de tests Python incluye `test_preflight_privado.py`.
 
-La ejecución de medición permanece bloqueada. Para integrarla falta un CLI QA
-verificado en el artefacto de medición, procedencia que ate la aprobación del
-key_id al núcleo concreto y el preflight final que ate el ensayo a ese paquete.
-La cita visual conserva su paquete verificado.
+La ejecución de medición permanece bloqueada hasta que se integre el
+preflight final de autorización de L3. La cita visual conserva su paquete
+verificado.
+
+Para preparar un candidato de medición desde CI, el run se importa en
+`COMPILAR_TANDA.ps1 -ModoArtefacto Medicion -CiRunId <run> -SourceSha <sha>`
+con `-Source <worktree-limpio> -Output <importación-nueva>` y
+`-ApprovedKeyId <id> -ApprovedRegistrySha256 <hash-del-registro-aprobado>`.
+El importador exige siete ejecutables y compara el núcleo y el CLI con el
+recibo del mismo run. El hash del registro es SHA-256 de la cadena ASCII
+canónica de registro público, sin salto de línea.
+
+Con esos binarios, `preparar_tanda.py` acepta `--measurement-sha <sha>`,
+`--presentmon <exe> --corpus <grabación> --inventory <informe>` y
+`--zip <archivo-nuevo.zip>`, además de `--repo`, `--binary-directory` y
+`--output`. Emite `<archivo-nuevo.receipt.json>` al lado del ZIP. El corpus
+va aparte, fijado por hash. La privada y la credencial firmada quedan fuera
+del ZIP, del recibo y del corpus.
+
+En el servidor, extraer el ZIP en una carpeta nueva y ejecutar
+`TANDA.ps1 -Modo Ensayo -ZipQA <zip> -ReciboPaqueteQA <recibo>
+-CorpusQA <grabación> -PythonExe <ruta-absoluta> -Salida <salida-nueva>`.
+El modo `VerificarCustodiaQA` toma el hash esperado de ese mismo recibo
+externo. El ensayado y el sellado preparan la revisión del kit. El guard
+`BLOCKED_MEASUREMENT_AUTHORIZATION` sigue impidiendo el modo real.
 
 Para una cita limitada a paridad visual y ciclo de vida, usar el workflow
 `QA kit artifacts` de nightly. La rama `qa-kit/<sha8>` debe apuntar al SHA ya

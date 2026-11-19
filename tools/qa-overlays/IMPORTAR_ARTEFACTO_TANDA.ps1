@@ -1,5 +1,6 @@
 # Importa un solo artefacto de un run push ya completado. Solo operaciones de archivo.
-function Import-TandaArtifact([string]$Source,[string]$Output,[long]$RunId,[string]$SourceSha,[ValidateSet('Visual','Medicion')][string]$Mode='Visual'){
+function Import-TandaArtifact([string]$Source,[string]$Output,[long]$RunId,[string]$SourceSha,[ValidateSet('Visual','Medicion')][string]$Mode='Visual',
+ [string]$ApprovedKeyId='',[string]$ApprovedRegistrySha256=''){
  $repo='isaacalbala12/Vantare-Simracing-Suite'
  if($RunId -le 0 -or $SourceSha -cnotmatch '\A[0-9a-f]{40}\z'){throw 'Run ID y SHA congelado inválidos'}
  if((git -C $Source rev-parse HEAD) -cne $SourceSha -or (git -C $Source status --porcelain)){throw 'El worktree de fixtures debe estar limpio y en el SHA congelado'}
@@ -36,6 +37,17 @@ function Import-TandaArtifact([string]$Source,[string]$Output,[long]$RunId,[stri
   throw 'CI_LICENSE_MODE: licencia/features no corresponden al modo de tanda'
  }
  $expected=@('vantare-overlays-rune.exe','vantare-overlays.exe','vantare-core.exe','vantare-services.exe','vantare.exe','lifecycle.exe')
+ if($isMeasurement){
+  if($ApprovedKeyId -cnotmatch '\Aqa-[a-f0-9]{8}\z' -or $ApprovedRegistrySha256 -cnotmatch '\A[a-f0-9]{64}\z' -or
+     $metadata.license_key_id -cne $ApprovedKeyId -or $metadata.license_registry_sha256 -cne $ApprovedRegistrySha256 -or
+     $metadata.qa_license_cli_sha256 -cnotmatch '\A[a-f0-9]{64}\z'){
+   throw 'CI_LICENSE_MODE: clave aprobada o hash del CLI no coinciden'
+  }
+  $expected+='vantare-qa-license.exe'
+ }elseif($metadata.license_key_id -or $metadata.license_registry_sha256 -or $metadata.qa_license_cli_sha256 -or
+          $ApprovedKeyId -or $ApprovedRegistrySha256){
+  throw 'CI_LICENSE_MODE: un kit visual no admite procedencia QA'
+ }
  $bin=Join-Path $download 'bin'
  $seen=@{}
  $rows=@(foreach($row in $metadata.files){
@@ -46,13 +58,21 @@ function Import-TandaArtifact([string]$Source,[string]$Output,[long]$RunId,[stri
   if($image.PSIsContainer -or ($image.Attributes -band [IO.FileAttributes]::ReparsePoint) -or
      $image.Length -le 0 -or $image.Length -ne $row.size -or
      (Get-FileHash -LiteralPath $image.FullName -Algorithm SHA256).Hash -ine $row.sha256){throw "Binario no coincide con el recibo: $file"}
-  $features=switch($file){'vantare-overlays.exe'{'parity-capture'} 'vantare-core.exe'{$coreFeatures -join ','} default{''}}
-  @{name=[IO.Path]::GetFileNameWithoutExtension($file);file=$file;size=$image.Length;sha256=$row.sha256;
+  if($file -ceq 'vantare-qa-license.exe' -and $row.sha256 -cne $metadata.qa_license_cli_sha256){
+   throw 'CI_LICENSE_MODE: hash del CLI distinto de su fila en el recibo'
+  }
+  $features=switch($file){'vantare-overlays.exe'{'parity-capture'} 'vantare-core.exe'{$coreFeatures -join ','} 'vantare-qa-license.exe'{'qa-license'} default{''}}
+  $build=@{name=[IO.Path]::GetFileNameWithoutExtension($file);file=$file;size=$image.Length;sha256=$row.sha256;
     source_sha=$SourceSha;profile=$profile;run_id=$RunId;origin='GitHub Actions';features=$features;
     license_public_keys_configured=($file -ceq 'vantare-core.exe' -and $configured)}
+  if($build.license_public_keys_configured){
+   $build.license_key_id=$ApprovedKeyId
+   $build.license_registry_sha256=$ApprovedRegistrySha256
+  }
+  $build
  })
  if($seen.Count -ne $expected.Count -or @(Get-ChildItem -LiteralPath $bin -Force).Count -ne $expected.Count){throw 'Inventario de binarios de CI distinto del contrato'}
- # Publicar solo después de verificar los seis ejecutables, incluidos los que quedan fuera de la tanda.
+ # Publicar solo después de verificar todos los ejecutables del modo elegido.
  Copy-Item -LiteralPath $receipt -Destination (Join-Path $Output 'ci-binarios.json')
  Move-Item -LiteralPath $bin -Destination (Join-Path $Output 'bin')
  ConvertTo-Json -InputObject $rows -Depth 8|Set-Content -LiteralPath (Join-Path $Output 'binarios.json') -Encoding utf8

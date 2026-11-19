@@ -965,3 +965,278 @@ describe("a recalculated plan", () => {
     await screen.findByRole("region", { name: "Ya tienes un plan aceptado" });
   });
 });
+
+// ---- a new proposal with the same calendar as an OUTDATED accepted plan ----
+// The host compares the calendar only: after a change of pace the stops come out
+// the same, so `compare.same` is true while the accepted plan is still `stale`.
+
+describe("a proposal with the same calendar as an outdated accepted plan", () => {
+  it("is a proposal, with its own certificate and figures, next to the outdated plan", async () => {
+    mount("acceptedFujiStaleSame");
+    await openPlan();
+    expect(stateTag()).toBe("Propuesta");
+    // the certificate of the new plan, not the notice of the outdated one
+    expect(
+      screen.getByText("Comprobado: es el plan más rápido con estos datos"),
+    ).toBeTruthy();
+    expect(
+      screen.queryByRole("region", {
+        name: "Los datos de la carrera han cambiado desde que aceptaste este plan",
+      }),
+    ).toBeNull();
+    // the figures are those of this proposal: nothing is «datos antiguos»
+    expect(screen.queryByText("datos antiguos")).toBeNull();
+    expect(screen.getByText("6:02:45")).toBeTruthy();
+    expect(
+      screen.getByText("1 min 41 s más que tu plan aceptado"),
+    ).toBeTruthy();
+    // the outdated plan is shown apart, with what changed and the way back
+    const card = screen.getByRole("region", {
+      name: "Ya tienes un plan aceptado",
+    });
+    expect(card.textContent).toContain("6:01:04 · 5 paradas · desactualizado");
+    expect(card.textContent).toContain(
+      "Esta propuesta: 6:02:45 · 5 paradas · mismas paradas",
+    );
+    expect(
+      within(card).getByText("Ritmo por vuelta: 1:30,472 → 1:30,900"),
+    ).toBeTruthy();
+    expect(
+      within(card).getByRole("button", { name: "Volver al plan aceptado" }),
+    ).toBeTruthy();
+    // and it can be accepted: it is the way out
+    expect(button("Aceptar propuesta")).toBeTruthy();
+    expect(maybe("Calcular con los datos nuevos")).toBeNull();
+  });
+
+  it("is accepted at once, with no question: it brings the plan up to date and loses nothing", async () => {
+    const request = mount("acceptedFujiStaleSame");
+    await openPlan();
+    const before = await lastView(request);
+    click("Aceptar propuesta");
+    await heading("Plan aceptado");
+    expect(
+      screen.queryByRole("group", {
+        name: "¿Sustituir tu plan aceptado por esta propuesta?",
+      }),
+    ).toBeNull();
+    expect(calls(request, "strategy.accept")).toEqual([
+      {
+        method: "strategy.accept",
+        revision: before.revision,
+        computeId: before.plan.computeId,
+      },
+    ]);
+    expect(status()).toBe("Plan aceptado.");
+    expect(stateTag()).toBe("Aceptado");
+    expect(screen.queryByText("datos antiguos")).toBeNull();
+    expect(screen.getByText("6:02:45")).toBeTruthy();
+    // the file had a plan: «Deshacer» would leave none, so it is not offered
+    expect(maybe("Deshacer")).toBeNull();
+    expect(fileState()).toBe("dirty");
+  });
+
+  it("goes back to the outdated plan with its notice", async () => {
+    const request = mount("acceptedFujiStaleSame");
+    await openPlan();
+    click("Volver al plan aceptado");
+    await heading("Plan aceptado");
+    expect(calls(request, "strategy.showAccepted")).toHaveLength(1);
+    expect(stateTag()).toBe("Desactualizado");
+    expect(
+      screen.getByRole("region", {
+        name: "Los datos de la carrera han cambiado desde que aceptaste este plan",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("says in the card of Carrera that it brings the outdated plan up to date", async () => {
+    mount("acceptedFujiStaleSame");
+    await openRace();
+    expect(cardTag()).toBe("Propuesta");
+    expect(
+      screen.getByText(
+        "Tu plan aceptado está desactualizado; esta propuesta lo pone al día.",
+      ),
+    ).toBeTruthy();
+    expect(maybe("Aceptar propuesta")).toBeNull();
+  });
+});
+
+// ---- the words of the question tell the truth about «Descartar cambios» ----
+// `strategy.discard` goes back to the FILE: it brings back a plan only if the
+// file holds it (`accepted.saved`).
+
+describe("what the question says about getting the plan back", () => {
+  const recover = "Hasta entonces, «Descartar cambios» lo recupera.";
+  async function acceptThenRecalculate() {
+    await openPlan();
+    click("Aceptar propuesta");
+    await heading("Plan aceptado");
+    click("Ajustar paradas");
+    fireEvent.click(screen.getByRole("radio", { name: "Parada 1, vuelta 43" }));
+    click("− 1 vuelta");
+    await heading("Plan modificado");
+    click("Recalcular");
+    await waitFor(() =>
+      expect(status()).toBe(
+        "Plan recalculado sin garantía de ser el más rápido.",
+      ),
+    );
+    click("Resumen");
+  }
+
+  it("says «Descartar cambios» brings it back when the file holds the plan", async () => {
+    const user = userEvent.setup();
+    mount("acceptedFujiNew");
+    await openPlan();
+    await user.click(button("Aceptar propuesta"));
+    const question = screen.getByRole("group", {
+      name: "¿Sustituir tu plan aceptado por esta propuesta?",
+    });
+    expect(question.textContent).toContain(recover);
+    expect(question.textContent).not.toContain("no se puede recuperar");
+  });
+
+  it("does not say it when the plan to replace was never saved", async () => {
+    const user = userEvent.setup();
+    mount("plannedFuji");
+    await acceptThenRecalculate();
+    expect(fileState()).toBe("dirty");
+    await user.click(button("Aceptar propuesta"));
+    const question = screen.getByRole("group", {
+      name: "¿Sustituir tu plan aceptado por esta propuesta?",
+    });
+    expect(question.textContent).toContain(
+      "El plan aceptado de ahora (6:01:04 · 5 paradas) se pierde y no se puede recuperar: todavía no está guardado en el archivo.",
+    );
+    expect(question.textContent).not.toContain("Descartar cambios");
+  });
+
+  it("does not say it when removing a plan that was never saved, and says it when it was", async () => {
+    const user = userEvent.setup();
+    mount("plannedFuji");
+    await acceptThenRecalculate();
+    click("Volver al plan aceptado");
+    await heading("Plan aceptado");
+    await user.click(button("Más acciones del plan aceptado"));
+    await user.click(
+      await screen.findByRole("menuitem", { name: /Quitar plan aceptado/ }),
+    );
+    const question = screen.getByRole("group", {
+      name: "¿Quitar el plan aceptado?",
+    });
+    expect(question.textContent).toContain(
+      "El plan aceptado (6:01:04 · 5 paradas) se pierde y no se puede recuperar: todavía no está guardado en el archivo.",
+    );
+    expect(question.textContent).not.toContain("Descartar cambios");
+    // saved, the old words are true
+    cleanup();
+    mount("acceptedFuji");
+    await openPlan("Plan aceptado");
+    await user.click(button("Más acciones del plan aceptado"));
+    await user.click(
+      await screen.findByRole("menuitem", { name: /Quitar plan aceptado/ }),
+    );
+    expect(
+      screen.getByRole("group", { name: "¿Quitar el plan aceptado?" })
+        .textContent,
+    ).toContain(recover);
+  });
+});
+
+// ---- the accepted plan is never out of reach ----
+
+describe("the way back to the accepted plan", () => {
+  it("is offered when the proposal has no plan", async () => {
+    const request = mount("plannedFuji");
+    await openPlan();
+    click("Aceptar propuesta");
+    await heading("Plan aceptado");
+    click("Ajustar paradas");
+    fireEvent.click(screen.getByRole("radio", { name: "Parada 2, vuelta 85" }));
+    click("+ 1 vuelta");
+    await heading("Plan modificado");
+    click("Recalcular");
+    await heading("Sin plan posible");
+    click("Volver al plan aceptado");
+    await heading("Plan aceptado");
+    expect(calls(request, "strategy.showAccepted")).toHaveLength(1);
+    expect(status()).toBe("Mostrando el plan aceptado.");
+    expect(stateTag()).toBe("Aceptado");
+  });
+
+  it("is offered when the calculation did not finish a plan", async () => {
+    const request = mount("acceptedFuji", undefined, (view) => {
+      const next = structuredClone(view);
+      if (next.plan.accepted) {
+        next.plan.state = "partial";
+        next.plan.computeId = 5;
+        next.plan.result = {
+          certificate: null,
+          steps: { fuelLiters: 1, vePercent: 1 },
+          degraded: false,
+          reason: "searchBudgetExhausted",
+          metrics: null,
+          timeline: null,
+        };
+        next.plan.accepted.compare = null;
+      }
+      return next;
+    });
+    await openPlan("Cálculo sin terminar");
+    click("Volver al plan aceptado");
+    await heading("Plan aceptado");
+    expect(calls(request, "strategy.showAccepted")).toHaveLength(1);
+  });
+
+  it("is offered when the calculation failed", async () => {
+    const request = mount("acceptedFuji", undefined, (view) => {
+      const next = structuredClone(view);
+      next.plan.state = "error";
+      next.plan.error = "failed";
+      next.plan.computeId = 5;
+      return next;
+    });
+    await openRace();
+    fireEvent.click(tab("Plan"));
+    await heading("No se pudo calcular");
+    click("Volver al plan aceptado");
+    await heading("Plan aceptado");
+    expect(calls(request, "strategy.showAccepted")).toHaveLength(1);
+  });
+
+  it("is not offered when there is no accepted plan", async () => {
+    mount("plannedFujiNoSolution");
+    await openPlan();
+    click("Ajustar paradas");
+    click("+ 1 vuelta");
+    await heading("Plan modificado");
+    click("Recalcular");
+    await heading("Sin plan posible");
+    expect(maybe("Volver al plan aceptado")).toBeNull();
+  });
+});
+
+// ---- small words ----
+
+describe("the small words of the accepted plan", () => {
+  it("says «y otro dato más» when one change is left out of the list", async () => {
+    mount("acceptedFujiStale", undefined, (view) => {
+      const next = structuredClone(view);
+      if (next.plan.accepted)
+        next.plan.accepted.changes = [
+          "basePaceSeconds",
+          "fuelPerLapLiters",
+          "raceLaps",
+          "reserveLaps",
+          "refuelRate",
+          "veRate",
+          "fuelStep",
+        ].map((field) => ({ field: field as never, before: "1", after: "2" }));
+      return next;
+    });
+    await openPlan("Plan aceptado");
+    expect(screen.getByText("y otro dato más")).toBeTruthy();
+  });
+});

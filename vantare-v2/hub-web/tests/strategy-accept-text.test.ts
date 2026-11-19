@@ -4,6 +4,7 @@ import type {
   StrategyChange,
   StrategyPlanView,
 } from "../src/contract/generated/strategy";
+import { strategy } from "../src/renderer/i18n/strategy";
 import {
   acceptedDay,
   acceptedOn,
@@ -18,6 +19,7 @@ import {
   isAcceptedOnly,
   isAcceptedOnView,
   isCleanProposal,
+  isOutdatedSame,
   planCard,
   secondsText,
   unreachableText,
@@ -374,5 +376,79 @@ describe("the card of the Carrera tab", () => {
       accept: false,
       notes: [{ tone: "warn", text: "Recalcula para poder aceptar el plan." }],
     });
+  });
+});
+
+describe("the proposal with the same calendar as an outdated plan", () => {
+  const same = { same: true, deltaSeconds: 101 };
+  it("is not the accepted plan on view while the accepted plan is outdated", () => {
+    for (const state of ["stale", "staleUnreachable"] as const) {
+      const outdated = plan({ accepted: accepted({ state, compare: same }) });
+      expect(isAcceptedOnView(outdated), state).toBe(false);
+      expect(isOutdatedSame(outdated), state).toBe(true);
+      expect(canAccept(outdated), state).toBe(true);
+    }
+    const current = plan({ accepted: accepted({ compare: same }) });
+    expect(isAcceptedOnView(current)).toBe(true);
+    expect(isOutdatedSame(current)).toBe(false);
+  });
+
+  it("says in the card that it brings the outdated plan up to date, and does not accept from there", () => {
+    const card = planCard(
+      plan({ accepted: accepted({ state: "stale", compare: same }) }),
+    );
+    expect(card).toMatchObject({
+      tag: { tone: "neutral", text: "Propuesta" },
+      accept: false,
+      notes: [
+        {
+          tone: "warn",
+          text: "Tu plan aceptado está desactualizado; esta propuesta lo pone al día.",
+        },
+      ],
+    });
+  });
+});
+
+describe("the question before something is lost", () => {
+  const c = strategy.calc.accept.confirm;
+  it("says «Descartar cambios» brings the plan back only when the file holds it", () => {
+    expect(c.replaceDetail("6:01:04 · 5 paradas", true)).toBe(
+      "El plan aceptado de ahora (6:01:04 · 5 paradas) se pierde cuando guardes el archivo. Hasta entonces, «Descartar cambios» lo recupera.",
+    );
+    expect(c.replaceDetail("6:01:04 · 5 paradas", false)).toBe(
+      "El plan aceptado de ahora (6:01:04 · 5 paradas) se pierde y no se puede recuperar: todavía no está guardado en el archivo.",
+    );
+    expect(c.removeDetail("6:01:04 · 5 paradas", true)).toContain(
+      "«Descartar cambios» lo recupera",
+    );
+    expect(c.removeDetail("6:01:04 · 5 paradas", false)).toBe(
+      "El plan aceptado (6:01:04 · 5 paradas) se pierde y no se puede recuperar: todavía no está guardado en el archivo.",
+    );
+  });
+});
+
+describe("the small words", () => {
+  it("says one lap, not «1 vueltas»", () => {
+    expect(changeValue("raceLaps", "1")).toBe("1 vuelta");
+    expect(changeValue("tyreLifeLaps", "1")).toBe("1 vuelta");
+    expect(changeValue("raceLaps", "236")).toBe("236 vueltas");
+  });
+
+  it("says «ha cambiado» for a datum whose text is too long, and never «0 datos»", () => {
+    const only = (changes: StrategyChange[]) =>
+      planCard(
+        plan({
+          state: "uncalculated",
+          result: null,
+          accepted: accepted({ state: "stale", changes }),
+        }),
+      )?.certificate;
+    expect(only([{ field: "track", before: null, after: null }])).toBe(
+      "Has cambiado «Circuito» desde que aceptaste el plan.",
+    );
+    expect(only([])).toBe("Han cambiado datos desde que aceptaste el plan.");
+    expect(strategy.calc.accept.stale.more(1)).toBe("y otro dato más");
+    expect(strategy.calc.accept.stale.more(2)).toBe("y otros 2 datos");
   });
 });

@@ -338,6 +338,20 @@ function fujiMovedPlan(): StrategyPlanView {
   return plan;
 }
 
+// QA: the plan a person gets after «Calcular con los datos nuevos» on an outdated
+// accepted plan whose pace changed (90,472 → 90,9 s): the stops and loads come out
+// the same on the 1 L / 1 % grid, only the time is longer (236 laps × 0,428 s, about
+// 101 s). The host compares the calendar only, so it says `same: true` while the
+// accepted plan is still outdated.
+function fujiStaleSamePlan(): StrategyPlanView {
+  const plan = fujiPlan(false);
+  if (plan.result?.metrics && plan.result.timeline) {
+    plan.result.metrics.totalSeconds += 101;
+    plan.result.timeline.basePaceSeconds = 90.9;
+  }
+  return plan;
+}
+
 // QA: the document of Opus' Fuji case, so the header of the race fits its plan
 // (236 laps in 360 minutes). Only the Fuji scenes use it.
 function fujiDocument(view: StrategyView): StrategyView {
@@ -688,7 +702,7 @@ export function create(context: MockContext): MockHandler {
           );
   if (fuji) saved = fujiDocument(saved);
   // QA: the data changed after the plan was accepted (the plan keeps the old ones)
-  if (saved.form && /^acceptedFuji(Stale|List)$/.test(scenario))
+  if (saved.form && /^acceptedFuji(Stale|StaleSame|List)$/.test(scenario))
     saved.form.inputs.basePaceSeconds = "90.9";
   if (saved.form && scenario === "acceptedFujiUnreachable")
     saved.form.inputs.fuelPerLapLiters = "1.85";
@@ -1085,7 +1099,7 @@ export function create(context: MockContext): MockHandler {
           if (scenario === "acceptedUnreachable")
             entries.inputs.fuelPerLapLiters = "1.5";
           // the Fuji plan was accepted with the entries of the Fuji case
-          if (/^acceptedFuji(Stale|List)$/.test(scenario))
+          if (/^acceptedFuji(Stale|StaleSame|List)$/.test(scenario))
             entries.inputs.basePaceSeconds = "90.472";
           if (scenario === "acceptedFujiUnreachable")
             entries.inputs.fuelPerLapLiters = "1.83";
@@ -1103,19 +1117,25 @@ export function create(context: MockContext): MockHandler {
       }
       restore();
       opened = true;
-      if (scenario.startsWith("planned") || scenario === "acceptedFujiNew") {
+      if (
+        scenario.startsWith("planned") ||
+        scenario === "acceptedFujiNew" ||
+        scenario === "acceptedFujiStaleSame"
+      ) {
         // QA: a document with its plan already calculated and editable; the
         // Fuji scenes have the size of a real race. `acceptedFujiNew` has the
         // proposal of an adjusted calendar next to the plan accepted before.
         current.plan =
           scenario === "acceptedFujiNew"
             ? fujiMovedPlan()
-            : scenario.startsWith("plannedFuji")
-              ? fujiPlan(scenario === "plannedFujiPartial")
-              : {
-                  ...calculation("calculated"),
-                  computeId: ++computeSequence,
-                };
+            : scenario === "acceptedFujiStaleSame"
+              ? fujiStaleSamePlan()
+              : scenario.startsWith("plannedFuji")
+                ? fujiPlan(scenario === "plannedFujiPartial")
+                : {
+                    ...calculation("calculated"),
+                    computeId: ++computeSequence,
+                  };
         computeSequence = Math.max(
           computeSequence,
           current.plan.computeId ?? 0,

@@ -641,3 +641,33 @@ it("accepts a proposal that is not the accepted one in place of it, and the disc
   expect(back.plan.accepted.result.metrics.totalSeconds).toBe(21664);
   expect(back.plan.accepted.saved).toBe(true);
 });
+
+it("has a new proposal with the same calendar next to an outdated accepted plan", () => {
+  const { value } = opened("strategy-acceptedFujiStaleSame");
+  // the host compares the calendar only: same stops, so `same`; but the entries
+  // the plan was calculated from have changed, so it is still outdated
+  expect(value.plan).toMatchObject({
+    state: "calculated",
+    accepted: {
+      state: "stale",
+      saved: true,
+      compare: { same: true, deltaSeconds: 101 },
+      changes: [{ field: "basePaceSeconds", before: "90.472", after: "90.9" }],
+    },
+  });
+  expect(isReply({ method: "strategy.open", value })).toBe(true);
+  // accepting it is allowed and brings the entries up to date
+  const { send, value: before } = opened("strategy-acceptedFujiStaleSame");
+  const done = send({
+    method: "strategy.accept",
+    revision: before.revision,
+    computeId: before.plan.computeId,
+  }).result.value;
+  expect(done.plan.accepted).toMatchObject({
+    state: "accepted",
+    saved: false,
+    changes: [],
+    compare: { same: true, deltaSeconds: 0 },
+  });
+  expect(done.events[0].acceptedPlan).toBe("accepted");
+});

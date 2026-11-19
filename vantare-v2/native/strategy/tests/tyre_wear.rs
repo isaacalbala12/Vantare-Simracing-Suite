@@ -1126,3 +1126,404 @@ fn a_compound_with_its_own_wear_in_the_wet_follows_the_tyre_age() {
         kept.evaluation.degradation_seconds
     );
 }
+
+// ---------------------------------------------------------------------------
+// Clima, dos pilotos y un juego de cada compuesto: el caso `weather-driver`.
+// ---------------------------------------------------------------------------
+//
+// Con el desgaste acumulado la búsqueda de `weather-driver` pasa de «no
+// comprobado» (se le acababa la memoria) a «comprobado», con el mismo plan y el
+// mismo tiempo. Aquí se demuestra con una búsqueda propia, que prueba todos los
+// planes, que ese tiempo es de verdad el mejor, y lo mismo en carreras del mismo
+// tipo con otros números.
+
+/// Millonésimas de litro: el consumo por vuelta tiene decimales.
+#[allow(clippy::cast_possible_truncation)] // litros pequeños del generador.
+fn micro(liters: f64) -> i64 {
+    (liters * 1_000_000.0).round() as i64
+}
+
+#[derive(Clone, Debug)]
+struct Pilot {
+    base: f64,
+    /// Lo que pierde por vuelta en mojado y lo que gasta en mojado.
+    wet_pace: f64,
+    wet_fuel: f64,
+}
+
+/// Una carrera con pronóstico de lluvia, dos pilotos que se pueden turnar en
+/// las paradas y un juego de blando y otro de duro.
+#[derive(Clone, Debug)]
+struct Wet {
+    laps: u32,
+    /// Probabilidad de lluvia en la salida, al 25, 50 y 75 % y en la meta.
+    rain: [f64; 5],
+    formation: f64,
+    transit: f64,
+    refuel_rate: f64,
+    tyre_seconds: f64,
+    parallel: bool,
+    /// Depósito en litros; las paradas cargan litros enteros.
+    capacity: u32,
+    /// En seco cada piloto gasta 1 L por vuelta. En húmedo, todos igual.
+    humid_pace: f64,
+    humid_fuel: f64,
+    pilots: [Pilot; 2],
+    /// Blando y duro: ritmo y pérdida por vuelta de edad.
+    compounds: [(f64, f64); 2],
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Sky {
+    Dry,
+    Humid,
+    Wet,
+}
+
+type WetMemo = HashMap<(u32, i64, usize, [u32; 2]), Option<f64>>;
+
+impl Wet {
+    /// `weather-driver`, tal como está en el oráculo.
+    fn oracle() -> Self {
+        Self {
+            laps: 5,
+            rain: [0.0, 20.0, 60.0, 80.0, 80.0],
+            formation: 3.0,
+            transit: 10.0,
+            refuel_rate: 2.0,
+            tyre_seconds: 3.0,
+            parallel: true,
+            capacity: 4,
+            humid_pace: 2.0,
+            humid_fuel: 0.9,
+            pilots: [
+                Pilot {
+                    base: 90.0,
+                    wet_pace: 10.0,
+                    wet_fuel: 0.9,
+                },
+                Pilot {
+                    base: 91.0,
+                    wet_pace: 0.0,
+                    wet_fuel: 0.5,
+                },
+            ],
+            compounds: [(-1.0, 0.8), (0.0, 0.1)],
+        }
+    }
+
+    fn random(rng: &mut Rng) -> Self {
+        Self {
+            laps: 4 + rng.laps(3),
+            rain: rng.pick(&[
+                [0.0, 20.0, 60.0, 80.0, 80.0],
+                [0.0, 0.0, 30.0, 70.0, 90.0],
+                [80.0, 60.0, 30.0, 0.0, 0.0],
+                [0.0, 10.0, 25.0, 40.0, 10.0],
+            ]),
+            formation: 3.0,
+            transit: rng.pick(&[4.0, 10.0]),
+            refuel_rate: rng.pick(&[1.0, 2.0]),
+            tyre_seconds: rng.pick(&[0.0, 3.0, 6.0]),
+            parallel: rng.below(2) == 0,
+            capacity: rng.pick(&[3, 4, 5]),
+            humid_pace: rng.pick(&[0.0, 2.0]),
+            humid_fuel: rng.pick(&[0.9, 1.0]),
+            pilots: [
+                Pilot {
+                    base: 90.0,
+                    wet_pace: rng.pick(&[0.0, 4.0, 10.0]),
+                    wet_fuel: rng.pick(&[0.9, 1.2]),
+                },
+                Pilot {
+                    base: rng.pick(&[90.5, 91.0]),
+                    wet_pace: rng.pick(&[0.0, 3.0]),
+                    wet_fuel: rng.pick(&[0.5, 0.8]),
+                },
+            ],
+            compounds: [
+                (rng.pick(&[-1.0, -2.0]), rng.pick(&[0.4, 0.8, 1.5])),
+                (0.0, rng.pick(&[0.0, 0.1, 0.3])),
+            ],
+        }
+    }
+
+    /// La entrada del oráculo con los números de esta carrera.
+    fn input(&self) -> Input {
+        let mut input = oracle_case(
+            include_str!("../testdata/oracle/solver-weather.json"),
+            "weather-driver",
+        )["input"]
+            .clone();
+        input["raceLaps"] = json!(self.laps);
+        input["budget"]["p95Millis"] = json!(600_000); // que no mande el reloj
+        input["formation"]["seconds"]["value"] = json!(self.formation);
+        input["fuelCapacityLiters"]["value"] = json!(self.capacity);
+        let pit = &mut input["pitCost"];
+        pit["transitSeconds"]["value"] = json!(self.transit);
+        pit["refuelRateLPerS"]["value"] = json!(self.refuel_rate);
+        pit["tyreSeconds"]["value"] = json!(self.tyre_seconds);
+        pit["serviceMode"] = json!(if self.parallel {
+            "parallel"
+        } else {
+            "sequential"
+        });
+        for (node, rain) in input["weather"]["scenario"]["nodes"]
+            .as_array_mut()
+            .expect("pronóstico")
+            .iter_mut()
+            .zip(self.rain)
+        {
+            node["rainChance"] = json!(rain);
+        }
+        for (index, pilot) in self.pilots.iter().enumerate() {
+            input["driverProfiles"][index]["manual"]["baseLapSeconds"] = json!(pilot.base);
+        }
+        let buckets = &mut input["weather"]["bucketParameters"];
+        assert_eq!(buckets[0]["bucket"], "humid");
+        assert_eq!(buckets[1]["bucket"], "wet");
+        buckets[0]["paceDeltaSeconds"] = json!(self.humid_pace);
+        buckets[0]["fuelPerLapLiters"] = json!(self.humid_fuel);
+        for (index, pilot) in self.pilots.iter().enumerate() {
+            let wet = &mut buckets[1]["driverProfiles"][index];
+            wet["paceDeltaSeconds"] = json!(pilot.wet_pace);
+            wet["fuelPerLapLiters"] = json!(pilot.wet_fuel);
+        }
+        for (name, (pace, wear)) in ["soft", "hard"].into_iter().zip(self.compounds) {
+            let entry = input["compoundPace"]
+                .as_array_mut()
+                .expect("compuestos")
+                .iter_mut()
+                .find(|entry| entry["compound"] == name)
+                .expect("compuesto");
+            entry["paceDeltaSeconds"] = json!(pace);
+            entry["degradationPerLapSeconds"] = json!(wear);
+        }
+        serde_json::from_value(input).expect("entrada")
+    }
+
+    /// El cielo de una vuelta: su sitio en el pronóstico (la primera vuelta en
+    /// la salida, la última en la meta), la lluvia entre los dos puntos vecinos
+    /// y los umbrales de siempre: 20 % húmedo, 60 % mojado.
+    fn sky(&self, lap: u32) -> Sky {
+        let place = f64::from(lap - 1) / f64::from((self.laps - 1).max(1)) * 4.0;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        // entre 0 y 4.
+        let left = (place.floor() as usize).min(4);
+        let rain = if left == 4 {
+            self.rain[4]
+        } else {
+            #[allow(clippy::cast_precision_loss)] // entre 0 y 4.
+            let part = place - left as f64;
+            self.rain[left] + (self.rain[left + 1] - self.rain[left]) * part
+        };
+        if rain >= 60.0 {
+            Sky::Wet
+        } else if rain >= 20.0 {
+            Sky::Humid
+        } else {
+            Sky::Dry
+        }
+    }
+
+    /// Tiempo y litros (en millonésimas) de la vuelta `lap` con un piloto, un
+    /// compuesto y ruedas que hacen su vuelta número `age`.
+    fn lap(&self, lap: u32, pilot: usize, compound: usize, age: u32) -> (f64, i64) {
+        let who = &self.pilots[pilot];
+        let (weather, fuel) = match self.sky(lap) {
+            Sky::Dry => (0.0, 1.0),
+            Sky::Humid => (self.humid_pace, self.humid_fuel),
+            Sky::Wet => (who.wet_pace, who.wet_fuel),
+        };
+        let (pace, wear) = self.compounds[compound];
+        (
+            who.base + weather + pace + wear * f64::from(age - 1),
+            micro(fuel),
+        )
+    }
+
+    fn pit_seconds(&self, liters: u32, change: bool) -> f64 {
+        let fuel = f64::from(liters) / self.refuel_rate;
+        let tyres = if change { self.tyre_seconds } else { 0.0 };
+        self.transit
+            + if self.parallel {
+                fuel.max(tyres)
+            } else {
+                fuel + tyres
+            }
+    }
+
+    /// El plan más rápido, probando todo: quién conduce cada tramo, cuánto
+    /// dura, cuánto se carga y qué ruedas se llevan.
+    fn best(&self) -> Option<f64> {
+        let mut memo = WetMemo::new();
+        (0..2)
+            .filter_map(|set| self.rest(0, micro(f64::from(self.capacity)), set, [0, 0], &mut memo))
+            .min_by(f64::total_cmp)
+            .map(|seconds| self.formation + seconds)
+    }
+
+    /// Lo mínimo que queda al empezar un tramo tras la vuelta `done`, con
+    /// `fuel` en el depósito, el juego `set` montado y lo rodado por cada juego.
+    fn rest(
+        &self,
+        done: u32,
+        fuel: i64,
+        set: usize,
+        usage: [u32; 2],
+        memo: &mut WetMemo,
+    ) -> Option<f64> {
+        let key = (done, fuel, set, usage);
+        if let Some(&known) = memo.get(&key) {
+            return known;
+        }
+        let mut best: Option<f64> = None;
+        for pilot in 0..2 {
+            let (mut seconds, mut left) = (0.0, fuel);
+            for laps in 1..=self.laps - done {
+                let (time, used) = self.lap(done + laps, pilot, set, usage[set] + laps);
+                seconds += time;
+                left -= used;
+                if left < 0 {
+                    break;
+                }
+                let after = if done + laps == self.laps {
+                    Some(0.0)
+                } else {
+                    let mut worn = usage;
+                    worn[set] += laps;
+                    let room = micro(f64::from(self.capacity)) - left;
+                    let mut least: Option<f64> = None;
+                    for load in 0..=u32::try_from(room / 1_000_000).expect("litros") {
+                        for next in 0..2 {
+                            let filled = left + i64::from(load) * 1_000_000;
+                            if let Some(tail) = self.rest(done + laps, filled, next, worn, memo) {
+                                let total = self.pit_seconds(load, next != set) + tail;
+                                if least.is_none_or(|least| total < least) {
+                                    least = Some(total);
+                                }
+                            }
+                        }
+                    }
+                    least
+                };
+                if let Some(after) = after
+                    && best.is_none_or(|best| seconds + after < best)
+                {
+                    best = Some(seconds + after);
+                }
+            }
+        }
+        memo.insert(key, best);
+        best
+    }
+}
+
+/// `weather-driver`: 461,0 s es el mejor plan posible (el piloto «b» hace las
+/// cinco vueltas con el duro, sin parar), y ahora la búsqueda lo comprueba.
+#[test]
+fn weather_driver_is_proven_and_its_plan_is_really_the_fastest() {
+    let race = Wet::oracle();
+    assert_eq!(
+        [1, 2, 3, 4, 5].map(|lap| race.sky(lap) as u8),
+        [Sky::Dry, Sky::Humid, Sky::Wet, Sky::Wet, Sky::Wet].map(|sky| sky as u8)
+    );
+    // El plan de siempre, contado a mano: 5 × 91 + 2 (húmedo) + 0,1 × 10 + 3.
+    let no_stop: f64 = (1..=5).map(|lap| race.lap(lap, 1, 1, lap).0).sum();
+    assert!(close(race.formation + no_stop, 461.0));
+    let best = race.best().expect("hay plan");
+    assert!(close(best, 461.0), "el mejor plan vale {best} s");
+    // La entrada del oráculo sin tocar, con su propio plazo.
+    let case = oracle_case(
+        include_str!("../testdata/oracle/solver-weather.json"),
+        "weather-driver",
+    );
+    let input: Input = serde_json::from_value(case["input"].clone()).expect("entrada");
+    let outcome = solved(&input);
+    assert_eq!(outcome.certificate.status, OptimalityStatus::Proven);
+    assert!(close(outcome.cost_seconds.expect("coste"), 461.0));
+    let plan = outcome.result.best.as_ref().expect("plan");
+    assert_eq!(plan.pit_stops.len(), 0, "sin paradas");
+    assert_eq!(plan.stints[0].driver, "b");
+    assert_eq!(plan.stints[0].compound, "hard");
+    // Y la misma carrera montada desde el modelo da la misma entrada.
+    let rebuilt = solved(&race.input());
+    assert!(close(rebuilt.cost_seconds.expect("coste"), 461.0));
+}
+
+/// Carreras del mismo tipo con otros números: la búsqueda nunca publica un plan
+/// más rápido que el mejor posible, y cuando dice «comprobado» es ese.
+/// Devuelve cuántas quedan comprobadas, con parada, con ruedas sin cambiar y
+/// con cambio de piloto. `deadline_millis` es el plazo de cada búsqueda: si
+/// vence, el resultado no es «comprobado» y solo se exige que no mejore al
+/// mejor plan posible.
+fn check_races_like_weather_driver(seed: u64, cases: usize, deadline_millis: u64) -> [usize; 4] {
+    let mut rng = Rng(seed);
+    let (mut proven, mut stops, mut kept, mut swaps) = (0, 0, 0, 0);
+    for index in 0..cases {
+        let race = Wet::random(&mut rng);
+        let context = format!("caso {index} {race:?}");
+        let mut input = race.input();
+        input.budget.p95_millis = deadline_millis;
+        let outcome = solved(&input);
+        let Some(best) = race.best() else {
+            assert!(!outcome.result.feasible, "{context}: no hay plan");
+            continue;
+        };
+        let Some(cost) = outcome.cost_seconds else {
+            assert_ne!(
+                outcome.certificate.status,
+                OptimalityStatus::NoSolution,
+                "{context}: hay plan ({best} s)"
+            );
+            continue;
+        };
+        assert!(
+            cost >= best - 1e-9 * best,
+            "{context}: la búsqueda da {cost} s y el mejor posible son {best} s"
+        );
+        if outcome.certificate.status == OptimalityStatus::Proven {
+            proven += 1;
+            assert!(
+                close(cost, best),
+                "{context}: «comprobado» con {cost} s y el mejor son {best} s"
+            );
+        }
+        let plan = outcome.result.best.as_ref().expect("plan");
+        stops += usize::from(!plan.pit_stops.is_empty());
+        kept += usize::from(plan.pit_stops.iter().any(|stop| !stop.change_tyres));
+        swaps += usize::from(
+            plan.stints
+                .windows(2)
+                .any(|pair| pair[0].driver != pair[1].driver),
+        );
+    }
+    [proven, stops, kept, swaps]
+}
+
+#[test]
+fn races_like_weather_driver_are_only_proven_with_the_fastest_plan() {
+    // Diez minutos de plazo por búsqueda: no lo decide el reloj.
+    let [proven, stops, kept, swaps] = check_races_like_weather_driver(0x2691_0006, 12, 600_000);
+    assert!(
+        proven > 5 && stops > 3 && swaps > 0,
+        "corpus pobre: {proven} comprobados, {stops} con parada, {kept} sin cambiar ruedas, {swaps} con cambio de piloto"
+    );
+}
+
+/// Cientos de carreras de ese tipo contra la búsqueda propia. Sirve para
+/// revisar cambios en la poda de la búsqueda extendida:
+/// `cargo test -p vantare-strategy --release --test tyre_wear -- --ignored --nocapture`.
+/// `VANTARE_STRATEGY_CASOS` cambia el número de casos.
+#[test]
+#[ignore = "búsqueda larga de contraejemplos"]
+fn long_hunt_for_a_proven_plan_that_is_not_the_fastest() {
+    let cases = std::env::var("VANTARE_STRATEGY_CASOS")
+        .ok()
+        .and_then(|text| text.parse().ok())
+        .unwrap_or(150);
+    let [proven, stops, kept, swaps] = check_races_like_weather_driver(0x2691_0007, cases, 20_000);
+    println!(
+        "{cases} carreras: {proven} comprobadas, {stops} con parada, {kept} sin cambiar ruedas, {swaps} con cambio de piloto"
+    );
+}

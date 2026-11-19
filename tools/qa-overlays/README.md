@@ -372,8 +372,7 @@ indica fin sin errores; no pretende certificar una limpieza no observada.
 
 ### Cita visual programada en el servidor
 
-**No se registra ninguna cita real hasta aprobar el ensayo con
-`LogonType Password` y SSH real al PC de Isaac.**
+**NO SE REGISTRA NINGUNA CITA REAL hasta hacer el ensayo con LogonType Password y SSH real (P1-1). Ese ensayo se hace el día que Isaac fije la hora, ANTES de la cita, con su PC encendido.**
 
 La raíz registra una sola tarea tras la autorización de Isaac para esa fecha.
 El controlador sirve para las 223 parejas visuales y los cuatro escenarios
@@ -422,8 +421,9 @@ be17532a5 y usa su preflight v2 archivado. El caso positivo ejecuta
 `TANDA -Modo Ensayo` con el guard 6.
 El ensayo guarda el log y retira su tarea.
 
-La raíz hace la prueba de red el día que Isaac fije, con su PC encendido
-y dentro de una ventana autorizada previa a la cita. Hace falta la misma
+El ensayo Password con SSH real está pendiente. La raíz hace la prueba
+el día que Isaac fije y dentro de una ventana autorizada previa a la cita.
+Hace falta la misma
 cuenta Administrator del servidor que usará la cita, su contraseña por
 canal seguro (nunca en el repositorio) y acceso SSH real al PC con su
 huella ya verificada. La comprobación es de solo lectura.
@@ -432,11 +432,18 @@ huella ya verificada. La comprobación es de solo lectura.
    `ssh.exe -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes isaac@100.83.142.118 "exit 0"`.
    Fijar la ruta absoluta local de ssh.exe. Guardar stderr y el código local
    en un log, devolver ese código y usar el known_hosts del mismo usuario.
+   La consulta es de solo lectura y no abre ventanas en el PC. Declarar
+   `param([string]$CitaSha256)` en el script y, antes del SSH, comprobar que
+   coincide con `(Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash`.
+   La acción termina en `-CitaSha256 <SHA-256 del script de prueba>`.
 2. Crear una tarea desechable `VantareCitaEnsayoRed` con
    `New-CitaTaskDefinition $action $at <cuenta>`, sin `-SinRed`, a +3 min.
    Registrar desde la interfaz con «Ejecutar tanto si el usuario inició
    sesión como si no», contraseña de la cuenta y acceso de red. Cerrar su
    sesión interactiva del servidor antes de la hora.
-3. Desde otra cuenta verificar en el XML exportado `LogonType=Password`,
-   SID y acción, y exigir `LastTaskResult=0` y código SSH 0 en el log.
+3. Exportar el XML de la tarea registrada con
+   `Export-ScheduledTask -TaskName VantareCitaEnsayoRed | Set-Content -Encoding unicode -LiteralPath D:/VantareServer/evidence/overlays-rune/VantareCitaEnsayoRed.xml`.
+   Desde otra cuenta, con `TAREA-CITA.ps1` cargado, ejecutar
+   `Assert-CitaRegisteredTask VantareCitaEnsayoRed $action <cuenta> $at` sin
+   `-SinRed`. Verificar `LastTaskResult=0` y código SSH 0 en el log.
    Retirar solo la tarea de prueba. Si falla, no registrar la cita.

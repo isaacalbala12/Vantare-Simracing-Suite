@@ -7,7 +7,7 @@ $taskName='VantareCitaEnsayo'
 
 if($EjecutarCasos){
  $env:VANTARE_SIN_GRAFICOS='1'
- $cases=@('timeout','python310','sin-python','fuera-ventana','cancelado','cancelado-real','cancelado-entre-pasos','zip-distinto','preflight-distinto','staging-distinto','config-distinta','python313')
+ $cases=@('timeout','python310','sin-python','fuera-ventana','cancelado','cancelado-real','cancelado-entre-pasos','zip-distinto','preflight-distinto','staging-distinto','config-distinta','modo-invalido','launcher-distinto','definicion-distinta','python313')
  $original='D:/VantareServer/evidence/overlays-rune/PREFLIGHT-VISUAL-20261119-v2.ps1'
  $source=[IO.File]::ReadAllText($original)
  $fakeSsh=@"
@@ -44,6 +44,28 @@ function ssh {
   if(-not $refused){throw 'El servidor continuó con la carpeta de control inaccesible'}
  }
  Add-Content -LiteralPath $log 'PASS TANDA falla cerrado cuando no puede comprobar la carpeta de control.'
+ & {
+  . (Join-Path $PSScriptRoot 'TAREA-CITA.ps1')
+  $user=[Security.Principal.WindowsIdentity]::GetCurrent()
+  $at=[datetime]::Now
+  $action=@{Execute=$pwsh;Arguments=('-NoProfile -CitaSha256 '+('a'*64))}
+  $valid=@"
+<Task><Principals><Principal><UserId>$($user.User.Value)</UserId><LogonType>Password</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
+<Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy><ExecutionTimeLimit>PT2H</ExecutionTimeLimit></Settings>
+<Triggers><TimeTrigger><StartBoundary>$($at.ToString('o'))</StartBoundary></TimeTrigger></Triggers>
+<Actions><Exec><Command>$pwsh</Command><Arguments>$($action.Arguments)</Arguments></Exec></Actions></Task>
+"@
+  function Export-ScheduledTask {param($TaskName,$ErrorAction) $fixture}
+  $fixture=$valid
+  Assert-CitaRegisteredTask VantareCitaEnsayoRed $action $user.Name $at
+  foreach($mutation in @(@('>Password<','>S4U<'),@('>LeastPrivilege<','>HighestAvailable<'),@('TimeTrigger','BootTrigger'),@($action.Arguments,'-NoProfile'))){
+   $fixture=$valid.Replace($mutation[0],$mutation[1])
+   $refused=$false
+   try{Assert-CitaRegisteredTask VantareCitaEnsayoRed $action $user.Name $at}catch{$refused=$_.Exception.Message -eq 'La tarea registrada no coincide con la política de cita'}
+   if(-not $refused){throw "XML incorrecto aceptado: $($mutation[1])"}
+  }
+ }
+ Add-Content -LiteralPath $log 'PASS XML Password simulado: rechazo de LogonType, RunLevel, disparador y argumentos incorrectos.'
  Add-Content -LiteralPath $log "Inicio real de la tarea UTC $([DateTimeOffset]::UtcNow.ToString('o')) PID $PID; VANTARE_SIN_GRAFICOS=1; SSH falso."
  try{
   foreach($case in $cases){
@@ -65,9 +87,9 @@ function ssh {
     preflight_utc=$fromUtc; visual_utc=$startUtc; source_sha=$sha
     zip_sha256=if($case -eq 'zip-distinto'){'0'*64}else{$zipSha}
     preflight_sha256=(Get-FileHash -LiteralPath $preflight).Hash.ToLowerInvariant()
-    output=$root.FullName; preflight=$preflight; zip=$zip; kit=$kit; modo='ensayo'
-    launcher_sha256=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'LANZAR-CITA.ps1')).Hash.ToLowerInvariant()
-    task_sha256=(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'TAREA-CITA.ps1')).Hash.ToLowerInvariant()
+    output=$root.FullName; preflight=$preflight; zip=$zip; kit=$kit; modo=if($case -eq 'modo-invalido'){'invalido'}else{'ensayo'}
+    launcher_sha256=if($case -eq 'launcher-distinto'){'0'*64}else{(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'LANZAR-CITA.ps1')).Hash.ToLowerInvariant()}
+    task_sha256=if($case -eq 'definicion-distinta'){'0'*64}else{(Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'TAREA-CITA.ps1')).Hash.ToLowerInvariant()}
    }|ConvertTo-Json | Set-Content -LiteralPath $config
    if($case -eq 'cancelado'){New-Item -ItemType File -Path (Join-Path $root 'CITA-CANCELAR')|Out-Null}
    $env:VANTARE_CITA_TEST=$case
@@ -78,7 +100,16 @@ function ssh {
    $ownsSignal=$false
    try{
     switch($case){
-     'cancelado-real'{$stream=[IO.File]::Open($cancelFile,[IO.FileMode]::CreateNew);$ownsSignal=$true;$stream.Dispose()}
+     'cancelado-real'{
+      $stream=[IO.File]::Open($cancelFile,[IO.FileMode]::CreateNew);$ownsSignal=$true;$stream.Dispose()
+      & {
+       . $tanda -SoloFunciones -CitaProgramada
+       $refused=$false
+       try{Assert-TandaCitaContinues}catch{$refused=$_.Exception.Message -eq 'CITA-CANCELAR activo: no lanzar ni apagar'}
+       if(-not $refused){throw 'TANDA aceptó el interruptor de cancelación real'}
+      }
+      Add-Content -LiteralPath $log 'PASS TANDA rechazó el interruptor real.'
+     }
      'preflight-distinto'{Add-Content -LiteralPath $preflight '# cambiado tras autorizar'}
      'config-distinta'{Add-Content -LiteralPath $config ' '}
      'staging-distinto'{Set-Content -LiteralPath $extra 'fichero ajeno al ZIP'}
@@ -98,7 +129,7 @@ function ssh {
    $result=Get-ChildItem -LiteralPath $root -Filter 'RESULTADO-CITA-*.json' | Get-Content -Raw | ConvertFrom-Json
    $summary=Get-ChildItem -LiteralPath $root -Filter 'RESULTADO-CITA-*.txt' | Get-Content -Raw
    $contact=Test-Path -LiteralPath (Join-Path $Salida "ssh-$case")
-   $expectContact=$case -notin @('fuera-ventana','cancelado','cancelado-real','zip-distinto','preflight-distinto','staging-distinto')
+   $expectContact=$case -in @('timeout','python310','sin-python','cancelado-entre-pasos','python313')
    if($contact -ne $expectContact){throw "Contacto SSH falso inesperado en $case : $($result.reason) / $($out -join ' ')"}
    if($contact){
     $sshPid=[int](Get-Content -LiteralPath (Join-Path $Salida "ssh-$case"))
@@ -126,6 +157,9 @@ function ssh {
     'zip-distinto'{'SHA-256 del ZIP distinto'}
     'preflight-distinto'{'SHA-256 del preflight distinto'}
     'staging-distinto'{'Archivo ajeno al ZIP en staging'}
+    'modo-invalido'{'Modo de cita inválido; no ejecutar'}
+    'launcher-distinto'{'SHA-256 del lanzador o definición distinto'}
+    'definicion-distinta'{'SHA-256 del lanzador o definición distinto'}
    }
    if($result.reason -cne $expectedReason){throw "Motivo inesperado de $case : $($result.reason)"}
    if($result.preflight_exit -eq 1 -and -not (Select-String -LiteralPath $result.log -SimpleMatch 'Preflight SSH rechazado: no copiar, lanzar ni apagar' -Quiet)){

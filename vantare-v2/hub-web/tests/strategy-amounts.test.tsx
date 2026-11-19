@@ -323,6 +323,8 @@ describe("the amounts of a stop", () => {
     expect(screen.getAllByText("fijado por ti")).toHaveLength(1);
     // what was typed stays to be corrected, and fixing it clears the error
     expect(input.value).toBe("70,5");
+    // it says what the plan keeps meanwhile
+    expect(screen.getByText("El plan se queda con 77 L.")).toBeTruthy();
     fireEvent.change(input, { target: { value: "71" } });
     expect(screen.queryByRole("alert")).toBeNull();
     fireEvent.keyDown(input, { key: "Enter" });

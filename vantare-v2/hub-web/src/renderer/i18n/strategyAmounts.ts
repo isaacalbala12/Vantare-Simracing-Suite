@@ -57,6 +57,9 @@ export const amounts = {
     noRange:
       "Con lo que has fijado en las otras paradas, aquí no hay ninguna cantidad que dé plan. Prueba a volver alguna parada a automático.",
   },
+  // what a refused amount leaves: the host keeps the last valid one
+  keeps: (value: string) => `El plan se queda con ${value}.`,
+  keepsAutomatic: "El plan se queda con lo que decide el cálculo.",
   errors: {
     notNumber: "Escribe solo un número, por ejemplo 70.",
     negative: "No puede ser menos de 0.",

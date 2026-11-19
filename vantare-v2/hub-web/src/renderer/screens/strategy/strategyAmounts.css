@@ -29,6 +29,10 @@
 
 .strategy-amounts {
   display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
   border-top: 1px solid var(--line-2);
 }
 
@@ -48,8 +52,10 @@
   align-items: center;
 }
 
-.strategy-amount[data-unused] > .strategy-help {
+.strategy-amount-unused {
   margin: 0;
+  font-size: var(--text-small);
+  color: var(--text-3);
 }
 
 .strategy-amount-name {
@@ -217,6 +223,10 @@
 .strategy-slower > .strategy-icon {
   display: inline-flex;
   color: var(--warn-text, var(--warn));
+}
+
+.strategy-timeline .strategy-stop > span {
+  white-space: nowrap;
 }
 
 .strategy-timeline .strategy-stop .strategy-pin {

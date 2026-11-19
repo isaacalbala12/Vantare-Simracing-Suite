@@ -1733,9 +1733,12 @@ async function amountStates(
     await verify(page, name, scheme, width);
     if (!evidence) return;
     // the shot starts at the timeline, so the editor is on it
-    await page
-      .locator(".strategy-timeline-card")
-      .evaluate((node) => node.scrollIntoView({ block: "start" }));
+    // (a plan with no plan has no timeline: the shot starts at the plan)
+    const timeline = page.locator(".strategy-timeline-card");
+    await ((await timeline.count()) > 0
+      ? timeline
+      : page.locator(".strategy-plan")
+    ).evaluate((node) => node.scrollIntoView({ block: "start" }));
     await page.screenshot({
       path: resolve(evidence, `${prefix}${name}-${suffix}.png`),
     });
@@ -1755,10 +1758,14 @@ async function amountStates(
     page.getByText("Se llega con entre 0,4 y 4,4 L.", { exact: true }),
   );
   assert.equal(await page.getByText("fijado por ti").count(), 0);
+  // tyres are shown, not fixed (#2691): no way to choose them
   assert.equal(
-    await page.getByText(/neumáticos/i).count(),
+    await page.getByText(/Cambiar neumáticos|No cambiar/).count(),
     0,
-    "tyres are not fixed here",
+  );
+  assert.equal(
+    await page.getByRole("group", { name: /Neumáticos/ }).count(),
+    0,
   );
   await shot("m-auto");
 
@@ -1821,7 +1828,7 @@ async function amountStates(
   // m-rejilla: the nearest amounts the grid takes
   await modeRadio(page, "Energía", 2, "A mano").focus();
   await page.keyboard.press("ArrowLeft");
-  await visible(page.getByText("lo decide el cálculo"));
+  await visible(page.getByText("lo decide el cálculo", { exact: true }));
   await typeAmount(fuel, "70,5");
   await visible(
     page.getByText(
@@ -1888,7 +1895,7 @@ async function amountStates(
     (await strategyRequests(page)).filter(
       (request) => request.method === "strategy.compute",
     ).length;
-  await press(button(page, "Calcular de nuevo"));
+  await pressKey(button(page, "Calcular de nuevo"), "Enter");
   const question = page.getByRole("group", {
     name: "¿Calcular de nuevo y perder lo que fijaste?",
   });

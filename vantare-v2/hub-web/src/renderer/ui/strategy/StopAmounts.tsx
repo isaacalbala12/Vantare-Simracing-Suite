@@ -115,6 +115,7 @@ function AmountRow(row: Row) {
     `${id}-limits`,
     lines?.issue ? `${id}-issue` : undefined,
     message ? `${id}-error` : undefined,
+    message ? `${id}-kept` : undefined,
   ]
     .filter(Boolean)
     .join(" ");
@@ -122,7 +123,8 @@ function AmountRow(row: Row) {
   const spelled = step === null ? null : amountText(step);
 
   function commit() {
-    if (draft === undefined) return;
+    // what was refused is not sent again until it changes
+    if (draft === undefined || message) return;
     const text = draft.trim();
     if (text === "") {
       row.setDraft(undefined);
@@ -260,7 +262,7 @@ function AmountRow(row: Row) {
             amounts.limits.unavailable
           )}
         </p>
-        {lines?.issue && (
+        {lines?.issue && !message && (
           <p
             id={`${id}-issue`}
             className="strategy-amount-note"
@@ -287,6 +289,13 @@ function AmountRow(row: Row) {
           >
             <Icon name="alert" />
             <span>{message}</span>
+          </p>
+        )}
+        {message && (
+          <p id={`${id}-kept`} className="strategy-help">
+            {fixed === null
+              ? amounts.keepsAutomatic
+              : amounts.keeps(`${amountText(fixed)} ${unit}`)}
           </p>
         )}
       </div>
@@ -384,7 +393,7 @@ export function StopAmounts({
     unused[amount] ? (
       <div key={amount} className="strategy-amount" data-unused="">
         <span className="strategy-amount-name">{rowName(amount)}</span>
-        <p className="strategy-help">{amounts.unused}</p>
+        <p className="strategy-amount-unused">{amounts.unused}</p>
       </div>
     ) : (
       <AmountRow
@@ -411,13 +420,10 @@ export function StopAmounts({
     ),
   );
   return (
-    <div
-      className="strategy-amounts"
-      role="group"
-      aria-label={amounts.group(index + 1)}
-    >
+    <fieldset className="strategy-amounts">
+      <legend className="v-sr-only">{amounts.group(index + 1)}</legend>
       {rows}
-    </div>
+    </fieldset>
   );
 }
 

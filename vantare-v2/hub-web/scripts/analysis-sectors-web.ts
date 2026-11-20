@@ -78,17 +78,18 @@ export async function checkVueltas(page: Page, test: Case) {
   );
   const boxes = table.locator(".v-an-sector-best");
   assert.equal(await boxes.count(), sectors ? 3 : 0);
-  // El recuadro es una forma, no solo color: su borde computado es visible.
-  if (sectors)
-    assert.deepEqual(
-      await boxes
-        .first()
-        .evaluate((el) => [
-          getComputedStyle(el).borderTopStyle,
-          getComputedStyle(el).borderTopWidth,
-        ]),
-      ["solid", "1px"],
-    );
+  // El recuadro es una forma, no solo color: su borde computado es visible
+  // (el ancho puede salir fraccionario si el Hub aplica zoom).
+  if (sectors) {
+    const [style, width] = await boxes
+      .first()
+      .evaluate((el) => [
+        getComputedStyle(el).borderTopStyle,
+        getComputedStyle(el).borderTopWidth,
+      ]);
+    assert.equal(style, "solid");
+    assert.ok(Number.parseFloat(width) >= 1, `borde del recuadro ${width}`);
+  }
   if (test.scene === "con") {
     for (const n of [1, 2, 3])
       assert.equal(await table.getByText(t.bestSectorHidden(n)).count(), 1);

@@ -377,7 +377,8 @@ impl Editing {
                         lap,
                         fuel_liters: fixed.fuel_liters.or(pit.fuel_liters.as_f64())?,
                         ve_percent: fixed.ve_percent.or(pit.ve_percent.as_f64())?,
-                        change_tyres: fixed.change_tyres.unwrap_or(pit.change_tyres),
+                        // left to the calculation, a stop fits new tyres
+                        change_tyres: fixed.change_tyres.unwrap_or(true),
                         ..PitDecision::default()
                     },
                 );

@@ -533,7 +533,7 @@ se recomiendan.** El texto se conserva como se presentó.
 ## Enmiendas de implementación (T1 y T2, 20-11-2026)
 
 Lo aprendido al implementar y revisar T1 (#2755) y T2 (#2758). No cambia la
-decisión; precisa cinco puntos del texto de arriba.
+decisión; precisa seis puntos del texto de arriba.
 
 1. **§4, «y su `.wal` si existe»: la pareja no se adopta.** Una grabación con
    un `.wal` o un temporal al lado se queda entera donde está y se anota.
@@ -569,6 +569,19 @@ decisión; precisa cinco puntos del texto de arriba.
    Además, un núcleo antiguo sí borra **por cupo** al podar la carpeta que
    recibe, también archivos de formato más nuevo: «incompatible» protege de
    abrirlos y modificarlos, no de la poda.
+
+6. **§3, un enlace en `recordings` (T2b, #2777; decisión de la raíz).** El
+   texto de §3 decía que un enlace puesto a mano dentro de la carpeta hace
+   que el instalador se niegue a trabajar. Ya no: **Vantare nunca deja de
+   arrancar por culpa de la carpeta de grabaciones.** Al abrir la instalación
+   se sigue rechazando cualquier enlace salvo la entrada `recordings` del
+   primer nivel de la raíz, que ni se mira ni se sigue. Si esa entrada es un
+   enlace, una unión o un archivo, Vantare no la usa: la sesión no le dice al
+   núcleo que grabe, no adopta nada y lo anota una vez; el Hub arranca y
+   Análisis lo explica con un aviso propio. No se graba ni se lee al otro lado
+   del enlace. Las versiones ya publicadas siguen rechazándolo: tras una
+   vuelta atrás a una de ellas, quien tenga el enlace puesto no podrá abrir
+   Vantare hasta quitarlo.
 
 ## Cómo se revisa esta decisión
 

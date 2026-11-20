@@ -83,9 +83,10 @@ pub enum Request {
         index: u32,
         delta: i8,
     },
-    /// Fixes by hand what stop `index` (0-based) of the edited schedule loads.
-    /// Both amounts are stated every time: a number fixes it and `null` leaves
-    /// it to the calculation. Only in the session: the document does not change.
+    /// Fixes by hand what stop `index` (0-based) of the edited schedule does.
+    /// Both amounts and the tyres are stated every time: a value fixes it and
+    /// `null` leaves it to the calculation. Only in the session: the document
+    /// does not change.
     #[serde(rename = "strategy.setStopService")]
     StrategySetStopService {
         revision: String,
@@ -93,18 +94,15 @@ pub enum Request {
         compute_id: u32,
         index: u32,
         /// The key is required (in Rust too): leaving it out is not «automatic».
-        #[serde(
-            rename = "fuelLiters",
-            deserialize_with = "crate::strategy::stated_amount"
-        )]
+        #[serde(rename = "fuelLiters", deserialize_with = "crate::strategy::stated")]
         #[cfg_attr(any(test, feature = "bindings"), ts(type = "number | null"))]
         fuel_liters: Option<serde_json::Number>,
-        #[serde(
-            rename = "vePercent",
-            deserialize_with = "crate::strategy::stated_amount"
-        )]
+        #[serde(rename = "vePercent", deserialize_with = "crate::strategy::stated")]
         #[cfg_attr(any(test, feature = "bindings"), ts(type = "number | null"))]
         ve_percent: Option<serde_json::Number>,
+        /// `true` fits new tyres and `false` keeps the ones on the car.
+        #[serde(rename = "changeTyres", deserialize_with = "crate::strategy::stated")]
+        change_tyres: Option<bool>,
     },
     /// Returns every stop of the edited schedule to automatic.
     #[serde(rename = "strategy.clearStopServices")]

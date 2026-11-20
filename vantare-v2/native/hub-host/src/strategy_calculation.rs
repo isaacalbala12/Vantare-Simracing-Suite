@@ -421,9 +421,9 @@ pub struct StrategyPit {
     /// (see `strategy_accepted::pit_seconds`).
     #[cfg_attr(any(test, feature = "bindings"), ts(type = "number"))]
     pub pit_seconds: Number,
-    /// Which amounts the person fixed by hand (`strategy.setStopService`): a
-    /// recalculation with fixed amounts sets them. Tyres cannot be fixed, so
-    /// `changeTyres` is always `false`.
+    /// What the person fixed by hand (`strategy.setStopService`): a recalculation
+    /// with something fixed sets them. `changeTyres` here is «the tyres were
+    /// fixed», whether to change them or to keep them.
     pub pinned: StrategyPitPinned,
 }
 

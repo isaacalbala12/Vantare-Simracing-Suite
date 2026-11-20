@@ -458,7 +458,8 @@ fn the_wire_names_are_the_documented_ones() {
             "vePercent",
             "fixed",
             "pitSeconds",
-            "limits"
+            "limits",
+            "tyres"
         ]
         .map(String::from)
         .into()
@@ -862,7 +863,7 @@ fn fixing_an_amount_keeps_it_in_the_session_and_leaves_the_plan_pending() {
     let before = editing.plan_view(Some(1));
     let (index, amount, _) = a_stop_with_room(&editing);
     let at = usize::try_from(index).unwrap();
-    editing.set_stop_service(index, Some(amount), None).unwrap();
+    editing.set_stop_service(index, Some(amount), None, None).unwrap();
     assert!(editing.pending());
     let view = editing.plan_view(Some(1));
     assert_eq!(view.state, StrategyPlanState::Edited);
@@ -900,9 +901,9 @@ fn fixing_an_amount_keeps_it_in_the_session_and_leaves_the_plan_pending() {
         result.timeline.as_ref().unwrap().fuel_finish_liters
     );
     // fixing the same again changes nothing; back to automatic clears it
-    editing.set_stop_service(index, Some(amount), None).unwrap();
+    editing.set_stop_service(index, Some(amount), None, None).unwrap();
     assert_eq!(fixed_fuel(&editing), expected);
-    editing.set_stop_service(index, None, None).unwrap();
+    editing.set_stop_service(index, None, None, None).unwrap();
     assert_eq!(fixed_fuel(&editing), vec![None; expected.len()]);
     assert_eq!(
         editing.edit_view().automatic,
@@ -945,7 +946,7 @@ fn an_amount_the_calculation_cannot_take_is_refused_with_its_reason_and_neighbou
         (f64::NAN, negative, None, Some(0.0)),
     ] {
         assert_eq!(
-            editing.set_stop_service(0, Some(value), None),
+            editing.set_stop_service(0, Some(value), None, None),
             refusal(fuel, reason, below, above),
             "{value}"
         );
@@ -953,7 +954,7 @@ fn an_amount_the_calculation_cannot_take_is_refused_with_its_reason_and_neighbou
     // this car has no virtual energy: not even zero can be fixed
     for value in [0.0, 50.0, -1.0] {
         assert_eq!(
-            editing.set_stop_service(0, None, Some(value)),
+            editing.set_stop_service(0, None, Some(value), None),
             refusal(
                 StrategyStopAmount::VePercent,
                 StrategyStopServiceReason::NotInUse,
@@ -965,10 +966,10 @@ fn an_amount_the_calculation_cannot_take_is_refused_with_its_reason_and_neighbou
     }
     // fuel is checked before energy, and a refusal of either fixes nothing
     assert_eq!(
-        editing.set_stop_service(0, Some(7.5), Some(50.0)),
+        editing.set_stop_service(0, Some(7.5), Some(50.0), None),
         refusal(fuel, off_grid, Some(7.0), Some(8.0))
     );
-    assert!(editing.set_stop_service(0, Some(7.0), Some(50.0)).is_err());
+    assert!(editing.set_stop_service(0, Some(7.0), Some(50.0), None).is_err());
     assert_eq!(
         fixed_fuel(&editing),
         vec![None; editing.edit_view().stops.len()]
@@ -978,20 +979,20 @@ fn an_amount_the_calculation_cannot_take_is_refused_with_its_reason_and_neighbou
     let count = u32::try_from(editing.edit_view().stops.len()).unwrap();
     for index in [count, u32::MAX] {
         assert_eq!(
-            editing.set_stop_service(index, Some(7.0), None),
+            editing.set_stop_service(index, Some(7.0), None, None),
             Err(HostError::Rejected)
         );
     }
     // the edges are valid: nothing and a full tank (whether a plan exists is
     // what the limits say, not a refusal)
-    editing.set_stop_service(0, Some(0.0), None).unwrap();
-    editing.set_stop_service(0, Some(12.0), None).unwrap();
+    editing.set_stop_service(0, Some(0.0), None, None).unwrap();
+    editing.set_stop_service(0, Some(12.0), None, None).unwrap();
     // a number a rounding away from the grid is the number of the grid
     editing
-        .set_stop_service(0, Some(0.1 + 0.2 + 6.7), None)
+        .set_stop_service(0, Some(0.1 + 0.2 + 6.7), None, None)
         .unwrap();
     assert_eq!(fixed_fuel(&editing)[0], Some(7.0));
-    editing.set_stop_service(0, Some(-0.0), None).unwrap();
+    editing.set_stop_service(0, Some(-0.0), None, None).unwrap();
     assert_eq!(
         serde_json::to_string(&editing.edit_view().stops[0].fixed.fuel_liters).unwrap(),
         "0.0"
@@ -1001,13 +1002,13 @@ fn an_amount_the_calculation_cannot_take_is_refused_with_its_reason_and_neighbou
 #[test]
 fn with_virtual_energy_its_amount_is_checked_on_its_own_grid() {
     let mut editing = calculate(manual(RACE, true)).2.expect("a feasible plan");
-    editing.set_stop_service(0, None, Some(97.0)).unwrap();
+    editing.set_stop_service(0, None, Some(97.0), None).unwrap();
     assert_eq!(
         editing.edit_view().stops[0].fixed.ve_percent,
         Number::from_f64(97.0)
     );
     assert_eq!(
-        editing.set_stop_service(0, None, Some(103.0)),
+        editing.set_stop_service(0, None, Some(103.0), None),
         Err(HostError::StrategyInvalidStopService {
             amount: StrategyStopAmount::VePercent,
             reason: StrategyStopServiceReason::AboveCapacity,
@@ -1016,7 +1017,7 @@ fn with_virtual_energy_its_amount_is_checked_on_its_own_grid() {
         })
     );
     assert_eq!(
-        editing.set_stop_service(0, None, Some(96.5)),
+        editing.set_stop_service(0, None, Some(96.5), None),
         Err(HostError::StrategyInvalidStopService {
             amount: StrategyStopAmount::VePercent,
             reason: StrategyStopServiceReason::OffGrid,
@@ -1039,7 +1040,7 @@ fn a_valid_amount_outside_its_limits_is_kept_and_the_view_says_what_happens() {
     assert!(min >= 1.0, "the case needs room below the least amount");
     // too little: the lap it runs out in comes with it
     editing
-        .set_stop_service(index, Some(min - 1.0), None)
+        .set_stop_service(index, Some(min - 1.0), None, None)
         .unwrap();
     let stop = editing.edit_view().stops[at].clone();
     let (range, issue, fail_lap) = fuel_limits(&stop);
@@ -1065,7 +1066,7 @@ fn a_valid_amount_outside_its_limits_is_kept_and_the_view_says_what_happens() {
     // too much, when the tank leaves room above the most
     if max < 12.0 {
         editing
-            .set_stop_service(index, Some(max + 1.0), None)
+            .set_stop_service(index, Some(max + 1.0), None, None)
             .unwrap();
         let (range, issue, fail_lap) = fuel_limits(&editing.edit_view().stops[at]);
         assert_eq!(range, Some((min, max)));
@@ -1077,7 +1078,7 @@ fn a_valid_amount_outside_its_limits_is_kept_and_the_view_says_what_happens() {
     }
     // the two ends of the limits do have a plan
     for amount in [min, max] {
-        editing.set_stop_service(index, Some(amount), None).unwrap();
+        editing.set_stop_service(index, Some(amount), None, None).unwrap();
         assert_eq!(fuel_limits(&editing.edit_view().stops[at]).1, None);
         assert!(run(&mut editing), "{amount} L is inside the limits");
     }
@@ -1089,7 +1090,7 @@ fn recalculating_keeps_what_is_fixed_and_the_plan_says_which_amounts_are_fixed()
     let automatic = editing.plan_view(Some(1));
     let (index, amount, _) = a_stop_with_room(&editing);
     let at = usize::try_from(index).unwrap();
-    editing.set_stop_service(index, Some(amount), None).unwrap();
+    editing.set_stop_service(index, Some(amount), None, None).unwrap();
     assert!(run(&mut editing));
     let view = editing.plan_view(Some(2));
     assert_ne!(view.state, StrategyPlanState::Edited);
@@ -1112,7 +1113,7 @@ fn recalculating_keeps_what_is_fixed_and_the_plan_says_which_amounts_are_fixed()
         before.total_seconds
     );
     // "Restablecer" returns to the last feasible plan, with what was fixed in it
-    editing.set_stop_service(index, None, None).unwrap();
+    editing.set_stop_service(index, None, None, None).unwrap();
     nudge_first_stop(&mut editing);
     editing.reset();
     assert_eq!(editing.plan_view(Some(2)), view);
@@ -1153,7 +1154,7 @@ fn a_fixed_amount_no_plan_respects_names_its_stop_until_the_edit_changes() {
     // an empty load in a stop that needs one
     let (index, _, (min, _)) = a_stop_with_room(&editing);
     assert!(min > 0.0);
-    editing.set_stop_service(index, Some(0.0), None).unwrap();
+    editing.set_stop_service(index, Some(0.0), None, None).unwrap();
     assert!(!run(&mut editing));
     let view = editing.plan_view(Some(2));
     let edit = view.edit.as_ref().unwrap();
@@ -1170,10 +1171,10 @@ fn a_fixed_amount_no_plan_respects_names_its_stop_until_the_edit_changes() {
         Some(0.0)
     );
     // any change of the edit is a new question
-    editing.set_stop_service(index, Some(min), None).unwrap();
+    editing.set_stop_service(index, Some(min), None, None).unwrap();
     assert_eq!(editing.edit_view().cause, None);
     // and so is a reset, which returns to the plan that had nothing fixed
-    editing.set_stop_service(index, Some(0.0), None).unwrap();
+    editing.set_stop_service(index, Some(0.0), None, None).unwrap();
     assert!(!run(&mut editing));
     assert!(editing.edit_view().cause.is_some());
     editing.reset();
@@ -1184,7 +1185,7 @@ fn a_fixed_amount_no_plan_respects_names_its_stop_until_the_edit_changes() {
 fn a_schedule_without_a_plan_names_no_stop_when_nothing_fixed_is_to_blame() {
     let mut editing = roomy();
     let (index, amount, _) = a_stop_with_room(&editing);
-    editing.set_stop_service(index, Some(amount), None).unwrap();
+    editing.set_stop_service(index, Some(amount), None, None).unwrap();
     // stretch a stint beyond the tank: the schedule has no plan whatever is fixed
     let stops = editing.edit_view().stops;
     let (stretched, stop) = stops
@@ -1221,13 +1222,13 @@ fn the_wire_names_of_what_is_fixed_are_the_documented_ones() {
     let mut editing = roomy();
     let (index, _, (min, _)) = a_stop_with_room(&editing);
     editing
-        .set_stop_service(index, Some(min - 1.0), None)
+        .set_stop_service(index, Some(min - 1.0), None, None)
         .unwrap();
     let json = serde_json::to_value(editing.edit_view()).unwrap();
     let stop = &json["stops"][usize::try_from(index).unwrap()];
     assert_eq!(
         stop["fixed"],
-        serde_json::json!({"fuelLiters": min - 1.0, "vePercent": null})
+        serde_json::json!({"fuelLiters": min - 1.0, "vePercent": null, "changeTyres": null})
     );
     assert_eq!(stop["limits"]["kind"], "exact");
     assert_eq!(stop["limits"]["ve"], serde_json::json!({"kind": "unused"}));
@@ -1278,5 +1279,337 @@ fn the_wire_names_of_what_is_fixed_are_the_documented_ones() {
     assert_eq!(
         serde_json::to_value(StrategyStopServiceReason::ALL).unwrap(),
         serde_json::json!(["negative", "aboveCapacity", "offGrid", "notInUse"])
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Tyres kept or changed by hand in a stop (E5h, #2743).
+// ---------------------------------------------------------------------------
+
+type Tyres = (Option<u32>, u32, u32, Option<StrategyTyreIssue>);
+
+/// `roomy()` (stints 5-5-5-5-4) with tyres that last `life` laps (0: no limit)
+/// and lose `wear` seconds per lap of age. A stop costs its 25 s of transit and,
+/// side by side, the 30 s of the tyres and at most 3 s of fuel.
+fn with_tyres(life: f64, wear: f64) -> Editing {
+    let mut input = manual(RACE, false);
+    input.tyre_life_laps.value = life;
+    input.degradation_per_lap_seconds.value = wear;
+    let mut editing = calculate(input).2.expect("a feasible plan");
+    for (index, lap) in [(0, 5), (1, 10), (2, 15), (3, 20)] {
+        editing.move_boundary(index, lap).unwrap();
+    }
+    assert!(run(&mut editing), "five laps fit the tank and the tyres");
+    editing
+}
+
+fn tyres(editing: &Editing) -> Vec<Tyres> {
+    editing
+        .edit_view()
+        .stops
+        .iter()
+        .map(|stop| {
+            let tyres = &stop.tyres;
+            (
+                tyres.life_laps,
+                tyres.arrival_laps,
+                tyres.kept_laps,
+                tyres.issue,
+            )
+        })
+        .collect()
+}
+
+fn fixed_tyres(editing: &Editing) -> Vec<Option<bool>> {
+    editing
+        .edit_view()
+        .stops
+        .iter()
+        .map(|stop| stop.fixed.change_tyres)
+        .collect()
+}
+
+fn keep(editing: &mut Editing, index: u32) {
+    editing
+        .set_stop_service(index, None, None, Some(false))
+        .unwrap();
+}
+
+fn seconds(stop: &StrategyEditStop) -> f64 {
+    stop.pit_seconds.as_f64().unwrap()
+}
+
+#[test]
+fn keeping_the_tyres_stays_in_the_session_and_the_view_counts_their_laps() {
+    let mut editing = with_tyres(10.0, 0.0);
+    let before = editing.plan_view(Some(1));
+    let fresh: Tyres = (Some(10), 5, 10, None);
+    let last: Tyres = (Some(10), 5, 9, None);
+    assert_eq!(tyres(&editing), [fresh, fresh, fresh, last]);
+    assert_eq!(fixed_tyres(&editing), [None; 4]);
+    keep(&mut editing, 1);
+    assert!(editing.pending());
+    let view = editing.plan_view(Some(1));
+    assert_eq!(view.state, StrategyPlanState::Edited);
+    assert_eq!(view.result, before.result, "the plan on screen stays");
+    assert_eq!(fixed_tyres(&editing), [None, Some(false), None, None]);
+    // ten laps on tyres that last ten: they fit, and the next stop gets them
+    // with ten laps on. What a stop says does not depend on what is fixed in it.
+    assert_eq!(
+        tyres(&editing),
+        [fresh, fresh, (Some(10), 10, 15, None), last]
+    );
+    // the view is the crate's count, stop by stop
+    let counted = fixed_stop_tyres(&editing.input, &editing.edited, &editing.fixed).unwrap();
+    let edit = view.edit.unwrap();
+    for (stop, counted) in edit.stops.iter().zip(&counted) {
+        assert_eq!(stop.tyres, stop_tyres(counted));
+    }
+    // the time in the pits follows at once: the 30 s of the tyres are not paid,
+    // only the transit and the refuelling
+    let old = &before.edit.as_ref().unwrap().stops[1];
+    let rate = editing.input.pit_cost.refuel_rate_l_per_s.value;
+    assert!((seconds(old) - 55.0).abs() < 1e-6, "{}", seconds(old));
+    let refuelling = old.fuel_liters.as_f64().unwrap() / rate;
+    assert!((seconds(&edit.stops[1]) - 25.0 - refuelling).abs() < 1e-6);
+    assert!(edit.automatic.is_some(), "something is fixed: there is a plan to compare with");
+    // «change them» is fixed too, and is what the calculation does anyway
+    editing
+        .set_stop_service(1, None, None, Some(true))
+        .unwrap();
+    assert_eq!(fixed_tyres(&editing)[1], Some(true));
+    assert_eq!(tyres(&editing), [fresh, fresh, fresh, last]);
+    assert!((seconds(&editing.edit_view().stops[1]) - 55.0).abs() < 1e-6);
+    editing.set_stop_service(1, None, None, None).unwrap();
+    assert_eq!(fixed_tyres(&editing), [None; 4]);
+    assert_eq!(editing.edit_view().automatic, None);
+    // stating «automatic» where it already is changes nothing
+    let mut untouched = with_tyres(10.0, 0.0);
+    untouched.set_stop_service(0, None, None, None).unwrap();
+    assert!(!untouched.pending());
+}
+
+#[test]
+fn tyres_that_would_not_last_are_kept_marked_and_named_when_there_is_no_plan() {
+    let mut editing = with_tyres(9.0, 0.0);
+    keep(&mut editing, 1);
+    let beyond = Some(StrategyTyreIssue::BeyondLife);
+    assert_eq!(tyres(&editing)[1], (Some(9), 5, 10, beyond));
+    assert_eq!(editing.edit_view().cause, None, "nothing was recalculated");
+    assert!(!run(&mut editing), "ten laps on tyres that last nine");
+    let edit = editing.edit_view();
+    assert_eq!(
+        edit.cause,
+        Some(StrategyEditCause::FixedAmountUnreachable { stop: 1 })
+    );
+    assert_eq!(tyres(&editing)[1].3, beyond);
+    assert_eq!(fuel_limits(&edit.stops[1]).1, None, "the fuel has no say");
+    // one lap less in the next stint (5-5-4-6-4) and they last: moving a stop
+    // is a new question, and its answer is another
+    editing.move_boundary(2, 14).unwrap();
+    assert_eq!(editing.edit_view().cause, None);
+    assert_eq!(tyres(&editing)[1], (Some(9), 5, 9, None));
+    assert!(run(&mut editing));
+    let view = editing.plan_view(Some(2));
+    let timeline = view.result.as_ref().unwrap().timeline.as_ref().unwrap();
+    for (stop, pit) in timeline.pits.iter().enumerate() {
+        assert_eq!(pit.change_tyres, stop != 1, "stop {stop}");
+        assert_eq!(pit.pinned.change_tyres, stop == 1, "stop {stop}");
+        assert!(!pit.pinned.fuel_liters && !pit.pinned.ve_percent);
+    }
+    let edit = view.edit.as_ref().unwrap();
+    assert_eq!(edit.cause, None);
+    assert_eq!(edit.stops[1].pit_seconds, timeline.pits[1].pit_seconds);
+    // left to the calculation again the stop fits new tyres, and its time says
+    // so at once: the 55 s of a stop that changes them, as in the automatic plan
+    editing.set_stop_service(1, None, None, None).unwrap();
+    assert!((seconds(&editing.edit_view().stops[1]) - 55.0).abs() < 1e-6);
+    // «Restablecer» returns to this plan with its tyres kept
+    editing.reset();
+    assert_eq!(editing.plan_view(Some(2)), view);
+    assert_eq!(fixed_tyres(&editing)[1], Some(false));
+}
+
+#[test]
+fn tyres_and_fuel_fixed_in_the_same_stop_are_both_carried_by_the_plan() {
+    let mut editing = with_tyres(10.0, 0.0);
+    let automatic = editing.plan_view(Some(1));
+    let (index, amount, limits) = a_stop_with_room(&editing);
+    let at = usize::try_from(index).unwrap();
+    editing
+        .set_stop_service(index, Some(amount), None, Some(false))
+        .unwrap();
+    let stop = editing.edit_view().stops[at].clone();
+    assert_eq!(fuel_limits(&stop).0, Some(limits), "the tyres do not move the fuel");
+    assert!(run(&mut editing));
+    let view = editing.plan_view(Some(2));
+    let timeline = view.result.as_ref().unwrap().timeline.as_ref().unwrap();
+    for (stop, pit) in timeline.pits.iter().enumerate() {
+        let fixed = stop == at;
+        assert_eq!(pit.change_tyres, !fixed, "stop {stop}");
+        assert_eq!(
+            (pit.pinned.fuel_liters, pit.pinned.change_tyres),
+            (fixed, fixed),
+            "stop {stop}"
+        );
+        assert!(!pit.pinned.ve_percent);
+    }
+    assert_eq!(timeline.pits[at].fuel_liters.as_f64(), Some(amount));
+    // the request states the whole stop: the same amount with the tyres left to
+    // the calculation takes them back to automatic
+    editing
+        .set_stop_service(index, Some(amount), None, None)
+        .unwrap();
+    assert_eq!(fixed_tyres(&editing)[at], None);
+    assert_eq!(fixed_fuel(&editing)[at], Some(amount));
+    editing.reset();
+    assert_eq!(fixed_tyres(&editing)[at], Some(false));
+    // «Volver todo a automático» clears the tyres as well
+    editing.clear_stop_services();
+    assert!(editing.pending());
+    assert_eq!(fixed_tyres(&editing), [None; 4]);
+    assert!(run(&mut editing));
+    assert_eq!(editing.plan_view(Some(3)).result, automatic.result);
+}
+
+// With a loss per lap of age, the plan that keeps the tyres pays it: the time
+// of the plan is the one the replay of the crate gives for that very plan.
+#[test]
+fn the_plan_that_keeps_tyres_pays_their_wear_as_the_crate_replays_it() {
+    use super::super::accepted::{decision, pit_decision};
+    use vantare_strategy::solver::replay_decision_v2_with_resources;
+    let mut editing = with_tyres(10.0, 0.5);
+    let total = |view: &StrategyPlanView| {
+        let metrics = view.result.as_ref().unwrap().metrics.as_ref().unwrap();
+        metrics.total_seconds.as_f64().unwrap()
+    };
+    let automatic = total(&editing.plan_view(Some(1)));
+    keep(&mut editing, 0);
+    assert!(run(&mut editing));
+    let view = editing.plan_view(Some(2));
+    let timeline = view.result.as_ref().unwrap().timeline.as_ref().unwrap();
+    let pits: Vec<_> = timeline.pits.iter().map(pit_decision).collect();
+    let replay = replay_decision_v2_with_resources(
+        &editing.input,
+        &decision(&lengths(&editing), &pits),
+        timeline.fuel_start_liters.as_f64().unwrap(),
+        timeline.ve_start_percent.as_f64().unwrap(),
+    )
+    .unwrap();
+    assert!(replay.feasible, "{:?}", replay.reasons);
+    assert!((replay.evaluation.total_seconds - total(&view)).abs() < 1e-6);
+    // stints of 5-5-5-5-4 on new tyres lose 0.5 × (10 + 10 + 10 + 10 + 6); the
+    // second one, on tyres five laps old, loses 0.5 × 5 × 5 more
+    assert!((replay.evaluation.degradation_seconds - 35.5).abs() < 1e-6);
+    // and it is still the faster plan: it saves most of the 30 s of the tyres
+    assert!(total(&view) < automatic, "{} vs {automatic}", total(&view));
+}
+
+// When the schedule has no plan with nothing fixed, a stop that keeps its tyres
+// may still be marked, but the recalculation names no stop: the schedule is to
+// blame, and the tyres are not blamed for it.
+#[test]
+fn a_schedule_without_a_plan_of_its_own_does_not_blame_the_tyres() {
+    let mut editing = with_tyres(10.0, 0.0);
+    editing.input.tyre_life_laps.value = 4.0; // every stint of five laps is too long
+    keep(&mut editing, 0);
+    assert_eq!(
+        tyres(&editing)[0],
+        (Some(4), 5, 10, Some(StrategyTyreIssue::BeyondLife))
+    );
+    assert!(!run(&mut editing));
+    assert_eq!(editing.edit_view().cause, None);
+}
+
+// A step the calculation coarsens has no limits and names no stop, but the
+// tyres do not depend on the grid: they are counted all the same.
+#[test]
+fn a_step_the_calculation_coarsens_still_counts_the_tyres_and_names_no_stop() {
+    let mut editing = with_tyres(9.0, 0.0);
+    editing.input.discretization.fuel_liters = 0.01;
+    editing.input.budget.max_candidates = 2_000;
+    assert!(vantare_strategy::solver::runs_extended_search(
+        &editing.input
+    ));
+    keep(&mut editing, 1);
+    assert_eq!(
+        editing.edit_view().stops[1].limits,
+        StrategyStopLimits::Unavailable
+    );
+    assert_eq!(
+        tyres(&editing)[1],
+        (Some(9), 5, 10, Some(StrategyTyreIssue::BeyondLife))
+    );
+    assert!(!run(&mut editing));
+    assert_eq!(editing.edit_view().cause, None);
+}
+
+// Host and solver agree. Over every way of fixing the tyres of the four stops,
+// with a fuel amount inside or below its limits in one of them, the marks of
+// the view say «there is a plan» exactly when the recalculation gives one; and
+// with only tyres fixed, the stop it blames is the first one marked.
+#[test]
+fn the_marks_of_the_view_say_there_is_a_plan_exactly_when_the_recalculation_gives_one() {
+    let options = [None, Some(true), Some(false)];
+    let (mut plans, mut by_tyres, mut by_fuel, mut by_both) = (0, 0, 0, 0);
+    for life in [0.0, 9.0, 10.0, 14.0, 15.0] {
+        let mut editing = with_tyres(life, 0.0);
+        let (with_fuel, _, (min, _)) = a_stop_with_room(&editing);
+        assert!(min >= 1.0, "the case needs room below the least amount");
+        for code in 0..81_usize {
+            for fuel in [None, Some(min), Some(min - 1.0)] {
+                for (stop, index) in (0..4_u32).enumerate() {
+                    let amount = fuel.filter(|_| index == with_fuel);
+                    let change = options[code / 3_usize.pow(index) % 3];
+                    editing
+                        .set_stop_service(index, amount, None, change)
+                        .unwrap_or_else(|error| panic!("stop {stop}: {error:?}"));
+                }
+                let stops = editing.edit_view().stops;
+                let marked = stops.iter().position(|stop| stop.tyres.issue.is_some());
+                let short = stops.iter().any(|stop| fuel_limits(stop).1.is_some());
+                let context = format!("life {life}, tyres {code}, fuel {fuel:?}");
+                assert_eq!(run(&mut editing), marked.is_none() && !short, "{context}");
+                if fuel.is_none() {
+                    let blamed = marked
+                        .and_then(|stop| u32::try_from(stop).ok())
+                        .map(|stop| StrategyEditCause::FixedAmountUnreachable { stop });
+                    assert_eq!(editing.edit_view().cause, blamed, "{context}");
+                }
+                match (marked.is_some(), short) {
+                    (false, false) => plans += 1,
+                    (true, false) => by_tyres += 1,
+                    (false, true) => by_fuel += 1,
+                    (true, true) => by_both += 1,
+                }
+            }
+        }
+    }
+    assert!(
+        plans > 100 && by_tyres > 100 && by_fuel > 50 && by_both > 50,
+        "{plans} plans, {by_tyres} by the tyres, {by_fuel} by the fuel, {by_both} by both"
+    );
+}
+
+#[test]
+fn the_wire_names_of_the_tyres_are_the_documented_ones() {
+    let mut editing = with_tyres(9.0, 0.0);
+    keep(&mut editing, 1);
+    let json = serde_json::to_value(editing.edit_view()).unwrap();
+    assert_eq!(
+        json["stops"][1]["fixed"],
+        serde_json::json!({"fuelLiters": null, "vePercent": null, "changeTyres": false})
+    );
+    assert_eq!(
+        json["stops"][1]["tyres"],
+        serde_json::json!({"lifeLaps": 9, "arrivalLaps": 5, "keptLaps": 10, "issue": "beyondLife"})
+    );
+    assert_eq!(
+        serde_json::to_value(&with_tyres(0.0, 0.0).edit_view().stops[3].tyres).unwrap(),
+        serde_json::json!({"lifeLaps": null, "arrivalLaps": 5, "keptLaps": 9, "issue": null})
+    );
+    assert_eq!(
+        serde_json::to_value(StrategyTyreIssue::ALL).unwrap(),
+        serde_json::json!(["beyondLife"])
     );
 }

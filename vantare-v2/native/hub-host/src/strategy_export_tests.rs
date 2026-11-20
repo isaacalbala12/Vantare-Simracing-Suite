@@ -2169,6 +2169,7 @@ fn an_amount_fixed_in_the_session_is_marked_in_the_text_the_csv_and_the_accepted
             0,
             Some(&amount),
             None,
+            None,
         )
         .unwrap();
     // what is fixed is not a plan to export until it is recalculated

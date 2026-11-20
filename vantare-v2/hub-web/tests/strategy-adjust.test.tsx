@@ -1020,9 +1020,16 @@ function withSchedule(stopLaps: number[], raceLaps = 236) {
       maxLap: (stopLaps[index + 1] ?? raceLaps) - 1,
       fuelLiters: 78,
       vePercent: 99,
-      fixed: { fuelLiters: null, vePercent: null },
+      fixed: { fuelLiters: null, vePercent: null, changeTyres: null },
       pitSeconds: 61,
       limits: { kind: "unavailable" as const },
+      tyres: {
+        lifeLaps: null,
+        arrivalLaps: lap - (stopLaps[index - 1] ?? 0),
+        keptLaps:
+          (stopLaps[index + 1] ?? raceLaps) - (stopLaps[index - 1] ?? 0),
+        issue: null,
+      },
     }));
     return view;
   };

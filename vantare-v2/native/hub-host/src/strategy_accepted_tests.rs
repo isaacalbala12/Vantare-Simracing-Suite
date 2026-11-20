@@ -1137,6 +1137,7 @@ fn fix_first_stop(state: &mut State) -> (StrategyView, serde_json::Number) {
             0,
             Some(&amount),
             None,
+            None,
         )
         .unwrap();
     (fixed, amount)
@@ -1236,7 +1237,7 @@ fn fixing_an_amount_answers_each_refusal_in_its_order_and_changes_nothing() {
     let mut state = root.state();
     let amount = number(7.0);
     let fix = |state: &mut State, revision: &str, compute_id: u32, index: u32| {
-        state.set_stop_service(revision, compute_id, index, Some(&amount), None)
+        state.set_stop_service(revision, compute_id, index, Some(&amount), None, None)
     };
     // not open yet
     assert_eq!(fix(&mut state, &"a".repeat(64), 1, 0), Err(HostError::Denied));
@@ -1269,7 +1270,7 @@ fn fixing_an_amount_answers_each_refusal_in_its_order_and_changes_nothing() {
     // a stop that does not exist, a number the calculation cannot take
     assert_eq!(fix(&mut state, &view.revision, id, 99), Err(HostError::Rejected));
     assert!(matches!(
-        state.set_stop_service(&view.revision, id, 0, Some(&number(7.5)), None),
+        state.set_stop_service(&view.revision, id, 0, Some(&number(7.5)), None, None),
         Err(HostError::StrategyInvalidStopService { .. })
     ));
     assert_eq!(state.view(), view, "no refusal changed anything");
@@ -1316,7 +1317,7 @@ fn a_protected_document_fixes_nothing() {
     let view = state.view();
     assert_eq!(view.state, StrategyState::Protected);
     assert_eq!(
-        state.set_stop_service(&view.revision, 1, 0, Some(&number(7.0)), None),
+        state.set_stop_service(&view.revision, 1, 0, Some(&number(7.0)), None, None),
         Err(HostError::Protected)
     );
     assert_eq!(
@@ -1326,14 +1327,15 @@ fn a_protected_document_fixes_nothing() {
 }
 
 #[test]
-fn the_requests_that_fix_amounts_carry_no_path_and_state_both_amounts() {
+fn the_requests_that_fix_a_stop_carry_no_path_and_state_the_whole_stop() {
     let set = serde_json::json!({
         "method": "strategy.setStopService",
         "revision": "a".repeat(64),
         "computeId": 1,
         "index": 0,
         "fuelLiters": 60,
-        "vePercent": null
+        "vePercent": null,
+        "changeTyres": null
     });
     let clear = serde_json::json!({
         "method": "strategy.clearStopServices",
@@ -1358,8 +1360,15 @@ fn the_requests_that_fix_amounts_carry_no_path_and_state_both_amounts() {
             );
         }
     }
-    // both amounts are stated every time: a missing key is not «automatic»
-    for missing in ["fuelLiters", "vePercent", "index", "computeId", "revision"] {
+    // the whole stop is stated every time: a missing key is not «automatic»
+    for missing in [
+        "fuelLiters",
+        "vePercent",
+        "changeTyres",
+        "index",
+        "computeId",
+        "revision",
+    ] {
         let mut invalid = set.clone();
         invalid.as_object_mut().unwrap().remove(missing);
         assert!(
@@ -1393,6 +1402,7 @@ fn the_requests_that_fix_amounts_carry_no_path_and_state_both_amounts() {
             index: 0,
             fuel_liters: None,
             ve_percent: Some(number(97.5)),
+            change_tyres: None,
         }
     );
     // and the view of a plan with fixed amounts names no path
@@ -1403,4 +1413,128 @@ fn the_requests_that_fix_amounts_carry_no_path_and_state_both_amounts() {
     let text = serde_json::to_string(&view).unwrap();
     let root_text = root.0.to_string_lossy().replace('\\', "\\\\");
     assert!(!text.contains(&root_text) && !text.contains("strategy-v2.json\\"));
+}
+
+// ---------------------------------------------------------------------------
+// Tyres kept by hand (E5h, #2743): of the session until the plan is accepted.
+// ---------------------------------------------------------------------------
+
+/// Keeps the tyres in the first stop of `roomy` (stints 5-5-5-5, tyres that
+/// last 60 laps): ten laps on the same set.
+fn keep_first_tyres(state: &mut State) -> StrategyView {
+    let view = state.view();
+    state
+        .set_stop_service(
+            &view.revision,
+            view.plan.compute_id.unwrap(),
+            0,
+            None,
+            None,
+            Some(false),
+        )
+        .unwrap()
+}
+
+#[test]
+fn kept_tyres_reach_the_document_only_when_the_plan_is_accepted_and_survive_reopening() {
+    let root = Root::new();
+    let (mut state, _) = planned(&root);
+    let before = roomy(&mut state);
+    let on_disk = fs::read(root.primary()).unwrap();
+    let draft = state.doc.as_ref().unwrap().bytes().to_vec();
+    let pending = keep_first_tyres(&mut state);
+    assert_eq!(pending.plan.state, StrategyPlanState::Edited);
+    let stop = &pending.plan.edit.as_ref().unwrap().stops[0];
+    assert_eq!(stop.fixed.change_tyres, Some(false));
+    assert_eq!((stop.tyres.arrival_laps, stop.tyres.kept_laps), (5, 10));
+    // neither the document, its revision, «Sin guardar» nor the file moved
+    assert_eq!(
+        (pending.revision.as_str(), pending.dirty),
+        (before.revision.as_str(), before.dirty)
+    );
+    assert_eq!(state.doc.as_ref().unwrap().bytes(), draft);
+    assert_eq!(fs::read(root.primary()).unwrap(), on_disk);
+    assert_eq!(
+        state.accept(&pending.revision, pending.plan.compute_id.unwrap(), NOW),
+        Err(HostError::StrategyEditPending)
+    );
+    let proposal = recalculated(&mut state);
+    assert_eq!(proposal.plan.state, StrategyPlanState::Calculated);
+    assert_eq!(state.doc.as_ref().unwrap().bytes(), draft, "recalculating writes nothing");
+    let view = accept(&mut state).unwrap();
+    let tyres = |document: &serde_json::Value| -> Vec<(bool, bool)> {
+        document["events"][0]["strategies"][0]["acceptedPlan"]["result"]["timeline"]["pits"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|pit| {
+                (
+                    pit["changeTyres"].as_bool().unwrap(),
+                    pit["pinned"]["changeTyres"].as_bool().unwrap(),
+                )
+            })
+            .collect()
+    };
+    let expected = [(false, true), (true, false), (true, false)];
+    assert_eq!(tyres(&stored(&state)), expected);
+    let saved = state.save(&view.revision).unwrap();
+    let on_disk: serde_json::Value =
+        serde_json::from_slice(&fs::read(root.primary()).unwrap()).unwrap();
+    assert_eq!(tyres(&on_disk), expected);
+    let reopened = root.state().open().unwrap();
+    assert_eq!(reopened.state, StrategyState::Ready);
+    assert_eq!(accepted(&reopened).result, accepted(&saved).result);
+    assert_eq!(accepted(&reopened).state, StrategyAcceptedState::Accepted);
+}
+
+#[test]
+fn the_request_that_fixes_a_stop_states_its_tyres_as_true_false_or_null() {
+    use crate::protocol::Request;
+    let set = serde_json::json!({
+        "method": "strategy.setStopService",
+        "revision": "a".repeat(64),
+        "computeId": 1,
+        "index": 0,
+        "fuelLiters": 60,
+        "vePercent": null,
+        "changeTyres": null
+    });
+    for (stated, change_tyres) in [
+        (serde_json::Value::Null, None),
+        (true.into(), Some(true)),
+        (false.into(), Some(false)),
+    ] {
+        let mut tyres = set.clone();
+        tyres["changeTyres"] = stated;
+        assert_eq!(
+            serde_json::from_value::<Request>(tyres).unwrap(),
+            Request::StrategySetStopService {
+                revision: "a".repeat(64),
+                compute_id: 1,
+                index: 0,
+                fuel_liters: Some(60.into()),
+                ve_percent: None,
+                change_tyres,
+            }
+        );
+    }
+    // never anything else
+    for bad in [
+        serde_json::json!("false"),
+        serde_json::json!(0),
+        serde_json::json!([false]),
+        serde_json::json!({"change": false}),
+    ] {
+        let mut invalid = set.clone();
+        invalid["changeTyres"] = bad.clone();
+        assert!(serde_json::from_value::<Request>(invalid).is_err(), "{bad}");
+    }
+    // and only this request states them
+    let clear = serde_json::json!({
+        "method": "strategy.clearStopServices",
+        "revision": "a".repeat(64),
+        "computeId": 1,
+        "changeTyres": false
+    });
+    assert!(serde_json::from_value::<Request>(clear).is_err());
 }

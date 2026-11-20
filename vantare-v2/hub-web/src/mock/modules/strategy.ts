@@ -22,6 +22,7 @@ import type {
   StrategySolverFields,
   StrategyStopFixed,
   StrategyStopLimits,
+  StrategyStopTyres,
   StrategyUnreachableCause,
   StrategyView,
 } from "../../contract/generated/strategy";
@@ -291,7 +292,36 @@ const fujiLimits: [fuel: number[], ve: number[]][] = [
   ],
 ];
 const fujiPerLap = { fuel: 1.83012, ve: 2.3158 };
-const nothingFixed: StrategyStopFixed = { fuelLiters: null, vePercent: null };
+const nothingFixed: StrategyStopFixed = {
+  fuelLiters: null,
+  vePercent: null,
+  changeTyres: null,
+};
+
+// The tyres of each stop, counted as the host counts them: the laps since the
+// last stop that fits new ones (every stop does, unless «keep them» is fixed in
+// it), and whether the ones kept in a stop last (`life`: the laps a set lasts,
+// `null` without a limit).
+function stopTyres(
+  laps: number[],
+  raceLaps: number,
+  fixed: StrategyStopFixed[],
+  life: number | null,
+): StrategyStopTyres[] {
+  let age = 0;
+  return laps.map((lap, index) => {
+    const arrivalLaps = age + lap - (laps[index - 1] ?? 0);
+    const keptLaps = arrivalLaps + (laps[index + 1] ?? raceLaps) - lap;
+    const keeps = fixed[index]?.changeTyres === false;
+    age = keeps ? arrivalLaps : 0;
+    return {
+      lifeLaps: life,
+      arrivalLaps,
+      keptLaps,
+      issue: keeps && life !== null && keptLaps > life ? "beyondLife" : null,
+    };
+  });
+}
 
 function fujiStopLimits(index: number): StrategyStopLimits {
   const used = ([arrivalMin, arrivalMax, min, max]: number[]) => ({
@@ -340,14 +370,19 @@ function withIssue(
   };
 }
 
-// The first stop whose fixed amount leaves no plan, as the limits say it.
-function unreachableStop(limits: StrategyStopLimits[]): number | undefined {
+// The first stop where what is fixed leaves no plan, as the limits and the
+// tyres say it.
+function unreachableStop(
+  limits: StrategyStopLimits[],
+  tyres: StrategyStopTyres[],
+): number | undefined {
   const index = limits.findIndex(
-    (stop) =>
-      stop.kind === "exact" &&
-      [stop.fuel, stop.ve].some(
-        (amount) => amount.kind === "used" && amount.issue !== null,
-      ),
+    (stop, at) =>
+      tyres[at]?.issue ||
+      (stop.kind === "exact" &&
+        [stop.fuel, stop.ve].some(
+          (amount) => amount.kind === "used" && amount.issue !== null,
+        )),
   );
   return index < 0 ? undefined : index;
 }
@@ -428,6 +463,7 @@ function fujiPlan(unproven: boolean): StrategyPlanView {
         fixed: { ...nothingFixed },
         pitSeconds: 1 + index + 60,
         limits: fujiStopLimits(index),
+        tyres: stopTyres(stops, 236, [], 43)[index],
       })),
       canReset: false,
       error: null,
@@ -456,6 +492,10 @@ function fujiMovedPlan(): StrategyPlanView {
   plan.edit.stops[1].minLap = 43;
   // the mock has the limits of the Fuji calendar only, and this is another one
   for (const stop of plan.edit.stops) stop.limits = { kind: "unavailable" };
+  const moved = plan.edit.stops.map((stop) => stop.lap);
+  stopTyres(moved, 236, [], 43).forEach((tyres, index) => {
+    if (plan.edit) plan.edit.stops[index].tyres = tyres;
+  });
   return plan;
 }
 
@@ -538,6 +578,8 @@ interface Editing {
   limits: { laps: number[]; stops: StrategyStopLimits[] };
   // QA: the Fuji case, the only one with a consumption to say where it runs out
   fuji: boolean;
+  // the laps a set of tyres lasts, as the plan says it; `null` without a limit
+  tyreLife: number | null;
 }
 
 // The seconds a fixed amount adds to its stop and to the plan (a QA figure,
@@ -557,7 +599,10 @@ function fixedSeconds(
 
 function somethingFixed(fixed: StrategyStopFixed[]): boolean {
   return fixed.some(
-    (stop) => stop.fuelLiters !== null || stop.vePercent !== null,
+    (stop) =>
+      stop.fuelLiters !== null ||
+      stop.vePercent !== null ||
+      stop.changeTyres !== null,
   );
 }
 
@@ -586,6 +631,7 @@ function startEditing(
       stops: plan.edit.stops.map((stop) => structuredClone(stop.limits)),
     },
     fuji,
+    tyreLife: plan.edit.stops[0]?.tyres.lifeLaps ?? null,
   };
 }
 
@@ -621,6 +667,12 @@ function editView(editing: Editing) {
   const bounds = [0, ...editing.laps, editing.raceLaps];
   const pits = editing.base.result?.timeline?.pits ?? [];
   const limits = stopLimits(editing);
+  const tyres = stopTyres(
+    editing.laps,
+    editing.raceLaps,
+    editing.fixed,
+    editing.tyreLife,
+  );
   return {
     stints: bounds.slice(1).map((toLap, index) => ({
       fromLap: bounds[index] + 1,
@@ -638,6 +690,7 @@ function editView(editing: Editing) {
         fixedSeconds(editing.baseFixed[index], pits[index]) +
         fixedSeconds(editing.fixed[index], pits[index]),
       limits: limits[index],
+      tyres: tyres[index],
     })),
     canReset: editing.pending || editing.shown !== editing.base,
     error: editing.error,
@@ -665,6 +718,14 @@ function editedPlan(
   };
 }
 
+function blamedStop(editing: Editing): number | undefined {
+  const edit = editView(editing);
+  return unreachableStop(
+    edit.stops.map((stop) => stop.limits),
+    edit.stops.map((stop) => stop.tyres),
+  );
+}
+
 // What the solver returns for a schedule: the mock always keeps it as given.
 //
 // In the Fuji scenes (`fuji`) it also says what the real solver says. The crate
@@ -677,6 +738,7 @@ function editedPlan(
 // stop moved. The loads of each stop are not recalculated here (hand-made QA data).
 // A fixed amount is carried as it is, marked as fixed by hand, and each one
 // that is not what the plan loaded adds two seconds to its stop and to the plan.
+// Tyres fixed by hand are carried and marked too; the mock does not price them.
 function recalculated(
   editing: Editing,
   computeId: number,
@@ -699,10 +761,12 @@ function recalculated(
           fixedSeconds(editing.baseFixed[index], pit);
       pit.fuelLiters = fixed.fuelLiters ?? pit.fuelLiters;
       pit.vePercent = fixed.vePercent ?? pit.vePercent;
+      // left to the calculation, a stop fits new tyres
+      pit.changeTyres = fixed.changeTyres ?? true;
       pit.pinned = {
         fuelLiters: fixed.fuelLiters !== null,
         vePercent: fixed.vePercent !== null,
-        changeTyres: false,
+        changeTyres: fixed.changeTyres !== null,
       };
     });
   }
@@ -1707,6 +1771,7 @@ export function create(context: MockContext): MockHandler {
           editing.fixed[request.index] = {
             fuelLiters: request.fuelLiters,
             vePercent: request.vePercent,
+            changeTyres: request.changeTyres,
           };
         }
         if (JSON.stringify(editing.fixed) !== before) {
@@ -1812,14 +1877,14 @@ export function create(context: MockContext): MockHandler {
         editing.pending = false;
         editing.error = null;
         editing.cause = null;
-      } else if (unreachableStop(stopLimits(editing)) !== undefined) {
-        // no plan respects what is fixed: the first stop the limits point at
+      } else if (blamedStop(editing) !== undefined) {
+        // no plan respects what is fixed: the first stop the view points at
         editing.shown = noSolution(editing.base, finished);
         editing.pending = false;
         editing.error = null;
         editing.cause = {
           kind: "fixedAmountUnreachable",
-          stop: unreachableStop(stopLimits(editing)) ?? 0,
+          stop: blamedStop(editing) ?? 0,
         };
       } else {
         const done = recalculated(

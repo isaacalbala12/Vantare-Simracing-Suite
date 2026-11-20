@@ -128,6 +128,7 @@ pub(super) fn dispatch(
                 index,
                 fuel_liters,
                 ve_percent,
+                change_tyres,
             } => strategy
                 .set_stop_service(
                     revision,
@@ -135,6 +136,7 @@ pub(super) fn dispatch(
                     *index,
                     fuel_liters.as_ref(),
                     ve_percent.as_ref(),
+                    *change_tyres,
                 )
                 .map(|value| Reply::StrategySetStopService { value }),
             Request::StrategyClearStopServices {

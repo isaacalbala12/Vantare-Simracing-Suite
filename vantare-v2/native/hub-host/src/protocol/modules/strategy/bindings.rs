@@ -18,7 +18,7 @@ use crate::strategy::{
     STRATEGY_EXPORT_LIMIT, StrategyAmountIssue, StrategyAmountLimits, StrategyAmountRange,
     StrategyAutomaticPlan, StrategyEditCause, StrategyExportFileValue, StrategyExportTarget,
     StrategyExportText, StrategyStopAmount, StrategyStopFixed, StrategyStopLimits,
-    StrategyStopServiceReason,
+    StrategyStopServiceReason, StrategyStopTyres, StrategyTyreIssue,
 };
 use serde_json::json;
 
@@ -51,6 +51,8 @@ pub(crate) fn typescript() -> String {
     declare::<StrategyAutomaticPlan>(&mut text);
     declare::<StrategyStopFixed>(&mut text);
     declare::<StrategyStopLimits>(&mut text);
+    declare::<StrategyStopTyres>(&mut text);
+    declare::<StrategyTyreIssue>(&mut text);
     declare::<StrategyAmountLimits>(&mut text);
     declare::<StrategyAmountRange>(&mut text);
     declare::<StrategyAmountIssue>(&mut text);
@@ -111,6 +113,7 @@ pub(crate) fn typescript() -> String {
         "strategyAmountIssues",
         StrategyAmountIssue::ALL
     );
+    crate::protocol::bindings::constants!(&mut text, "strategyTyreIssues", StrategyTyreIssue::ALL);
     crate::protocol::bindings::constants!(
         &mut text,
         "strategyStopAmounts",
@@ -411,6 +414,7 @@ Carrera: Fuji · Estrategia: Base"
                 index: 1,
                 fuel_liters: Some(60.into()),
                 ve_percent: None,
+                change_tyres: None,
             },
             Request::StrategySetStopService {
                 revision: "b".repeat(64),
@@ -418,6 +422,15 @@ Carrera: Fuji · Estrategia: Base"
                 index: 0,
                 fuel_liters: None,
                 ve_percent: serde_json::Number::from_f64(97.5),
+                change_tyres: Some(true),
+            },
+            Request::StrategySetStopService {
+                revision: "b".repeat(64),
+                compute_id: 7,
+                index: 1,
+                fuel_liters: None,
+                ve_percent: None,
+                change_tyres: Some(false),
             },
             Request::StrategyClearStopServices {
                 revision: "b".repeat(64),
@@ -633,6 +646,7 @@ fn calculation_samples(dirty: &StrategyView) -> [HostToUi; 7] {
                         fixed: StrategyStopFixed::default(),
                         pit_seconds: 52.into(),
                         limits: single_stop_limits(),
+                        tyres: sample_tyres(2, 3),
                     }],
                     can_reset: false,
                     error: None,
@@ -757,6 +771,7 @@ fn reason_samples(dirty: &StrategyView) -> Vec<HostToUi> {
             fixed: StrategyStopFixed::default(),
             pit_seconds: 52.into(),
             limits: single_stop_limits(),
+            tyres: sample_tyres(2, 3),
         }],
         can_reset: true,
         error: None,
@@ -815,6 +830,16 @@ fn reason_samples(dirty: &StrategyView) -> Vec<HostToUi> {
             ),
         ),
     ]
+}
+
+/// The tyres of a stop of the samples: a life of 40 laps, nothing fixed.
+fn sample_tyres(arrival_laps: u32, kept_laps: u32) -> StrategyStopTyres {
+    StrategyStopTyres {
+        life_laps: Some(40),
+        arrival_laps,
+        kept_laps,
+        issue: None,
+    }
 }
 
 /// The limits of the only stop of the one-stop samples, with nothing fixed.
@@ -922,6 +947,7 @@ fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
                     fixed: StrategyStopFixed::default(),
                     pit_seconds: 52.into(),
                     limits: first_limits,
+                    tyres: sample_tyres(2, 6),
                 },
                 StrategyEditStop {
                     lap: 6,
@@ -932,9 +958,11 @@ fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
                     fixed: StrategyStopFixed {
                         fuel_liters: second.map(Into::into),
                         ve_percent: None,
+                        change_tyres: None,
                     },
                     pit_seconds: serde_json::Number::from_f64(53.5).unwrap_or_else(|| 0.into()),
                     limits: second_limits,
+                    tyres: sample_tyres(4, 7),
                 },
             ],
             can_reset: true,
@@ -1041,6 +1069,85 @@ fn edit_samples(dirty: &StrategyView) -> Vec<HostToUi> {
             )),
         }),
     ];
+    // The tyres of the second stop fixed to «keep them» (`life`: how long a set
+    // lasts): they last, they do not, or there is no limit. The stop then reaches
+    // the finish with the 4 laps of its stint and the 3 of the last one.
+    let kept = |life: Option<u32>| {
+        let mut edit = fixed_edit(None, None, automatic.clone());
+        for stop in &mut edit.stops {
+            stop.tyres.life_laps = life;
+        }
+        edit.stops[1].fixed.change_tyres = Some(false);
+        edit.stops[1].tyres.issue = life
+            .is_some_and(|life| life < 7)
+            .then_some(StrategyTyreIssue::BeyondLife);
+        edit.automatic = Some(StrategyAutomaticPlan {
+            total_seconds: 301.into(),
+            fuel_finish_liters: 24.into(),
+            ve_finish_percent: 85.into(),
+        });
+        edit
+    };
+    let keeping = |life| {
+        with_plan(plan_with(
+            StrategyPlanState::Edited,
+            7,
+            result(true, false),
+            kept(life),
+        ))
+    };
+    // the plan that keeps them: no tyre change in its second stop, fixed by hand
+    let mut kept_plan = result(true, false);
+    if let Some(pit) = kept_plan
+        .timeline
+        .as_mut()
+        .and_then(|timeline| timeline.pits.get_mut(1))
+    {
+        pit.change_tyres = false;
+        pit.pinned.change_tyres = true;
+    }
+    // «change them» fixed in the first stop is what the calculation does anyway
+    let mut changing = kept(None);
+    changing.stops[0].fixed.change_tyres = Some(true);
+    samples.extend([
+        sample_response(Reply::StrategySetStopService {
+            value: keeping(Some(40)),
+        }),
+        sample_response(Reply::StrategySetStopService {
+            value: keeping(Some(6)),
+        }),
+        sample_response(Reply::StrategySetStopService {
+            value: with_plan(plan_with(
+                StrategyPlanState::Edited,
+                7,
+                result(true, false),
+                changing,
+            )),
+        }),
+        sample_response(Reply::StrategyView {
+            value: with_plan(plan_with(
+                StrategyPlanState::Calculated,
+                8,
+                kept_plan,
+                StrategyEditView {
+                    can_reset: false,
+                    ..kept(Some(40))
+                },
+            )),
+        }),
+        // no plan: the tyres kept in the second stop do not last
+        sample_response(Reply::StrategyView {
+            value: with_plan(plan_with(
+                StrategyPlanState::Calculated,
+                8,
+                result(false, false),
+                StrategyEditView {
+                    cause: Some(StrategyEditCause::FixedAmountUnreachable { stop: 1 }),
+                    ..kept(Some(6))
+                },
+            )),
+        }),
+    ]);
     samples.extend([
         sample_response(Reply::StrategyMoveBoundary {
             value: with_plan(plan(StrategyPlanState::Edited, 7, true, None)),

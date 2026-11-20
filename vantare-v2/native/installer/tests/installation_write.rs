@@ -3542,12 +3542,12 @@ fn recordings_that_are_not_a_folder(kind: &str) {
         "junction" => junction(&single, &outside),
         "broken junction" => {
             let gone = fixture.path.join("ya no está");
-            fs::create_dir(&gone).unwrap();
+            fs::create_dir(&gone).expect("fixture");
             junction(&single, &gone);
-            fs::remove_dir(&gone).unwrap();
+            fs::remove_dir(&gone).expect("fixture");
         }
-        "file link" => symlink_file(outside.join(files[0].0), &single).unwrap(),
-        _ => fs::write(&single, b"not a folder").unwrap(),
+        "file link" => symlink_file(outside.join(files[0].0), &single).expect("file link"),
+        _ => fs::write(&single, b"not a folder").expect("file"),
     }
     let (behind, points) = (index(&outside), fs::read_link(&single).ok());
     let intact = |step: &str| {

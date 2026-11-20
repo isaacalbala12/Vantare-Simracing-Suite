@@ -5,7 +5,7 @@
 //! se hace eso con ellas. La posición en la lista es el número de parada
 //! (0 = primera). Una lista vacía, o con todo en `None`, deja el cálculo
 //! exactamente igual que sin lista.
-use super::{Deserialize, Input, PitStop, Resource, Serialize, Value, budget, units};
+use super::{Deserialize, Input, PitStop, Resource, Serialize, budget, units};
 
 /// Lo que el usuario fija en una parada. `None`: lo decide el cálculo.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Deserialize, Serialize)]
@@ -180,24 +180,27 @@ fn amount(value: Option<f64>, resource: Resource) -> Result<Option<i64>, FixedSt
 
 /// Dice si el cálculo acepta lo fijado para esta entrada, con la misma regla
 /// que la búsqueda y el respaldo. `Ok(None)`: todo vale. `Err`: la entrada en sí
-/// no es válida.
+/// no es válida. Cada recurso se lee con su reserva, como en el cálculo: una
+/// reserva que el cálculo rechaza se rechaza aquí con el mismo texto.
 pub fn check_fixed_stops(
     input: &Input,
     fixed: &[FixedStop],
 ) -> Result<Option<InvalidFixedStop>, String> {
     let (effective, _) = budget::effective(input);
-    let resource = |capacity, per_lap, step| {
-        Resource::new(capacity, per_lap, step, &Value::Null, input.race_laps)
+    let resource = |capacity, per_lap, step, reserve| {
+        Resource::new(capacity, per_lap, step, reserve, input.race_laps)
     };
     let fuel = resource(
         effective.fuel_capacity_liters.value,
         effective.fuel_per_lap_liters.value,
         effective.discretization.fuel_liters,
+        &effective.fuel_reserve,
     )?;
     let ve = resource(
         effective.ve_capacity_percent.value,
         effective.ve_per_lap_percent.value,
         effective.discretization.ve_percent,
+        &effective.virtual_energy_reserve,
     )?;
     Ok(Fixed::new(fixed, fuel, ve).err())
 }

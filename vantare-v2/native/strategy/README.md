@@ -215,7 +215,14 @@ cuando el calendario lo tiene sin fijar nada, ninguna cantidad lleva `problem`
 y ninguna parada lleva `beyond_life`; `tests/fixed_tyre_bounds.rs` comprueba
 las dos cosas contra el recálculo, con el respaldo y con la búsqueda. No
 depende de la rejilla: con pasos finos devuelve lo mismo. Los errores de
-entrada son los del recálculo.
+entrada son los del recálculo, también los de una reserva no válida
+(`check_fixed_stops` lee cada recurso con su reserva, como el cálculo).
+
+`beyond_life` solo culpa a las ruedas cuando el calendario tiene plan sin
+fijar nada. Si no lo tiene (tramos de 10 y 2 vueltas con una vida de 8), la
+marca puede salir igual en una parada sin cambio, pero la causa es el
+calendario y `unreachable_stop` es `None`: quien la enseñe no debe culpar a las
+ruedas.
 
 Supuesto: «automático» es montar ruedas nuevas. Vale para el cálculo del Hub
 (búsqueda escalar y respaldo, sin inventario físico de neumáticos). Si algún

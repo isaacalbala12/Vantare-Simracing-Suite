@@ -518,6 +518,15 @@ fn fuji_reserve() -> serde_json::Value {
     fuji.fuel_reserve
 }
 
+/// Lo que el recálculo rechaza se rechaza aquí, y con su mismo texto.
+fn assert_same_refusal(name: &str, input: &Input, edited: &EditedPlan, fixed: &[FixedStop]) {
+    let refusal = fixed_stop_tyres(input, edited, fixed).expect_err(name);
+    let recalculation =
+        recalculate_edited_plan_fixed(input, edited, fixed, &AtomicBool::new(false))
+            .expect_err(name);
+    assert_eq!(refusal, recalculation, "{name}");
+}
+
 #[test]
 fn the_refusals_are_the_ones_of_the_recalculation() {
     let input = twelve_laps().input(1);
@@ -530,49 +539,7 @@ fn the_refusals_are_the_ones_of_the_recalculation() {
     no_laps.race_laps = 0;
     let mut one_stop_at_most = input.clone();
     one_stop_at_most.event_rules.max_pit_stops = Some(1);
-    // La reserva también es entrada del recálculo, aunque no mueva las ruedas.
-    let mut unknown_reserve = input.clone();
-    unknown_reserve.fuel_reserve = fuji_reserve();
-    unknown_reserve.fuel_reserve["kind"] = json!("bogus");
-    let mut negative_reserve = input.clone();
-    negative_reserve.fuel_reserve = fuji_reserve();
-    negative_reserve.fuel_reserve["laps"]["value"] = json!(-1);
-    let mut reserve_over_all = input.clone();
-    reserve_over_all.virtual_energy_reserve = fuji_reserve();
-    reserve_over_all.virtual_energy_reserve["kind"] = json!("percent");
-    reserve_over_all.virtual_energy_reserve["percent"] = json!({
-        "value": 150,
-        "evidence": fuji_reserve()["selection"],
-    });
-    let mut reserve_without_source = input.clone();
-    reserve_without_source.virtual_energy_reserve = fuji_reserve();
-    reserve_without_source.virtual_energy_reserve["selection"]["provenance"]["kind"] =
-        json!("bogus");
     let cases: Vec<(&str, Input, EditedPlan, Vec<FixedStop>)> = vec![
-        (
-            "reserva de combustible de un tipo desconocido",
-            unknown_reserve,
-            good.clone(),
-            vec![keep()],
-        ),
-        (
-            "reserva de combustible negativa",
-            negative_reserve,
-            good.clone(),
-            vec![],
-        ),
-        (
-            "reserva de energía de más del 100 %",
-            reserve_over_all,
-            good.clone(),
-            vec![keep()],
-        ),
-        (
-            "reserva de energía sin un origen válido",
-            reserve_without_source,
-            good.clone(),
-            vec![],
-        ),
         ("entrada no válida", no_laps, good.clone(), vec![]),
         (
             "el calendario no suma la carrera",
@@ -615,20 +582,8 @@ fn the_refusals_are_the_ones_of_the_recalculation() {
         ),
     ];
     for (name, input, edited, fixed) in cases {
-        let refusal = fixed_stop_tyres(&input, &edited, &fixed).expect_err(name);
-        let recalculation =
-            recalculate_edited_plan_fixed(&input, &edited, &fixed, &AtomicBool::new(false))
-                .expect_err(name);
-        assert_eq!(refusal, recalculation, "{name}");
+        assert_same_refusal(name, &input, &edited, &fixed);
     }
-    // Una reserva válida no es una negativa, y no mueve las ruedas.
-    let mut with_reserve = input.clone();
-    with_reserve.fuel_reserve = fuji_reserve();
-    with_reserve.virtual_energy_reserve = fuji_reserve();
-    assert_eq!(
-        found(&with_reserve, &good, &[keep(), keep()]),
-        found(&input, &good, &[keep(), keep()])
-    );
     // Y lo que vale para el recálculo vale aquí: una lista más larga que el
     // calendario, si lo que sobra es automático.
     assert_eq!(
@@ -638,5 +593,59 @@ fn the_refusals_are_the_ones_of_the_recalculation() {
             &[keep(), tyres(None), tyres(None), tyres(None)]
         ),
         found(&input, &good, &[keep()])
+    );
+}
+
+// La reserva también es entrada del recálculo, aunque no mueva las ruedas: una
+// reserva que el recálculo rechaza se rechaza aquí con su mismo texto.
+#[test]
+fn a_reserve_the_recalculation_refuses_is_refused_here_too() {
+    let input = twelve_laps().input(1);
+    let good = schedule(&[4, 4, 4]);
+    let mut unknown_reserve = input.clone();
+    unknown_reserve.fuel_reserve = fuji_reserve();
+    unknown_reserve.fuel_reserve["kind"] = json!("bogus");
+    let mut negative_reserve = input.clone();
+    negative_reserve.fuel_reserve = fuji_reserve();
+    negative_reserve.fuel_reserve["laps"]["value"] = json!(-1);
+    let mut reserve_over_all = input.clone();
+    reserve_over_all.virtual_energy_reserve = fuji_reserve();
+    reserve_over_all.virtual_energy_reserve["kind"] = json!("percent");
+    reserve_over_all.virtual_energy_reserve["percent"] = json!({
+        "value": 150,
+        "evidence": fuji_reserve()["selection"],
+    });
+    let mut reserve_without_source = input.clone();
+    reserve_without_source.virtual_energy_reserve = fuji_reserve();
+    reserve_without_source.virtual_energy_reserve["selection"]["provenance"]["kind"] =
+        json!("bogus");
+    let cases: Vec<(&str, Input, Vec<FixedStop>)> = vec![
+        (
+            "reserva de combustible de un tipo desconocido",
+            unknown_reserve,
+            vec![keep()],
+        ),
+        ("reserva de combustible negativa", negative_reserve, vec![]),
+        (
+            "reserva de energía de más del 100 %",
+            reserve_over_all,
+            vec![keep()],
+        ),
+        (
+            "reserva de energía sin un origen válido",
+            reserve_without_source,
+            vec![],
+        ),
+    ];
+    for (name, input, fixed) in cases {
+        assert_same_refusal(name, &input, &good, &fixed);
+    }
+    // Una reserva válida no es una negativa, y no mueve las ruedas.
+    let mut with_reserve = input.clone();
+    with_reserve.fuel_reserve = fuji_reserve();
+    with_reserve.virtual_energy_reserve = fuji_reserve();
+    assert_eq!(
+        found(&with_reserve, &good, &[keep(), keep()]),
+        found(&input, &good, &[keep(), keep()])
     );
 }

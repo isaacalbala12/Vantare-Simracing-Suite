@@ -82,6 +82,13 @@ pub struct TyreBounds {
     pub kept_laps: u32,
     /// En esta parada está fijado no cambiar y `kept_laps` pasa de la vida:
     /// así no hay plan.
+    ///
+    /// Solo culpa a las ruedas si el calendario tiene plan sin fijar nada. Si
+    /// no lo tiene (por ejemplo, tramos de 10 y 2 vueltas con una vida de 8:
+    /// el primer tramo ya no cabe), la marca puede salir igual en una parada
+    /// sin cambio, pero la causa es el calendario y el recálculo no señala
+    /// parada (`unreachable_stop` es `None`). Quien enseñe la marca no debe
+    /// culpar entonces a las ruedas.
     pub beyond_life: bool,
 }
 

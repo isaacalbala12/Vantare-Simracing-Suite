@@ -34,6 +34,12 @@ export function recordingUsage(
   };
 }
 
+/** Only the host reports this pair: the recordings folder is a link, a
+ * junction or a file, and the session records nothing whatever the choice. */
+export const folderUnusable = (
+  status: AnalysisRecordingStatus | null | undefined,
+) => status?.state === "stopped" && status.cause === "invalidDirectory";
+
 export function recordingIndicator(
   status: AnalysisRecordingStatus | null | undefined,
   enabled: boolean,
@@ -41,10 +47,7 @@ export function recordingIndicator(
   atLimit: boolean,
   catalogRecording: boolean,
 ) {
-  // Only the host reports this pair, when the recordings folder is a link, a
-  // junction or a file: the session records nothing, whatever the choice says.
-  if (status?.state === "stopped" && status.cause === "invalidDirectory")
-    return "folderUnusable";
+  if (folderUnusable(status)) return "folderUnusable";
   const running = status?.state === "recording" || status?.state === "degraded";
   const catalogLive = status === undefined && catalogRecording;
   if (!enabled && enabledAtStart === false && !running && !catalogLive)

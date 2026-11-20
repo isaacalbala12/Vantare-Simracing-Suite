@@ -2411,7 +2411,13 @@ fn a_rejected_confirmation_a_rollback_or_an_unreadable_reference_retire_nothing(
     let [a, b] = fixture.two_generations();
     let c = fixture.upgrade("1.0.2", Mode::Auto);
     let whole = [&a, &b, &c].map(|generation| index(generation));
-    let unchanged = || assert_eq!([&a, &b, &c].map(|generation| index(generation)), whole);
+    let unchanged = |step: &str| {
+        assert_eq!(
+            [&a, &b, &c].map(|generation| index(generation)),
+            whole,
+            "{step}"
+        );
+    };
     let marker = fixture.root.join("boot-pending.json");
     let pending = fs::read(&marker).unwrap();
     let mut foreign = disk::read_json(&marker, None).unwrap();
@@ -2420,7 +2426,7 @@ fn a_rejected_confirmation_a_rollback_or_an_unreadable_reference_retire_nothing(
     let mut notes = Vec::new();
     let mut note = |text: &str| notes.push(text.to_owned());
     assert!(operations::confirm_reporting(&fixture.root, &mut note).is_err());
-    unchanged();
+    unchanged("rejected confirmation");
     assert_eq!(notes, [] as [String; 0]);
     // C never confirms: going back to B leaves A, already without a reference, alone.
     fs::write(&marker, pending).unwrap();
@@ -2428,7 +2434,7 @@ fn a_rejected_confirmation_a_rollback_or_an_unreadable_reference_retire_nothing(
         operations::rollback(&fixture.root).unwrap(),
         operations::BootRecovery::Restored
     );
-    unchanged();
+    unchanged("rollback");
     // `previous` can no longer be decoded: nobody knows which folder it meant.
     fixture.upgrade("1.0.3", Mode::Auto);
     let path = fixture.root.join("state.json");
@@ -2436,7 +2442,7 @@ fn a_rejected_confirmation_a_rollback_or_an_unreadable_reference_retire_nothing(
     state["previous"]["manifest_sha256"] = json!(5);
     fs::write(&path, state.to_string()).unwrap();
     let notes = fixture.confirm();
-    unchanged();
+    unchanged("unreadable previous reference");
     assert!(noted(
         &notes,
         &fixture.root.join("generations"),

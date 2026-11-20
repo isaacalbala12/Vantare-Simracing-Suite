@@ -1846,9 +1846,14 @@ async function amountStates(
       name === "m-calcular" ||
       name.startsWith("t-") ||
       (await timeline.count()) === 0;
-    await (fromHeading ? page.locator(".strategy-plan") : timeline).evaluate(
-      (node) => node.scrollIntoView({ block: "start" }),
-    );
+    // the three rows of a stop do not fit under the timeline: those shots start at the editor
+    const editor = ["t-nocambiar", "t-ultima", "t-nocabe"].includes(name);
+    await (editor
+      ? page.locator(".strategy-editor").first()
+      : fromHeading
+        ? page.locator(".strategy-plan")
+        : timeline
+    ).evaluate((node) => node.scrollIntoView({ block: "start" }));
     await page.screenshot({
       path: resolve(evidence, `${prefix}${name}-${suffix}.png`),
     });

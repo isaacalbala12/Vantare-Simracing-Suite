@@ -1,5 +1,9 @@
 import type { AnalysisLap } from "../../../contract/generated/analysis";
-import { lapSectors, type SectorIndex } from "../../app/analysis-sectors";
+import {
+  lapSectors,
+  type SectorIndex,
+  sectorNumbers,
+} from "../../app/analysis-sectors";
 import { sectorTime, analysisText as t } from "../../i18n/analysis.es";
 
 /** Marca de «mejor sector»: un recuadro (forma, no solo color) más texto para lectores de pantalla. */
@@ -18,7 +22,6 @@ export function BestSector({
   );
 }
 type SectorProps = { n: number; perSession: boolean };
-const sectorNumber = [1, 2, 3] as const;
 
 /** Celdas S1–S3 de una vuelta: tiempos, o «—» (con «sin dato» para lectores) si no hay sectores. */
 export function SectorCells({
@@ -41,7 +44,7 @@ export function SectorCells({
       ) : isBest(lap, i) ? (
         <BestSector
           ms={sectors[i]}
-          n={sectorNumber[i]}
+          n={sectorNumbers[i]}
           perSession={perSession}
         />
       ) : (

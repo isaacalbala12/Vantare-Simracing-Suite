@@ -201,14 +201,22 @@ it("uses the official times for the summary difference when A and B both have th
   expect(screen.getByText(comparisonText.slower)).toBeTruthy();
   expect(screen.getByText(comparisonText.sectorsHelp)).toBeTruthy();
 });
-it("keeps the approximate summary difference when A or B has only an approximate time", () => {
-  const laps = [
-    timed(0, [41_204, 62_188, 34_492]),
-    lap(1, { lapTimeMs: null }),
-  ];
-  render(
-    <ComparisonRail state={stateOf(laps, [session("Spa")], { a: 1, b: 0 })} />,
-  );
-  expect(screen.queryByText("+0.136 s")).toBeNull();
-  expect(screen.getAllByText(comparisonText.noDelta)).toHaveLength(2);
-});
+it.each([
+  ["A", { a: 1, b: 0 }],
+  ["B", { a: 0, b: 1 }],
+] as const)(
+  "keeps the approximate summary difference when only %s has an approximate time",
+  (_, pair) => {
+    const laps = [
+      timed(0, [41_204, 62_188, 34_492]),
+      lap(1, { lapTimeMs: null }),
+    ];
+    render(<ComparisonRail state={stateOf(laps, [session("Spa")], pair)} />);
+    // Sin traza y sin dos tiempos oficiales no hay diferencia que enseñar.
+    expect(
+      screen.getByText(comparisonText.difference).nextElementSibling
+        ?.textContent,
+    ).toBe("—");
+    expect(screen.getAllByText(comparisonText.noDelta)).toHaveLength(2);
+  },
+);

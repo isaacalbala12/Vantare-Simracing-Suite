@@ -64,10 +64,10 @@ export function SectorComparison({
           </tr>
         </thead>
         <tbody>
-          {sectorRows(a, b).map((row, i) => (
-            <tr key={t.sector(i + 1)}>
-              <th scope="row" aria-label={t.sectorName(i + 1)}>
-                {t.sector(i + 1)}
+          {sectorRows(a, b).map((row) => (
+            <tr key={row.n}>
+              <th scope="row" aria-label={t.sectorName(row.n)}>
+                {t.sector(row.n)}
               </th>
               <td className="v-an-number">{time(row.a)}</td>
               <td className="v-an-number">{time(row.b)}</td>

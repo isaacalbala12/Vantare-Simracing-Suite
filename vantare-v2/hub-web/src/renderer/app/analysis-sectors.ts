@@ -6,6 +6,8 @@ import { lapTime } from "./analysis-laps";
 
 export type Sectors = readonly [number, number, number];
 export type SectorIndex = 0 | 1 | 2;
+/** Números de sector (S1–S3), para rotular sin aritmética de índices. */
+export const sectorNumbers = [1, 2, 3] as const;
 export type SectorsWhy = "approximate" | "gap" | "unfinished" | "notGiven";
 
 /**
@@ -71,6 +73,7 @@ export function sectorRows(
 ) {
   const [sa, sb] = [lapSectors(a), lapSectors(b)];
   return ([0, 1, 2] as const).map((i) => ({
+    n: sectorNumbers[i],
     a: sa?.[i] ?? null,
     b: sb?.[i] ?? null,
     diff: sa && sb ? sa[i] - sb[i] : null,

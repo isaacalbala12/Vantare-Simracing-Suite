@@ -141,16 +141,18 @@ it("gives A, B and A−B per sector, with nothing when a side lacks sectors", ()
   const a = timed(0, [41_388, 62_091, 34_541]);
   const b = timed(1, [41_204, 62_188, 34_492]);
   expect(sectorRows(a, b)).toEqual([
-    { a: 41_388, b: 41_204, diff: 184 },
-    { a: 62_091, b: 62_188, diff: -97 },
-    { a: 34_541, b: 34_492, diff: 49 },
+    { n: 1, a: 41_388, b: 41_204, diff: 184 },
+    { n: 2, a: 62_091, b: 62_188, diff: -97 },
+    { n: 3, a: 34_541, b: 34_492, diff: 49 },
   ]);
   expect(sectorRows(lap(2, { lapTimeMs: null }), b)[0]).toEqual({
+    n: 1,
     a: null,
     b: 41_204,
     diff: null,
   });
   expect(sectorRows(undefined, undefined)[2]).toEqual({
+    n: 3,
     a: null,
     b: null,
     diff: null,

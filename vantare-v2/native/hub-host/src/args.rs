@@ -20,8 +20,8 @@ impl Args {
     /// Where Analysis reads: the single folder the session names or, without
     /// it (development, or a launcher that does not know it), inside the data.
     pub fn recordings(&self) -> PathBuf {
-        // Sin implementar: la carpeta de siempre, dentro de los datos.
-        self.data.join("recordings")
+        let inside_data = || self.data.join("recordings");
+        self.recordings.clone().unwrap_or_else(inside_data)
     }
     /// `installation` is the root this host runs from, when it is installed.
     fn parse_in(
@@ -95,9 +95,36 @@ fn installation() -> Option<PathBuf> {
 /// and spelled without `..` or links; never a network path. The session builds
 /// it from the root it runs from: anything else is not its argument.
 fn single_folder(value: String, installation: Option<&Path>) -> io::Result<PathBuf> {
-    // Sin implementar: lo escribe el commit siguiente.
-    let _ = (value, installation);
-    Err(io::ErrorKind::Unsupported.into())
+    use std::path::{Component, Prefix};
+    let path = PathBuf::from(value);
+    let mut parts = path.components();
+    let disk = |part| matches!(part, Component::Prefix(prefix) if matches!(prefix.kind(), Prefix::Disk(_)));
+    let local = parts.next().is_some_and(disk)
+        && parts.next() == Some(Component::RootDir)
+        && parts.all(|part| matches!(part, Component::Normal(_)));
+    if local && installation.is_some_and(|root| inside(root, &path)) {
+        return Ok(path);
+    }
+    Err(io::Error::new(
+        io::ErrorKind::InvalidInput,
+        "recordings folder outside the installation",
+    ))
+}
+/// From the folder up to the root nothing may be a link; what does not exist
+/// yet cannot be one. Both are compared as the disk names them.
+fn inside(root: &Path, path: &Path) -> bool {
+    let Ok(root) = root.canonicalize() else {
+        return false;
+    };
+    for ancestor in path.ancestors() {
+        if std::fs::symlink_metadata(ancestor).is_ok_and(|found| crate::analysis::reparse(&found)) {
+            return false;
+        }
+        if ancestor != path && ancestor.canonicalize().is_ok_and(|found| found == root) {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(test)]

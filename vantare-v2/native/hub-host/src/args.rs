@@ -1,4 +1,7 @@
-use std::{io, path::PathBuf};
+use std::{
+    io,
+    path::{Path, PathBuf},
+};
 #[derive(Debug)]
 pub struct Args {
     pub controlled: bool,
@@ -7,9 +10,24 @@ pub struct Args {
     pub layout: PathBuf,
     pub launcher: PathBuf,
     pub engineer: PathBuf,
+    /// The single folder of the installation, when the session names it.
+    pub recordings: Option<PathBuf>,
 }
 impl Args {
     pub fn parse(args: impl IntoIterator<Item = String>) -> io::Result<Self> {
+        Self::parse_in(args, installation().as_deref())
+    }
+    /// Where Analysis reads: the single folder the session names or, without
+    /// it (development, or a launcher that does not know it), inside the data.
+    pub fn recordings(&self) -> PathBuf {
+        // Sin implementar: la carpeta de siempre, dentro de los datos.
+        self.data.join("recordings")
+    }
+    /// `installation` is the root this host runs from, when it is installed.
+    fn parse_in(
+        args: impl IntoIterator<Item = String>,
+        installation: Option<&Path>,
+    ) -> io::Result<Self> {
         let root = vantare_ipc::paths::Root::from_env().map_err(io::Error::other)?;
         let mut out = Self {
             controlled: false,
@@ -18,6 +36,7 @@ impl Args {
             layout: root.layout(),
             launcher: root.launcher(),
             engineer: root.engineer(),
+            recordings: None,
         };
         let mut seen = std::collections::BTreeSet::new();
         let mut args = args.into_iter();
@@ -41,6 +60,7 @@ impl Args {
                 "--layout" => out.layout = value.into(),
                 "--launcher-file" => out.launcher = value.into(),
                 "--engineer-settings" => out.engineer = value.into(),
+                "--recordings-dir" => out.recordings = Some(single_folder(value, installation)?),
                 _ => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidInput,
@@ -61,10 +81,86 @@ impl Args {
         Ok(out)
     }
 }
+/// The installation this executable belongs to: `<root>/generations/<id>/bin`.
+fn installation() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        let generation = crate::ready::generation(&std::env::current_exe().ok()?)?;
+        generation.ancestors().nth(2).map(Path::to_path_buf)
+    }
+    #[cfg(not(windows))]
+    None
+}
+/// ADR 0111 §3: only a folder of a local disk, strictly inside the installation
+/// and spelled without `..` or links; never a network path. The session builds
+/// it from the root it runs from: anything else is not its argument.
+fn single_folder(value: String, installation: Option<&Path>) -> io::Result<PathBuf> {
+    // Sin implementar: lo escribe el commit siguiente.
+    let _ = (value, installation);
+    Err(io::ErrorKind::Unsupported.into())
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    #[test]
+    fn the_recordings_folder_must_be_local_inside_the_installation_and_free_of_links() {
+        use std::os::windows::fs::symlink_dir;
+        let name = format!("vantare-host-recordings-{}", std::process::id());
+        let base = std::env::temp_dir().join(name);
+        let (root, outside) = (base.join("Vantare"), base.join("fuera"));
+        for folder in [&root, &outside] {
+            std::fs::create_dir_all(folder).expect("fixture");
+        }
+        let parse = |value: &Path, installation| {
+            let value = value.to_string_lossy().into_owned();
+            Args::parse_in(["--recordings-dir".to_owned(), value], installation)
+        };
+        // Not created yet, already there, and spelled in another case.
+        let single = root.join("recordings");
+        let named = parse(&single, Some(&root)).expect("not created yet");
+        assert_eq!(named.recordings(), single);
+        std::fs::create_dir(&single).expect("fixture");
+        let shouted = PathBuf::from(single.to_string_lossy().to_uppercase());
+        for spelling in [&single, &shouted] {
+            assert!(parse(spelling, Some(&root)).is_ok(), "{spelling:?}");
+        }
+        let (link, back) = (root.join("enlace"), root.join("vuelta"));
+        symlink_dir(&outside, &link).expect("link to the outside");
+        symlink_dir(&root, &back).expect("link back to the root");
+        for (value, why) in [
+            (root.clone(), "the root itself"),
+            (outside.join("recordings"), "outside"),
+            (
+                base.join("Vantare2/recordings"),
+                "a neighbour with the same start",
+            ),
+            (single.join("../../fuera"), "dots"),
+            (link.clone(), "a link"),
+            (link.join("recordings"), "through a link"),
+            (back.join("recordings"), "through a link back to the root"),
+            (r"\\servidor\recurso\recordings".into(), "a network path"),
+            (
+                format!(r"\\?\{}", single.display()).into(),
+                "a verbatim path",
+            ),
+            ("recordings".into(), "relative"),
+            ("C:recordings".into(), "relative to a drive"),
+        ] {
+            assert!(parse(&value, Some(&root)).is_err(), "{why}: {value:?}");
+        }
+        // A host outside an installation has no single folder to be given.
+        assert!(parse(&single, None).is_err());
+        // Without the argument nothing changes: the folder inside the data.
+        let data = [
+            "--data-dir".to_owned(),
+            outside.to_string_lossy().into_owned(),
+        ];
+        let unnamed = Args::parse_in(data, Some(&root)).expect("as before");
+        assert_eq!(unnamed.recordings(), outside.join("recordings"));
+        std::fs::remove_dir_all(base).expect("cleanup");
+    }
     #[test]
     fn supervisor_arguments_and_absolute_paths_are_preserved() {
         let root = std::env::temp_dir().join("vantare-host-args");

@@ -60,8 +60,9 @@ struct Stamp {
     modified: SystemTime,
 }
 fn regular_directory(root: &Path) -> Result<()> {
-    // The catalog root is args.data.join("recordings") (analysis/init.inc).
-    // Its parent is the already-resolved Vantare data directory, not AppData.
+    // The catalog root is Args::recordings() (analysis/init.inc): the single
+    // folder of the installation or, without it, the one inside the data.
+    // Its parent is the installation root or that data directory, not AppData.
     // Check recordings itself and parents only through that boundary; a user may
     // relocate their profile/AppData with a junction above it.
     let data_dir = root
@@ -116,7 +117,7 @@ fn stamp(path: &Path) -> Result<Stamp> {
             .map_err(|e| error(ErrorCode::Io, e.to_string()))?,
     })
 }
-fn reparse(m: &fs::Metadata) -> bool {
+pub(crate) fn reparse(m: &fs::Metadata) -> bool {
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;

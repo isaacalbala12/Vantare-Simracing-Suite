@@ -63,6 +63,7 @@ fn production_tick_replaces_window_with_live_and_eof_and_renews_the_two_second_d
             layout: fixture.0.join("layout.json"),
             launcher: fixture.0.join("launcher.json"),
             engineer: fixture.0.join("engineer.json"),
+            recordings: None,
         };
         let mut session = fixture.session();
         let waiting = protocol::CoreStatus {

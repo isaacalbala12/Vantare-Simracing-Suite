@@ -144,6 +144,7 @@ impl Fixture {
             layout: self.0.join("layout.json"),
             launcher: self.0.join("launcher.json"),
             engineer: self.0.join("engineer.json"),
+            recordings: Some(self.0.join("recordings")),
         };
         Session::new(
             &args,

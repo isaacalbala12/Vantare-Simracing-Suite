@@ -90,7 +90,7 @@ fn wait_for_database_release(root: &Path) -> io::Result<()> {
 }
 
 fn record(fixture: &Fixture, image: &Path, helper: &Path, interrupted: bool) {
-    let root = fixture.0.join("hub/recordings");
+    let root = fixture.0.join("recordings");
     fs::create_dir_all(&root).unwrap();
     let corpus = fixture.0.join("two-laps.tar.gz");
     fs::write(

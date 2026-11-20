@@ -187,7 +187,6 @@ describe("the amounts of a stop", () => {
         index: 1,
         fuelLiters: 77,
         vePercent: null,
-        // this screen fixes amounts only: the tyres go back as the host has them
         changeTyres: null,
       },
     ]);
@@ -1268,8 +1267,9 @@ describe("«Restablecer» when the last valid plan had amounts fixed", () => {
     const fixed = (await lastView(request)).plan.edit?.stops.map(
       (stop) => stop.fixed,
     );
-    expect(fixed?.[1]).toMatchObject({ fuelLiters: null, vePercent: null });
-    expect(fixed?.[4]).toMatchObject({ fuelLiters: null, vePercent: 80 });
+    const automatic = { fuelLiters: null, vePercent: null, changeTyres: null };
+    expect(fixed?.[1]).toEqual(automatic);
+    expect(fixed?.[4]).toEqual({ ...automatic, vePercent: 80 });
   });
 });
 

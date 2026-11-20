@@ -115,7 +115,7 @@ it("rejects tyres that disagree with what is fixed, or with themselves", () => {
     // without a limit nothing is beyond it
     [beyond, (plan) => (tyres(plan).lifeLaps = null)],
     // whole laps, at least one, more after the next stint than on arrival
-    [kept, (plan) => (tyres(plan).lifeLaps = 0)],
+    [kept, (plan) => (plan.edit.stops[0].tyres.lifeLaps = 0)],
     [kept, (plan) => (tyres(plan).lifeLaps = 40.5)],
     [kept, (plan) => (tyres(plan).arrivalLaps = 0)],
     [kept, (plan) => (tyres(plan).arrivalLaps = null)],
@@ -135,6 +135,8 @@ it("rejects tyres that disagree with what is fixed, or with themselves", () => {
   ];
   for (const [index, [reply, change]] of refused.entries())
     expect(broken(reply, change), `case ${index}`).toBe(false);
+  // tyres that do exactly the laps they last do last: nothing to mark
+  expect(broken(kept, (plan) => (tyres(plan).lifeLaps = 7))).toBe(true);
   // tyres kept without the mark of «fixed by hand» are not refused: the host
   // never makes such a plan, and a file is not rejected for it
   expect(

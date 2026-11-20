@@ -1420,8 +1420,11 @@ fn tyres_that_would_not_last_are_kept_marked_and_named_when_there_is_no_plan() {
     let edit = view.edit.as_ref().unwrap();
     assert_eq!(edit.cause, None);
     assert_eq!(edit.stops[1].pit_seconds, timeline.pits[1].pit_seconds);
-    // «Restablecer» returns to this plan with its tyres kept
+    // left to the calculation again the stop fits new tyres, and its time says
+    // so at once: the 55 s of a stop that changes them, as in the automatic plan
     editing.set_stop_service(1, None, None, None).unwrap();
+    assert!((seconds(&editing.edit_view().stops[1]) - 55.0).abs() < 1e-6);
+    // «Restablecer» returns to this plan with its tyres kept
     editing.reset();
     assert_eq!(editing.plan_view(Some(2)), view);
     assert_eq!(fixed_tyres(&editing)[1], Some(false));

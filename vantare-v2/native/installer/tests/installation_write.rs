@@ -2770,3 +2770,523 @@ fn the_installation_log_is_capped_at_two_files_and_keeps_one_note_per_line() {
     assert_eq!(fs::read(&target).unwrap(), b"outside");
     fs::remove_file(&log).unwrap();
 }
+
+// Adopting recordings (ADR 0111 §4; T1 of §12). The operation is not wired to
+// the session, Confirm or Uninstall yet: these tests call the engine directly.
+use operations::{Adoption, Duplicates};
+const STATUS: &str = "recording-status.json";
+fn recordings(generation: &Path) -> PathBuf {
+    generation.join("data/hub/recordings")
+}
+/// Files with the names the recorder, or anybody else, left in a folder.
+fn record(directory: &Path, files: &[(&str, &[u8])]) {
+    fs::create_dir_all(directory).expect("recordings folder");
+    for (name, bytes) in files {
+        fs::write(directory.join(name), bytes).expect("recording");
+    }
+}
+/// Another handle on the file, with the sharing a scanner or a writer asks for.
+fn opened(path: &Path, write: bool, share: u32) -> fs::File {
+    fs::OpenOptions::new()
+        .read(true)
+        .write(write)
+        .share_mode(share)
+        .open(path)
+        .expect("held file")
+}
+/// The note that keeps exactly this path, with its reason.
+fn keeps(notes: &[String], path: &Path, reason: &str) -> bool {
+    let path = disk::path(path).expect("path").display().to_string();
+    let start = format!("se conserva {path}; motivo: ");
+    notes
+        .iter()
+        .any(|note| note.contains(&start) && note.contains(reason))
+}
+fn adopted(moved: usize, duplicates: usize, kept: usize) -> Adoption {
+    Adoption {
+        moved,
+        duplicates,
+        kept,
+    }
+}
+impl Fixture {
+    /// One installation whose only generation is the active one.
+    fn installed(&self) -> (PathBuf, PathBuf, PathBuf) {
+        self.install(&self.package("1.0.0"), Mode::Auto, false, false)
+            .expect("installation");
+        let active = self.active();
+        (recordings(&active), self.root.join("recordings"), active)
+    }
+    fn adopt(&self, generation: &Path, duplicates: Duplicates) -> (Adoption, Vec<String>) {
+        let (result, notes) = self.adopt_until(generation, duplicates, &mut |_| Ok(()));
+        (result.expect("adoption"), notes)
+    }
+    fn adopt_until(
+        &self,
+        generation: &Path,
+        duplicates: Duplicates,
+        checkpoint: &mut dyn FnMut(&str) -> disk::Result<()>,
+    ) -> (disk::Result<Adoption>, Vec<String>) {
+        let mut notes = Vec::new();
+        let id = generation.file_name().expect("generation");
+        let result = operations::adopt_recordings(
+            &self.root,
+            &id.to_string_lossy(),
+            duplicates,
+            checkpoint,
+            &mut |note| notes.push(note.to_owned()),
+        );
+        (result, notes)
+    }
+    /// The whole installation except the two folders an adoption may touch
+    /// and the log where it writes its notes.
+    fn elsewhere(&self, source: &Path) -> Index {
+        let root = disk::path(&self.root).expect("root");
+        let own = [
+            disk::path(source).expect("source"),
+            root.join("recordings"),
+            root.join(LOG),
+        ];
+        let mut rest = index(&root);
+        rest.retain(|path, _| !own.iter().any(|folder| root.join(path).starts_with(folder)));
+        rest
+    }
+}
+
+#[test]
+fn adoption_moves_the_recordings_of_an_orphan_keeps_their_dates_and_can_be_repeated() {
+    use std::os::windows::fs::FileTimesExt;
+    let fixture = Fixture::new();
+    let [a, _] = fixture.two_generations();
+    fixture.upgrade("1.0.2", Mode::Auto);
+    fixture.confirm();
+    assert_eq!(names(&a), ["data"], "an orphan already without binaries");
+    let (source, single) = (recordings(&a), fixture.root.join("recordings"));
+    let files: [(&str, &[u8]); 2] = [
+        ("series-1700000000000-4242.duckdb", b"first recording"),
+        ("series-1700000360000-77.duckdb", b"second\0recording\xff"),
+    ];
+    record(&source, &files);
+    record(&source, &[(STATUS, b"{}")]);
+    let old = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+    for (name, _) in files {
+        let times = fs::FileTimes::new().set_modified(old).set_created(old);
+        opened(&source.join(name), true, 0)
+            .set_times(times)
+            .unwrap();
+    }
+    let elsewhere = fixture.elsewhere(&source);
+    assert!(!single.exists());
+    let (adoption, notes) = fixture.adopt(&a, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(2, 0, 0));
+    assert_eq!(names(&source), [STATUS], "the state of the recorder stays");
+    assert_eq!(names(&single), files.map(|(name, _)| name));
+    for (name, bytes) in files {
+        let moved = fs::metadata(single.join(name)).unwrap();
+        assert_eq!(fs::read(single.join(name)).unwrap(), bytes, "{name}");
+        assert_eq!(moved.modified().unwrap(), old, "the pruning order");
+        assert_eq!(moved.created().unwrap(), old, "the date shown before #2749");
+    }
+    assert_eq!(fixture.elsewhere(&source), elsewhere);
+    assert!(noted(&notes, &source, "adoptadas 2") && notes.len() == 1);
+    let log = logged(&fixture.root);
+    assert!(log.last().unwrap().contains("adoptadas 2"), "{log:?}");
+    // Twice in a row: nothing left to do and nothing to say.
+    let whole = index(&fixture.root);
+    assert_eq!(
+        fixture.adopt(&a, Duplicates::RemoveIdentical),
+        (Adoption::default(), Vec::new())
+    );
+    assert_eq!(index(&fixture.root), whole);
+}
+
+#[test]
+fn a_repeated_name_loses_its_copy_only_when_size_and_hash_are_identical() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let copies: [(&str, &[u8], &[u8]); 3] = [
+        ("series-1-1.duckdb", b"same bytes", b"same bytes"),
+        ("series-2-2.duckdb", b"same size A", b"same size B"),
+        ("series-3-3.duckdb", b"short", b"longer than its copy"),
+    ];
+    for (name, copy, twin) in copies {
+        record(&source, &[(name, copy)]);
+        record(&single, &[(name, twin)]);
+    }
+    let (before, twins) = (index(&source), index(&single));
+    let elsewhere = fixture.elsewhere(&source);
+    // The session only moves: it neither compares nor removes.
+    let (adoption, notes) = fixture.adopt(&active, Duplicates::Keep);
+    assert_eq!(adoption, adopted(0, 0, 3));
+    assert_eq!(
+        [index(&source), index(&single)],
+        [&before, &twins].map(Clone::clone)
+    );
+    for (name, ..) in copies {
+        assert!(keeps(&notes, &source.join(name), "ya existe"), "{notes:?}");
+    }
+    let (adoption, notes) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(0, 1, 2));
+    assert_eq!(index(&single), twins, "never overwritten");
+    assert_eq!(names(&source), ["series-2-2.duckdb", "series-3-3.duckdb"]);
+    for (name, copy, _) in &copies[1..] {
+        assert_eq!(fs::read(source.join(name)).unwrap(), *copy, "{name}");
+        assert!(keeps(&notes, &source.join(name), "distinto"), "{notes:?}");
+    }
+    assert!(noted(&notes, &source, "retiradas 1") && notes.len() == 3);
+    assert_eq!(fixture.elsewhere(&source), elsewhere);
+}
+
+#[test]
+fn recordings_in_use_stay_where_they_are_until_released() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let files = [
+        "series-1-1.duckdb",
+        "series-2-2.duckdb",
+        "series-3-3.duckdb",
+        "series-4-4.duckdb",
+    ];
+    for name in files {
+        record(&source, &[(name, name.as_bytes())]);
+    }
+    for name in &files[2..] {
+        record(&single, &[(name, name.as_bytes())]);
+    }
+    let (before, twins) = (index(&source), index(&single));
+    // Held exclusively; by a reader that would even let it be renamed; a copy
+    // being read; and a recording of the single folder that is being written.
+    let held = [
+        opened(&source.join(files[0]), false, 0),
+        opened(&source.join(files[1]), false, 7),
+        opened(&source.join(files[2]), false, 7),
+        opened(&single.join(files[3]), true, 7),
+    ];
+    let (adoption, notes) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    drop(held);
+    assert_eq!(adoption, adopted(0, 0, 4));
+    assert_eq!([index(&source), index(&single)], [before, twins]);
+    for name in files {
+        assert!(keeps(&notes, &source.join(name), "en uso"), "{notes:?}");
+    }
+    let (adoption, notes) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(2, 2, 0));
+    assert!(names(&source).is_empty() && names(&single) == files && notes.len() == 1);
+}
+
+#[test]
+fn recordings_without_read_permission_stay_until_they_can_be_read() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let files = [
+        "series-1-1.duckdb",
+        "series-2-2.duckdb",
+        "series-3-3.duckdb",
+    ];
+    for name in files {
+        record(&source, &[(name, name.as_bytes())]);
+    }
+    for name in &files[1..] {
+        record(&single, &[(name, name.as_bytes())]);
+    }
+    let (before, twins) = (index(&source), index(&single));
+    // A new recording, a copy, and the recording a copy would be compared with.
+    let denied = [
+        Denied::new(&source.join(files[0])),
+        Denied::new(&source.join(files[1])),
+        Denied::new(&single.join(files[2])),
+    ];
+    let (adoption, notes) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    drop(denied);
+    assert_eq!(adoption, adopted(0, 0, 3));
+    assert_eq!([index(&source), index(&single)], [before, twins]);
+    for name in files {
+        let unreadable = keeps(&notes, &source.join(name), "no se puede leer");
+        assert!(unreadable, "{notes:?}");
+    }
+    let (adoption, _) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(1, 2, 0));
+    assert!(names(&source).is_empty() && names(&single) == files);
+}
+
+#[test]
+fn unfinished_recordings_and_foreign_names_are_never_adopted() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let finished = "series-11-11.duckdb";
+    let kept: [(&str, &str); 11] = [
+        ("series-1-1.duckdb", "en curso"),
+        ("series-1-1.duckdb.wal", "nombre"),
+        ("series-2-2.duckdb.wal", "nombre"),
+        ("series-3-3.duckdb", "en curso"),
+        ("series-4-4.duckdb", "carpeta única"),
+        ("series-5.duckdb", "nombre"),
+        ("series-a-6.duckdb", "nombre"),
+        ("series-7-7.duckdb.bak", "nombre"),
+        ("Series-8-8.duckdb", "nombre"),
+        ("copia de series-9-9.duckdb", "nombre"),
+        ("notas.txt", "nombre"),
+    ];
+    for (name, _) in kept {
+        record(&source, &[(name, name.as_bytes())]);
+    }
+    record(&source, &[(finished, b"finished"), (STATUS, b"{}")]);
+    // The temporary of a publication that was cut, and a folder named as a recording.
+    let folders = ["series-3-3.duckdb.creating-99-0", "series-12-12.duckdb"];
+    for folder in folders {
+        record(&source.join(folder), &[("recording.duckdb", b"inside")]);
+    }
+    record(
+        &single,
+        &[
+            ("series-4-4.duckdb.wal", b"wal of somebody else"),
+            ("series-99-99.duckdb", b"already here"),
+            ("mis notas.txt", b"foreign"),
+        ],
+    );
+    record(&single.join("carpeta"), &[("dentro.bin", b"foreign")]);
+    let (mut before, mut twins) = (index(&source), index(&single));
+    let elsewhere = fixture.elsewhere(&source);
+    let (adoption, notes) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(1, 0, 13));
+    let moved = before.remove(Path::new(finished)).expect("finished");
+    twins.insert(finished.into(), moved);
+    assert_eq!([index(&source), index(&single)], [before, twins]);
+    for (name, reason) in kept {
+        assert!(
+            keeps(&notes, &source.join(name), reason),
+            "{name}: {notes:?}"
+        );
+    }
+    for folder in folders {
+        assert!(keeps(&notes, &source.join(folder), "archivo"), "{notes:?}");
+    }
+    assert!(notes.len() == 14 && !notes.iter().any(|note| note.contains(STATUS)));
+    assert_eq!(fixture.elsewhere(&source), elsewhere);
+}
+
+#[test]
+fn links_in_the_source_or_in_the_single_folder_are_never_followed() {
+    use std::os::windows::fs::{symlink_dir, symlink_file};
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let name = "series-1-1.duckdb";
+    let outside = fixture.path.join("fuera");
+    // Same bytes inside and outside: a followed link would pass any comparison.
+    record(&outside, &[(name, b"recording")]);
+    let before = index(&outside);
+    for place in ["source", "single", "entry", "twin"] {
+        let link = match place {
+            "source" => source.clone(),
+            "single" => single.clone(),
+            "entry" => source.join("series-2-2.duckdb"),
+            _ => single.join(name),
+        };
+        if place == "source" {
+            fs::create_dir_all(source.parent().unwrap()).unwrap();
+        } else {
+            record(&source, &[(name, b"recording")]);
+        }
+        if place == "twin" {
+            record(&single, &[]);
+        }
+        let folder = matches!(place, "source" | "single");
+        if folder {
+            symlink_dir(&outside, &link).unwrap();
+        } else {
+            symlink_file(outside.join(name), &link).unwrap();
+            assert!(disk::open_recording(&link, false).is_err(), "{place}");
+            assert!(disk::open_recording(&link, true).is_err(), "{place}");
+        }
+        let (result, notes) =
+            fixture.adopt_until(&active, Duplicates::RemoveIdentical, &mut |_| Ok(()));
+        assert!(result.is_err() && notes.is_empty(), "{place}: {notes:?}");
+        assert_eq!(index(&outside), before, "{place}");
+        if folder {
+            fs::remove_dir(&link).unwrap();
+        } else {
+            fs::remove_file(&link).unwrap();
+            assert_eq!(fs::read(source.join(name)).unwrap(), b"recording");
+        }
+        assert!(!single.exists() || children(&single) == 0, "{place}");
+    }
+    assert!(disk::open_recording(&source, false).is_err(), "a folder");
+    assert!(disk::open_recording(&source.join(name), true).is_ok());
+}
+
+#[test]
+fn adoption_refuses_the_previous_generation_a_foreign_folder_and_a_doubtful_state() {
+    let fixture = Fixture::new();
+    let [a, b] = fixture.two_generations();
+    let foreign = fixture.root.join("generations/copia de seguridad");
+    for generation in [&a, &b, &foreign] {
+        record(
+            &recordings(generation),
+            &[("series-1-1.duckdb", b"recorded")],
+        );
+    }
+    let generations = fixture.root.join("generations");
+    let whole = index(&generations);
+    let refused = |id: &str, step: &str| {
+        let result = operations::adopt_recordings(
+            &fixture.root,
+            id,
+            Duplicates::RemoveIdentical,
+            &mut |_| Ok(()),
+            &mut |note| panic!("{step}: {note}"),
+        );
+        assert!(result.is_err(), "{step}");
+        assert_eq!(index(&generations), whole, "{step}");
+        assert!(!fixture.root.join("recordings").exists(), "{step}");
+    };
+    let id = |generation: &Path| {
+        generation
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned()
+    };
+    // `previous` is the copy a failed version goes back to.
+    refused(&id(&a), "previous");
+    refused(&id(&a).to_uppercase(), "previous in capitals");
+    for name in [
+        "copia de seguridad".to_owned(),
+        String::new(),
+        "..".to_owned(),
+        format!("../generations/{}", id(&b)),
+        format!("{}/data", id(&b)),
+        disk::path(&b).unwrap().display().to_string(),
+    ] {
+        refused(&name, &name);
+    }
+    // Nobody knows which generation is the previous one.
+    let path = fixture.root.join("state.json");
+    let state = disk::read_json(&path, None).unwrap();
+    let mut doubtful = [state.clone(), state.clone(), state.clone()];
+    doubtful[0].as_object_mut().unwrap().remove("previous");
+    doubtful[1]["previous"]["manifest_sha256"] = json!(5);
+    doubtful[2]["product"] = "otro-producto".into();
+    let steps = [
+        "without previous",
+        "undecodable previous",
+        "foreign product",
+    ];
+    for (document, step) in doubtful.iter().zip(steps) {
+        fs::write(&path, document.to_string()).unwrap();
+        refused(&id(&b), step);
+    }
+    fs::write(&path, b"{ not a state").unwrap();
+    refused(&id(&b), "unreadable state");
+    fs::remove_file(&path).unwrap();
+    refused(&id(&b), "no state");
+    // With its state back, the active generation is adopted and `previous` is not.
+    fs::write(&path, state.to_string()).unwrap();
+    let (adoption, _) = fixture.adopt(&b, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(1, 0, 0));
+    assert_eq!(names(&recordings(&a)), ["series-1-1.duckdb"]);
+    assert_eq!(names(&recordings(&foreign)), ["series-1-1.duckdb"]);
+}
+
+#[test]
+fn an_empty_or_missing_source_changes_nothing_and_a_file_as_single_folder_stops_it() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let whole = index(&fixture.root);
+    let nothing = (Adoption::default(), Vec::new());
+    assert_eq!(fixture.adopt(&active, Duplicates::RemoveIdentical), nothing);
+    let unknown = fixture.root.join("generations").join("f".repeat(32));
+    assert_eq!(
+        fixture.adopt(&unknown, Duplicates::RemoveIdentical),
+        nothing
+    );
+    assert_eq!(index(&fixture.root), whole, "a missing source");
+    for files in [&[][..], &[(STATUS, b"{}".as_slice())][..]] {
+        record(&source, files);
+        assert_eq!(fixture.adopt(&active, Duplicates::RemoveIdentical), nothing);
+        assert!(
+            !single.exists(),
+            "the single folder is only made to receive"
+        );
+    }
+    record(&source, &[("series-1-1.duckdb", b"recording")]);
+    fs::write(&single, b"not a folder").unwrap();
+    let (result, notes) =
+        fixture.adopt_until(&active, Duplicates::RemoveIdentical, &mut |_| Ok(()));
+    assert!(result.is_err() && notes.is_empty());
+    assert_eq!(names(&source), [STATUS, "series-1-1.duckdb"]);
+    assert_eq!(fs::read(&single).unwrap(), b"not a folder");
+}
+
+#[test]
+fn more_than_256_recordings_are_adopted_without_losing_any() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    for number in 0..300_u64 {
+        let name = format!("series-{}-{number}.duckdb", 1_700_000_000_000 + number);
+        record(&source, &[(&name, name.as_bytes())]);
+    }
+    let before = index(&source);
+    let (adoption, notes) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(300, 0, 0));
+    assert_eq!(index(&single), before);
+    assert!(names(&source).is_empty() && notes.len() == 1);
+}
+
+#[test]
+fn an_adoption_cut_short_loses_nothing_and_the_next_one_finishes() {
+    // A cut, or a full disk (injected: a volume really full is not reproduced),
+    // before the third move or before the third removal of a repeated copy.
+    for (fault, point) in [
+        ("cut", "adopt-move"),
+        ("disk-full", "adopt-move"),
+        ("cut", "adopt-remove"),
+    ] {
+        let fixture = Fixture::new();
+        let (source, single, active) = fixture.installed();
+        for number in 0..6 {
+            let name = format!("series-1-{number}.duckdb");
+            record(&source, &[(&name, name.as_bytes())]);
+        }
+        for number in 0..4 {
+            let name = format!("series-2-{number}.duckdb");
+            record(&source, &[(&name, name.as_bytes())]);
+            record(&single, &[(&name, name.as_bytes())]);
+        }
+        let every = index(&source);
+        let mut reached = 0;
+        let mut checkpoint = |at: &str| {
+            reached += usize::from(at == point);
+            if at == point && reached == 3 {
+                return Err(if fault == "cut" {
+                    engine::WriteError::new(1, "injected cut")
+                } else {
+                    engine::WriteError::from(std::io::Error::from_raw_os_error(112))
+                });
+            }
+            Ok(())
+        };
+        let (result, _) =
+            fixture.adopt_until(&active, Duplicates::RemoveIdentical, &mut checkpoint);
+        assert!(result.is_err(), "{fault} at {point}");
+        // Whole in the source or whole in the single folder; a new one, never in both.
+        let (left, arrived) = (index(&source), index(&single));
+        for (name, recording) in &every {
+            let places = [&left, &arrived].map(|folder| folder.get(name));
+            assert!(places.iter().flatten().all(|found| *found == recording));
+            let expected = if name.to_string_lossy().starts_with("series-1-") {
+                1
+            } else {
+                1 + usize::from(left.contains_key(name))
+            };
+            assert_eq!(places.iter().flatten().count(), expected, "{name:?}");
+        }
+        assert!(
+            !left.is_empty(),
+            "{fault} at {point}: the cut left work to do"
+        );
+        let (adoption, _) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+        assert_eq!(adoption.moved + adoption.duplicates, left.len());
+        assert_eq!(index(&single), every, "{fault} at {point}");
+        assert!(names(&source).is_empty(), "{fault} at {point}");
+    }
+}

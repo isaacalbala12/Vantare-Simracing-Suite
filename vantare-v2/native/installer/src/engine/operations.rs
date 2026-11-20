@@ -677,6 +677,7 @@ pub fn confirm(root: &Path) -> Result<()> {
 pub fn confirm_reporting(root: &Path, note: &mut dyn FnMut(&str)) -> Result<()> {
     let root = disk::open_root(root, false)?;
     let _operation = disk::lock(&root, ".operation.lock")?;
+    let note = &mut logged(&root, note);
     let marker = disk::read_json(&root.join("boot-pending.json"), Some(4096))?;
     let view = Installation::read(&root)?;
     let manifest = view
@@ -718,6 +719,14 @@ fn references_bound(document: &installation::StateDocument) -> bool {
             .previous
             .as_ref()
             .is_none_or(Generation::valid)
+}
+/// The launcher has no console and the log of Uninstall lives in a temporary
+/// folder: the notes of the engine also reach the log of the installation.
+fn logged<'a>(root: &'a Path, note: &'a mut dyn FnMut(&str)) -> impl FnMut(&str) + 'a {
+    move |text| {
+        disk::log(root, text);
+        note(text);
+    }
 }
 fn kept(path: &Path, reason: impl std::fmt::Display) -> String {
     format!(
@@ -771,7 +780,9 @@ fn retire_orphan(directory: &Path, channel: &str, note: &mut dyn FnMut(&str)) ->
         .map_err(|error| WriteError::new(1, format!("manifiesto ausente o no válido ({error})")))?;
     ensure(manifest.channel == channel, "manifiesto de otro canal")?;
     let files = || listed.iter().filter(|(_, is_directory)| !is_directory);
-    // A live image keeps the whole generation, as `binary_guard` does.
+    // Only a probe: an image in use right now keeps the whole generation. The
+    // handles are not held; what protects each file later is the exclusive
+    // open of `retire_member`.
     for (file, _) in files().filter(|(file, _)| {
         file.extension()
             .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
@@ -1103,7 +1114,7 @@ pub fn uninstall(
         }
         remove_empty_parents(&directory, &members.iter().collect::<Vec<_>>())?;
     }
-    retire_orphans(&root, &state, &mut *control.warning);
+    retire_orphans(&root, &state, &mut logged(&root, control.warning));
     disk::remove_file(&state_path)?;
     for name in [
         "boot-pending.json",

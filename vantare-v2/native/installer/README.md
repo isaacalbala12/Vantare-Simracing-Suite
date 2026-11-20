@@ -349,17 +349,45 @@ Qué hace ahora el motor, en `operations::confirm` y en `operations::uninstall`:
 - **Fallos.** Nada de esto puede hacer fallar la confirmación ni la
   desinstalación: lo que no se puede retirar se queda y se anota.
 
-Al confirmar, las notas salen por la salida de errores del lanzador; al
-desinstalar, van al registro del desinstalador. Las generaciones sin referencia
-que ya existan en una instalación anterior se retiran igual en su siguiente
-confirmación.
+Las generaciones sin referencia que ya existan en una instalación anterior se
+retiran igual en su siguiente confirmación.
+
+### Registro de la instalación (#2752)
+
+Las notas del motor («se conserva X; motivo: Y» y lo retirado) se escriben en
+`installer-log.txt`, en la raíz de la instalación. Antes, al confirmar un
+arranque solo salían por la salida de errores del lanzador, que no tiene
+consola: en uso real no quedaban en ningún sitio. Al desinstalar siguen yendo
+además al registro del desinstalador.
+
+- **Formato.** Texto UTF-8, una nota por línea, con fecha y hora UTC delante.
+  Las rutas se escriben relativas a la instalación (`<raíz>\…`): no aparece
+  nada del equipo fuera de ella. No es un formato que lea ningún programa.
+- **Tope.** Cada fichero llega a 64 KiB como mucho (más una nota); al llenarse
+  pasa a `installer-log.old.txt`, que sustituye al anterior. Nunca hay más de
+  dos. Una nota no ocupa más de 1 024 caracteres.
+- **Nunca hace fallar nada.** Si el registro no se puede escribir (ocupado, sin
+  permiso, es una carpeta o un enlace) la nota se pierde y la operación sigue.
+  Un enlace en su lugar no se sigue.
+- **Si no hay nada que anotar, no se crea.** No lo borra la desinstalación: se
+  queda junto a los datos del usuario y una reinstalación lo conserva.
+- `installer-notices.txt` no sirve para esto: son las licencias de las fuentes
+  y cada Setup lo sobrescribe.
 
 Qué sigue sin hacerse:
 
 - La carpeta `data/` de esas generaciones sigue en disco (segundo PR de #2740).
 - Los binarios de la generación anterior no se tocan.
-- Tras desinstalar y volver a instalar no hay confirmación de arranque: lo que
-  quede se retira en la primera actualización confirmada.
+- Tras desinstalar, lo que no se pudo retirar se queda (por ejemplo, un `.exe`
+  de una generación sin referencia que otro programa tenía abierto): con
+  `state.json` borrado ya no hay otro barrido. Solo se retira si se vuelve a
+  instalar y después se confirma una actualización; reinstalar, por sí solo,
+  no confirma ningún arranque.
+- La propiedad se prueba por contenido, y eso tiene un límite: una carpeta
+  ajena con nombre de 32 caracteres hexadecimales que contenga un manifiesto
+  copiado de este producto y archivos idénticos a los que declara pierde esos
+  archivos. Es inocuo: son binarios reproducibles desde el paquete, y su
+  `data/` y cualquier archivo distinto o no enumerado se conservan.
 
 Tests en el último bloque de `tests/installation_write.rs`: A → B → C, Reparar
 (sana y dañada), vuelta atrás, carpetas ajenas, manifiesto roto o de otro canal,

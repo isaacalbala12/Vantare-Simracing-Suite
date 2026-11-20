@@ -2653,3 +2653,120 @@ fn uninstall_retires_orphan_binaries_and_never_touches_a_data_folder() {
     ));
     assert!(noted(&notes, &a, "retirados"));
 }
+
+// Installation log (#2752, point 1). The launcher has no console, so the notes
+// of the engine are also written inside the installation: capped, with paths
+// relative to the root, and never able to fail Confirm or Uninstall.
+const LOG: &str = "installer-log.txt";
+const OLD_LOG: &str = "installer-log.old.txt";
+/// The notes of the log, once each line proves its `YYYY-MM-DD hh:mm:ssZ` stamp.
+fn logged(root: &Path) -> Vec<String> {
+    let text = fs::read_to_string(root.join(LOG)).expect("installation log");
+    let note = |line: &str| {
+        let (stamp, note) = line.split_at(21);
+        let shape = stamp.replace(|digit: char| digit.is_ascii_digit(), "0");
+        assert_eq!(shape, "0000-00-00 00:00:00Z ", "{line}");
+        note.to_owned()
+    };
+    text.lines().map(note).collect()
+}
+
+#[test]
+fn confirm_and_uninstall_write_their_notes_to_the_installation_log() {
+    let fixture = Fixture::new();
+    let [a, _] = fixture.two_generations();
+    assert!(!fixture.root.join(LOG).exists(), "nothing to say, no log");
+    fixture.upgrade("1.0.2", Mode::Auto);
+    fs::write(a.join("hub-ui/debug.log"), b"unlisted").unwrap();
+    // The entry point of the launcher: nobody receives the notes.
+    operations::confirm(&fixture.root).expect("confirmed boot");
+    let notes = logged(&fixture.root);
+    assert_eq!(notes.len(), 2, "{notes:?}");
+    assert!(notes[0].contains("debug.log") && notes[0].contains("no figura en el manifiesto"));
+    assert!(notes[1].contains("retirados"));
+    // Nothing of the machine outside the installation reaches the log.
+    let outside = disk::path(&fixture.path).unwrap().display().to_string();
+    for note in &notes {
+        assert!(
+            note.contains("<raíz>") && !note.contains(&outside),
+            "{note}"
+        );
+    }
+    // Uninstall keeps writing to the same log, which stays with the user data.
+    let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+    operations::uninstall(&fixture.root, &mut sink.control(&cancel), |_| Ok(())).unwrap();
+    let notes = logged(&fixture.root);
+    assert_eq!(notes.len(), 3, "{notes:?}");
+    assert!(notes[2].contains("debug.log"));
+    assert!(!fixture.root.join("state.json").exists());
+    fixture
+        .install(&fixture.electron("1.0.2"), Mode::Auto, false, false)
+        .expect("a new installation accepts the log it finds");
+    assert_eq!(logged(&fixture.root).len(), 3);
+}
+
+#[test]
+fn a_log_that_cannot_be_written_never_fails_confirm_or_uninstall() {
+    let fixture = Fixture::new();
+    let [a, b] = fixture.two_generations();
+    fixture.upgrade("1.0.2", Mode::Auto);
+    let log = fixture.root.join(LOG);
+    fs::create_dir(&log).unwrap();
+    let notes = fixture.confirm();
+    assert!(noted(&notes, &a, "retirados"), "{notes:?}");
+    assert_eq!(names(&a), ["data"]);
+    fixture.upgrade("1.0.3", Mode::Auto);
+    let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+    operations::uninstall(&fixture.root, &mut sink.control(&cancel), |_| Ok(())).unwrap();
+    assert_eq!(names(&b), ["data"]);
+    assert!(log.is_dir() && children(&log) == 0);
+}
+
+#[test]
+fn the_installation_log_is_capped_at_two_files_and_keeps_one_note_per_line() {
+    let fixture = Fixture::new();
+    let root = disk::path(&fixture.root).unwrap();
+    fs::create_dir_all(&root).unwrap();
+    let (log, old) = (root.join(LOG), root.join(OLD_LOG));
+    disk::log(
+        &root,
+        &format!("uno\r\ndos\ttres {}", root.join("a b").display()),
+    );
+    assert_eq!(logged(&root), [r"uno  dos tres <raíz>\a b"]);
+    // A full log becomes the old one, replacing the previous old one.
+    let limit = usize::try_from(disk::LOG_LIMIT).unwrap();
+    for fill in *b"xy" {
+        fs::write(&log, vec![fill; limit]).unwrap();
+        disk::log(&root, "nota nueva");
+        assert_eq!(fs::read(&old).unwrap(), vec![fill; limit]);
+        assert_eq!(logged(&root), ["nota nueva"]);
+    }
+    // A note is never longer than a line that fits many times in the log.
+    disk::log(&root, &"ñ".repeat(limit));
+    let notes = logged(&root);
+    assert!(notes[1].len() < limit / 16 && notes[1].starts_with('ñ'));
+    // Whatever blocks the log or its rotation is left alone: nothing is written.
+    let held = fs::OpenOptions::new()
+        .read(true)
+        .share_mode(0)
+        .open(&log)
+        .unwrap();
+    disk::log(&root, "ocupado");
+    drop(held);
+    assert_eq!(logged(&root).len(), 2);
+    fs::remove_file(&old).unwrap();
+    fs::create_dir(&old).unwrap();
+    fs::write(old.join("ajeno"), b"foreign").unwrap();
+    fs::write(&log, vec![b'z'; limit]).unwrap();
+    disk::log(&root, "sin rotar no se crece");
+    assert_eq!(fs::read(&log).unwrap(), vec![b'z'; limit]);
+    assert_eq!(fs::read(old.join("ajeno")).unwrap(), b"foreign");
+    // Nor is a link in its place ever followed.
+    fs::remove_file(&log).unwrap();
+    let target = fixture.path.join("outside.txt");
+    fs::write(&target, b"outside").unwrap();
+    std::os::windows::fs::symlink_file(&target, &log).unwrap();
+    disk::log(&root, "enlace");
+    assert_eq!(fs::read(&target).unwrap(), b"outside");
+    fs::remove_file(&log).unwrap();
+}

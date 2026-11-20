@@ -1161,7 +1161,19 @@ async function proposalStates(
   await openAcceptedPlan(page, base, "plannedFuji", "Plan calculado", zoomed);
   assert.equal(await stateTag(page), "Propuesta");
   assert.equal(await page.getByText(proposalLine, { exact: true }).count(), 1);
-  assert.equal(await page.getByText(/Ingeniero/).count(), 0);
+  assert.equal(
+    // the menu names it; nothing else on the page may promise the Engineer
+    await page.evaluate(
+      () =>
+        Array.from(document.body.querySelectorAll("*")).filter(
+          (node) =>
+            !node.closest(".v-sidebar") &&
+            node.children.length === 0 &&
+            /Ingeniero/.test(node.textContent ?? ""),
+        ).length,
+    ),
+    0,
+  );
   await shot("a-propuesta");
   await press(button(page, "Aceptar propuesta"));
   await visible(page.getByRole("heading", { name: "Plan aceptado" }));

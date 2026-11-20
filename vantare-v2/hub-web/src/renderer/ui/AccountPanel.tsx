@@ -45,11 +45,14 @@ export function AccountPanel({
   newsError,
   newsLoading = false,
   onNewsReload,
+  strategyOpen = false,
 }: {
   news?: readonly ReleaseNote[];
   newsError?: string;
   newsLoading?: boolean;
   onNewsReload?: () => void;
+  // «Estrategia» is open in this Hub (beta on nightly): the host still says «soon»
+  strategyOpen?: boolean;
 } & AccountPanelProps) {
   const actionDescription = useId();
   const purchaseDescription = useId();
@@ -255,7 +258,7 @@ export function AccountPanel({
           <Icon name="v-studio" />
           <TrackedCaps>{text.modules}</TrackedCaps>
         </h2>
-        <p>{text.modulesHelp}</p>
+        <p>{strategyOpen ? text.modulesHelpTesting : text.modulesHelp}</p>
         <div>
           {value.modules.map((module) => {
             const copy = accountModules[module.id];
@@ -274,7 +277,9 @@ export function AccountPanel({
                   {module.status === "included"
                     ? text.included
                     : module.status === "soon"
-                      ? text.soon
+                      ? module.id === "strategy" && strategyOpen
+                        ? text.inTesting
+                        : text.soon
                       : text.unverified}
                 </span>
               </div>

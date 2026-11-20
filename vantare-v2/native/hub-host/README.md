@@ -764,18 +764,23 @@ El argumento se valida al arrancar y, si no cumple, el anfitrión no arranca
 (igual que con un argumento desconocido o una ruta relativa):
 
 - ruta absoluta de un disco local (`C:\…`): se rechazan las rutas de red
-  (`\servidor\…`), las de dispositivo (`\?\…`, `\.\…`), las relativas y las
+  (`\\servidor\…`), las de dispositivo (`\\?\…`, `\\.\…`), las relativas y las
   que contienen `..`;
 - estrictamente dentro de la raíz de instalación. La raíz no viene de ningún
   argumento ni variable: se deduce del propio ejecutable
   (`<raíz>/generations/<id>/bin/vantare-hub.exe`). Las dos rutas se comparan
   como las nombra el disco, así que valen las mayúsculas distintas y los
   nombres cortos de Windows;
-- sin enlaces: ninguna carpeta entre la raíz y la de grabaciones puede ser un
-  enlace o punto de reanálisis. Una carpeta que aún no existe se acepta;
+- una carpeta que aún no existe se acepta;
 - un anfitrión que no está instalado (ejecutado desde `target/`) rechaza el
   argumento: fuera de una instalación no hay carpeta única.
 
-Si la carpeta no existe, el catálogo sale vacío; no es un error. Al leer se
-vuelve a comprobar que ni la carpeta ni su carpeta madre son enlaces. La
-interfaz sigue sin ver rutas y el protocolo no cambia.
+Los enlaces no se miran al arrancar, a propósito: si la carpeta o su carpeta
+madre son un enlace o punto de reanálisis, el anfitrión arranca y es Análisis
+quien la rechaza cada vez que lee («Directorio no regular»). Un enlace en la
+carpeta de grabaciones no debe dejar al usuario sin Hub. Esto arregla solo el
+anfitrión: hoy el lanzador de la raíz sigue negándose a arrancar si hay un
+enlace en cualquier punto de la instalación (#2759, punto 10; va aparte).
+
+Si la carpeta no existe, el catálogo sale vacío; no es un error. La interfaz
+sigue sin ver rutas y el protocolo no cambia.

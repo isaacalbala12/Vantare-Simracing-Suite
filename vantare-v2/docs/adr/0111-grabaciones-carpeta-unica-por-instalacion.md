@@ -533,7 +533,7 @@ se recomiendan.** El texto se conserva como se presentó.
 ## Enmiendas de implementación (T1 y T2, 20-11-2026)
 
 Lo aprendido al implementar y revisar T1 (#2755) y T2 (#2758). No cambia la
-decisión; precisa cuatro puntos del texto de arriba.
+decisión; precisa cinco puntos del texto de arriba.
 
 1. **§4, «y su `.wal` si existe»: la pareja no se adopta.** Una grabación con
    un `.wal` o un temporal al lado se queda entera donde está y se anota.
@@ -562,6 +562,13 @@ decisión; precisa cuatro puntos del texto de arriba.
    renueva el registro de Windows justo después de arrancar la sesión. La
    sesión espera su turno dos segundos como máximo; si no lo consigue,
    arranca igual y lo reintenta en el siguiente arranque.
+
+5. **§5, regla de publicación.** Desde la primera versión con la carpeta
+   única, ninguna versión que no la conozca debe publicarse con un número
+   mayor en el mismo canal: dejaría de mostrar todo lo adoptado, sin borrarlo.
+   Además, un núcleo antiguo sí borra **por cupo** al podar la carpeta que
+   recibe, también archivos de formato más nuevo: «incompatible» protege de
+   abrirlos y modificarlos, no de la poda.
 
 ## Cómo se revisa esta decisión
 

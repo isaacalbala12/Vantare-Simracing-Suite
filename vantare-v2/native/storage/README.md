@@ -163,7 +163,9 @@ Consecuencias para el formato:
 - **Las grabaciones son datos que solo se añaden.** Como la carpeta ya no
   cambia con cada versión, un programa antiguo (tras una vuelta atrás) puede
   encontrarse archivos de un formato más nuevo. Los marca como `incompatible`
-  y no los abre, no los modifica y no los borra.
+  y no los abre ni los modifica. Sí puede borrarlos **por cupo**: la poda del
+  núcleo no mira el contenido, y un núcleo antiguo retira las más viejas al
+  superar 200 grabaciones o 5 GiB, sean del formato que sean.
 - Un cambio de formato tiene que poder leerse con el helper nuevo sin
   reescribir los archivos viejos, como ya ocurre con v1 y v2.
 - Una grabación con su `.wal` al lado no se mueve entre carpetas: la pareja se

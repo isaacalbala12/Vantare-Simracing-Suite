@@ -464,13 +464,22 @@ Garantías:
 - Trabaja bajo `.operation.lock`: dos adopciones a la vez no trabajan sobre la
   misma instalación. Si otra operación tiene el candado, falla con el código 2
   («ocupado») sin tocar nada, para que quien la llama pueda distinguirlo de un
-  rechazo. No cierra ni mata ningún proceso.
+  rechazo. Solo cuenta como ocupado que otro programa lo tenga abierto; no
+  poder abrirlo por otro motivo (permisos) es un error normal. No cierra ni
+  mata ningún proceso.
 
 ### Al arrancar la sesión (T2)
 
 `installed::adopt_recordings`, en `runtime/src/bin/vantare/installed.rs`, la
 ejecuta con el bloqueo de sesión cogido y antes de lanzar el núcleo y el Hub:
-en ese momento nadie más puede estar usando las grabaciones.
+en ese momento ningún programa de Vantare las usa. Un antivirus o el indexador
+de Windows sí pueden tener una abierta; lo que protege cada grabación es la
+apertura en exclusiva, no este orden.
+
+- **Si no hay nada que traer, no cuesta nada.** Antes de pedir el candado mira
+  la carpeta de grabaciones de su generación: si no existe o solo tiene
+  `recording-status.json`, termina sin pedir el candado ni recorrer la
+  instalación. Es el caso de todos los arranques tras la primera migración.
 
 - **Solo mueve.** No calcula huellas ni borra nada; un nombre que ya existe en
   la carpeta única se queda en la generación hasta T3.

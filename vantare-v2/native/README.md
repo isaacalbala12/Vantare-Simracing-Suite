@@ -77,6 +77,11 @@ quien primero escribe en ella: esa adopción o el núcleo al empezar a grabar.
 Graba y poda solo el núcleo; lee solo el anfitrión. Actualizar, Reparar, volver
 atrás y desinstalar no la tocan: al desinstalar, las grabaciones se conservan.
 
+Regla de publicación: desde la primera versión con esta carpeta, ninguna
+versión que no la conozca debe publicarse con un número mayor en el mismo
+canal. Buscaría las grabaciones dentro de su generación y dejaría de mostrar
+todo lo adoptado (sin borrarlo).
+
 Copia de seguridad: con Vantare cerrado, copiar esa carpeta es una copia
 completa; cada `.duckdb` es una grabación independiente.
 

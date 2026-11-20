@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "playwright-core";
 import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
 import { analysisText as t } from "../src/renderer/i18n/analysis.es.ts";
+import { comparisonText as c } from "../src/renderer/i18n/comparison.es.ts";
 
 type Scene = "con" | "mezcla" | "v1";
 export type Case = {
@@ -40,14 +41,25 @@ export async function checkVueltas(page: Page, test: Case) {
   const headings = await table.locator("thead th:visible").allTextContents();
   const sectors = test.scene !== "v1";
   const wide = test.rail === "collapsed";
-  assert.deepEqual(headings.slice(0, 2), [t.lap, t.time]);
-  assert.equal(headings.includes("S1"), sectors, "S1–S3 solo con sectores");
-  assert.equal(
-    headings.length,
-    sectors ? (wide ? 12 : 8) : 9,
-    `columnas visibles ${headings.join("|")}`,
+  // Reparto exacto: con sectores se ocultan Vel. máx., Vel. media, Acelerador y
+  // Freno (salvo con la barra recogida); sin sectores, las 9 de siempre.
+  const speeds = [t.speedMax, t.speedMean, t.throttleColumn, t.brakeColumn];
+  assert.deepEqual(
+    headings,
+    sectors
+      ? [
+          t.lap,
+          t.time,
+          "S1",
+          "S2",
+          "S3",
+          t.delta,
+          ...(wide ? speeds : []),
+          t.data,
+          c.choices,
+        ]
+      : [t.lap, t.time, t.delta, ...speeds, t.data, c.choices],
   );
-  if (sectors) assert.deepEqual(headings.slice(2, 5), ["S1", "S2", "S3"]);
   if (test.scene === "mezcla")
     assert.deepEqual(
       await table
@@ -64,10 +76,19 @@ export async function checkVueltas(page: Page, test: Case) {
     true,
     "la tabla cabe en su contenedor",
   );
-  assert.equal(
-    await table.locator(".v-an-sector-best").count(),
-    sectors ? 3 : 0,
-  );
+  const boxes = table.locator(".v-an-sector-best");
+  assert.equal(await boxes.count(), sectors ? 3 : 0);
+  // El recuadro es una forma, no solo color: su borde computado es visible.
+  if (sectors)
+    assert.deepEqual(
+      await boxes
+        .first()
+        .evaluate((el) => [
+          getComputedStyle(el).borderTopStyle,
+          getComputedStyle(el).borderTopWidth,
+        ]),
+      ["solid", "1px"],
+    );
   if (test.scene === "con") {
     for (const n of [1, 2, 3])
       assert.equal(await table.getByText(t.bestSectorHidden(n)).count(), 1);

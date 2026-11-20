@@ -18,6 +18,7 @@ export function BestSector({
   );
 }
 type SectorProps = { n: number; perSession: boolean };
+const sectorNumber = [1, 2, 3] as const;
 
 /** Celdas S1–S3 de una vuelta: tiempos, o «—» (con «sin dato» para lectores) si no hay sectores. */
 export function SectorCells({
@@ -38,7 +39,11 @@ export function SectorCells({
           <span className="v-sr-only">{t.noData}</span>
         </>
       ) : isBest(lap, i) ? (
-        <BestSector ms={sectors[i]} n={i + 1} perSession={perSession} />
+        <BestSector
+          ms={sectors[i]}
+          n={sectorNumber[i]}
+          perSession={perSession}
+        />
       ) : (
         sectorTime(sectors[i])
       )}

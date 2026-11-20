@@ -115,7 +115,10 @@ export async function checkAnalysisSessions(
               .locator(".v-an-stats")
               .getByText("1:51.625", { exact: true })
               .waitFor();
+            // Con sectores y la barra abierta se enseña la fila de sesión estrecha:
+            // se busca la visible, no la primera del DOM.
             await table
+              .locator('th[scope="rowgroup"]:visible')
               .getByText("Warm-up", { exact: false })
               .first()
               .waitFor();

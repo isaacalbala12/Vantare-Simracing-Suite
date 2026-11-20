@@ -9,15 +9,21 @@ export type SectorIndex = 0 | 1 | 2;
 
 /**
  * Sectores de una vuelta tal como los manda el host. La regla de validez
- * (exactamente 3, todos > 0, suma = tiempo oficial) vive solo en el host
- * (`valid_sectors`): aquí no se suma ni se valida nada; solo se estrecha el
- * tipo y se exige que la vuelta enseñe tiempo oficial, para que una vuelta sin
- * él en pantalla nunca enseñe sectores.
+ * (exactamente 3, todos > 0, suma = tiempo oficial) vive en el host
+ * (`valid_sectors`) y el renderer no suma ni compara tiempos de vuelta. Aquí
+ * solo se estrecha el TIPO: si el host rompiera su garantía (≠ 3 valores, algo
+ * no finito o ≤ 0), la vuelta cuenta como «sin sectores» en vez de pintar
+ * basura. Además se exige tiempo oficial a la vista, para que una vuelta que
+ * enseña «—» o «≈» nunca enseñe sectores.
  */
 export function lapSectors(lap: AnalysisLap | undefined): Sectors | null {
   const sectors = lap?.sectorsMs;
-  return sectors && lapTime(lap).official
-    ? [sectors[0], sectors[1], sectors[2]]
+  if (!sectors || !lapTime(lap).official) return null;
+  const [first, second, third, ...extra] = sectors;
+  const triple = [first, second, third];
+  return extra.length === 0 &&
+    triple.every((ms) => Number.isFinite(ms) && ms > 0)
+    ? [first, second, third]
     : null;
 }
 
@@ -32,7 +38,11 @@ export function sectorBests(
   laps: readonly AnalysisLap[],
   sessions: readonly AnalysisSessionSummary[],
 ) {
-  const perSession = new Set(sessions.map((s) => s.trackName)).size > 1;
+  // Una sesión sin nombre de circuito no cuenta como «otro circuito».
+  const circuits = new Set(
+    sessions.flatMap((s) => (s.trackName ? [s.trackName] : [])),
+  );
+  const perSession = circuits.size > 1;
   const scope = (lap: AnalysisLap) => (perSession ? (lap.session ?? -1) : 0);
   const bests = new Map<number, number[]>();
   for (const lap of laps) {

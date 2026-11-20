@@ -3290,3 +3290,90 @@ fn an_adoption_cut_short_loses_nothing_and_the_next_one_finishes() {
         assert!(names(&source).is_empty(), "{fault} at {point}");
     }
 }
+
+// The gap between checking a recording and moving it (P1-1 of the data review
+// of T1, #2746). DuckDB opens its files letting others rename or delete them.
+fn written(path: &Path) -> std::io::Result<fs::File> {
+    let mut options = fs::OpenOptions::new();
+    options.read(true).write(true).share_mode(7).open(path)
+}
+
+#[test]
+fn a_writer_cannot_slip_in_between_the_check_and_the_move() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let name = "series-1-1.duckdb";
+    record(&source, &[(name, b"recording")]);
+    // The writer arrives once the adoption has checked that nobody has it open.
+    let mut writer = None;
+    let (result, notes) = fixture.adopt_until(&active, Duplicates::RemoveIdentical, &mut |_| {
+        let opening = written(&source.join(name));
+        if opening.is_ok() {
+            record(&source, &[("series-1-1.duckdb.wal", b"pending")]);
+        }
+        writer = Some(opening);
+        Ok(())
+    });
+    let refused = writer.expect("reached the move").err();
+    let sharing_violation = refused.and_then(|error| error.raw_os_error());
+    assert_eq!(
+        sharing_violation,
+        Some(32),
+        "held from the check to the move"
+    );
+    assert_eq!(result.expect("adoption"), adopted(1, 0, 0));
+    assert!(names(&source).is_empty() && names(&single) == [name]);
+    assert!(notes.len() == 1, "{notes:?}");
+}
+
+#[test]
+fn what_appears_after_the_list_was_taken_keeps_the_recording_in_place() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let files = [1, 2, 3, 4, 5].map(|number| format!("series-{number}-{number}.duckdb"));
+    for name in &files {
+        record(&source, &[(name, name.as_bytes())]);
+    }
+    let before = index(&source);
+    // While the first one is held: a `.wal` beside it, a writer on the second,
+    // a `.wal` beside the third, one in the single folder with the name of the
+    // fourth, and a recording with the name of the fifth already there.
+    let mut writer = None;
+    let mut appear = |_: &str| {
+        if writer.is_none() {
+            writer = Some(written(&source.join(&files[1])).expect("writer"));
+            for name in [&files[0], &files[2]] {
+                record(&source, &[(&format!("{name}.wal"), b"pending")]);
+            }
+            record(&single, &[(&format!("{}.wal", files[3]), b"foreign")]);
+            record(&single, &[(&files[4], b"another recording")]);
+        }
+        Ok(())
+    };
+    let (result, notes) = fixture.adopt_until(&active, Duplicates::RemoveIdentical, &mut appear);
+    assert_eq!(result.expect("adoption"), adopted(0, 0, 5));
+    for (name, recording) in &before {
+        assert_eq!(index(&source).get(name), Some(recording), "{name:?}");
+    }
+    assert_eq!(
+        fs::read(single.join(&files[4])).unwrap(),
+        b"another recording"
+    );
+    assert_eq!(children(&single), 2, "nothing arrived");
+    let reasons = ["en curso", "en uso", "en curso", "carpeta única", "mover"];
+    for (name, reason) in files.iter().zip(reasons) {
+        assert!(
+            keeps(&notes, &source.join(name), reason),
+            "{name}: {notes:?}"
+        );
+    }
+    // Once the writer and the leftovers are gone, the next adoption brings them.
+    drop(writer);
+    for name in [&files[0], &files[2]] {
+        fs::remove_file(source.join(format!("{name}.wal"))).unwrap();
+    }
+    fs::remove_file(single.join(format!("{}.wal", files[3]))).unwrap();
+    let (adoption, _) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(4, 0, 1));
+    assert_eq!(names(&source), [files[4].as_str()], "a different one stays");
+}

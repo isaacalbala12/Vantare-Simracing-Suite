@@ -1243,8 +1243,15 @@ fn adopt(
             .iter()
             .any(|(other, _)| other.eq_ignore_ascii_case(name))
         {
-            checkpoint("adopt-move")?;
-            move_recording(&path, &single, &target).map(|()| adoption.moved += 1)
+            // Readable, and nobody else has it open right now.
+            match disk::open_recording(&path, true) {
+                Err(error) => Err(unavailable("la grabación")(error)),
+                Ok(file) => {
+                    drop(file);
+                    checkpoint("adopt-move")?;
+                    move_recording(&path, &single, &target).map(|()| adoption.moved += 1)
+                }
+            }
         } else if duplicates == Duplicates::Keep {
             Err("ya existe en la carpeta única y este paso no compara".to_owned())
         } else {
@@ -1288,8 +1295,6 @@ fn unavailable(whose: &'static str) -> impl Fn(io::Error) -> String {
 /// One rename inside the volume: the recording is whole in the source or whole
 /// in the single folder, never a copy and never over another file.
 fn move_recording(path: &Path, single: &Path, target: &Path) -> std::result::Result<(), String> {
-    // Readable, and nobody else has it open right now.
-    drop(disk::open_recording(path, true).map_err(unavailable("la grabación"))?);
     fs::create_dir_all(single)
         .map_err(WriteError::from)
         .and_then(|()| windows::move_new(path, target))

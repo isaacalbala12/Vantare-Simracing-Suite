@@ -254,3 +254,78 @@ it("the mock recalculates with tyres that last: the plan keeps them and says so"
   const accepted = act("strategy.accept", again.computeId);
   expect(first(accepted.accepted).pinned.changeTyres).toBe(true);
 });
+
+// QA: the Fuji scene whose tyres last 90 laps, so a stop can keep them. What
+// keeping them saves is the figure of the solver for that race (see the mock).
+it("the mock prices the tyres of the long-life Fuji scene with the figures of the solver", () => {
+  const { value, fix, recalculate } = open("strategy-plannedFujiLongLife");
+  const base = value.plan;
+  const stop = (plan: Json, index: number) => plan.edit.stops[index];
+  const last = (plan: Json) => plan.result.timeline.pits[4];
+  const total = base.result.metrics.totalSeconds;
+  expect(value.form.inputs.tyreLifeLaps).toBe("90");
+  expect(base.edit.stops.map((each: Json) => each.tyres.lifeLaps)).toEqual(
+    Array(5).fill(90),
+  );
+  // a stop that takes longer to recharge than to change tyres saves nothing
+  const second = fix(base.computeId, 1, false);
+  expect(stop(second, 1).tyres.issue).toBeNull();
+  expect(stop(second, 1).pitSeconds).toBe(stop(base, 1).pitSeconds);
+  fix(base.computeId, 1, null);
+  // nor does «change them» fixed by hand, in any stop
+  expect(stop(fix(base.computeId, 4, true), 4).pitSeconds).toBe(
+    stop(base, 4).pitSeconds,
+  );
+  // the last one loads less: kept, 6,8 s less in the pits, at once
+  const kept = fix(base.computeId, 4, false);
+  expect(stop(kept, 4).tyres).toEqual({
+    lifeLaps: 90,
+    arrivalLaps: 42,
+    keptLaps: 66,
+    issue: null,
+  });
+  const shorter = stop(base, 4).pitSeconds - 6.8;
+  expect(stop(kept, 4).pitSeconds).toBeCloseTo(shorter, 9);
+  // recalculated, the plan is that much faster than the automatic one
+  const done = recalculate(base.computeId);
+  expect(last(done)).toMatchObject({
+    changeTyres: false,
+    pinned: { changeTyres: true },
+  });
+  expect(last(done).pitSeconds).toBeCloseTo(shorter, 9);
+  expect(done.result.metrics.totalSeconds).toBeCloseTo(total - 6.8, 9);
+  expect(done.edit.automatic.totalSeconds).toBe(total);
+  // left to the calculation again, the time of the tyres comes back
+  fix(done.computeId, 4, null);
+  const back = recalculate(done.computeId);
+  expect(last(back).pitSeconds).toBeCloseTo(stop(base, 4).pitSeconds, 9);
+  expect(back.result.metrics.totalSeconds).toBeCloseTo(total, 9);
+  // two stops in a row that keep them: 43 + 42 + 24 laps, more than 90
+  fix(back.computeId, 3, false);
+  expect(stop(fix(back.computeId, 4, false), 4).tyres).toEqual({
+    lifeLaps: 90,
+    arrivalLaps: 85,
+    keptLaps: 109,
+    issue: "beyondLife",
+  });
+  expect(recalculate(back.computeId).edit.cause).toEqual({
+    kind: "fixedAmountUnreachable",
+    stop: 4,
+  });
+});
+
+it("the mock counts the laps of the tyres again when a stop moves", () => {
+  const { value, act, fix } = open("strategy-plannedFujiLongLife");
+  const id = value.plan.computeId;
+  const move = (lap: number) =>
+    act("strategy.moveBoundary", id, { index: 4, lap }).edit.stops;
+  expect(fix(id, 3, false).edit.stops[3].tyres).toMatchObject({
+    keptLaps: 85,
+    issue: null,
+  });
+  // the next stop six laps later: 43 + 48 laps on the same tyres, one too many
+  const moved = move(218);
+  expect(moved[3].tyres).toMatchObject({ keptLaps: 91, issue: "beyondLife" });
+  expect(moved[4].tyres).toMatchObject({ arrivalLaps: 91, keptLaps: 109 });
+  expect(move(212)[3].tyres.issue).toBeNull();
+});

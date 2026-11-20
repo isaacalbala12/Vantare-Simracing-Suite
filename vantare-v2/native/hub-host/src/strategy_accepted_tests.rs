@@ -1538,3 +1538,54 @@ fn the_request_that_fixes_a_stop_states_its_tyres_as_true_false_or_null() {
     });
     assert!(serde_json::from_value::<Request>(clear).is_err());
 }
+
+// The accepted plan is replayed with its tyres kept: with a shorter life they no
+// longer last (the ninth lap of the race is the first they cannot do), and with
+// wear they still reach the finish.
+#[test]
+fn an_accepted_plan_that_keeps_tyres_is_replayed_with_them_when_the_data_change() {
+    let root = Root::new();
+    let (mut state, _) = planned(&root);
+    roomy(&mut state);
+    keep_first_tyres(&mut state);
+    recalculated(&mut state);
+    accept(&mut state).unwrap();
+    let cases = [
+        (
+            form(|form| {
+                form.inputs.race_laps = "20".into();
+                form.inputs.tyre_life_laps = "8".into();
+            }),
+            StrategyAcceptedState::StaleUnreachable,
+            Some((StrategyUnreachableCause::ResourceExhausted, Some(9))),
+        ),
+        (
+            form(|form| {
+                form.inputs.race_laps = "20".into();
+                form.inputs.degradation_seconds = "0.5".into();
+            }),
+            StrategyAcceptedState::Stale,
+            None,
+        ),
+    ];
+    for (changed, expected, unreachable) in cases {
+        let view = state.view();
+        let view = state
+            .confirm(
+                view.active_event_id.as_deref().unwrap(),
+                view.active_strategy_id.as_deref().unwrap(),
+                &view.revision,
+                &changed.fields,
+                Some(&changed.inputs),
+            )
+            .unwrap();
+        let plan = accepted(&view);
+        assert_eq!(plan.state, expected);
+        assert_eq!(
+            plan.unreachable
+                .map(|unreachable| (unreachable.cause, unreachable.fail_lap)),
+            unreachable
+        );
+    }
+}
+

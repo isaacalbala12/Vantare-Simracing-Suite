@@ -582,20 +582,36 @@ interface Editing {
   tyreLife: number | null;
 }
 
-// The seconds a fixed amount adds to its stop and to the plan (a QA figure,
-// not the pit model): two per amount that is not the one the plan loads.
+// QA: the seconds each stop of the Fuji case saves when it keeps its tyres.
+// These numbers ARE the solver's (the recalculation of the crate for the Fuji
+// race of `fujiLimits` with tyres that last 90 laps and take 30 s to change,
+// everything at once): the first four stops take longer to recharge (about
+// 39 s) than to change tyres, so keeping them saves nothing; the last one
+// loads 58 % (23,2 s) and saves the rest, 55,0 − 48,2 s. With no loss per lap
+// of age the plan is faster by the same 6,8 s (21 662,9 → 21 656,1 s).
+const fujiKeptSeconds = [0, 0, 0, 0, 6.8];
+
+// The seconds what is fixed adds to its stop and to the plan (QA figures, not
+// the pit model): two per amount that is not the one the plan loads, less
+// `kept` when the stop keeps its tyres.
 function fixedSeconds(
   fixed: StrategyStopFixed | undefined,
   pit: { fuelLiters: number; vePercent: number },
+  kept: number,
 ): number {
   const differs = (value: number | null | undefined, planned: number) =>
     value !== null && value !== undefined && value !== planned;
   return (
     2 *
-    (Number(differs(fixed?.fuelLiters, pit.fuelLiters)) +
-      Number(differs(fixed?.vePercent, pit.vePercent)))
+      (Number(differs(fixed?.fuelLiters, pit.fuelLiters)) +
+        Number(differs(fixed?.vePercent, pit.vePercent))) -
+    (fixed?.changeTyres === false ? kept : 0)
   );
 }
+
+// What keeping the tyres saves in a stop: only the Fuji case has the figure.
+const keptSeconds = (editing: Editing, index: number) =>
+  editing.fuji ? (fujiKeptSeconds[index] ?? 0) : 0;
 
 function somethingFixed(fixed: StrategyStopFixed[]): boolean {
   return fixed.some(
@@ -687,8 +703,16 @@ function editView(editing: Editing) {
       fixed: { ...editing.fixed[index] },
       pitSeconds:
         pits[index].pitSeconds -
-        fixedSeconds(editing.baseFixed[index], pits[index]) +
-        fixedSeconds(editing.fixed[index], pits[index]),
+        fixedSeconds(
+          editing.baseFixed[index],
+          pits[index],
+          keptSeconds(editing, index),
+        ) +
+        fixedSeconds(
+          editing.fixed[index],
+          pits[index],
+          keptSeconds(editing, index),
+        ),
       limits: limits[index],
       tyres: tyres[index],
     })),
@@ -738,7 +762,8 @@ function blamedStop(editing: Editing): number | undefined {
 // stop moved. The loads of each stop are not recalculated here (hand-made QA data).
 // A fixed amount is carried as it is, marked as fixed by hand, and each one
 // that is not what the plan loaded adds two seconds to its stop and to the plan.
-// Tyres fixed by hand are carried and marked too; the mock does not price them.
+// Tyres fixed by hand are carried and marked too, and a stop that keeps them
+// is shorter by what the solver says it saves (`fujiKeptSeconds`).
 function recalculated(
   editing: Editing,
   computeId: number,
@@ -757,8 +782,12 @@ function recalculated(
       pit.pitSeconds = edit.stops[index].pitSeconds;
       if (plan.result?.metrics)
         plan.result.metrics.totalSeconds +=
-          fixedSeconds(fixed, pit) -
-          fixedSeconds(editing.baseFixed[index], pit);
+          fixedSeconds(fixed, pit, keptSeconds(editing, index)) -
+          fixedSeconds(
+            editing.baseFixed[index],
+            pit,
+            keptSeconds(editing, index),
+          );
       pit.fuelLiters = fixed.fuelLiters ?? pit.fuelLiters;
       pit.vePercent = fixed.vePercent ?? pit.vePercent;
       // left to the calculation, a stop fits new tyres
@@ -1048,6 +1077,8 @@ export function create(context: MockContext): MockHandler {
               : "empty",
           );
   if (fuji) saved = fujiDocument(saved);
+  if (saved.form && scenario === "plannedFujiLongLife")
+    saved.form.inputs.tyreLifeLaps = "90";
   // QA: the data changed after the plan was accepted (the plan keeps the old ones)
   if (saved.form && /^acceptedFuji(Stale|StaleSame|List)$/.test(scenario))
     saved.form.inputs.basePaceSeconds = "90.9";
@@ -1606,6 +1637,10 @@ export function create(context: MockContext): MockHandler {
         );
         // QA: a plan with no editable schedule (a race by time)
         if (scenario === "plannedFujiNoEdit") current.plan.edit = null;
+        // QA: tyres that last two stints, so that a stop can keep them
+        if (scenario === "plannedFujiLongLife")
+          for (const stop of current.plan.edit?.stops ?? [])
+            stop.tyres.lifeLaps = 90;
         // QA: «Cálculo sin terminar» (no figures, no timeline) with an amount fixed
         // by hand: «Calcular de nuevo» asks before it throws that away
         if (scenario === "plannedFujiUnfinishedFixed") {

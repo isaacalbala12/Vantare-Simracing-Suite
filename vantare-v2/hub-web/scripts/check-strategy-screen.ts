@@ -1161,7 +1161,13 @@ async function proposalStates(
   await openAcceptedPlan(page, base, "plannedFuji", "Plan calculado", zoomed);
   assert.equal(await stateTag(page), "Propuesta");
   assert.equal(await page.getByText(proposalLine, { exact: true }).count(), 1);
-  assert.equal(await page.getByText(/Ingeniero/).count(), 0);
+  assert.equal(
+    await page
+      .locator(".strategy-screen")
+      .getByText(/Ingeniero/)
+      .count(),
+    0,
+  );
   await shot("a-propuesta");
   await press(button(page, "Aceptar propuesta"));
   await visible(page.getByRole("heading", { name: "Plan aceptado" }));

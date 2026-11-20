@@ -90,3 +90,19 @@ it.each(["nightly", "testers", "master", undefined])(
 it("never opens Engineer, whatever the beta preference or channel", () => {
   expect(lock("engineer", anonymous, "nightly", true)).toBe("Próximamente");
 });
+
+it.each(["dev", "nightly ", "Nightly", "", "nightly\n"])(
+  "does not open Strategy or Analysis on the unknown channel %j",
+  (channel) => {
+    expect(strategyOpen(channel, true)).toBe(false);
+    expect(lock("strategy", anonymous, channel, true)).toBe("Próximamente");
+    expect(visible("analysis", anonymous, channel, true)).toBe(false);
+  },
+);
+it("names the future modules in Spanish", () => {
+  const names = Object.fromEntries(
+    navigation(anonymous, "nightly", true).map(({ id, label }) => [id, label]),
+  );
+  expect(names.strategy).toBe("Estrategia");
+  expect(names.engineer).toBe("Ingeniero");
+});

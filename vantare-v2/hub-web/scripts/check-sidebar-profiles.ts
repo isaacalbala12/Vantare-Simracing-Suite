@@ -5,7 +5,7 @@ import type { Page } from "playwright-core";
  * #2632. The sidebar carries more fixed rows than fit at 1280×720.
  *
  * Rules this pins, in Chromium (jsdom cannot measure):
- * - every navigation entry, «MÓDULOS» (Strategy, Engineer) included, stays
+ * - every navigation entry, «MÓDULOS» (Estrategia, Ingeniero) included, stays
  *   complete: the navigation never gives height away and never scrolls;
  * - «PERFILES» is the only scrollable zone and never paints over the footer;
  * - the «hay más» cue is on exactly while the profile list has something left
@@ -171,7 +171,7 @@ export async function checkSidebarProfiles(page: Page, base: string) {
         first.nav.length >= 8,
         `Positive control: the navigation must list every section at ${at}`,
       );
-      for (const label of ["Strategy", "Engineer"])
+      for (const label of ["Estrategia", "Ingeniero"])
         assert.ok(
           first.nav.some((item) => item.label.startsWith(label)),
           `Positive control: «${label}» must be in the navigation at ${at}`,

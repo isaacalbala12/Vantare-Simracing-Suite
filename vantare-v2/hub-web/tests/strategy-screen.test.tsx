@@ -987,3 +987,13 @@ it("does not keep the draft of one strategy when the new view has another active
   );
   expect(field("Depósito").value).toBe("82");
 });
+
+it("asks to sign in when the host denies the screen (no session or blocked account)", async () => {
+  mount("ready", (r) =>
+    r.method === "strategy.view" || r.method === "strategy.open"
+      ? { kind: "denied" }
+      : undefined,
+  );
+  expect(await screen.findByText(/inicia sesión/)).toBeTruthy();
+  expect(screen.queryByText("No se ha podido completar la acción.")).toBeNull();
+});

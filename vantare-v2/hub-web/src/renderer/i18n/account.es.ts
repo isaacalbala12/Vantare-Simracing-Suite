@@ -34,6 +34,7 @@ export const accountText = {
     "Acceso gratuito durante la beta. Estrategia e Ingeniero estarán disponibles próximamente.",
   included: "Incluido",
   soon: "Próximamente",
+  inTesting: "En pruebas",
   news: "Novedades de la beta",
   newsFailed: "No se pudieron cargar las novedades. Vuelve a intentarlo.",
   newsLoading: "Cargando novedades…",

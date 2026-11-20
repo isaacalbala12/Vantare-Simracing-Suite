@@ -13,7 +13,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Reply, Request } from "../src/contract/generated/contract";
 import { AccountProvider, useAccount } from "../src/renderer/app/AccountState";
-import { HostProvider, useHost } from "../src/renderer/app/Host";
+import { HostProvider, settingsKey, useHost } from "../src/renderer/app/Host";
 import { SectionChromeProvider } from "../src/renderer/app/SectionChrome";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { accessText } from "../src/renderer/i18n/access.es";
@@ -481,3 +481,33 @@ it("drops the reset confirmation when the account changes before confirmation", 
     calls.mock.calls.filter(([r]) => r.method === "account.deviceReset"),
   ).toHaveLength(0);
 });
+
+// «Estrategia» se abre con «Funciones en pruebas» en nightly: la ficha de Cuenta no
+// puede seguir diciendo «Próximamente» (#2741). El host no lo sabe: lo decide el Hub.
+const pill = (title: string) =>
+  screen
+    .getByText(title, { selector: "strong" })
+    .closest(".v-account-module")
+    ?.querySelector(".v-account-pill")?.textContent;
+it.each([
+  ["nightly", true, text.inTesting],
+  ["nightly", false, text.soon],
+  ["nightly", undefined, text.soon],
+  ["testers", true, text.soon],
+  ["master", true, text.soon],
+  ["dev", true, text.soon],
+  [undefined, true, text.soon],
+])(
+  "the Strategy card on %s with the beta %s says %s, and Engineer stays «Próximamente»",
+  async (channel, beta, expected) => {
+    mount("cuenta-sesion", true);
+    await screen.findByText("Estrategia", { selector: "strong" });
+    const cache = caches.at(-1);
+    act(() => {
+      if (channel) cache?.setQueryData(["updates"], { channel });
+      cache?.setQueryData(settingsKey, { general: { analisisBeta: beta } });
+    });
+    await waitFor(() => expect(pill("Estrategia")).toBe(expected));
+    expect(pill("Ingeniero")).toBe(text.soon);
+  },
+);

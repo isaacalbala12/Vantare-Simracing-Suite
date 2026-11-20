@@ -13,7 +13,9 @@ export default function Screen() {
   const { client } = useHost();
   const settings = useSettings();
   const updates = useUpdates();
-  const channel = updates.isError ? undefined : updates.data?.channel;
+  // a later failed read keeps the screen that is open (and its draft): what was
+  // last read stands; without any read it stays closed
+  const channel = updates.data?.channel;
   const fallback = <Upcoming module="strategy" />;
   if (client && strategyOpen(channel, settings.view?.general.analisisBeta))
     return (

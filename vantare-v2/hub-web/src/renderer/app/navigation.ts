@@ -42,6 +42,8 @@ export function lock(
   access: AccessView,
   channel?: string,
   analisisBeta?: boolean,
+  // the channel Strategy goes by when it is not the one above (see Shell)
+  strategyChannel = channel,
 ): string | undefined {
   if (
     section === "analysis" ||
@@ -50,7 +52,7 @@ export function lock(
     section === "account"
   )
     return undefined;
-  if (section === "strategy" && strategyOpen(channel, analisisBeta))
+  if (section === "strategy" && strategyOpen(strategyChannel, analisisBeta))
     return undefined;
   if (section === "strategy" || section === "engineer") return t("shell.soon");
   if (access.blocked) return t("shell.blocked");
@@ -62,6 +64,7 @@ export function navigation(
   access: AccessView,
   channel?: string,
   analisisBeta?: boolean,
+  strategyChannel = channel,
 ) {
   return entries
     .filter((entry) => visible(entry.id, access, channel, analisisBeta))
@@ -72,7 +75,7 @@ export function navigation(
           ? "shell.reports"
           : entry.label,
       ),
-      locked: lock(entry.id, access, channel, analisisBeta),
+      locked: lock(entry.id, access, channel, analisisBeta, strategyChannel),
     }));
 }
 export { isSection } from "./sections";

@@ -8,6 +8,8 @@ const state = vi.hoisted(() => ({
   demo: false,
   beta: undefined as boolean | undefined,
   channel: undefined as string | undefined,
+  failed: false,
+  loaded: true,
   seen: [] as object[],
 }));
 vi.mock("../src/renderer/app/Host", () => ({
@@ -17,11 +19,13 @@ vi.mock("../src/renderer/app/Host", () => ({
   }),
 }));
 vi.mock("../src/renderer/app/SettingsState", () => ({
-  useSettings: () => ({ view: { general: { analisisBeta: state.beta } } }),
+  useSettings: () => ({
+    view: state.loaded ? { general: { analisisBeta: state.beta } } : undefined,
+  }),
 }));
 vi.mock("../src/renderer/app/UpdatesState", () => ({
   useUpdates: () => ({
-    isError: false,
+    isError: state.failed,
     data: state.channel ? { channel: state.channel } : undefined,
   }),
 }));
@@ -41,6 +45,8 @@ vi.mock("../src/renderer/qa/strategy-entry", () => ({
 afterEach(() => {
   cleanup();
   state.seen.length = 0;
+  state.failed = false;
+  state.loaded = true;
 });
 
 it("mounts the real screen with the host client on nightly with the beta", async () => {
@@ -74,4 +80,33 @@ it("keeps the upcoming page without a host client", () => {
   state.channel = "nightly";
   render(<Screen />);
   expect(screen.getByText("próximamente")).toBeTruthy();
+});
+
+it("keeps the real screen when a later read of the channel fails", async () => {
+  state.client = { request: vi.fn() };
+  state.beta = true;
+  state.channel = "nightly";
+  state.failed = true;
+  render(<Screen />);
+  await screen.findByText("pantalla real");
+});
+
+it("keeps the upcoming page when the channel was never read", async () => {
+  state.client = { request: vi.fn() };
+  state.beta = true;
+  state.channel = undefined;
+  state.failed = true;
+  render(<Screen />);
+  await waitFor(() => expect(screen.getByText("próximamente")).toBeTruthy());
+  expect(state.seen).toEqual([]);
+});
+
+it("keeps the upcoming page while the settings are not loaded", async () => {
+  state.client = { request: vi.fn() };
+  state.beta = true;
+  state.channel = "nightly";
+  state.loaded = false;
+  render(<Screen />);
+  await waitFor(() => expect(screen.getByText("próximamente")).toBeTruthy());
+  expect(state.seen).toEqual([]);
 });

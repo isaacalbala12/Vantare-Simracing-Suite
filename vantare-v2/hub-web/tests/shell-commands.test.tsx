@@ -486,7 +486,7 @@ it.each(["strategy", "engineer"])(
         document
           .querySelector('.v-sidebar [aria-current="page"]')
           ?.getAttribute("aria-label"),
-      ).toBe(id === "strategy" ? "Strategy" : "Engineer"),
+      ).toBe(id === "strategy" ? "Estrategia" : "Ingeniero"),
     );
     await waitFor(() =>
       expect(document.activeElement).toBe(
@@ -903,8 +903,44 @@ it("returns Strategy to the upcoming page when the channel leaves nightly", asyn
   );
   await waitFor(() => expect(upcoming(entry())).toBe(true));
   requests.mockClear();
-  await new Promise((r) => setTimeout(r, 400));
+  // the section shows the upcoming page, not the real screen, and asks nothing
+  await screen.findByText("Plan de paradas");
+  expect(screen.getAllByText("Próximamente").length).toBeGreaterThan(0);
+  await waitFor(() =>
+    expect(document.querySelector(".strategy-screen")).toBeNull(),
+  );
   expect(
     requests.mock.calls.filter(([x]) => x.method.startsWith("strategy.")),
   ).toHaveLength(0);
 });
+
+it("keeps the open Strategy screen when reading the channel fails", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  const settings = cache.getQueryData<SettingsView>(settingsKey);
+  if (!settings) throw new Error("Missing settings");
+  act(() => {
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    cache.setQueryData(settingsKey, betaSettings(settings));
+  });
+  const entry = () =>
+    document.querySelector<HTMLElement>('.v-sidebar [data-nav="strategy"]');
+  await waitFor(() => expect(upcoming(entry())).toBe(false));
+  fireEvent.click(entry() as HTMLElement);
+  await waitFor(() =>
+    expect(document.querySelector(".strategy-screen")).not.toBeNull(),
+  );
+  const query = cache.getQueryCache().find({ queryKey: ["updates"] });
+  if (!query) throw new Error("Missing updates query");
+  act(() =>
+    query.setState({
+      status: "error",
+      error: new Error("HostFailure"),
+      fetchStatus: "idle",
+    }),
+  );
+  await waitFor(() => expect(query.state.status).toBe("error"));
+  expect(upcoming(entry())).toBe(false);
+  expect(document.querySelector(".strategy-screen")).not.toBeNull();
+  expect(entry()?.getAttribute("aria-current")).toBe("page");
+}, 15_000);

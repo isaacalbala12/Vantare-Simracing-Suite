@@ -430,6 +430,12 @@ Garantías:
   el de la copia repetida. Se hace por el mismo manejador exclusivo con el que
   se calculó su huella, y mientras tanto nadie puede escribir la grabación que
   se queda.
+- **Nadie más la tiene abierta, ni al comprobarla ni al moverla.** La grabación
+  se abre en exclusiva y cambia de sitio a través de esa misma apertura, sin
+  soltarla: desde la comprobación hasta el movimiento ningún otro programa puede
+  abrirla. Con ella cogida se vuelve a mirar si ha aparecido un `.wal` o un
+  temporal con su nombre, en el origen y en la carpeta única. El renombrado
+  nunca sustituye un archivo y, entre discos distintos, falla en vez de copiar.
 - **Un corte no deja nada a medias.** Cada archivo cambia de sitio en un solo
   paso: está entero en el origen o entero en la carpeta única. No hay archivos
   temporales, lista ni marcador; repetir la operación continúa donde se quedó y,

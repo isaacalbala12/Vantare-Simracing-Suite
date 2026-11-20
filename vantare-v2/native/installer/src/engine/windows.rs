@@ -8,9 +8,9 @@ use std::{
 };
 use windows::Win32::{
     Storage::FileSystem::{
-        CopyFileW, FILE_DISPOSITION_INFO, FileDispositionInfo, GetDriveTypeW,
-        GetVolumeInformationW, MOVEFILE_WRITE_THROUGH, MoveFileExW, REPLACE_FILE_FLAGS,
-        ReplaceFileW, SetFileInformationByHandle,
+        CopyFileW, FILE_DISPOSITION_INFO, FILE_RENAME_INFO, FileDispositionInfo, FileRenameInfo,
+        GetDriveTypeW, GetVolumeInformationW, MOVEFILE_WRITE_THROUGH, MoveFileExW,
+        REPLACE_FILE_FLAGS, ReplaceFileW, SetFileInformationByHandle,
     },
     System::Com::CoCreateGuid,
 };
@@ -293,26 +293,33 @@ pub fn replace_backed_up(source: &Path, target: &Path, backup: &Path) -> Result<
     }
     .map_err(|cause| error(&cause))
 }
-/// A rename inside the volume: it never replaces a file and never becomes a copy.
-pub fn move_new(source: &Path, target: &Path) -> Result<()> {
-    let source = wide(source.as_os_str())?;
-    let target = wide(target.as_os_str())?;
-    unsafe {
-        MoveFileExW(
-            PCWSTR(source.as_ptr()),
-            PCWSTR(target.as_ptr()),
-            MOVEFILE_WRITE_THROUGH,
-        )
-    }
-    .map_err(|cause| error(&cause))
-}
 /// Renames the file behind this handle inside its volume, whatever its path
 /// holds by then. It never replaces a file and never becomes a copy: across
 /// volumes it fails. The handle must have been opened with `DELETE` access.
-#[allow(dead_code)] // Sin implementar todavía: lo escribe y lo usa el commit siguiente.
 pub fn rename_open(file: &std::fs::File, target: &Path) -> std::io::Result<()> {
-    let _ = (file, target);
-    Err(std::io::ErrorKind::Unsupported.into())
+    use std::os::windows::io::AsRawHandle;
+    let name = wide(target.as_os_str()).map_err(std::io::Error::other)?;
+    // The structure ends in its name: one zeroed buffer, aligned for the header.
+    let size = std::mem::offset_of!(FILE_RENAME_INFO, FileName) + size_of_val(name.as_slice());
+    let mut buffer = vec![0_u64; size.div_ceil(size_of::<u64>())];
+    let info = buffer.as_mut_ptr().cast::<FILE_RENAME_INFO>();
+    let length = |bytes: usize| u32::try_from(bytes).map_err(std::io::Error::other);
+    unsafe {
+        (*info).Anonymous.ReplaceIfExists = false;
+        (*info).FileNameLength = length(size_of_val(name.as_slice()) - size_of::<u16>())?;
+        std::ptr::copy_nonoverlapping(
+            name.as_ptr(),
+            (&raw mut (*info).FileName).cast::<u16>(),
+            name.len(),
+        );
+        SetFileInformationByHandle(
+            HANDLE(file.as_raw_handle()),
+            FileRenameInfo,
+            info.cast(),
+            length(size)?,
+        )
+    }
+    .map_err(Into::into)
 }
 /// Removes the file behind this handle, whatever its path holds by then. The
 /// handle must have been opened with `DELETE` access.

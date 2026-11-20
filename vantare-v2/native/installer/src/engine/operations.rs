@@ -1202,29 +1202,11 @@ fn adopt(
         !single.try_exists()? || single.is_dir(),
         "La carpeta única de grabaciones no es una carpeta",
     )?;
-    // (name, is a regular file): a link or a folder is neither followed nor moved.
-    let list = |directory: &Path| -> Result<Vec<(String, bool)>> {
-        let mut listed = Vec::new();
-        for entry in fs::read_dir(directory)? {
-            let entry = entry?;
-            let name = entry.file_name().to_string_lossy().into_owned();
-            listed.push((name, entry.file_type()?.is_file()));
-        }
-        listed.sort();
-        Ok(listed)
-    };
     let listed = list(&source)?;
     let present = if single.is_dir() {
         list(&single)?
     } else {
         Vec::new()
-    };
-    // A `.wal` or a temporary beside a recording: still being written, or cut short.
-    let unfinished = |folder: &[(String, bool)], name: &str| {
-        let prefix = format!("{name}.");
-        folder
-            .iter()
-            .any(|(other, _)| other.to_ascii_lowercase().starts_with(&prefix))
     };
     for (name, is_file) in &listed {
         if name == "recording-status.json" {
@@ -1236,20 +1218,19 @@ fn adopt(
         } else if !recording_name(name) {
             Err("el nombre no es de una grabación".to_owned())
         } else if unfinished(&listed, name) {
-            Err("tiene al lado un .wal o un temporal: está en curso o sin cerrar".to_owned())
+            Err(BESIDE.to_owned())
         } else if unfinished(&present, name) {
-            Err("en la carpeta única hay un .wal o un temporal con su nombre".to_owned())
+            Err(IN_SINGLE.to_owned())
         } else if !present
             .iter()
             .any(|(other, _)| other.eq_ignore_ascii_case(name))
         {
-            // Readable, and nobody else has it open right now.
+            // Held until the rename: nobody else has it open, and nobody can open it.
             match disk::open_recording(&path, true) {
                 Err(error) => Err(unavailable("la grabación")(error)),
                 Ok(file) => {
-                    drop(file);
                     checkpoint("adopt-move")?;
-                    move_recording(&path, &single, &target).map(|()| adoption.moved += 1)
+                    move_recording(&file, name, &source, &single).map(|()| adoption.moved += 1)
                 }
             }
         } else if duplicates == Duplicates::Keep {
@@ -1292,13 +1273,45 @@ fn recording_name(name: &str) -> bool {
 fn unavailable(whose: &'static str) -> impl Fn(io::Error) -> String {
     move |error| format!("{whose} está en uso o no se puede leer ({error})")
 }
-/// One rename inside the volume: the recording is whole in the source or whole
-/// in the single folder, never a copy and never over another file.
-fn move_recording(path: &Path, single: &Path, target: &Path) -> std::result::Result<(), String> {
-    fs::create_dir_all(single)
-        .map_err(WriteError::from)
-        .and_then(|()| windows::move_new(path, target))
-        .map_err(|error| format!("no se pudo mover ({error})"))
+const BESIDE: &str = "tiene al lado un .wal o un temporal: está en curso o sin cerrar";
+const IN_SINGLE: &str = "en la carpeta única hay un .wal o un temporal con su nombre";
+/// (name, is a regular file): a link or a folder is neither followed nor moved.
+fn list(directory: &Path) -> Result<Vec<(String, bool)>> {
+    let mut listed = Vec::new();
+    for entry in fs::read_dir(directory)? {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        listed.push((name, entry.file_type()?.is_file()));
+    }
+    listed.sort();
+    Ok(listed)
+}
+/// A `.wal` or a temporary beside a recording: still being written, or cut short.
+fn unfinished(folder: &[(String, bool)], name: &str) -> bool {
+    let prefix = format!("{name}.");
+    folder
+        .iter()
+        .any(|(other, _)| other.to_ascii_lowercase().starts_with(&prefix))
+}
+/// One rename inside the volume, through the handle that proves nobody else has
+/// the recording open: whole in the source or whole in the single folder, never
+/// a copy and never over another file. What the lists said when they were taken
+/// is looked at again with the recording held.
+fn move_recording(
+    file: &fs::File,
+    name: &str,
+    source: &Path,
+    single: &Path,
+) -> std::result::Result<(), String> {
+    let failed = |error: &dyn std::fmt::Display| format!("no se pudo mover ({error})");
+    let finished = |folder: &Path, reason: &str| match list(folder) {
+        Ok(found) if unfinished(&found, name) => Err(reason.to_owned()),
+        found => found.map(drop).map_err(|error| failed(&error)),
+    };
+    finished(source, BESIDE)?;
+    fs::create_dir_all(single).map_err(|error| failed(&error))?;
+    finished(single, IN_SINGLE)?;
+    windows::rename_open(file, &single.join(name)).map_err(|error| failed(&error))
 }
 /// The only deletion of user data in the engine. The copy goes away through
 /// the exclusive handle that hashed it, while nobody can write the one kept.

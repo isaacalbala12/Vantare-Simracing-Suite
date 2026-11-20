@@ -86,17 +86,10 @@ export async function checkVueltas(page: Page, test: Case) {
 const ci: Case[] = [
   { scene: "con", view: "vueltas", width: 1280, theme: "dark" },
   { scene: "con", view: "vueltas", width: 900, theme: "dark" },
-  {
-    scene: "con",
-    view: "vueltas",
-    width: 1280,
-    theme: "dark",
-    rail: "collapsed",
-  },
   { scene: "mezcla", view: "vueltas", width: 1280, theme: "light" },
   { scene: "v1", view: "vueltas", width: 900, theme: "dark" },
 ];
-/** Sectores por vuelta (VANTA-138): columnas, marca, notas y «Por sector». */
+/** Sectores por vuelta (VANTA-138): columnas, marca, notas y «Por sector». Pocos casos: la matriz completa vive en el runner de evidencias. */
 export async function checkAnalysisSectors(page: Page, base: string) {
   await page.clock.setFixedTime(analysisQaNow);
   for (const test of ci) {

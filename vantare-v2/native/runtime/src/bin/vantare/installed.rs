@@ -281,16 +281,47 @@ pub(super) fn data(root: &Path) -> io::Result<(PathBuf, PathBuf)> {
 }
 
 /// Turns of 50 ms that the adoption waits for another operation: two seconds.
-#[cfg_attr(not(test), allow(dead_code))]
 pub(super) const ADOPTION_WAITS: u32 = 40;
 /// The recordings of this generation go to the single folder of the
 /// installation before the core and the Hub start (ADR 0111 §4). It only
 /// moves, and nothing here can stop the session: what could not be brought
 /// stays where it was, is written to the installation log and is tried again
 /// at the next start.
-#[cfg_attr(not(test), allow(dead_code))] // Sin implementar: lo escribe y lo conecta el commit siguiente.
+pub(super) fn adopt_recordings(root: &Path) {
+    adopt_recordings_with(root, &mut std::thread::sleep);
+}
 pub(super) fn adopt_recordings_with(root: &Path, wait: &mut dyn FnMut(Duration)) {
-    let _ = (root, wait);
+    let adopt = || {
+        let (view, _) =
+            active(root).map_err(|error| disk::WriteError::new(1, error.to_string()))?;
+        let state = view.state.as_ref().expect("active state");
+        operations::adopt_recordings(
+            root,
+            &state.active.generation,
+            operations::Duplicates::Keep,
+            &mut |_| Ok(()),
+            &mut |note| log(note),
+        )
+    };
+    let mut waits = 0;
+    let result = loop {
+        match adopt() {
+            // The root launcher renews the Windows registration under the same
+            // lock right after starting this session: busy is worth a moment.
+            Err(error) if error.code == 2 && waits < ADOPTION_WAITS => {
+                waits += 1;
+                wait(Duration::from_millis(50));
+            }
+            result => break result,
+        }
+    };
+    if let Err(error) = result {
+        let note = format!(
+            "Grabaciones: no se han traído al arrancar; se reintenta en el próximo arranque. Motivo: {error}"
+        );
+        disk::log_once(root, &note);
+        log(note);
+    }
 }
 
 pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {

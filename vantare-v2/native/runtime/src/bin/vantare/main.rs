@@ -554,6 +554,10 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             .as_ref()
             .map(|_| vantare_ipc::control::Feed::connect(&photo, config.core.path.clone()))
             .transpose()?;
+        // Before the core and the Hub exist: only this session can be using them.
+        if let Some(root) = &config.installation {
+            installed::adopt_recordings(root);
+        }
         config.core.args = recording::startup_args(
             config.core.args,
             vantare_ipc::paths::Root::from_env()
@@ -599,6 +603,7 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             ] {
                 hub_args.extend([flag.into(), path.to_string_lossy().into_owned()]);
             }
+            hub_args.extend(recording::hub_argument(root, &data.join("hub")));
             let mut hub = Service::new(
                 "Hub",
                 Program {

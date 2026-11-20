@@ -18,14 +18,11 @@ pub(super) fn hub_data(root: &Root, installed: bool) -> PathBuf {
 /// installed, a single folder in the installation root, shared by every
 /// generation; in development, inside the Hub data, as before.
 pub(super) fn directory(installation: Option<&Path>, hub: &Path) -> PathBuf {
-    // Sin implementar: la carpeta de siempre, dentro de los datos del Hub.
-    let _ = installation;
-    hub.join(RECORDINGS_DIR)
+    installation.unwrap_or(hub).join(RECORDINGS_DIR)
 }
 
 /// The Hub host reads the folder the core writes to.
 #[cfg(windows)]
-#[cfg_attr(not(test), allow(dead_code))] // Lo conecta el commit siguiente.
 pub(super) fn hub_argument(installation: &Path, hub: &Path) -> [String; 2] {
     let recordings = directory(Some(installation), hub);
     [

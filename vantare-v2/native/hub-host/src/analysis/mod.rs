@@ -117,7 +117,7 @@ fn stamp(path: &Path) -> Result<Stamp> {
             .map_err(|e| error(ErrorCode::Io, e.to_string()))?,
     })
 }
-pub(crate) fn reparse(m: &fs::Metadata) -> bool {
+fn reparse(m: &fs::Metadata) -> bool {
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;

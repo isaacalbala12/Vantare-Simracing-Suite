@@ -92,8 +92,10 @@ fn installation() -> Option<PathBuf> {
     None
 }
 /// ADR 0111 §3: only a folder of a local disk, strictly inside the installation
-/// and spelled without `..` or links; never a network path. The session builds
-/// it from the root it runs from: anything else is not its argument.
+/// and spelled without `..`; never a network path. The session builds it from
+/// the root it runs from: anything else is not its argument. Only the shape is
+/// judged here. A link is refused by Analysis each time it reads the folder,
+/// so that a linked folder costs the user Analysis and not the whole Hub.
 fn single_folder(value: String, installation: Option<&Path>) -> io::Result<PathBuf> {
     use std::path::{Component, Prefix};
     let path = PathBuf::from(value);
@@ -110,21 +112,13 @@ fn single_folder(value: String, installation: Option<&Path>) -> io::Result<PathB
         "recordings folder outside the installation",
     ))
 }
-/// From the folder up to the root nothing may be a link; what does not exist
-/// yet cannot be one. Both are compared as the disk names them.
+/// Strictly below the root, both compared as the disk names them.
 fn inside(root: &Path, path: &Path) -> bool {
     let Ok(root) = root.canonicalize() else {
         return false;
     };
-    for ancestor in path.ancestors() {
-        if std::fs::symlink_metadata(ancestor).is_ok_and(|found| crate::analysis::reparse(&found)) {
-            return false;
-        }
-        if ancestor != path && ancestor.canonicalize().is_ok_and(|found| found == root) {
-            return true;
-        }
-    }
-    false
+    let reached = |ancestor: &Path| ancestor.canonicalize().is_ok_and(|found| found == root);
+    path.ancestors().skip(1).any(reached)
 }
 
 #[cfg(test)]
@@ -158,6 +152,7 @@ mod tests {
         let (link, back) = (root.join("enlace"), root.join("vuelta"));
         symlink_dir(&outside, &link).expect("link to the outside");
         symlink_dir(&root, &back).expect("link back to the root");
+        std::fs::create_dir(outside.join("recordings")).expect("a folder behind the link");
         for linked in [
             link.clone(),
             link.join("recordings"),

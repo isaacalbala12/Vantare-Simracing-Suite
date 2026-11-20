@@ -3476,3 +3476,28 @@ fn two_adoptions_at_once_never_work_on_the_same_installation() {
     assert_eq!(first.0.expect("first adoption"), adopted(2, 0, 0));
     assert!(names(&source).is_empty() && names(&single) == files);
 }
+
+#[test]
+fn a_repeated_copy_beside_a_wal_is_never_compared_or_removed() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    // Identical to the one in the single folder, but one of the two has
+    // changes that never reached the file: nothing proves they are the same.
+    let [unclosed, twin] = ["series-1-1.duckdb", "series-2-2.duckdb"];
+    record(&source, &[(unclosed, b"same"), (twin, b"same")]);
+    record(&source, &[("series-1-1.duckdb.wal", b"pending")]);
+    record(&single, &[(unclosed, b"same"), (twin, b"same")]);
+    record(&single, &[("series-2-2.duckdb.wal", b"pending")]);
+    let (before, twins) = (index(&source), index(&single));
+    let (adoption, notes) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(0, 0, 3));
+    assert_eq!([index(&source), index(&single)], [before, twins]);
+    assert!(
+        keeps(&notes, &source.join(unclosed), "en curso"),
+        "{notes:?}"
+    );
+    assert!(
+        keeps(&notes, &source.join(twin), "carpeta única"),
+        "{notes:?}"
+    );
+}

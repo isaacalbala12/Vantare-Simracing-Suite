@@ -12,6 +12,7 @@
 //! cuadran), y la parada culpable del recálculo es la primera que pasa.
 use std::sync::atomic::AtomicBool;
 
+use serde_json::json;
 use vantare_strategy::application::{
     EditedPlan, fixed_stop_bounds, fixed_stop_tyres, recalculate_edited_plan_fixed,
 };
@@ -485,9 +486,37 @@ fn fine_steps_still_count_the_tyres() {
     );
 }
 
+// Si el calendario no tiene plan ni sin fijar nada, la culpa no es de las
+// ruedas aunque una parada salga marcada: aquí el primer tramo ya pasa de la
+// vida. El recálculo no señala parada, y quien enseñe la marca tampoco debe
+// culpar a las ruedas.
+#[test]
+fn a_calendar_without_a_plan_is_not_the_fault_of_the_tyres() {
+    let race = Race {
+        per_lap: 1,
+        step: 1,
+        ..twelve_laps()
+    };
+    let input = race.input(1);
+    let edited = schedule(&[10, 2]);
+    assert_eq!(feasible(&input, &edited, &[]), (false, None));
+    assert_eq!(
+        found(&input, &edited, &[keep()]),
+        [bounds(Some(8), 10, 12, true)]
+    );
+    assert_eq!(feasible(&input, &edited, &[keep()]), (false, None));
+}
+
 // ---------------------------------------------------------------------------
 // Entradas que no valen: las mismas negativas que el recálculo.
 // ---------------------------------------------------------------------------
+
+/// La reserva de la entrada congelada de Fuji: 0,8 vueltas, bien formada.
+fn fuji_reserve() -> serde_json::Value {
+    let fuji: Input = serde_json::from_str(include_str!("../testdata/fuji-1450-input.json"))
+        .expect("entrada congelada de Fuji");
+    fuji.fuel_reserve
+}
 
 #[test]
 fn the_refusals_are_the_ones_of_the_recalculation() {
@@ -501,7 +530,49 @@ fn the_refusals_are_the_ones_of_the_recalculation() {
     no_laps.race_laps = 0;
     let mut one_stop_at_most = input.clone();
     one_stop_at_most.event_rules.max_pit_stops = Some(1);
+    // La reserva también es entrada del recálculo, aunque no mueva las ruedas.
+    let mut unknown_reserve = input.clone();
+    unknown_reserve.fuel_reserve = fuji_reserve();
+    unknown_reserve.fuel_reserve["kind"] = json!("bogus");
+    let mut negative_reserve = input.clone();
+    negative_reserve.fuel_reserve = fuji_reserve();
+    negative_reserve.fuel_reserve["laps"]["value"] = json!(-1);
+    let mut reserve_over_all = input.clone();
+    reserve_over_all.virtual_energy_reserve = fuji_reserve();
+    reserve_over_all.virtual_energy_reserve["kind"] = json!("percent");
+    reserve_over_all.virtual_energy_reserve["percent"] = json!({
+        "value": 150,
+        "evidence": fuji_reserve()["selection"],
+    });
+    let mut reserve_without_source = input.clone();
+    reserve_without_source.virtual_energy_reserve = fuji_reserve();
+    reserve_without_source.virtual_energy_reserve["selection"]["provenance"]["kind"] =
+        json!("bogus");
     let cases: Vec<(&str, Input, EditedPlan, Vec<FixedStop>)> = vec![
+        (
+            "reserva de combustible de un tipo desconocido",
+            unknown_reserve,
+            good.clone(),
+            vec![keep()],
+        ),
+        (
+            "reserva de combustible negativa",
+            negative_reserve,
+            good.clone(),
+            vec![],
+        ),
+        (
+            "reserva de energía de más del 100 %",
+            reserve_over_all,
+            good.clone(),
+            vec![keep()],
+        ),
+        (
+            "reserva de energía sin un origen válido",
+            reserve_without_source,
+            good.clone(),
+            vec![],
+        ),
         ("entrada no válida", no_laps, good.clone(), vec![]),
         (
             "el calendario no suma la carrera",
@@ -550,6 +621,14 @@ fn the_refusals_are_the_ones_of_the_recalculation() {
                 .expect_err(name);
         assert_eq!(refusal, recalculation, "{name}");
     }
+    // Una reserva válida no es una negativa, y no mueve las ruedas.
+    let mut with_reserve = input.clone();
+    with_reserve.fuel_reserve = fuji_reserve();
+    with_reserve.virtual_energy_reserve = fuji_reserve();
+    assert_eq!(
+        found(&with_reserve, &good, &[keep(), keep()]),
+        found(&input, &good, &[keep(), keep()])
+    );
     // Y lo que vale para el recálculo vale aquí: una lista más larga que el
     // calendario, si lo que sobra es automático.
     assert_eq!(

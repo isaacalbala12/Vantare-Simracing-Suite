@@ -9,7 +9,7 @@ pub(super) fn render(view: &Installer, window: &Window, _cx: &mut Context<Instal
     content = content
         .child(heading("¿Desinstalar Vantare?"))
         .child(lead(
-            "Se quitan la app, los accesos directos y el registro de Windows.",
+            "Se quitan la app, los accesos directos y el registro de Windows. Tus grabaciones se conservan.",
             window,
         ))
         .child(

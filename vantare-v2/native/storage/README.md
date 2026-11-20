@@ -149,6 +149,27 @@ Tras colisión se elige otro nombre opaco. EOF de stdin termina el helper y
 cierra la conexión, incluso si el Core desaparece sin ejecutar Drop.
 
 
+## Dónde viven las grabaciones — ADR 0111
+
+Este helper no elige carpeta: abre la ruta que le dan. Quien la decide es la
+sesión ([ADR 0111](../../docs/adr/0111-grabaciones-carpeta-unica-por-instalacion.md)):
+instalado, `<raíz de instalación>/recordings`, la misma para todas las
+generaciones; en desarrollo, `recordings` dentro de los datos del Hub. El núcleo
+crea ahí una base nueva por arranque y es el único que escribe y poda; el
+anfitrión del Hub solo lee.
+
+Consecuencias para el formato:
+
+- **Las grabaciones son datos que solo se añaden.** Como la carpeta ya no
+  cambia con cada versión, un programa antiguo (tras una vuelta atrás) puede
+  encontrarse archivos de un formato más nuevo. Los marca como `incompatible`
+  y no los abre, no los modifica y no los borra.
+- Un cambio de formato tiene que poder leerse con el helper nuevo sin
+  reescribir los archivos viejos, como ya ocurre con v1 y v2.
+- Una grabación con su `.wal` al lado no se mueve entre carpetas: la pareja se
+  queda junta donde está (ver «Adoptar grabaciones» en
+  [installer/README.md](../installer/README.md)).
+
 ## Metadatos de sesión y vueltas — D8a-1 / #1974
 
 Las DB nuevas (`--create` y creación histórica sin modo) usan v2. Las DB v1

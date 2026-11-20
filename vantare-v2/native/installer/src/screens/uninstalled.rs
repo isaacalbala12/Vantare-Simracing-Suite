@@ -9,7 +9,7 @@ pub(super) fn render(view: &Installer, window: &Window, _cx: &mut Context<Instal
     content = content
         .child(heading("Vantare se ha desinstalado"))
         .child(lead(
-            "Tus datos siguen en este PC. Si vuelves a instalar, Vantare los recupera solo.",
+            "Tus datos y tus grabaciones siguen en este PC. Si vuelves a instalar, Vantare los recupera solo.",
             window,
         ))
         .child(rise(

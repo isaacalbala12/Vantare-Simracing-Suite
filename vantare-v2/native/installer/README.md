@@ -394,14 +394,15 @@ Tests en el último bloque de `tests/installation_write.rs`: A → B → C, Repa
 archivo alterado o no enumerado, archivo ocupado, permiso de lectura denegado,
 imagen en uso, barrido cortado y desinstalación.
 
-## Adoptar grabaciones — ADR 0111, T1 (#2755)
+## Adoptar grabaciones — ADR 0111, T1 y T2 (#2755, #2758)
 
 [ADR 0111](../../docs/adr/0111-grabaciones-carpeta-unica-por-instalacion.md)
 saca las grabaciones de Análisis de cada generación y las reúne en una sola
 carpeta, `<raíz>/recordings/`. `operations::adopt_recordings` es la operación
-que las trae desde `generations/<id>/data/hub/recordings/`. **Todavía no la
-llama nadie**: ni la sesión (T2), ni Confirm ni Desinstalar (T3). Ninguna
-instalación cambia de comportamiento con este trozo.
+que las trae desde `generations/<id>/data/hub/recordings/`. La llama la
+**sesión** de la versión instalada en cada arranque, sobre su propia generación
+y en modo «solo mover» (T2; ver «Al arrancar la sesión»). Confirm y Desinstalar
+todavía no la llaman (T3).
 
 Una grabación es un archivo `series-<época>-<pid>.duckdb`, el único nombre que
 le da el grabador. Para cada una:
@@ -423,6 +424,17 @@ Se conserva en el origen, con su ruta y el motivo en las notas (y en el
 - una grabación cuyo nombre ya tiene un `.wal` o un temporal en la carpeta única;
 - cualquier nombre que no sea el de una grabación, y las carpetas.
   `recording-status.json` (el estado del grabador) se deja sin anotar.
+
+Cómo se anota lo que se conserva depende de quién llama:
+
+- Con `Duplicates::RemoveIdentical` (Confirm y Desinstalar), una nota por
+  archivo, con su ruta y su motivo, cada vez que se ejecuta.
+- Con `Duplicates::Keep` (la sesión, en cada arranque), una nota por motivo con
+  cuántos archivos son y los cinco primeros nombres. Esa nota no se vuelve a
+  escribir en el registro mientras siga en él (`write_fs::log_once`): si no,
+  lo que la sesión encuentra en cada arranque llenaría los 64 KiB y expulsaría
+  las notas de Confirm y Desinstalar. Vuelve a escribirse cuando algo cambia o
+  cuando el registro rota.
 
 Garantías:
 
@@ -449,15 +461,58 @@ Garantías:
 - **No sigue enlaces.** Como el resto del motor, se niega a trabajar si hay un
   enlace o punto de reanálisis en la instalación, y cada grabación se abre como
   ella misma, nunca a través de un enlace.
-- Trabaja bajo `.operation.lock`. No cierra ni mata ningún proceso.
+- Trabaja bajo `.operation.lock`: dos adopciones a la vez no trabajan sobre la
+  misma instalación. Si otra operación tiene el candado, falla con el código 2
+  («ocupado») sin tocar nada, para que quien la llama pueda distinguirlo de un
+  rechazo. No cierra ni mata ningún proceso.
 
-Límites conocidos, que deciden T2 y T3:
+### Al arrancar la sesión (T2)
 
-- Una grabación que quedó sin cerrar (con `.wal`) no se adopta: se queda en su
-  generación hasta que alguien decida cómo traer la pareja.
+`installed::adopt_recordings`, en `runtime/src/bin/vantare/installed.rs`, la
+ejecuta con el bloqueo de sesión cogido y antes de lanzar el núcleo y el Hub:
+en ese momento nadie más puede estar usando las grabaciones.
+
+- **Solo mueve.** No calcula huellas ni borra nada; un nombre que ya existe en
+  la carpeta única se queda en la generación hasta T3.
+- **Nunca bloquea el arranque.** Si falla o conserva algo, la sesión sigue. Lo
+  que no se pudo traer se queda intacto donde estaba, se anota una vez en
+  `installer-log.txt` y se reintenta en el siguiente arranque. Mientras tanto,
+  esa grabación no aparece en Análisis.
+- **Espera su turno, como máximo dos segundos.** El lanzador de la raíz renueva
+  el registro de Windows bajo el mismo candado justo después de arrancar la
+  sesión. Con «ocupado», la sesión reintenta cada 50 ms hasta 40 veces; después
+  arranca igual. Un rechazo (cualquier otro error) no se espera.
+- Riesgo conocido, no resuelto aquí: si la sesión cogiera el candado antes que
+  el lanzador, sería la renovación del registro la que fallaría y Ajustes
+  mostraría un aviso de registro hasta el siguiente arranque. El lanzador
+  empieza antes y mover dura muy poco, pero no está medido con una sesión real.
+
+Límites conocidos:
+
+- **Una grabación que quedó sin cerrar (con `.wal`) no se adopta.** Se queda en
+  su generación, no aparece en Análisis y viaja con `data/` en cada
+  actualización. Mover la pareja no es un solo paso, y un `.wal` que llegara
+  sin su grabación lo borraría la poda del núcleo a los diez minutos. Abrirla y
+  cerrarla en su carpeta para que el `.wal` desaparezca, y adoptarla después,
+  queda como seguimiento: es escribir en datos del usuario y necesita su propia
+  revisión. Solo afecta a grabaciones sin cerrar anteriores a este cambio: las
+  nuevas ya nacen en la carpeta única, con su `.wal` al lado. T3 debe tratar
+  esas parejas como únicas.
 - No se comprueba que el archivo sea una base DuckDB válida. Una copia a medias
   que dejara una actualización cortada tendría nombre de grabación.
+- Se valida la forma de la generación (identificador y referencias de
+  `state.json`), pero **no se autentica su manifiesto**. La sesión solo la llama
+  para su propia generación, ya autenticada al arrancar; T3 debe llamarla solo
+  con generaciones autenticadas.
+- El registro rota sin candado propio: dos programas que escribieran a la vez
+  sin `.operation.lock` podrían perder notas en la rotación. Hoy todos los que
+  escriben lo hacen bajo ese candado, salvo la nota de la sesión cuando no
+  consigue el candado.
 - Si se juntan más de 256 grabaciones, el catálogo del Hub avisa del límite
   hasta que el núcleo pode en su siguiente arranque (ADR 0111 §7).
 
-Tests en el último bloque de `tests/installation_write.rs`.
+Tests en el último bloque de `tests/installation_write.rs` (el hueco entre
+comprobar y mover, lo que aparece después de tomar la lista, el resumen del
+registro y dos adopciones a la vez) y, para la sesión, en
+`runtime/src/bin/vantare/installed_update_tests.rs` y `recording.rs`. La poda
+sobre lo adoptado se comprueba en `runtime/src/service/series/prune_tests.rs`.

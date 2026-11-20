@@ -51,11 +51,20 @@ pub(super) fn installed(
         host.extend([flag.into(), text(data.join(document))]);
     }
     host.extend(["--recordings-dir".into(), text(folder.clone())]);
-    // Sin implementar: una carpeta que no lo es se usa igual. Lo corrige el commit siguiente.
-    let _ = &note;
+    // Looked at as itself, never through it. Missing is fine: the core makes it.
+    let unusable = std::fs::symlink_metadata(&folder).is_ok_and(|found| {
+        use std::os::windows::fs::MetadataExt;
+        !found.is_dir() || found.file_attributes() & 0x400 != 0
+    });
+    if unusable {
+        note(UNUSABLE);
+        return (core, host);
+    }
     adopt();
     (startup_args(core, Ok(hub), Some(installation)), host)
 }
+#[cfg(windows)]
+const UNUSABLE: &str = "Grabaciones: desactivadas. «recordings» es un enlace, una unión o un archivo y Vantare no la usa; para volver a grabar, déjala como una carpeta normal.";
 
 pub(super) fn startup_args(
     mut args: Vec<String>,

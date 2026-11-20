@@ -85,7 +85,7 @@ export const strategy = {
       "Este plan no se puede aceptar: no tiene un calendario de paradas. Calcula el plan de nuevo.",
     strategyNoAcceptedPlan: "Ya no hay un plan aceptado en esta estrategia.",
     denied:
-      "Estrategia necesita tu cuenta de Vantare: inicia sesión y que no esté bloqueada.",
+      "Inicia sesión con una cuenta verificada y que no esté bloqueada para usar Estrategia.",
     other: "No se ha podido completar la acción.",
   },
   steps: ["Inicio", "Combinación", "Reglas", "Pilotos", "Revisa y crea"],

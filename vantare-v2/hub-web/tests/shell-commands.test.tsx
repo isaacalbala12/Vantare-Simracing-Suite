@@ -944,3 +944,25 @@ it("keeps the open Strategy screen when reading the channel fails", async () => 
   expect(document.querySelector(".strategy-screen")).not.toBeNull();
   expect(entry()?.getAttribute("aria-current")).toBe("page");
 }, 15_000);
+
+it("returns the open Strategy screen to «Próximamente» when the beta is switched off", async () => {
+  await mount();
+  fireEvent.keyDown(document.body, { key: "Escape" });
+  const settings = cache.getQueryData<SettingsView>(settingsKey);
+  if (!settings) throw new Error("Missing settings");
+  act(() => {
+    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    cache.setQueryData(settingsKey, betaSettings(settings));
+  });
+  const entry = () =>
+    document.querySelector<HTMLElement>('.v-sidebar [data-nav="strategy"]');
+  await waitFor(() => expect(upcoming(entry())).toBe(false));
+  fireEvent.click(entry() as HTMLElement);
+  await waitFor(() =>
+    expect(document.querySelector(".strategy-screen")).not.toBeNull(),
+  );
+  act(() => cache.setQueryData(settingsKey, settings));
+  await screen.findByText("Plan de paradas");
+  await waitFor(() => expect(upcoming(entry())).toBe(true));
+  expect(document.querySelector(".strategy-screen")).toBeNull();
+}, 15_000);

@@ -1,3 +1,4 @@
+import type { SectorsWhy } from "../app/analysis-sectors";
 import { decimal, deltaTime, lapTime, analysisText as t } from "./analysis.es";
 export const comparisonText = {
   tab: "Comparar",
@@ -69,6 +70,24 @@ export const comparisonText = {
     "Línea continua carmín: A. Línea discontinua gris: B. Las dos se alinean por la distancia recorrida en la vuelta.",
   timeHelp:
     "«Tiempo» pone las trazas sobre el tiempo de cada vuelta; la diferencia se sigue calculando por distancia.",
+  bySector: "Por sector",
+  sectorTable: "Tiempo de A y B en cada sector y diferencia A−B",
+  recordingWithoutSectors:
+    "Por sector: esta grabación no tiene tiempos por sector.",
+  sectorDifference: "Diferencia A−B",
+  sectorLoses: "A pierde",
+  sectorWins: "A gana",
+  sectorTies: "igual",
+  sectorsWhy: (side: string, lap: number, why: SectorsWhy) =>
+    ({
+      approximate: `La vuelta ${lap} (${side}) solo tiene tiempo aproximado. Los sectores solo llegan cuando el juego da el tiempo oficial de la vuelta.`,
+      gap: `La vuelta ${lap} (${side}) tiene huecos sin datos, así que no tiene sectores.`,
+      unfinished: `La vuelta ${lap} (${side}) no se terminó, así que no tiene sectores.`,
+      notGiven: `El juego no dio los tres sectores de la vuelta ${lap} (${side}).`,
+    })[why],
+  noneHaveSectors: "Ninguna de las dos vueltas tiene sectores.",
+  sectorsHelp:
+    "Los sectores solo van en números: todavía no sabemos en qué punto de la pista empieza cada uno, así que no se marcan en las gráficas.",
   line: (side: string, lap?: number) => `${side} · vuelta ${lap ?? t.dash}`,
   lapOption: (
     lap: number,

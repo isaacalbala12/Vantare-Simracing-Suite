@@ -335,3 +335,81 @@
   margin-block-start: var(--space-1);
   padding-block-start: var(--space-1);
 }
+
+/* «Por sector» */
+.v-an-sector-card {
+  overflow: hidden;
+}
+.v-an-sectors {
+  inline-size: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-size: var(--text-small);
+}
+.v-an-sectors :is(th, td) {
+  block-size: 40px;
+  padding-inline: var(--space-5);
+  border-bottom: 1px solid var(--line-1);
+  text-align: start;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 400;
+}
+.v-an-sectors tbody tr:last-child :is(th, td) {
+  border-bottom: 0;
+}
+.v-an-sectors thead th {
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.v-an-sectors .v-an-sectors-title {
+  inline-size: 150px;
+  padding-inline-start: var(--space-8);
+  color: var(--text-1);
+  overflow: visible;
+}
+.v-an-sectors tbody th {
+  padding-inline-start: var(--space-8);
+  color: var(--text-1);
+  font-weight: 600;
+}
+.v-an-sector-delta small {
+  margin-inline-start: var(--space-3);
+  color: var(--text-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-small);
+}
+.v-an-sector-why {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+.v-an-sector-why svg {
+  flex: none;
+  inline-size: var(--space-6);
+  block-size: var(--space-6);
+  margin-block-start: 1px;
+}
+@container (width < 760px) {
+  .v-an-sectors .v-an-sectors-title {
+    inline-size: 104px;
+    padding-inline-start: var(--space-5);
+  }
+  .v-an-sectors tbody th {
+    padding-inline-start: var(--space-5);
+  }
+  .v-an-sectors td.v-an-sector-delta {
+    white-space: normal;
+    line-height: 1.25;
+  }
+  .v-an-sector-delta small {
+    display: block;
+    margin: 0;
+    font-size: var(--text-micro);
+    color: var(--text-3);
+  }
+}

@@ -8,11 +8,14 @@ import { comparisonText as c } from "../src/renderer/i18n/comparison.es.ts";
 type Scene = "con" | "mezcla" | "v1";
 export type Case = {
   scene: Scene;
-  view: "vueltas";
+  view: "vueltas" | "comparar";
   width: 1280 | 900;
   theme: "dark" | "light";
   rail?: "collapsed";
 };
+/** Pares A/B de Comparar por escena: números de vuelta de la tabla. */
+const pairs = { con: [6, 3], mezcla: [6, 3], v1: [6, 2] } as const;
+
 export async function open(page: Page, base: string, test: Case) {
   await page.setViewportSize({ width: test.width, height: 1400 });
   await page.goto(`${base}?escena=analysis-qa-sectors-${test.scene}`);
@@ -34,6 +37,20 @@ export async function open(page: Page, base: string, test: Case) {
     await page
       .getByRole("button", { name: "Contraer o ampliar información" })
       .click();
+  if (test.view === "comparar") {
+    const [a, b] = pairs[test.scene];
+    // En «mezcla» hay dos vueltas con el mismo número: la de la última sesión es la última.
+    await page
+      .getByRole("button", { name: c.select("A", a) })
+      .last()
+      .click();
+    await page
+      .getByRole("button", { name: c.select("B", b) })
+      .last()
+      .click();
+    await page.getByRole("tab", { name: c.tab, exact: true }).click();
+    await page.locator(".v-an-trace").first().waitFor();
+  }
 }
 
 export async function checkVueltas(page: Page, test: Case) {
@@ -105,11 +122,40 @@ export async function checkVueltas(page: Page, test: Case) {
   else await page.getByText(t.sectorLegend(false)).waitFor();
 }
 
+export async function checkComparar(page: Page, test: Case) {
+  const table = page.locator(".v-an-sectors");
+  if (test.scene === "v1") {
+    assert.equal(await table.count(), 0);
+    await page.getByText(c.recordingWithoutSectors).waitFor();
+    return;
+  }
+  const rows = await table.locator("tbody tr").allTextContents();
+  assert.equal(rows.length, 3);
+  if (test.scene === "con") {
+    for (const word of [c.sectorLoses, c.sectorWins])
+      assert.ok(rows.join("|").includes(word), word);
+    await table.locator(".v-an-compare-loss").first().waitFor();
+    await table.locator(".v-an-compare-gain").first().waitFor();
+  } else {
+    assert.ok(rows.every((row) => row.endsWith(t.dash)));
+    await page.getByText(c.sectorsWhy("A", 6, "approximate")).waitFor();
+  }
+  assert.equal(
+    await page
+      .locator(".v-an-comparison")
+      .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+    true,
+    "Comparar no desborda",
+  );
+}
+
 const ci: Case[] = [
   { scene: "con", view: "vueltas", width: 1280, theme: "dark" },
   { scene: "con", view: "vueltas", width: 900, theme: "dark" },
   { scene: "mezcla", view: "vueltas", width: 1280, theme: "light" },
   { scene: "v1", view: "vueltas", width: 900, theme: "dark" },
+  { scene: "con", view: "comparar", width: 1280, theme: "light" },
+  { scene: "mezcla", view: "comparar", width: 900, theme: "dark" },
 ];
 /** Sectores por vuelta (VANTA-138): columnas, marca, notas y «Por sector». Pocos casos: la matriz completa vive en el runner de evidencias. */
 export async function checkAnalysisSectors(page: Page, base: string) {
@@ -120,7 +166,9 @@ export async function checkAnalysisSectors(page: Page, base: string) {
       .join("-");
     console.log(name);
     await open(page, base, test);
-    await checkVueltas(page, test);
+    await (test.view === "vueltas"
+      ? checkVueltas(page, test)
+      : checkComparar(page, test));
     const report = await new AxeBuilder({ page }).include(".v-shell").analyze();
     assert.deepEqual(report.violations, [], name);
   }

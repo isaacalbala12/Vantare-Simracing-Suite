@@ -5,6 +5,7 @@ import type {
 } from "../../app/AnalysisController";
 import { biggestChanges } from "../../app/analysis-comparison";
 import { lapTime } from "../../app/analysis-laps";
+import { hasSectors } from "../../app/analysis-sectors";
 import { analysisText, lapTime as formatLapTime } from "../../i18n/analysis.es";
 import {
   changeSeconds,
@@ -31,7 +32,11 @@ export function ComparisonRail({
   const approximate = [timeA, timeB].some(
     ({ ms, official }) => ms !== null && !official,
   );
-  const end = data?.delta?.at(-1)?.value;
+  // Con tiempos oficiales en A y B, «Diferencia» es A − B; si no, el final de la traza.
+  const end =
+    timeA.official && timeB.official && timeA.ms !== null && timeB.ms !== null
+      ? (timeA.ms - timeB.ms) / 1000
+      : data?.delta?.at(-1)?.value;
   const changes = useMemo(() => (data ? biggestChanges(data) : []), [data]);
   return (
     <>
@@ -106,6 +111,7 @@ export function ComparisonRail({
       <RailBlock icon="pulse" title={t.how}>
         <p>{t.legend}</p>
         <p>{t.timeHelp}</p>
+        {hasSectors(laps) && <p>{t.sectorsHelp}</p>}
         {approximate && <p>{analysisText.approximate}</p>}
       </RailBlock>
     </>

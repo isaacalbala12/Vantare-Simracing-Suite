@@ -6,6 +6,7 @@ import { lapTime } from "./analysis-laps";
 
 export type Sectors = readonly [number, number, number];
 export type SectorIndex = 0 | 1 | 2;
+export type SectorsWhy = "approximate" | "gap" | "unfinished" | "notGiven";
 
 /**
  * Sectores de una vuelta tal como los manda el host. La regla de validez
@@ -61,4 +62,26 @@ export function sectorBests(
       return ms !== undefined && ms === bests.get(scope(lap))?.[sector];
     },
   };
+}
+
+/** Filas S1–S3 de Comparar: A, B y A−B en milisegundos, o null si falta algún lado. */
+export function sectorRows(
+  a: AnalysisLap | undefined,
+  b: AnalysisLap | undefined,
+) {
+  const [sa, sb] = [lapSectors(a), lapSectors(b)];
+  return ([0, 1, 2] as const).map((i) => ({
+    a: sa?.[i] ?? null,
+    b: sb?.[i] ?? null,
+    diff: sa && sb ? sa[i] - sb[i] : null,
+  }));
+}
+
+/** Motivo de que una vuelta no tenga sectores, o null si los tiene. */
+export function sectorsWhy(lap: AnalysisLap | undefined): SectorsWhy | null {
+  if (!lap || lapSectors(lap)) return null;
+  if (!lap.sealed) return "unfinished";
+  if (lap.gap) return "gap";
+  if (lapTime(lap).official) return "notGiven";
+  return lap.lapTimeApproxMs === null ? "unfinished" : "approximate";
 }

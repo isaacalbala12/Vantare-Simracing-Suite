@@ -3,8 +3,10 @@ import {
   hasSectors,
   lapSectors,
   sectorBests,
+  sectorRows,
+  sectorsWhy,
 } from "../src/renderer/app/analysis-sectors";
-import { sectorTime } from "../src/renderer/i18n/analysis.es";
+import { sectorDelta, sectorTime } from "../src/renderer/i18n/analysis.es";
 import { lap, session, timed } from "./analysis-sector-fixtures";
 
 it.each([
@@ -16,6 +18,14 @@ it.each([
 ])("formats the sector %i ms as %s", (ms, text) =>
   expect(sectorTime(ms)).toBe(text),
 );
+it.each([
+  [184, "+0.184 s"],
+  [-97, "−0.097 s"],
+  [0, "0.000 s"],
+])("formats the sector difference %i ms with its sign", (ms, text) =>
+  expect(sectorDelta(ms)).toBe(text),
+);
+
 it("returns the three sectors the host sent when the lap shows an official time", () => {
   expect(lapSectors(lap(0))).toEqual([30_000, 40_000, 30_000]);
 });
@@ -127,3 +137,33 @@ it("detects whether any lap has sectors", () => {
   expect(hasSectors([timed(0, null), lap(1, { gap: true })])).toBe(false);
   expect(hasSectors([timed(0, null), lap(1)])).toBe(true);
 });
+it("gives A, B and A−B per sector, with nothing when a side lacks sectors", () => {
+  const a = timed(0, [41_388, 62_091, 34_541]);
+  const b = timed(1, [41_204, 62_188, 34_492]);
+  expect(sectorRows(a, b)).toEqual([
+    { a: 41_388, b: 41_204, diff: 184 },
+    { a: 62_091, b: 62_188, diff: -97 },
+    { a: 34_541, b: 34_492, diff: 49 },
+  ]);
+  expect(sectorRows(lap(2, { lapTimeMs: null }), b)[0]).toEqual({
+    a: null,
+    b: 41_204,
+    diff: null,
+  });
+  expect(sectorRows(undefined, undefined)[2]).toEqual({
+    a: null,
+    b: null,
+    diff: null,
+  });
+});
+it.each([
+  [lap(0), null],
+  [lap(0, { sectorsMs: null }), "notGiven"],
+  [lap(0, { lapTimeMs: null }), "approximate"],
+  [lap(0, { gap: true }), "gap"],
+  [lap(0, { sealed: false }), "unfinished"],
+  [lap(0, { lapTimeMs: null, lapTimeApproxMs: null }), "unfinished"],
+  [undefined, null],
+] as const)("explains why a lap has no sectors: %#", (value, why) =>
+  expect(sectorsWhy(value)).toBe(why),
+);

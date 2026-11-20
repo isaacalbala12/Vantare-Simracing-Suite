@@ -17,6 +17,7 @@ import {
   strategyStates,
   strategyStopAmounts,
   strategyStopServiceReasons,
+  strategyTyreIssues,
   strategyUnreachableCauses,
 } from "../generated/strategy";
 import { exact, integer, oneOf, record } from "../validation-common";
@@ -180,12 +181,12 @@ function timeline(value: unknown): boolean {
         typeof pit.changeTyres === "boolean" &&
         oneOf(pit.service, ["parallel", "sequential"]) &&
         number(pit.pitSeconds) &&
-        // which amounts were fixed by hand; tyres cannot be fixed
+        // what was fixed by hand: each amount, and whether the tyres change
         record(pit.pinned) &&
         exact(pit.pinned, ["fuelLiters", "vePercent", "changeTyres"]) &&
         typeof pit.pinned.fuelLiters === "boolean" &&
         typeof pit.pinned.vePercent === "boolean" &&
-        pit.pinned.changeTyres === false,
+        typeof pit.pinned.changeTyres === "boolean",
     )
   );
 }
@@ -276,6 +277,28 @@ function stopLimits(
     amountLimits(value.ve, fixed.vePercent, lap)
   );
 }
+// The tyres of a stop: whole laps, more after the next stint than on arrival,
+// and a mark that is exactly what the numbers give for «keep them» fixed in it
+// (`fixed`: true, false or null).
+function stopTyres(value: unknown, fixed: unknown): boolean {
+  if (
+    !record(value) ||
+    !exact(value, ["lifeLaps", "arrivalLaps", "keptLaps", "issue"])
+  )
+    return false;
+  const { lifeLaps, arrivalLaps, keptLaps, issue } = value;
+  if (
+    !(lifeLaps === null || (count(lifeLaps) && lifeLaps >= 1)) ||
+    !count(arrivalLaps) ||
+    arrivalLaps < 1 ||
+    !count(keptLaps) ||
+    keptLaps <= arrivalLaps ||
+    !(issue === null || oneOf(issue, strategyTyreIssues))
+  )
+    return false;
+  const beyond = fixed === false && lifeLaps !== null && keptLaps > lifeLaps;
+  return issue === (beyond ? "beyondLife" : null);
+}
 // The edited schedule: contiguous stints from lap 1, one stop between each two,
 // every stop on the last lap of its stint and inside its own range, with what
 // is fixed by hand in it and its limits.
@@ -326,6 +349,7 @@ function edit(value: unknown): boolean {
           "fixed",
           "pitSeconds",
           "limits",
+          "tyres",
         ]) &&
         count(stop.lap) &&
         count(stop.minLap) &&
@@ -336,16 +360,22 @@ function edit(value: unknown): boolean {
         number(stop.fuelLiters) &&
         number(stop.vePercent) &&
         record(stop.fixed) &&
-        exact(stop.fixed, ["fuelLiters", "vePercent"]) &&
+        exact(stop.fixed, ["fuelLiters", "vePercent", "changeTyres"]) &&
         measure(stop.fixed.fuelLiters) &&
         measure(stop.fixed.vePercent) &&
+        (stop.fixed.changeTyres === null ||
+          typeof stop.fixed.changeTyres === "boolean") &&
         number(stop.pitSeconds) &&
-        stopLimits(stop.limits, stop.fixed, stop.lap),
+        stopLimits(stop.limits, stop.fixed, stop.lap) &&
+        stopTyres(stop.tyres, stop.fixed.changeTyres),
     )
   )
     return false;
   const fixed = (stops as { fixed: Record<string, unknown> }[]).map(
-    (stop) => stop.fixed.fuelLiters !== null || stop.fixed.vePercent !== null,
+    (stop) =>
+      stop.fixed.fuelLiters !== null ||
+      stop.fixed.vePercent !== null ||
+      stop.fixed.changeTyres !== null,
   );
   const { cause, automatic } = value;
   return (
@@ -779,14 +809,16 @@ export function isRequest(value: Record<string, unknown>): boolean {
           "index",
           "fuelLiters",
           "vePercent",
+          "changeTyres",
         ]) &&
         revision(value.revision) &&
         computeId(value.computeId) &&
         count(value.index) &&
-        // both keys are required: a number fixes the amount, `null` leaves it to
-        // the calculation. Whether the number can be fixed is the host's answer.
+        // the three keys are required: a value fixes it, `null` leaves it to the
+        // calculation. Whether the number can be fixed is the host's answer.
         (value.fuelLiters === null || signed(value.fuelLiters)) &&
-        (value.vePercent === null || signed(value.vePercent))
+        (value.vePercent === null || signed(value.vePercent)) &&
+        (value.changeTyres === null || typeof value.changeTyres === "boolean")
       );
     case "strategy.clearStopServices":
     case "strategy.recalculate":

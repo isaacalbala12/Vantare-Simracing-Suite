@@ -29,7 +29,8 @@ mod editing;
 pub use editing::{
     StrategyAmountIssue, StrategyAmountLimits, StrategyAmountRange, StrategyAutomaticPlan,
     StrategyEditCause, StrategyEditError, StrategyEditStop, StrategyEditView, StrategyStopAmount,
-    StrategyStopFixed, StrategyStopLimits, StrategyStopServiceReason,
+    StrategyStopFixed, StrategyStopLimits, StrategyStopServiceReason, StrategyStopTyres,
+    StrategyTyreIssue,
 };
 pub use calculation::{
     STRATEGY_PIT_LIMIT, StrategyCalculationView, StrategyCertificate, StrategyComputeForm,
@@ -53,12 +54,12 @@ pub use file::{
     STRATEGY_PICK_PATH_MAX, StrategyFile, StrategyFileMode, StrategyFileSelection,
 };
 
-/// A `number | null` whose key must be present. serde reads a missing `Option`
-/// as `None`, and in `strategy.setStopService` that would return an amount to
-/// automatic without anyone asking for it.
-pub(crate) fn stated_amount<'de, D: serde::Deserializer<'de>>(
+/// A value or `null` whose key must be present. serde reads a missing `Option`
+/// as `None`, and in `strategy.setStopService` that would return an amount or
+/// the tyres to automatic without anyone asking for it.
+pub(crate) fn stated<'de, D: serde::Deserializer<'de>, T: Deserialize<'de>>(
     deserializer: D,
-) -> Result<Option<serde_json::Number>, D::Error> {
+) -> Result<Option<T>, D::Error> {
     Option::deserialize(deserializer)
 }
 
@@ -679,13 +680,19 @@ impl State {
         index: u32,
         fuel_liters: Option<&serde_json::Number>,
         ve_percent: Option<&serde_json::Number>,
+        change_tyres: Option<bool>,
     ) -> Result<StrategyView, HostError> {
         let number = |value: Option<&serde_json::Number>| match value {
             None => Ok(None),
             Some(value) => value.as_f64().map(Some).ok_or(HostError::Rejected),
         };
         self.edit(revision, compute_id, |editing| {
-            editing.set_stop_service(index, number(fuel_liters)?, number(ve_percent)?)
+            editing.set_stop_service(
+                index,
+                number(fuel_liters)?,
+                number(ve_percent)?,
+                change_tyres,
+            )
         })
     }
 

@@ -1080,6 +1080,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -1117,6 +1118,12 @@
                   "maxLap": 2,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 3,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -1690,6 +1697,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -1727,10 +1735,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": 14,
                     "vePercent": null
                   },
@@ -1768,6 +1783,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -1943,6 +1964,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -1980,10 +2002,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": 4,
                     "vePercent": null
                   },
@@ -2021,6 +2050,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -2196,6 +2231,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -2233,10 +2269,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": 10,
                     "vePercent": null
                   },
@@ -2274,6 +2317,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -2449,6 +2498,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -2486,10 +2536,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": 28,
                     "vePercent": null
                   },
@@ -2527,6 +2584,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -2702,6 +2765,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -2739,10 +2803,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": 14,
                     "vePercent": null
                   },
@@ -2764,6 +2835,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -2939,6 +3016,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -2976,10 +3054,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": 14,
                     "vePercent": null
                   },
@@ -2991,6 +3076,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -3162,6 +3253,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -3199,10 +3291,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -3240,6 +3339,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -3415,6 +3520,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -3452,10 +3558,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": 13,
                     "vePercent": null
                   },
@@ -3493,6 +3606,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -3671,6 +3790,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -3708,10 +3828,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": 4,
                     "vePercent": null
                   },
@@ -3749,6 +3876,1295 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "no_solution",
+              "degraded": false,
+              "metrics": null,
+              "reason": "constraintsUnsatisfiable",
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": null
+            },
+            "state": "calculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.setStopService",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "none",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": null,
+            "computeId": 7,
+            "edit": {
+              "automatic": {
+                "fuelFinishLiters": 24,
+                "totalSeconds": 301,
+                "veFinishPercent": 85
+              },
+              "canReset": true,
+              "cause": null,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fixed": {
+                    "changeTyres": null,
+                    "fuelLiters": null,
+                    "vePercent": null
+                  },
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "limits": {
+                    "fuel": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    },
+                    "kind": "exact",
+                    "ve": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    }
+                  },
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
+                  "vePercent": 5
+                },
+                {
+                  "fixed": {
+                    "changeTyres": false,
+                    "fuelLiters": null,
+                    "vePercent": null
+                  },
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "limits": {
+                    "fuel": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    },
+                    "kind": "exact",
+                    "ve": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    }
+                  },
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 9,
+                "pitCount": 2,
+                "totalSeconds": 301
+              },
+              "reason": null,
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 12,
+                    "lap": 3,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  },
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 13,
+                    "lap": 6,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 3
+                  },
+                  {
+                    "fromLap": 4,
+                    "toLap": 6
+                  },
+                  {
+                    "fromLap": 7,
+                    "toLap": 9
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "edited"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.setStopService",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "none",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": null,
+            "computeId": 7,
+            "edit": {
+              "automatic": {
+                "fuelFinishLiters": 24,
+                "totalSeconds": 301,
+                "veFinishPercent": 85
+              },
+              "canReset": true,
+              "cause": null,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fixed": {
+                    "changeTyres": null,
+                    "fuelLiters": null,
+                    "vePercent": null
+                  },
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "limits": {
+                    "fuel": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    },
+                    "kind": "exact",
+                    "ve": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    }
+                  },
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 6
+                  },
+                  "vePercent": 5
+                },
+                {
+                  "fixed": {
+                    "changeTyres": false,
+                    "fuelLiters": null,
+                    "vePercent": null
+                  },
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "limits": {
+                    "fuel": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    },
+                    "kind": "exact",
+                    "ve": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    }
+                  },
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": "beyondLife",
+                    "keptLaps": 7,
+                    "lifeLaps": 6
+                  },
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 9,
+                "pitCount": 2,
+                "totalSeconds": 301
+              },
+              "reason": null,
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 12,
+                    "lap": 3,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  },
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 13,
+                    "lap": 6,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 3
+                  },
+                  {
+                    "fromLap": 4,
+                    "toLap": 6
+                  },
+                  {
+                    "fromLap": 7,
+                    "toLap": 9
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "edited"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.setStopService",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "none",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": null,
+            "computeId": 7,
+            "edit": {
+              "automatic": {
+                "fuelFinishLiters": 24,
+                "totalSeconds": 301,
+                "veFinishPercent": 85
+              },
+              "canReset": true,
+              "cause": null,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fixed": {
+                    "changeTyres": true,
+                    "fuelLiters": null,
+                    "vePercent": null
+                  },
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "limits": {
+                    "fuel": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    },
+                    "kind": "exact",
+                    "ve": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    }
+                  },
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": null
+                  },
+                  "vePercent": 5
+                },
+                {
+                  "fixed": {
+                    "changeTyres": false,
+                    "fuelLiters": null,
+                    "vePercent": null
+                  },
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "limits": {
+                    "fuel": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    },
+                    "kind": "exact",
+                    "ve": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    }
+                  },
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": null
+                  },
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 9,
+                "pitCount": 2,
+                "totalSeconds": 301
+              },
+              "reason": null,
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 12,
+                    "lap": 3,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  },
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 13,
+                    "lap": 6,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 3
+                  },
+                  {
+                    "fromLap": 4,
+                    "toLap": 6
+                  },
+                  {
+                    "fromLap": 7,
+                    "toLap": 9
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "edited"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "none",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": null,
+            "computeId": 8,
+            "edit": {
+              "automatic": {
+                "fuelFinishLiters": 24,
+                "totalSeconds": 301,
+                "veFinishPercent": 85
+              },
+              "canReset": false,
+              "cause": null,
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fixed": {
+                    "changeTyres": null,
+                    "fuelLiters": null,
+                    "vePercent": null
+                  },
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "limits": {
+                    "fuel": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    },
+                    "kind": "exact",
+                    "ve": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    }
+                  },
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
+                  "vePercent": 5
+                },
+                {
+                  "fixed": {
+                    "changeTyres": false,
+                    "fuelLiters": null,
+                    "vePercent": null
+                  },
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "limits": {
+                    "fuel": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    },
+                    "kind": "exact",
+                    "ve": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    }
+                  },
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
+                  "vePercent": 5
+                }
+              ]
+            },
+            "error": null,
+            "errorField": null,
+            "result": {
+              "certificate": "proven",
+              "degraded": false,
+              "metrics": {
+                "fuelReserveRealLaps": 10,
+                "fuelReserveRequiredLaps": 1,
+                "laps": 9,
+                "pitCount": 2,
+                "totalSeconds": 301
+              },
+              "reason": null,
+              "steps": {
+                "fuelLiters": 1,
+                "vePercent": 1
+              },
+              "timeline": {
+                "basePaceSeconds": 90,
+                "fuelFinishLiters": 24,
+                "fuelStartLiters": 30,
+                "pilot": "Pilot",
+                "pits": [
+                  {
+                    "changeTyres": true,
+                    "fuelLiters": 12,
+                    "lap": 3,
+                    "pinned": {
+                      "changeTyres": false,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  },
+                  {
+                    "changeTyres": false,
+                    "fuelLiters": 13,
+                    "lap": 6,
+                    "pinned": {
+                      "changeTyres": true,
+                      "fuelLiters": false,
+                      "vePercent": false
+                    },
+                    "pitSeconds": 52,
+                    "service": "parallel",
+                    "vePercent": 5
+                  }
+                ],
+                "stints": [
+                  {
+                    "fromLap": 1,
+                    "toLap": 3
+                  },
+                  {
+                    "fromLap": 4,
+                    "toLap": 6
+                  },
+                  {
+                    "fromLap": 7,
+                    "toLap": 9
+                  }
+                ],
+                "veFinishPercent": 85,
+                "veStartPercent": 100
+              }
+            },
+            "state": "calculated"
+          },
+          "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "state": "ready"
+        }
+      }
+    },
+    {
+      "id": 1,
+      "kind": "response",
+      "result": {
+        "method": "strategy.view",
+        "value": {
+          "activeEventId": "event-1",
+          "activeStrategyId": "variant-1",
+          "dirty": true,
+          "events": [
+            {
+              "acceptedPlan": "none",
+              "class": "GT3",
+              "drivers": 1,
+              "hasInputs": true,
+              "id": "event-1",
+              "name": "Practice",
+              "strategies": [
+                {
+                  "id": "variant-1",
+                  "name": "Base"
+                },
+                {
+                  "id": "variant-2",
+                  "name": "Alternative"
+                }
+              ],
+              "track": "Fuji"
+            }
+          ],
+          "file": {
+            "name": "strategy-v2.json"
+          },
+          "form": {
+            "fields": {
+              "class": "GT3",
+              "driverInitials": "PI",
+              "driverName": "Pilot",
+              "durationMinutes": "90",
+              "fuelCapacityLiters": "82",
+              "name": "Practice",
+              "pitTransitSeconds": "25",
+              "startAt": "",
+              "team": "",
+              "track": "Fuji",
+              "variantMode": "dry",
+              "variantName": "Base",
+              "variantNote": ""
+            },
+            "inputs": {
+              "basePaceSeconds": "90.472",
+              "degradationSeconds": "0",
+              "formationSeconds": "0",
+              "fuelPerLapLiters": "1.83",
+              "fuelStep": "1",
+              "raceLaps": "3",
+              "refuelRate": "1",
+              "reserveLaps": "1",
+              "serviceMode": "parallel",
+              "tyreLifeLaps": "30",
+              "tyreServiceSeconds": "10",
+              "veCapacityPercent": "100",
+              "vePerLapPercent": "5",
+              "veRate": "1",
+              "veStep": "1"
+            }
+          },
+          "plan": {
+            "accepted": null,
+            "computeId": 8,
+            "edit": {
+              "automatic": {
+                "fuelFinishLiters": 24,
+                "totalSeconds": 301,
+                "veFinishPercent": 85
+              },
+              "canReset": true,
+              "cause": {
+                "kind": "fixedAmountUnreachable",
+                "stop": 1
+              },
+              "error": null,
+              "stints": [
+                {
+                  "fromLap": 1,
+                  "toLap": 2
+                },
+                {
+                  "fromLap": 3,
+                  "toLap": 6
+                },
+                {
+                  "fromLap": 7,
+                  "toLap": 9
+                }
+              ],
+              "stops": [
+                {
+                  "fixed": {
+                    "changeTyres": null,
+                    "fuelLiters": null,
+                    "vePercent": null
+                  },
+                  "fuelLiters": 12,
+                  "lap": 2,
+                  "limits": {
+                    "fuel": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    },
+                    "kind": "exact",
+                    "ve": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    }
+                  },
+                  "maxLap": 5,
+                  "minLap": 1,
+                  "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 6
+                  },
+                  "vePercent": 5
+                },
+                {
+                  "fixed": {
+                    "changeTyres": false,
+                    "fuelLiters": null,
+                    "vePercent": null
+                  },
+                  "fuelLiters": 13,
+                  "lap": 6,
+                  "limits": {
+                    "fuel": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    },
+                    "kind": "exact",
+                    "ve": {
+                      "arrival": {
+                        "max": 6,
+                        "min": 2
+                      },
+                      "failLap": null,
+                      "issue": null,
+                      "kind": "used",
+                      "range": {
+                        "max": 24,
+                        "min": 11
+                      }
+                    }
+                  },
+                  "maxLap": 8,
+                  "minLap": 3,
+                  "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": "beyondLife",
+                    "keptLaps": 7,
+                    "lifeLaps": 6
+                  },
                   "vePercent": 5
                 }
               ]
@@ -3865,6 +5281,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -3902,10 +5319,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -3943,6 +5367,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -4114,6 +5544,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -4151,10 +5582,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -4192,6 +5630,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -4363,6 +5807,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -4400,10 +5845,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -4441,6 +5893,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -4612,6 +6070,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -4649,10 +6108,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -4690,6 +6156,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -4861,6 +6333,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -4898,10 +6371,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -4939,6 +6419,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -5055,6 +6541,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -5092,10 +6579,17 @@
                   "maxLap": 5,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 6,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 },
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -5133,6 +6627,12 @@
                   "maxLap": 8,
                   "minLap": 3,
                   "pitSeconds": 53.5,
+                  "tyres": {
+                    "arrivalLaps": 4,
+                    "issue": null,
+                    "keptLaps": 7,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -5300,6 +6800,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -5337,6 +6838,12 @@
                   "maxLap": 2,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 3,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -5455,6 +6962,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -5492,6 +7000,12 @@
                   "maxLap": 2,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 3,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -6176,6 +7690,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -6213,6 +7728,12 @@
                   "maxLap": 2,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 3,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -6422,6 +7943,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -6459,6 +7981,12 @@
                   "maxLap": 2,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 3,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -6668,6 +8196,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -6705,6 +8234,12 @@
                   "maxLap": 2,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 3,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -7592,6 +9127,7 @@
               "stops": [
                 {
                   "fixed": {
+                    "changeTyres": null,
                     "fuelLiters": null,
                     "vePercent": null
                   },
@@ -7629,6 +9165,12 @@
                   "maxLap": 2,
                   "minLap": 1,
                   "pitSeconds": 52,
+                  "tyres": {
+                    "arrivalLaps": 2,
+                    "issue": null,
+                    "keptLaps": 3,
+                    "lifeLaps": 40
+                  },
                   "vePercent": 5
                 }
               ]
@@ -8137,6 +9679,7 @@
       "id": 1,
       "kind": "request",
       "request": {
+        "changeTyres": null,
         "computeId": 7,
         "fuelLiters": 60,
         "index": 1,
@@ -8149,12 +9692,26 @@
       "id": 1,
       "kind": "request",
       "request": {
+        "changeTyres": true,
         "computeId": 7,
         "fuelLiters": null,
         "index": 0,
         "method": "strategy.setStopService",
         "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "vePercent": 97.5
+      }
+    },
+    {
+      "id": 1,
+      "kind": "request",
+      "request": {
+        "changeTyres": false,
+        "computeId": 7,
+        "fuelLiters": null,
+        "index": 1,
+        "method": "strategy.setStopService",
+        "revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "vePercent": null
       }
     },
     {

@@ -82,9 +82,9 @@ export type StrategyPit = { lap: number, fuelLiters: number, vePercent: number, 
  */
 pitSeconds: number, 
 /**
- * Which amounts the person fixed by hand (`strategy.setStopService`): a
- * recalculation with fixed amounts sets them. Tyres cannot be fixed, so
- * `changeTyres` is always `false`.
+ * What the person fixed by hand (`strategy.setStopService`): a recalculation
+ * with something fixed sets them. `changeTyres` here is «the tyres were
+ * fixed», whether to change them or to keep them.
  */
 pinned: StrategyPitPinned, };
 export type StrategyPitService = "parallel" | "sequential";
@@ -141,12 +141,43 @@ pitSeconds: number,
 /**
  * What can be fixed in this stop, in the model of the recalculation.
  */
-limits: StrategyStopLimits, };
+limits: StrategyStopLimits, 
+/**
+ * The laps on the tyres at this stop and whether they last unchanged. Apart
+ * from `limits`: it does not depend on the service steps.
+ */
+tyres: StrategyStopTyres, };
 export type StrategyEditError = "invalidSchedule" | "eventRulesConflict" | "scheduleNotPreserved" | "failed";
 export type StrategyEditCause = { "kind": "fixedAmountUnreachable", stop: number, };
 export type StrategyAutomaticPlan = { totalSeconds: number, fuelFinishLiters: number, veFinishPercent: number, };
-export type StrategyStopFixed = { fuelLiters: number | null, vePercent: number | null, };
+export type StrategyStopFixed = { fuelLiters: number | null, vePercent: number | null, 
+/**
+ * `true`: new tyres. `false`: the ones on the car stay.
+ */
+changeTyres: boolean | null, };
 export type StrategyStopLimits = { "kind": "unavailable" } | { "kind": "exact", fuel: StrategyAmountLimits, ve: StrategyAmountLimits, };
+export type StrategyStopTyres = { 
+/**
+ * The most laps a set of tyres lasts; `null` when there is no limit.
+ */
+lifeLaps: number | null, 
+/**
+ * The laps the tyres have done when they reach this stop, with what is
+ * fixed in the stops before it.
+ */
+arrivalLaps: number, 
+/**
+ * The laps they would have done at the end of the next stint if this stop
+ * does not change them.
+ */
+keptLaps: number, 
+/**
+ * What happens to «keep the tyres» fixed here; `null` when it is not fixed
+ * or the tyres last. With a schedule that has no plan with nothing fixed
+ * it may still be set, and `cause` names no stop: the schedule is to blame.
+ */
+issue: StrategyTyreIssue | null, };
+export type StrategyTyreIssue = "beyondLife";
 export type StrategyAmountLimits = { "kind": "unused" } | { "kind": "used", 
 /**
  * The levels one can arrive at the stop with, as the calculation models
@@ -255,6 +286,7 @@ export const strategyAcceptedMarks = ["none","accepted","stale"] as const;
 export const strategyUnreachableCauses = ["resourceExhausted","reserveNotMet","scheduleMismatch","other"] as const;
 export const strategyReasons = ["searchBudgetExhausted","fineGridNoFallback","constraintsUnsatisfiable","noFeasiblePlan"] as const;
 export const strategyAmountIssues = ["belowMin","aboveMax","noRange"] as const;
+export const strategyTyreIssues = ["beyondLife"] as const;
 export const strategyStopAmounts = ["fuelLiters","vePercent"] as const;
 export const strategyStopServiceReasons = ["negative","aboveCapacity","offGrid","notInUse"] as const;
 export const strategyFileModes = ["open","saveAs"] as const;
@@ -285,7 +317,11 @@ inputs: StrategySolverFields | null, } | { "method": "strategy.save", revision: 
 /**
  * The key is required (in Rust too): leaving it out is not «automatic».
  */
-fuelLiters: number | null, vePercent: number | null, } | { "method": "strategy.clearStopServices", revision: string, computeId: number, } | { "method": "strategy.recalculate", revision: string, computeId: number, } | { "method": "strategy.resetEdit", revision: string, computeId: number, } | { "method": "strategy.pickFile", mode: StrategyFileMode, revision: string, } | { "method": "strategy.accept", revision: string, computeId: number, } | { "method": "strategy.unaccept", revision: string, } | { "method": "strategy.showAccepted", revision: string, } | { "method": "strategy.export", revision: string, target: StrategyExportTarget, } | { "method": "strategy.exportFile", revision: string, target: StrategyExportTarget, };
+fuelLiters: number | null, vePercent: number | null, 
+/**
+ * `true` fits new tyres and `false` keeps the ones on the car.
+ */
+changeTyres: boolean | null, } | { "method": "strategy.clearStopServices", revision: string, computeId: number, } | { "method": "strategy.recalculate", revision: string, computeId: number, } | { "method": "strategy.resetEdit", revision: string, computeId: number, } | { "method": "strategy.pickFile", mode: StrategyFileMode, revision: string, } | { "method": "strategy.accept", revision: string, computeId: number, } | { "method": "strategy.unaccept", revision: string, } | { "method": "strategy.showAccepted", revision: string, } | { "method": "strategy.export", revision: string, target: StrategyExportTarget, } | { "method": "strategy.exportFile", revision: string, target: StrategyExportTarget, };
 export type StrategyReply = { "method": "strategy.open", value: StrategyView, } | { "method": "strategy.view", value: StrategyView, } | { "method": "strategy.select", value: StrategyView, } | { "method": "strategy.create", value: StrategyView, } | { "method": "strategy.confirm", value: StrategyView, } | { "method": "strategy.save", value: StrategyView, } | { "method": "strategy.discard", value: StrategyView, } | { "method": "strategy.compute", value: StrategyView, } | { "method": "strategy.cancel", value: StrategyView, } | { "method": "strategy.moveBoundary", value: StrategyView, } | { "method": "strategy.moveStop", value: StrategyView, } | { "method": "strategy.setStopService", value: StrategyView, } | { "method": "strategy.clearStopServices", value: StrategyView, } | { "method": "strategy.recalculate", value: StrategyView, } | { "method": "strategy.resetEdit", value: StrategyView, } | { "method": "strategy.pickFile", value: StrategyView, } | { "method": "strategy.accept", value: StrategyView, } | { "method": "strategy.unaccept", value: StrategyView, } | { "method": "strategy.showAccepted", value: StrategyView, } | { "method": "strategy.export", value: StrategyExportText, } | { "method": "strategy.exportFile", value: StrategyExportFileValue, };
 export type StrategyHostError = { "kind": "strategyDirty" } | { "kind": "strategyEditPending" } | { "kind": "strategyImportFailed" } | { "kind": "strategyInvalidText" } | { "kind": "strategyInvalidInput", field: StrategyField | null, } | { "kind": "strategyFileUnavailable" } | { "kind": "strategyFileTooLarge" } | { "kind": "strategyTargetExists" } | { "kind": "strategyPickExpired" } | { "kind": "strategyNotAcceptable" } | { "kind": "strategyNoAcceptedPlan" } | { "kind": "strategyNothingToExport" } | { "kind": "strategyExportNotCsv" } | { "kind": "strategyFileInUse" } | { "kind": "strategyInvalidStopService", amount: StrategyStopAmount, reason: StrategyStopServiceReason, below: number | null, above: number | null, } | { "kind": "strategyConflict", current: StrategyView, };
 export const strategyMethods = ["strategy.accept","strategy.cancel","strategy.clearStopServices","strategy.compute","strategy.confirm","strategy.create","strategy.discard","strategy.export","strategy.exportFile","strategy.moveBoundary","strategy.moveStop","strategy.open","strategy.pickFile","strategy.recalculate","strategy.resetEdit","strategy.save","strategy.select","strategy.setStopService","strategy.showAccepted","strategy.unaccept","strategy.view"] as const;

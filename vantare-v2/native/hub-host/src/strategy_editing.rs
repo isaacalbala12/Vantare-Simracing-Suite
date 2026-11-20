@@ -1,7 +1,7 @@
 //! Editing of the calculated plan in memory: move a stint boundary or a pit stop,
-//! fix by hand the fuel and the energy a stop loads, recalculate with the edited
-//! schedule and the fixed amounts as constraints, or reset to the last feasible
-//! plan. The document is never touched: the schedule and what is fixed live only
+//! fix by hand the fuel and the energy a stop loads and whether it changes the
+//! tyres, recalculate with the edited schedule and what is fixed as constraints,
+//! or reset to the last feasible plan. The document is never touched: the schedule and what is fixed live only
 //! here, and reach the document when the recalculated plan is accepted.
 use super::accepted::pit_seconds;
 use super::calculation::{
@@ -14,10 +14,13 @@ use std::sync::atomic::AtomicBool;
 #[cfg(any(test, feature = "bindings"))]
 use ts_rs::TS;
 use vantare_strategy::{
-    application::{EditedPlan, fixed_stop_bounds, recalculate_edited_plan_fixed},
+    application::{
+        EditedPlan, fixed_stop_bounds, fixed_stop_tyres, recalculate_edited_plan_fixed,
+    },
     solver::{
         self, AmountRange, Discretization, FixedProblem, FixedResource, FixedStop,
         FixedStopProblem, Input, PitDecision, ResourceBounds, SolverOutcome, StopBounds,
+        TyreBounds,
     },
 };
 
@@ -88,9 +91,44 @@ pub struct StrategyEditStop {
     pub pit_seconds: Number,
     /// What can be fixed in this stop, in the model of the recalculation.
     pub limits: StrategyStopLimits,
+    /// The laps on the tyres at this stop and whether they last unchanged. Apart
+    /// from `limits`: it does not depend on the service steps.
+    pub tyres: StrategyStopTyres,
 }
 
-/// The amounts fixed by hand in a stop; `null` is automatic.
+/// The tyres at a stop, as the recalculation counts them. `arrival_laps` and
+/// `kept_laps` do not depend on what is fixed in this stop or in the later ones.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct StrategyStopTyres {
+    /// The most laps a set of tyres lasts; `null` when there is no limit.
+    pub life_laps: Option<u32>,
+    /// The laps the tyres have done when they reach this stop, with what is
+    /// fixed in the stops before it.
+    pub arrival_laps: u32,
+    /// The laps they would have done at the end of the next stint if this stop
+    /// does not change them.
+    pub kept_laps: u32,
+    /// What happens to «keep the tyres» fixed here; `null` when it is not fixed
+    /// or the tyres last. With a schedule that has no plan with nothing fixed
+    /// it may still be set, and `cause` names no stop: the schedule is to blame.
+    pub issue: Option<StrategyTyreIssue>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[serde(rename_all = "camelCase")]
+pub enum StrategyTyreIssue {
+    /// Kept here, the tyres would do more laps than they last: no plan.
+    BeyondLife,
+}
+
+impl StrategyTyreIssue {
+    pub const ALL: &'static [Self] = &[Self::BeyondLife];
+}
+
+/// What is fixed by hand in a stop; `null` is automatic.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -99,6 +137,8 @@ pub struct StrategyStopFixed {
     pub fuel_liters: Option<Number>,
     #[cfg_attr(any(test, feature = "bindings"), ts(type = "number | null"))]
     pub ve_percent: Option<Number>,
+    /// `true`: new tyres. `false`: the ones on the car stay.
+    pub change_tyres: Option<bool>,
 }
 
 /// The limits of a stop. They depend on the schedule and on what is fixed in
@@ -321,6 +361,7 @@ impl Editing {
         let bounds = fixed_stop_bounds(&self.input, &self.edited, &self.fixed)
             .ok()
             .flatten();
+        let tyres = fixed_stop_tyres(&self.input, &self.edited, &self.fixed).ok();
         let stops = self
             .edited
             .pit_stop_laps
@@ -336,7 +377,7 @@ impl Editing {
                         lap,
                         fuel_liters: fixed.fuel_liters.or(pit.fuel_liters.as_f64())?,
                         ve_percent: fixed.ve_percent.or(pit.ve_percent.as_f64())?,
-                        change_tyres: pit.change_tyres,
+                        change_tyres: fixed.change_tyres.unwrap_or(pit.change_tyres),
                         ..PitDecision::default()
                     },
                 );
@@ -349,6 +390,7 @@ impl Editing {
                     fixed: StrategyStopFixed {
                         fuel_liters: fixed.fuel_liters.and_then(Number::from_f64),
                         ve_percent: fixed.ve_percent.and_then(Number::from_f64),
+                        change_tyres: fixed.change_tyres,
                     },
                     pit_seconds: Number::from_f64(seconds)?,
                     limits: bounds
@@ -356,6 +398,7 @@ impl Editing {
                         .and_then(|bounds| bounds.get(index))
                         .and_then(|bounds| self.limits(bounds))
                         .unwrap_or(StrategyStopLimits::Unavailable),
+                    tyres: stop_tyres(tyres.as_ref()?.get(index)?),
                 })
             })
             .collect();
@@ -440,16 +483,18 @@ impl Editing {
         self.cause = None;
     }
 
-    /// Fixes by hand what stop `index` loads: both amounts are stated, and `None`
-    /// leaves one to the calculation. An amount the calculation cannot take
-    /// whatever the other stops do is refused and nothing changes. A valid one is
-    /// kept even when it leaves no plan: the limits of the view say so, because
-    /// they move with the other stops.
+    /// Fixes by hand what stop `index` does: both amounts and the tyres are
+    /// stated, and `None` leaves one to the calculation. An amount the
+    /// calculation cannot take whatever the other stops do is refused and
+    /// nothing changes. A valid one is kept even when it leaves no plan, and so
+    /// are tyres that would not last: the view says so, because it moves with
+    /// the other stops.
     pub(super) fn set_stop_service(
         &mut self,
         index: u32,
         fuel: Option<f64>,
         ve: Option<f64>,
+        change_tyres: Option<bool>,
     ) -> Result<(), HostError> {
         let index = usize::try_from(index).map_err(|_| HostError::Rejected)?;
         if index >= self.fixed.len() {
@@ -458,7 +503,7 @@ impl Editing {
         let wanted = FixedStop {
             fuel_liters: self.amount(StrategyStopAmount::FuelLiters, fuel)?,
             ve_percent: self.amount(StrategyStopAmount::VePercent, ve)?,
-            change_tyres: None,
+            change_tyres,
         };
         if self.fixed[index] != wanted {
             self.fixed[index] = wanted;
@@ -650,6 +695,16 @@ fn amount_limits(bounds: &ResourceBounds, step: f64) -> Option<StrategyAmountLim
     })
 }
 
+/// The tyres of a stop as the wire shows them.
+fn stop_tyres(tyres: &TyreBounds) -> StrategyStopTyres {
+    StrategyStopTyres {
+        life_laps: tyres.life_laps,
+        arrival_laps: tyres.arrival_laps,
+        kept_laps: tyres.kept_laps,
+        issue: tyres.beyond_life.then_some(StrategyTyreIssue::BeyondLife),
+    }
+}
+
 /// The figures of a feasible plan that a plan with fixed amounts is compared with.
 fn figures(view: &StrategyPlanView) -> Option<StrategyAutomaticPlan> {
     let result = view.result.as_ref()?;
@@ -691,8 +746,8 @@ pub(super) fn recalculate(
     // fallback decides the reason, as in the calculation.
     let mut view = project_with(input, outcome, pilot, true, recalculation.fallback)
         .map_err(|_| StrategyEditError::Failed)?;
-    // The plan carries exactly what was fixed (the crate guards it): say which
-    // amounts are the person's, so that accepting the plan keeps it.
+    // The plan carries exactly what was fixed (the crate guards it): say what
+    // is the person's, so that accepting the plan keeps it.
     if let Some(timeline) = view
         .result
         .as_mut()
@@ -701,6 +756,7 @@ pub(super) fn recalculate(
         for (pit, fixed) in timeline.pits.iter_mut().zip(fixed) {
             pit.pinned.fuel_liters = fixed.fuel_liters.is_some();
             pit.pinned.ve_percent = fixed.ve_percent.is_some();
+            pit.pinned.change_tyres = fixed.change_tyres.is_some();
         }
     }
     Ok(Recalculated {

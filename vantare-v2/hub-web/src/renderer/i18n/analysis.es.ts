@@ -194,6 +194,9 @@ export function sectorTime(ms: number) {
     ? `${minutes}:${String(seconds).padStart(2, "0")}.${millis}`
     : `${seconds}.${millis}`;
 }
+/** Diferencia de sector con signo y tres decimales: `+0.184 s`. */
+export const sectorDelta = (ms: number) =>
+  `${ms < 0 ? "−" : ms > 0 ? "+" : ""}${(Math.abs(ms) / 1000).toFixed(3)} s`;
 export const decimal = (n: number) =>
   n.toLocaleString("es-ES", { maximumFractionDigits: 1 });
 export const size = (bytes: number) => `${decimal(bytes / 1_000_000)} MB`;

@@ -40,6 +40,7 @@ import {
   ComparisonValues,
   cursorDescription,
 } from "./ComparisonValues";
+import { SectorComparison } from "./SectorComparison";
 import { SessionTrack, SessionVehicle } from "./SessionIdentity";
 import { useRecordingClock } from "./useRecordingClock";
 import "./comparison.css";
@@ -203,6 +204,13 @@ export function Comparison({
           </div>
         ))}
       </div>
+      {!kind && (
+        <SectorComparison
+          laps={laps}
+          a={laps.find((lap) => lap.index === pair?.a)}
+          b={laps.find((lap) => lap.index === pair?.b)}
+        />
+      )}
       {kind ? (
         special ? (
           <div role="alert">

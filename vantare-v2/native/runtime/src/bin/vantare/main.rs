@@ -554,16 +554,28 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             .as_ref()
             .map(|_| vantare_ipc::control::Feed::connect(&photo, config.core.path.clone()))
             .transpose()?;
-        // Before the core and the Hub exist: only this session can be using them.
-        if let Some(root) = &config.installation {
-            installed::adopt_recordings(root);
-        }
-        config.core.args = recording::startup_args(
-            config.core.args,
-            vantare_ipc::paths::Root::from_env()
-                .map(|root| recording::hub_data(&root, config.installation.is_some())),
-            config.installation.as_deref(),
-        );
+        // Before the core and the Hub exist: only this session can be using
+        // the recordings, and both are told about them from one place.
+        let mut hub_args = None;
+        config.core.args = match (&config.installation, vantare_ipc::paths::Root::from_env()) {
+            (Some(root), Ok(data)) => {
+                let (core, hub) = recording::installed(
+                    root,
+                    data.base(),
+                    &photo,
+                    config.core.args,
+                    &mut || installed::adopt_recordings(root),
+                    &mut |text| installed::note(root, text),
+                );
+                hub_args = Some(hub);
+                core
+            }
+            (_, data) => recording::startup_args(
+                config.core.args,
+                data.map(|data| recording::hub_data(&data, config.installation.is_some())),
+                config.installation.as_deref(),
+            ),
+        };
         let hub_image = config.core.path.with_file_name("vantare-hub.exe");
         let mut core = Service::new("núcleo", config.core, config.restarts)
             .with_policy(session::Policy::core(config.restarts));
@@ -590,20 +602,8 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             );
         }
         if let Some(root) = &config.installation {
-            let data = vantare_ipc::paths::Root::from_env()?.base().to_path_buf();
-            let mut hub_args = vec!["--control-stdin".into(), "--pipe".into(), photo.clone()];
-            for (flag, path) in [
-                ("--data-dir", data.join("hub")),
-                ("--layout", data.join("Vantare/native/layout.json")),
-                (
-                    "--engineer-settings",
-                    data.join("Vantare/native/engineer.json"),
-                ),
-                ("--launcher-file", data.join("Vantare/native/launcher.json")),
-            ] {
-                hub_args.extend([flag.into(), path.to_string_lossy().into_owned()]);
-            }
-            hub_args.extend(recording::hub_argument(root, &data.join("hub")));
+            let hub_args = hub_args
+                .ok_or_else(|| io::Error::other("raíz de datos de la sesión no disponible"))?;
             let mut hub = Service::new(
                 "Hub",
                 Program {

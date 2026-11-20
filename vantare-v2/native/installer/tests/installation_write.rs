@@ -3114,7 +3114,14 @@ fn links_in_the_source_or_in_the_single_folder_are_never_followed() {
         }
         let (result, notes) =
             fixture.adopt_until(&active, Duplicates::RemoveIdentical, &mut |_| Ok(()));
-        assert!(result.is_err() && notes.is_empty(), "{place}: {notes:?}");
+        if place == "twin" {
+            // Nothing inside the single folder stops the engine: the link is
+            // not read and the copy that bears its name stays where it is.
+            assert_eq!(result.expect("adoption"), adopted(0, 0, 1), "{notes:?}");
+            assert!(keeps(&notes, &source.join(name), "no se puede leer"));
+        } else {
+            assert!(result.is_err() && notes.is_empty(), "{place}: {notes:?}");
+        }
         assert_eq!(index(&outside), before, "{place}");
         if folder {
             fs::remove_dir(&link).unwrap();
@@ -3507,4 +3514,131 @@ fn a_repeated_copy_beside_a_wal_is_never_compared_or_removed() {
         keeps(&notes, &source.join(twin), "carpeta única"),
         "{notes:?}"
     );
+}
+
+// `<root>\recordings` is the user's (ADR 0111, T2b, #2777): a link, a junction
+// or a file in its place never stops the engine, and the engine never enters
+// it, follows it or removes anything through it.
+fn junction(link: &Path, target: &Path) {
+    let made = Command::new(std::env::var_os("COMSPEC").expect("Windows shell"))
+        .args(["/D", "/C", "mklink", "/J"])
+        .args([link, target])
+        .creation_flags(0x0800_0000)
+        .output()
+        .expect("mklink");
+    assert!(made.status.success(), "{made:?}");
+}
+fn recordings_that_are_not_a_folder(kind: &str) {
+    use std::os::windows::fs::symlink_file;
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    let setup = |version: &str, mode| fixture.setup(&shell, &fixture.electron(version), mode, None);
+    let outside = fixture.path.join("otro disco");
+    let files: [(&str, &[u8]); 2] = [("series-1-1.duckdb", b"recorded"), ("notas.txt", b"mine")];
+    record(&outside, &files);
+    setup("1.0.0", Mode::Auto).expect("first installation");
+    let single = fixture.root.join("recordings");
+    match kind {
+        "junction" => junction(&single, &outside),
+        "broken junction" => {
+            let gone = fixture.path.join("ya no está");
+            fs::create_dir(&gone).unwrap();
+            junction(&single, &gone);
+            fs::remove_dir(&gone).unwrap();
+        }
+        "file link" => symlink_file(outside.join(files[0].0), &single).unwrap(),
+        _ => fs::write(&single, b"not a folder").unwrap(),
+    }
+    let (behind, points) = (index(&outside), fs::read_link(&single).ok());
+    let intact = |step: &str| {
+        assert_eq!(index(&outside), behind, "{kind}, {step}: what is behind it");
+        assert_eq!(fs::read_link(&single).ok(), points, "{kind}, {step}");
+        assert!(fs::symlink_metadata(&single).is_ok(), "{kind}, {step}");
+    };
+    let root = disk::open_root(&fixture.root, false).expect("the installation opens");
+    setup("1.0.1", Mode::Auto).expect("update");
+    intact("update");
+    fixture.confirm();
+    intact("confirm");
+    setup("1.0.1", Mode::Repair).expect("repair");
+    intact("repair");
+    let restored = operations::rollback(&root).expect("rollback");
+    assert_eq!(restored, operations::BootRecovery::Restored);
+    intact("rollback");
+    setup("1.0.2", Mode::Auto).expect("another update");
+    assert!(!operations::discard_stale_boot_marker(&root).expect("marker"));
+    let retired = fixture.confirm();
+    assert!(
+        retired.iter().any(|note| note.contains("retirados")),
+        "{retired:?}"
+    );
+    intact("generations without reference");
+    engine::shell::sync_running_with_context(&root, &shell.context, None).expect("registration");
+    intact("registration");
+    // The adoption is the only operation that writes there: it brings nothing.
+    let source = recordings(&fixture.active());
+    record(
+        &source,
+        &[("series-9-9.duckdb", b"stays in its generation")],
+    );
+    let (adoption, notes) =
+        fixture.adopt_until(&fixture.active(), Duplicates::Keep, &mut |_| Ok(()));
+    assert!(adoption.is_err() && notes.is_empty(), "{kind}: {notes:?}");
+    assert_eq!(names(&source), ["series-9-9.duckdb"], "{kind}");
+    intact("adoption");
+    fixture.remove(&shell).expect("uninstall");
+    intact("uninstall");
+    setup("1.0.3", Mode::Auto).expect("installation over the kept data");
+    intact("install");
+}
+#[test]
+fn a_junction_as_recordings_never_stops_the_engine_and_is_never_followed() {
+    recordings_that_are_not_a_folder("junction");
+}
+#[test]
+fn a_broken_junction_as_recordings_never_stops_the_engine() {
+    recordings_that_are_not_a_folder("broken junction");
+}
+#[test]
+fn a_file_link_as_recordings_never_stops_the_engine_and_is_never_followed() {
+    recordings_that_are_not_a_folder("file link");
+}
+#[test]
+fn a_file_as_recordings_never_stops_the_engine() {
+    recordings_that_are_not_a_folder("file");
+}
+
+#[test]
+fn only_the_entry_named_recordings_at_the_root_is_left_alone() {
+    use std::os::windows::fs::{symlink_dir, symlink_file};
+    let fixture = Fixture::new();
+    let (_, single, active) = fixture.installed();
+    let outside = fixture.path.join("fuera");
+    record(&outside, &[("series-1-1.duckdb", b"recorded")]);
+    let opens = || disk::open_root(&fixture.root, false).is_ok();
+    // Any other name, and the same name anywhere else, is refused as before.
+    for place in [
+        fixture.root.join("grabaciones"),
+        fixture.root.join("recordings 2"),
+        fixture.root.join("generations/recordings"),
+        active.join("recordings"),
+        active.join("data/recordings"),
+        active.join("data/hub/recordings"),
+    ] {
+        symlink_dir(&outside, &place).unwrap();
+        assert!(!opens(), "{place:?}");
+        fs::remove_dir(&place).unwrap();
+    }
+    // The name as Windows compares it; and nothing inside it is looked at.
+    symlink_dir(&outside, fixture.root.join("RECORDINGS")).unwrap();
+    assert!(opens(), "in capitals");
+    fs::remove_dir(&single).unwrap();
+    record(&single.join("carpeta"), &[]);
+    symlink_dir(&outside, single.join("carpeta/enlace")).unwrap();
+    symlink_file(
+        outside.join("series-1-1.duckdb"),
+        single.join("series-1-1.duckdb"),
+    )
+    .unwrap();
+    assert!(opens(), "a normal folder with links inside");
 }

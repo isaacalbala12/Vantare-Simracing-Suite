@@ -333,9 +333,14 @@ pub(super) fn adopt_recordings_with(root: &Path, own: &Path, wait: &mut dyn FnMu
         let note = format!(
             "Grabaciones: no se han traído al arrancar; se reintenta en el próximo arranque. Motivo: {error}"
         );
-        disk::log_once(root, &note);
-        log(note);
+        self::note(root, &note);
     }
+}
+/// What the session has to say about the recordings: once in the log of the
+/// installation, which is the only place somebody will read.
+pub(super) fn note(root: &Path, text: &str) {
+    disk::log_once(root, text);
+    log(text);
 }
 
 pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {

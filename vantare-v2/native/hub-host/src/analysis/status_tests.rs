@@ -254,7 +254,11 @@ fn write_recording(root: &Path) {
     fs::write(root.join("series-123-456.duckdb"), []).unwrap();
 }
 fn rejects_recording_directory(root: &Path) {
-    assert!(read(root, &BTreeMap::new()).is_none());
+    // Never read; and the Hub says that nothing is recorded there.
+    let said = read(root, &BTreeMap::new()).expect("a status of its own");
+    let stopped = AnalysisRecordingState::Stopped;
+    let cause = Some(AnalysisRecordingCause::InvalidDirectory);
+    assert_eq!((said.state, said.cause, said.row_id), (stopped, cause, None));
     assert_eq!(
         super::super::recordings(root).unwrap_err().code,
         super::super::ErrorCode::Unreadable

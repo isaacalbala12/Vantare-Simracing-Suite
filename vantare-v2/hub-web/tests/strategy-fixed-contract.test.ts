@@ -23,6 +23,7 @@ const set = {
   index: 1,
   fuelLiters: 60,
   vePercent: null,
+  changeTyres: null,
 };
 const clear = { method: "strategy.clearStopServices", revision, computeId: 7 };
 
@@ -32,8 +33,9 @@ it("lists the two methods and accepts their requests and nothing looser", () => 
   const sent = requests.filter(
     ({ method }) => method === set.method || method === clear.method,
   );
-  // both amounts of the corpus: one fixed and the other automatic, each way
-  expect(sent).toHaveLength(3);
+  // both amounts of the corpus: one fixed and the other automatic, each way,
+  // and the tyres alone
+  expect(sent).toHaveLength(4);
   for (const request of sent)
     expect(isRequest(request as Record<string, unknown>)).toBe(true);
   for (const good of [
@@ -65,8 +67,7 @@ it("lists the two methods and accepts their requests and nothing looser", () => 
     { ...set, index: 1.5 },
     { ...set, computeId: 0 },
     { ...set, revision: "z" },
-    // neither tyres nor the service mode nor a path
-    { ...set, changeTyres: false },
+    // neither the service mode nor a path
     { ...set, serviceMode: "parallel" },
     { ...set, path: "x" },
     { ...clear, index: 0 },
@@ -270,9 +271,6 @@ it("rejects limits that disagree with what is fixed", () => {
   expect(broken(inside, (plan) => (second(plan).fixed.fuelLiters = -1))).toBe(
     false,
   );
-  expect(
-    broken(inside, (plan) => (second(plan).fixed.changeTyres = false)),
-  ).toBe(false);
   expect(broken(inside, (plan) => delete second(plan).fixed.vePercent)).toBe(
     false,
   );
@@ -311,13 +309,6 @@ it("rejects limits that disagree with what is fixed", () => {
   );
   expect(broken(inside, (plan) => delete plan.edit.automatic)).toBe(false);
   expect(broken(inside, (plan) => delete plan.edit.cause)).toBe(false);
-  // tyres are never fixed by hand
-  expect(
-    broken(
-      inside,
-      (plan) => (plan.result.timeline.pits[0].pinned.changeTyres = true),
-    ),
-  ).toBe(false);
 });
 
 // The Fuji scene of the mock: 5 stops, with the limits of the solver for it.
@@ -362,7 +353,15 @@ it("the mock fixes an amount only in the session and says what the limits say", 
     index: number,
     fuelLiters: number | null,
     vePercent: number | null = null,
-  ) => send({ ...request(), method: set.method, index, fuelLiters, vePercent });
+  ) =>
+    send({
+      ...request(),
+      method: set.method,
+      index,
+      fuelLiters,
+      vePercent,
+      changeTyres: null,
+    });
 
   // 60 L in the second stop: too little, and it runs out in lap 121
   const edited = planOf(fix(1, 60));
@@ -371,6 +370,7 @@ it("the mock fixes an amount only in the session and says what the limits say", 
   expect(edited.edit.stops[1].fixed).toEqual({
     fuelLiters: 60,
     vePercent: null,
+    changeTyres: null,
   });
   expect(edited.edit.stops[1].fuelLiters).toBe(base.edit.stops[1].fuelLiters);
   expect(edited.edit.stops[1].limits.fuel).toMatchObject({
@@ -400,7 +400,11 @@ it("the mock fixes an amount only in the session and says what the limits say", 
   fix(1, 77);
   const cleared = planOf(send({ ...request(), method: clear.method }));
   for (const stop of cleared.edit.stops)
-    expect(stop.fixed).toEqual({ fuelLiters: null, vePercent: null });
+    expect(stop.fixed).toEqual({
+      fuelLiters: null,
+      vePercent: null,
+      changeTyres: null,
+    });
   expect(cleared.edit.automatic).toBeNull();
   expect(cleared.state).toBe("edited");
   // «Restablecer» returns to the plan, which had nothing fixed
@@ -422,7 +426,7 @@ it("the mock refuses an amount that cannot be fixed, with the reasons of the hos
     index: number,
     fuelLiters: number | null,
     vePercent: number | null = null,
-  ) => send({ ...request, index, fuelLiters, vePercent });
+  ) => send({ ...request, index, fuelLiters, vePercent, changeTyres: null });
   const fuel = { kind: refusal.kind, amount: "fuelLiters" };
   expect(errorOf(fix(1, 60.5))).toEqual({
     ...fuel,
@@ -464,6 +468,7 @@ it("the mock refuses an amount that cannot be fixed, with the reasons of the hos
         index: 1,
         fuelLiters: 77,
         vePercent: null,
+        changeTyres: null,
       }),
     ),
   ).toMatchObject({ kind: "strategyConflict" });
@@ -494,6 +499,7 @@ it("the mock recalculates with what is fixed: a plan that says so, or the stop t
         index,
         fuelLiters,
         vePercent: null,
+        changeTyres: null,
       }),
     );
   const recalculate = (computeId: number) => {
@@ -510,6 +516,7 @@ it("the mock recalculates with what is fixed: a plan that says so, or the stop t
           index: 0,
           fuelLiters: 75,
           vePercent: null,
+          changeTyres: null,
         }),
       ),
     ).toEqual({ kind: "busy" });

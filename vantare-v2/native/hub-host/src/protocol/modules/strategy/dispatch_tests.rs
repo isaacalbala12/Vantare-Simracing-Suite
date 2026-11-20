@@ -309,12 +309,14 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
             fixed: crate::strategy::StrategyStopFixed {
                 fuel_liters: Some(number(123_456.789)),
                 ve_percent: Some(number(99.999_999)),
+                change_tyres: Some(false),
             },
             pit_seconds: number(123_456.789),
             limits: crate::strategy::StrategyStopLimits::Exact {
                 fuel: widest(),
                 ve: widest(),
             },
+            tyres: widest_tyres(),
         })
         .collect();
     let plan = StrategyPlanView {
@@ -354,7 +356,7 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
                         pinned: crate::strategy::StrategyPitPinned {
                             fuel_liters: true,
                             ve_percent: true,
-                            change_tyres: false,
+                            change_tyres: true,
                         },
                     })
                     .collect(),
@@ -772,12 +774,14 @@ fn bounded_strategy_timeline_and_edit_fit_even_with_a_full_document_view() {
                     fixed: crate::strategy::StrategyStopFixed {
                         fuel_liters: Number::from_f64(f64::MAX),
                         ve_percent: Number::from_f64(f64::MAX),
+                        change_tyres: Some(false),
                     },
                     pit_seconds: Number::from_f64(f64::MAX).unwrap(),
                     limits: crate::strategy::StrategyStopLimits::Exact {
                         fuel: widest_limits(),
                         ve: widest_limits(),
                     },
+                    tyres: widest_tyres(),
                 };
                 STRATEGY_PIT_LIMIT
             ],
@@ -2554,7 +2558,61 @@ fn fix_stop(view: &StrategyView, index: u32, fuel: Option<f64>, ve: Option<f64>)
         index,
         fuel_liters: fuel.and_then(serde_json::Number::from_f64),
         ve_percent: ve.and_then(serde_json::Number::from_f64),
+        change_tyres: None,
     }
+}
+
+/// The tyres of a stop of the largest views: the longest numbers and a mark.
+fn widest_tyres() -> crate::strategy::StrategyStopTyres {
+    crate::strategy::StrategyStopTyres {
+        life_laps: Some(u32::MAX),
+        arrival_laps: u32::MAX,
+        kept_laps: u32::MAX,
+        issue: Some(crate::strategy::StrategyTyreIssue::BeyondLife),
+    }
+}
+
+// Tyres kept by hand (E5h, #2743), through the dispatcher: the answer is the
+// view and only the session changes.
+#[test]
+fn keeping_the_tyres_reaches_the_session_and_answers_with_the_view() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    let view = planned_strategy(&mut session);
+    let keep = Request::StrategySetStopService {
+        revision: view.revision.clone(),
+        compute_id: view.plan.compute_id.unwrap(),
+        index: 0,
+        fuel_liters: None,
+        ve_percent: None,
+        change_tyres: Some(false),
+    };
+    let HostToUi::Response {
+        result: Reply::StrategySetStopService { value: kept },
+        ..
+    } = request(&mut session, &keep)
+    else {
+        panic!("keep the tyres of the first stop");
+    };
+    assert_eq!(kept.plan.state, StrategyPlanState::Edited);
+    let stop = &kept.plan.edit.as_ref().unwrap().stops[0];
+    assert_eq!(stop.fixed.change_tyres, Some(false));
+    assert_eq!(stop.tyres.issue, None, "30 laps of life for a race of 10");
+    assert_eq!(
+        (kept.revision.as_str(), kept.dirty),
+        (view.revision.as_str(), false)
+    );
+    assert_eq!(view_strategy(&mut session), kept);
+    // «Volver todo a automático» takes the tyres back too
+    let HostToUi::Response {
+        result: Reply::StrategyClearStopServices { value: cleared },
+        ..
+    } = request(&mut session, &clear_stops(&kept))
+    else {
+        panic!("clear what is fixed");
+    };
+    let stops = &cleared.plan.edit.as_ref().unwrap().stops;
+    assert!(stops.iter().all(|stop| stop.fixed.change_tyres.is_none()));
 }
 
 fn clear_stops(view: &StrategyView) -> Request {

@@ -187,12 +187,15 @@ describe("the amounts of a stop", () => {
         index: 1,
         fuelLiters: 77,
         vePercent: null,
+        // this screen fixes amounts only: the tyres go back as the host has them
+        changeTyres: null,
       },
     ]);
     expect(amount("Combustible", 2).value).toBe("77");
     expect(view.plan.edit?.stops[1].fixed).toEqual({
       fuelLiters: 77,
       vePercent: null,
+      changeTyres: null,
     });
     // the pin is where the host says something is fixed
     expect(screen.getAllByText("fijado por ti")).toHaveLength(1);
@@ -307,7 +310,11 @@ describe("the amounts of a stop", () => {
     manual("Combustible", 2);
     await heading("Plan modificado");
     const held = (await lastView(request)).plan.edit?.stops[1].fixed;
-    expect(held).toEqual({ fuelLiters: 77, vePercent: null });
+    expect(held).toEqual({
+      fuelLiters: 77,
+      vePercent: null,
+      changeTyres: null,
+    });
     type(await waitFor(() => amount("Combustible", 2)), "70,5");
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toBe(
@@ -358,6 +365,7 @@ describe("the amounts of a stop", () => {
     expect((await lastView(request)).plan.edit?.stops[1].fixed).toEqual({
       fuelLiters: 77,
       vePercent: 97,
+      changeTyres: null,
     });
     // the single status line stays quiet: errors have their own alert
     expect(screen.getAllByRole("status")).toHaveLength(1);
@@ -1203,6 +1211,7 @@ describe("what the host refuses of a fixed amount", () => {
       expect(view.plan.edit?.stops[1].fixed).toEqual({
         fuelLiters: null,
         vePercent: null,
+        changeTyres: null,
       });
     },
   );
@@ -1259,8 +1268,8 @@ describe("«Restablecer» when the last valid plan had amounts fixed", () => {
     const fixed = (await lastView(request)).plan.edit?.stops.map(
       (stop) => stop.fixed,
     );
-    expect(fixed?.[1]).toEqual({ fuelLiters: null, vePercent: null });
-    expect(fixed?.[4]).toEqual({ fuelLiters: null, vePercent: 80 });
+    expect(fixed?.[1]).toMatchObject({ fuelLiters: null, vePercent: null });
+    expect(fixed?.[4]).toMatchObject({ fuelLiters: null, vePercent: 80 });
   });
 });
 

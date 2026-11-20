@@ -53,6 +53,38 @@ Los casos de fallback y errores se prueban con entorno/plataforma inyectados,
 sin mutar el entorno global ni acceder al disco. Cada tanda conserva los tres
 overrides QA de native/LocalAppData/AppData.
 
+## Grabaciones de Análisis: una carpeta por instalación — ADR 0111
+
+Las grabaciones (`series-<época>-<pid>.duckdb`) ya no viven dentro de cada
+generación ([ADR 0111](../docs/adr/0111-grabaciones-carpeta-unica-por-instalacion.md)).
+`recording::directory`, en `runtime/src/bin/vantare/recording.rs`, es el único
+sitio que decide la carpeta:
+
+| Caso | Carpeta |
+| --- | --- |
+| Instalado | `<raíz de instalación>/recordings`, la misma para todas las generaciones |
+| Desarrollo (sin instalar) | `recordings` dentro de los datos del Hub, como antes |
+
+La sesión se la da al núcleo con `--series-dir` y al anfitrión del Hub con
+`--recordings-dir`; un test compara lo que recibe cada uno. La interfaz nunca
+ve rutas, y el protocolo del anfitrión no cambia.
+
+Antes de lanzar el núcleo y el Hub, la sesión instalada trae a esa carpeta las
+grabaciones que queden en `data/hub/recordings` de su generación. Solo mueve:
+no compara ni borra, y un fallo nunca impide arrancar (detalle en «Adoptar
+grabaciones» de [installer/README.md](installer/README.md)). La carpeta la crea
+quien primero escribe en ella: esa adopción o el núcleo al empezar a grabar.
+Graba y poda solo el núcleo; lee solo el anfitrión. Actualizar, Reparar, volver
+atrás y desinstalar no la tocan: al desinstalar, las grabaciones se conservan.
+
+Regla de publicación: desde la primera versión con esta carpeta, ninguna
+versión que no la conozca debe publicarse con un número mayor en el mismo
+canal. Buscaría las grabaciones dentro de su generación y dejaría de mostrar
+todo lo adoptado (sin borrarlo).
+
+Copia de seguridad: con Vantare cerrado, copiar esa carpeta es una copia
+completa; cada `.duckdb` es una grabación independiente.
+
 ## Mapa de crates
 
 El workspace tiene 14 crates. La selección `default-members` enumera ocho:

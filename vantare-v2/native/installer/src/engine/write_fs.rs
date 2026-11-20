@@ -149,11 +149,14 @@ pub fn read_optional(path: &Path, limit: Option<u64>) -> Result<Option<serde_jso
     }
 }
 pub fn lock(root: &Path, name: &str) -> Result<fs::File> {
+    Ok(try_lock(root, name)?)
+}
+/// `lock`, keeping the reason: only a sharing violation says somebody holds it.
+pub fn try_lock(root: &Path, name: &str) -> io::Result<fs::File> {
     let mut options = fs::OpenOptions::new();
     options.read(true).write(true).create(true).truncate(false);
     exclusive(&mut options);
-    let file = options.open(root.join(name))?;
-    Ok(file)
+    options.open(root.join(name))
 }
 /// Fails while any other handle is open; a mapped image refuses write access.
 pub fn open_exclusive(path: &Path) -> io::Result<fs::File> {
@@ -324,6 +327,14 @@ pub const LOG_LIMIT: u64 = 64 * 1024;
 /// no console. Best effort on purpose, so that it can never fail its caller.
 /// Paths are written relative to the root; a failed rotation stops the growth.
 pub fn log(root: &Path, note: &str) {
+    append(root, note, false);
+}
+/// A note the current log already holds is not written again: what a session
+/// finds at every start would otherwise push everything else out of the log.
+pub fn log_once(root: &Path, note: &str) {
+    append(root, note, true);
+}
+fn append(root: &Path, note: &str, once: bool) {
     let write = || -> io::Result<()> {
         let path = root.join("installer-log.txt");
         super::reject_links(&path).map_err(io::Error::other)?;
@@ -346,6 +357,13 @@ pub fn log(root: &Path, note: &str) {
                 }
             })
             .collect();
+        let held = |log: String| {
+            log.lines()
+                .any(|line| line.get(21..) == Some(note.as_str()))
+        };
+        if once && fs::read_to_string(&path).is_ok_and(held) {
+            return Ok(());
+        }
         let mut file = fs::OpenOptions::new()
             .append(true)
             .create(true)

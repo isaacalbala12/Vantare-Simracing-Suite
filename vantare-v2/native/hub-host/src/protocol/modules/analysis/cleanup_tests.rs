@@ -17,6 +17,7 @@ fn failed_analysis_reply_still_cancels_the_deferred_service_request() {
             layout: root.path.join("layout.json"),
             launcher: root.path.join("launcher.json"),
             engineer: root.path.join("engineer.json"),
+            recordings: None,
         };
         let mut session = Session::new(
             &args,

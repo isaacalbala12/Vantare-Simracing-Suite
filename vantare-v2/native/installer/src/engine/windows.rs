@@ -8,9 +8,9 @@ use std::{
 };
 use windows::Win32::{
     Storage::FileSystem::{
-        CopyFileW, FILE_DISPOSITION_INFO, FileDispositionInfo, GetDriveTypeW,
-        GetVolumeInformationW, MOVEFILE_WRITE_THROUGH, MoveFileExW, REPLACE_FILE_FLAGS,
-        ReplaceFileW, SetFileInformationByHandle,
+        CopyFileW, FILE_DISPOSITION_INFO, FILE_RENAME_INFO, FileDispositionInfo, FileRenameInfo,
+        GetDriveTypeW, GetVolumeInformationW, MOVEFILE_WRITE_THROUGH, MoveFileExW,
+        REPLACE_FILE_FLAGS, ReplaceFileW, SetFileInformationByHandle,
     },
     System::Com::CoCreateGuid,
 };
@@ -293,18 +293,33 @@ pub fn replace_backed_up(source: &Path, target: &Path, backup: &Path) -> Result<
     }
     .map_err(|cause| error(&cause))
 }
-/// A rename inside the volume: it never replaces a file and never becomes a copy.
-pub fn move_new(source: &Path, target: &Path) -> Result<()> {
-    let source = wide(source.as_os_str())?;
-    let target = wide(target.as_os_str())?;
+/// Renames the file behind this handle inside its volume, whatever its path
+/// holds by then. It never replaces a file and never becomes a copy: across
+/// volumes it fails. The handle must have been opened with `DELETE` access.
+pub fn rename_open(file: &std::fs::File, target: &Path) -> std::io::Result<()> {
+    use std::os::windows::io::AsRawHandle;
+    let name = wide(target.as_os_str()).map_err(std::io::Error::other)?;
+    // The structure ends in its name: one zeroed buffer, aligned for the header.
+    let size = std::mem::offset_of!(FILE_RENAME_INFO, FileName) + size_of_val(name.as_slice());
+    let mut buffer = vec![0_u64; size.div_ceil(size_of::<u64>())];
+    let info = buffer.as_mut_ptr().cast::<FILE_RENAME_INFO>();
+    let length = |bytes: usize| u32::try_from(bytes).map_err(std::io::Error::other);
     unsafe {
-        MoveFileExW(
-            PCWSTR(source.as_ptr()),
-            PCWSTR(target.as_ptr()),
-            MOVEFILE_WRITE_THROUGH,
+        (*info).Anonymous.ReplaceIfExists = false;
+        (*info).FileNameLength = length(size_of_val(name.as_slice()) - size_of::<u16>())?;
+        std::ptr::copy_nonoverlapping(
+            name.as_ptr(),
+            (&raw mut (*info).FileName).cast::<u16>(),
+            name.len(),
+        );
+        SetFileInformationByHandle(
+            HANDLE(file.as_raw_handle()),
+            FileRenameInfo,
+            info.cast(),
+            length(size)?,
         )
     }
-    .map_err(|cause| error(&cause))
+    .map_err(Into::into)
 }
 /// Removes the file behind this handle, whatever its path holds by then. The
 /// handle must have been opened with `DELETE` access.
@@ -438,6 +453,45 @@ mod tests {
         }
         let actual = read_link(&path).expect("expanded target");
         assert!(super::super::context::same_path(&actual.target, &target).expect("same target"));
+    }
+    #[test]
+    fn a_rename_through_the_handle_never_replaces_and_never_leaves_the_volume() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let id = super::super::write_fs::id().expect("ID");
+        let root = parent.join(format!("rename-open-{id}"));
+        super::super::context::qa_path(&root).expect("QA guard");
+        let _cleanup = Cleanup(root.clone());
+        std::fs::create_dir_all(&root).expect("owned root");
+        let [from, taken, fresh] = ["a.bin", "b.bin", "c.bin"].map(|name| root.join(name));
+        std::fs::write(&from, b"moved").expect("source");
+        std::fs::write(&taken, b"kept").expect("existing target");
+        let file = super::super::write_fs::open_recording(&from, true).expect("owned handle");
+        assert!(rename_open(&file, &taken).is_err(), "never replaces");
+        // Another volume would need a copy: the rename refuses (ERROR_NOT_SAME_DEVICE).
+        let own = root.to_string_lossy().as_bytes()[0].to_ascii_uppercase();
+        let other = (*b"CD")
+            .into_iter()
+            .filter(|drive| *drive != own)
+            .map(|drive| PathBuf::from(format!("{}:\\", char::from(drive))))
+            .find(|volume| volume.is_dir());
+        if let Some(volume) = &other {
+            let outside = volume.join(format!("vantare-rename-open-{id}.bin"));
+            let error = rename_open(&file, &outside).expect_err("another volume");
+            let not_same_device = windows::core::HRESULT::from_win32(17).0;
+            assert_eq!(error.raw_os_error(), Some(not_same_device));
+            assert!(!outside.exists(), "never a copy");
+        } else {
+            eprintln!("omitido: este equipo no tiene un segundo volumen C: o D:");
+        }
+        rename_open(&file, &fresh).expect("a new name in the same volume");
+        drop(file);
+        assert!(!from.exists());
+        assert_eq!(std::fs::read(&fresh).expect("renamed"), b"moved");
+        assert_eq!(std::fs::read(&taken).expect("untouched"), b"kept");
     }
     #[test]
     fn existing_mta_remains_initialized_after_shell_apartment_is_dropped() {

@@ -216,3 +216,58 @@ fn wal_without_database_is_an_orphan_but_recent_wal_is_retained() {
     assert_eq!(report.counts.bytes, 30);
     assert_eq!(report.items[0].reason, "huérfano");
 }
+
+/// ADR 0111 §7 and the note of #2746: the single folder is pruned exactly as
+/// the folder of the generation would have been (a move keeps the dates the
+/// order comes from), and no `.wal` ever arrives without its recording, where
+/// the pruning would take it for an orphan.
+#[test]
+fn adopted_recordings_are_pruned_as_they_would_have_been_in_their_generation() {
+    use vantare_installer::engine::operations::{Duplicates, adopt_recordings};
+    let root = Directory::new();
+    let id = "a".repeat(32);
+    let state = format!(
+        r#"{{"schema":1,"product":"vantare-native","channel":"beta","previous":null,"active":{{"generation":"{id}","manifest_sha256":"{}"}}}}"#,
+        "b".repeat(64)
+    );
+    fs::write(root.0.join("state.json"), state).unwrap();
+    fs::write(root.0.join(".vantare-native"), b"offline-candidate-v1").unwrap();
+    let source = Directory(root.0.join(format!("generations/{id}/data/hub/recordings")));
+    let control = Directory(root.0.join("control"));
+    for folder in [&source, &control] {
+        fs::create_dir_all(&folder.0).unwrap();
+        for (index, age) in [30, 10, 40, 20].into_iter().enumerate() {
+            folder.file(&format!("series-{index}-1.duckdb"), 10, age);
+        }
+    }
+    // Never closed, and older than all the others.
+    let unclosed = ["series-9-1.duckdb", "series-9-1.duckdb.wal"];
+    for name in unclosed {
+        source.file(name, 10, 5);
+    }
+    let adoption = adopt_recordings(&root.0, &id, Duplicates::Keep, &mut |_| Ok(()), &mut |_| {});
+    let adoption = adoption.unwrap();
+    assert_eq!((adoption.moved, adoption.kept), (4, 2));
+    let single = root.0.join("recordings");
+    for name in unclosed {
+        assert!(source.0.join(name).exists() && !single.join(name).exists());
+    }
+    // Long after the ten minutes an orphan is given.
+    let now = SystemTime::now() + Duration::from_mins(60);
+    let chosen = |folder: &Path| {
+        let report = prune(folder, now, 3, MAX_BYTES).unwrap();
+        let item = |item: &Item| {
+            (
+                item.name.clone(),
+                item.modified_at_ms,
+                item.reason,
+                item.result,
+            )
+        };
+        report.items.iter().map(item).collect::<Vec<_>>()
+    };
+    let pruned = chosen(&single);
+    assert_eq!(pruned, chosen(&control.0));
+    let names: Vec<_> = pruned.iter().map(|item| item.0.as_str()).collect();
+    assert_eq!(names, ["series-1-1.duckdb", "series-3-1.duckdb"]);
+}

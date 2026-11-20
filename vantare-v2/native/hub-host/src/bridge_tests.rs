@@ -52,6 +52,7 @@ fn args(root: &Path) -> Args {
         layout: root.join("layout.json"),
         launcher: root.join("launcher.json"),
         engineer: root.join("engineer.json"),
+        recordings: None,
     }
 }
 fn endpoint() -> (String, Arc<Stop>, Listener, Pipe) {

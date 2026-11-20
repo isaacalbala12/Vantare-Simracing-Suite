@@ -747,3 +747,40 @@ La pérdida de derecho/feed y el cierre del host siguen invalidando todo.
 Cancelar o agotar el plazo de `analysis.compare` invalida la sesión abierta y
 cierra su Reader. El Hub debe volver a abrir la grabación con `analysis.open`
 antes de intentar otra comparación; el token anterior devuelve `analysisNotFound`.
+
+## Carpeta de grabaciones: `--recordings-dir` (ADR 0111, #2758)
+
+Análisis lee las grabaciones de la carpeta que devuelve `Args::recordings()`:
+
+- **Con `--recordings-dir <carpeta>`**, esa carpeta. La sesión instalada lo pasa
+  siempre con `<raíz de instalación>/recordings`, la misma carpeta que le da al
+  núcleo con `--series-dir`
+  ([ADR 0111](../../docs/adr/0111-grabaciones-carpeta-unica-por-instalacion.md)).
+- **Sin el argumento**, `recordings` dentro de `--data-dir`, como hasta ahora:
+  desarrollo, los scripts de `hub-web` y cualquier lanzador que no lo conozca
+  siguen funcionando igual.
+
+El argumento se valida al arrancar y, si no cumple, el anfitrión no arranca
+(igual que con un argumento desconocido o una ruta relativa):
+
+- ruta absoluta de un disco local (`C:\…`): se rechazan las rutas de red
+  (`\\servidor\…`), las de dispositivo (`\\?\…`, `\\.\…`), las relativas y las
+  que contienen `..`;
+- estrictamente dentro de la raíz de instalación. La raíz no viene de ningún
+  argumento ni variable: se deduce del propio ejecutable
+  (`<raíz>/generations/<id>/bin/vantare-hub.exe`). Las dos rutas se comparan
+  como las nombra el disco, así que valen las mayúsculas distintas y los
+  nombres cortos de Windows;
+- una carpeta que aún no existe se acepta;
+- un anfitrión que no está instalado (ejecutado desde `target/`) rechaza el
+  argumento: fuera de una instalación no hay carpeta única.
+
+Los enlaces no se miran al arrancar, a propósito: si la carpeta o su carpeta
+madre son un enlace o punto de reanálisis, el anfitrión arranca y es Análisis
+quien la rechaza cada vez que lee («Directorio no regular»). Un enlace en la
+carpeta de grabaciones no debe dejar al usuario sin Hub. Esto arregla solo el
+anfitrión: hoy el lanzador de la raíz sigue negándose a arrancar si hay un
+enlace en cualquier punto de la instalación (#2759, punto 10; va aparte).
+
+Si la carpeta no existe, el catálogo sale vacío; no es un error. La interfaz
+sigue sin ver rutas y el protocolo no cambia.

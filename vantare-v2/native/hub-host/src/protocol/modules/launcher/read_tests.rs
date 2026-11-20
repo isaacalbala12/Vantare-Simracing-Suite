@@ -281,6 +281,7 @@ fn prepared_copy_cannot_be_saved_after_account_change_or_logout() {
             layout: fixture.0.join("layout.json"),
             launcher: session.launcher.clone(),
             engineer: fixture.0.join("engineer.json"),
+            recordings: None,
         };
         session.core.status = session.current.clone();
         session.core.status.account_generation = next;

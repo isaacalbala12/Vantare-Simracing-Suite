@@ -280,6 +280,64 @@ pub(super) fn data(root: &Path) -> io::Result<(PathBuf, PathBuf)> {
     Ok((view.data_path.clone(), image))
 }
 
+/// Turns of 50 ms that the adoption waits for another operation: two seconds.
+pub(super) const ADOPTION_WAITS: u32 = 40;
+/// The recordings of this generation go to the single folder of the
+/// installation before the core and the Hub start (ADR 0111 §4). It only
+/// moves, and nothing here can stop the session: what could not be brought
+/// stays where it was, is written to the installation log and is tried again
+/// at the next start.
+pub(super) fn adopt_recordings(root: &Path) {
+    // The session was started on its own data folder, `generations/<id>/data`.
+    if let Some(data) = std::env::var_os("VANTARE_NATIVE_DATA_ROOT") {
+        let own = Path::new(&data).join("hub/recordings");
+        adopt_recordings_with(root, &own, &mut std::thread::sleep);
+    }
+}
+pub(super) fn adopt_recordings_with(root: &Path, own: &Path, wait: &mut dyn FnMut(Duration)) {
+    // Nothing of this generation left to bring, as at every start after the
+    // first: the lock is not asked for and the installation is not walked.
+    let state = |entry: fs::DirEntry| entry.file_name() == "recording-status.json";
+    let nothing = match fs::read_dir(own) {
+        Ok(mut found) => found.all(|entry| entry.is_ok_and(state)),
+        Err(error) => error.kind() == io::ErrorKind::NotFound,
+    };
+    if nothing {
+        return;
+    }
+    let adopt = || {
+        let (view, _) =
+            active(root).map_err(|error| disk::WriteError::new(1, error.to_string()))?;
+        let state = view.state.as_ref().expect("active state");
+        operations::adopt_recordings(
+            root,
+            &state.active.generation,
+            operations::Duplicates::Keep,
+            &mut |_| Ok(()),
+            &mut |note| log(note),
+        )
+    };
+    let mut waits = 0;
+    let result = loop {
+        match adopt() {
+            // The root launcher renews the Windows registration under the same
+            // lock right after starting this session: busy is worth a moment.
+            Err(error) if error.code == 2 && waits < ADOPTION_WAITS => {
+                waits += 1;
+                wait(Duration::from_millis(50));
+            }
+            result => break result,
+        }
+    };
+    if let Err(error) = result {
+        let note = format!(
+            "Grabaciones: no se han traído al arrancar; se reintenta en el próximo arranque. Motivo: {error}"
+        );
+        disk::log_once(root, &note);
+        log(note);
+    }
+}
+
 pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {
     let (root, _background) = parse(args, "--session")?;
     let (data, image) = data(&root)?;

@@ -530,6 +530,46 @@ se recomiendan.** El texto se conserva como se presentó.
   simulador. **Conserva** de [ADR 0107](0107-hub-electron-nucleo-y-overlays-rust.md):
   la pantalla habla con el anfitrión y no conoce rutas.
 
+## Enmiendas de implementación (T1 y T2, 20-11-2026)
+
+Lo aprendido al implementar y revisar T1 (#2755) y T2 (#2758). No cambia la
+decisión; precisa cinco puntos del texto de arriba.
+
+1. **§4, «y su `.wal` si existe»: la pareja no se adopta.** Una grabación con
+   un `.wal` o un temporal al lado se queda entera donde está y se anota.
+   Mover dos archivos no es un solo paso: un corte entre los dos separaría la
+   grabación de sus últimos cambios, y un `.wal` que llegara sin su grabación
+   lo borraría la poda del núcleo a los diez minutos
+   (`runtime/src/service/series/prune.rs:109-113`). Consecuencia: una
+   grabación que no se cerró bien **antes** de este cambio no aparece en
+   Análisis; sigue en `data/` de su generación y viaja con ella en cada
+   actualización. Cerrarla en su carpeta para que el `.wal` desaparezca y
+   adoptarla después queda como seguimiento. Las grabaciones nuevas no tienen
+   este problema: nacen en la carpeta única, con su `.wal` al lado. T3 trata
+   esas parejas como únicas.
+2. **§4 y §6, cómo se mueve.** La grabación se abre en exclusiva y se cambia
+   de sitio a través de esa misma apertura, no por su ruta: desde la
+   comprobación hasta el movimiento nadie más puede abrirla. Con ella cogida
+   se vuelve a mirar si ha aparecido un `.wal` o un temporal con su nombre, en
+   el origen y en el destino. Nunca sustituye un archivo y, entre discos
+   distintos, falla en vez de copiar.
+3. **§3, «quién la crea».** No la crea la sesión por adelantado: la crea quien
+   primero escribe en ella, la adopción al recibir la primera grabación o el
+   núcleo al empezar a grabar. Si no existe, Análisis muestra el catálogo
+   vacío.
+4. **§6, la sesión no está sola del todo.** La adopción trabaja bajo
+   `.operation.lock`, el mismo candado con el que el lanzador de la raíz
+   renueva el registro de Windows justo después de arrancar la sesión. La
+   sesión espera su turno dos segundos como máximo; si no lo consigue,
+   arranca igual y lo reintenta en el siguiente arranque.
+
+5. **§5, regla de publicación.** Desde la primera versión con la carpeta
+   única, ninguna versión que no la conozca debe publicarse con un número
+   mayor en el mismo canal: dejaría de mostrar todo lo adoptado, sin borrarlo.
+   Además, un núcleo antiguo sí borra **por cupo** al podar la carpeta que
+   recibe, también archivos de formato más nuevo: «incompatible» protege de
+   abrirlos y modificarlos, no de la poda.
+
 ## Cómo se revisa esta decisión
 
 Se reabre si una medición real demuestra que mover falla en equipos normales

@@ -69,6 +69,7 @@ mod tests {
             layout: path.clone(),
             launcher: root.path.join("launcher.json"),
             engineer: root.path.join("engineer.json"),
+            recordings: None,
         };
         let mut settings = Settings::load(&args);
         let (_, layout_revision) = Settings::onboarding_layout(&path);
@@ -100,6 +101,7 @@ mod tests {
             layout: path.clone(),
             launcher: root.path.join("launcher.json"),
             engineer: root.path.join("engineer.json"),
+            recordings: None,
         };
         let mut settings = Settings::load(&args);
         std::fs::write(&path, r#"{"version":1,"instances":[]}"#).unwrap();
@@ -147,6 +149,7 @@ mod tests {
             layout: path.clone(),
             launcher: root.path.join("launcher.json"),
             engineer: root.path.join("engineer.json"),
+            recordings: None,
         };
         let mut settings = Settings::load(&args);
         std::fs::write(&path, br#"{"version":2,"instances":[]}"#).unwrap();

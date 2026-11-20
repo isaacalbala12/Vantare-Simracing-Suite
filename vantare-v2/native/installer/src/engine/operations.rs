@@ -1149,9 +1149,10 @@ pub enum Duplicates {
     RemoveIdentical,
 }
 /// Brings the recordings of `generations/<id>/data/hub/recordings` into the
-/// single `<root>/recordings` folder (ADR 0111 §4). Nothing calls it yet.
-/// An error means that nothing was attempted, or that a checkpoint cut it
-/// short. Whatever is doubtful stays where it is, with its path and reason in
+/// single `<root>/recordings` folder (ADR 0111 §4). The session calls it at
+/// every start with `Duplicates::Keep`. An error means that nothing was
+/// attempted (code 2: another operation holds the lock), or that a checkpoint
+/// cut it short. Whatever is doubtful stays where it is, with its reason in
 /// `note`; running it again continues where it stopped.
 pub fn adopt_recordings(
     root: &Path,
@@ -1161,12 +1162,25 @@ pub fn adopt_recordings(
     note: &mut dyn FnMut(&str),
 ) -> Result<Adoption> {
     let root = disk::open_root(root, false)?;
-    let _operation = disk::lock(&root, ".operation.lock")?;
+    // Busy is not a refusal: the caller may wait for its turn. Only a lock
+    // that somebody holds is busy; failing to open it otherwise is a failure.
+    let _operation =
+        disk::try_lock(&root, ".operation.lock").map_err(|error| match error.raw_os_error() {
+            Some(32) => WriteError::new(2, "Hay otra operación de la instalación en curso"),
+            _ => error.into(),
+        })?;
     // Without both references nobody knows which generation is `previous`.
     let document = installation::read_state(&root)?
         .filter(references_bound)
         .ok_or_else(|| WriteError::new(1, "Las referencias de state.json no son fiables"))?;
-    let note = &mut logged(&root, note);
+    let note = &mut |text: &str, once: bool| {
+        if once {
+            disk::log_once(&root, text);
+        } else {
+            disk::log(&root, text);
+        }
+        note(text);
+    };
     adopt(
         &root,
         &document.state,
@@ -1182,7 +1196,7 @@ fn adopt(
     generation: &str,
     duplicates: Duplicates,
     checkpoint: &mut dyn FnMut(&str) -> Result<()>,
-    note: &mut dyn FnMut(&str),
+    note: &mut dyn FnMut(&str, bool),
 ) -> Result<Adoption> {
     let source = disk::generation(root, generation)?.join("data/hub/recordings");
     // `previous` keeps its copy: it is what a failed version goes back to.
@@ -1202,30 +1216,15 @@ fn adopt(
         !single.try_exists()? || single.is_dir(),
         "La carpeta única de grabaciones no es una carpeta",
     )?;
-    // (name, is a regular file): a link or a folder is neither followed nor moved.
-    let list = |directory: &Path| -> Result<Vec<(String, bool)>> {
-        let mut listed = Vec::new();
-        for entry in fs::read_dir(directory)? {
-            let entry = entry?;
-            let name = entry.file_name().to_string_lossy().into_owned();
-            listed.push((name, entry.file_type()?.is_file()));
-        }
-        listed.sort();
-        Ok(listed)
-    };
     let listed = list(&source)?;
     let present = if single.is_dir() {
         list(&single)?
     } else {
         Vec::new()
     };
-    // A `.wal` or a temporary beside a recording: still being written, or cut short.
-    let unfinished = |folder: &[(String, bool)], name: &str| {
-        let prefix = format!("{name}.");
-        folder
-            .iter()
-            .any(|(other, _)| other.to_ascii_lowercase().starts_with(&prefix))
-    };
+    // The session finds what stays again at every start: one note per reason,
+    // written to the log once. Confirm and Uninstall keep one note per file.
+    let mut stays = BTreeMap::<String, Vec<&str>>::new();
     for (name, is_file) in &listed {
         if name == "recording-status.json" {
             continue; // The state of the recorder, which writes its own in the single folder.
@@ -1236,15 +1235,21 @@ fn adopt(
         } else if !recording_name(name) {
             Err("el nombre no es de una grabación".to_owned())
         } else if unfinished(&listed, name) {
-            Err("tiene al lado un .wal o un temporal: está en curso o sin cerrar".to_owned())
+            Err(BESIDE.to_owned())
         } else if unfinished(&present, name) {
-            Err("en la carpeta única hay un .wal o un temporal con su nombre".to_owned())
+            Err(IN_SINGLE.to_owned())
         } else if !present
             .iter()
             .any(|(other, _)| other.eq_ignore_ascii_case(name))
         {
-            checkpoint("adopt-move")?;
-            move_recording(&path, &single, &target).map(|()| adoption.moved += 1)
+            // Held until the rename: nobody else has it open, and nobody can open it.
+            match disk::open_recording(&path, true) {
+                Err(error) => Err(unavailable("la grabación")(error)),
+                Ok(file) => {
+                    checkpoint("adopt-move")?;
+                    move_recording(&file, name, &source, &single).map(|()| adoption.moved += 1)
+                }
+            }
         } else if duplicates == Duplicates::Keep {
             Err("ya existe en la carpeta única y este paso no compara".to_owned())
         } else {
@@ -1253,19 +1258,40 @@ fn adopt(
         };
         if let Err(reason) = outcome {
             adoption.kept += 1;
-            note(&format!(
-                "Grabaciones: se conserva {}; motivo: {reason}",
-                path.display()
-            ));
+            if duplicates == Duplicates::Keep {
+                stays.entry(reason).or_default().push(name);
+            } else {
+                let path = path.display();
+                note(
+                    &format!("Grabaciones: se conserva {path}; motivo: {reason}"),
+                    false,
+                );
+            }
         }
     }
+    let source = source.display();
+    for (reason, names) in &stays {
+        let shown = names[..names.len().min(5)].join(", ");
+        let more = match names.len() - names.len().min(5) {
+            0 => String::new(),
+            more => format!(" y {more} más"),
+        };
+        let count = names.len();
+        note(
+            &format!(
+                "Grabaciones de {source}: se conservan {count} ({shown}{more}); motivo: {reason}"
+            ),
+            true,
+        );
+    }
     if adoption.moved + adoption.duplicates > 0 {
-        note(&format!(
-            "Grabaciones de {}: adoptadas {}; copias repetidas retiradas {}",
-            source.display(),
-            adoption.moved,
-            adoption.duplicates
-        ));
+        note(
+            &format!(
+                "Grabaciones de {source}: adoptadas {}; copias repetidas retiradas {}",
+                adoption.moved, adoption.duplicates
+            ),
+            false,
+        );
     }
     Ok(adoption)
 }
@@ -1285,15 +1311,45 @@ fn recording_name(name: &str) -> bool {
 fn unavailable(whose: &'static str) -> impl Fn(io::Error) -> String {
     move |error| format!("{whose} está en uso o no se puede leer ({error})")
 }
-/// One rename inside the volume: the recording is whole in the source or whole
-/// in the single folder, never a copy and never over another file.
-fn move_recording(path: &Path, single: &Path, target: &Path) -> std::result::Result<(), String> {
-    // Readable, and nobody else has it open right now.
-    drop(disk::open_recording(path, true).map_err(unavailable("la grabación"))?);
-    fs::create_dir_all(single)
-        .map_err(WriteError::from)
-        .and_then(|()| windows::move_new(path, target))
-        .map_err(|error| format!("no se pudo mover ({error})"))
+const BESIDE: &str = "tiene al lado un .wal o un temporal: está en curso o sin cerrar";
+const IN_SINGLE: &str = "en la carpeta única hay un .wal o un temporal con su nombre";
+/// (name, is a regular file): a link or a folder is neither followed nor moved.
+fn list(directory: &Path) -> Result<Vec<(String, bool)>> {
+    let mut listed = Vec::new();
+    for entry in fs::read_dir(directory)? {
+        let entry = entry?;
+        let name = entry.file_name().to_string_lossy().into_owned();
+        listed.push((name, entry.file_type()?.is_file()));
+    }
+    listed.sort();
+    Ok(listed)
+}
+/// A `.wal` or a temporary beside a recording: still being written, or cut short.
+fn unfinished(folder: &[(String, bool)], name: &str) -> bool {
+    let prefix = format!("{name}.");
+    folder
+        .iter()
+        .any(|(other, _)| other.to_ascii_lowercase().starts_with(&prefix))
+}
+/// One rename inside the volume, through the handle that proves nobody else has
+/// the recording open: whole in the source or whole in the single folder, never
+/// a copy and never over another file. What the lists said when they were taken
+/// is looked at again with the recording held.
+fn move_recording(
+    file: &fs::File,
+    name: &str,
+    source: &Path,
+    single: &Path,
+) -> std::result::Result<(), String> {
+    let failed = |error: &dyn std::fmt::Display| format!("no se pudo mover ({error})");
+    let finished = |folder: &Path, reason: &str| match list(folder) {
+        Ok(found) if unfinished(&found, name) => Err(reason.to_owned()),
+        found => found.map(drop).map_err(|error| failed(&error)),
+    };
+    finished(source, BESIDE)?;
+    fs::create_dir_all(single).map_err(|error| failed(&error))?;
+    finished(single, IN_SINGLE)?;
+    windows::rename_open(file, &single.join(name)).map_err(|error| failed(&error))
 }
 /// The only deletion of user data in the engine. The copy goes away through
 /// the exclusive handle that hashed it, while nobody can write the one kept.

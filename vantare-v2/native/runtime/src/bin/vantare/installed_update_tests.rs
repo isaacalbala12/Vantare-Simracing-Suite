@@ -1,6 +1,6 @@
 //! CPU-only installed-update regression fixtures; no product executable is launched.
 use super::*;
-use crate::installed::{apply, stage_with};
+use crate::installed::{ADOPTION_WAITS, adopt_recordings_with, apply, stage_with};
 use std::{os::windows::process::CommandExt, path::Path, process::Command};
 
 fn manifest(version: &str) -> Vec<u8> {
@@ -142,5 +142,66 @@ fn apply_rejects_legacy_pending_without_mutating_installation_or_data() {
         b"preserve staged archive"
     );
     assert!(!root.join("update-status.json").exists());
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[test]
+fn the_session_brings_its_recordings_waits_its_turn_and_never_fails() {
+    use vantare_installer::engine::write_fs::lock;
+    let root = qa_root();
+    fs::create_dir_all(&root).expect("root");
+    installed(&root);
+    fs::write(root.join(".vantare-native"), b"offline-candidate-v1").expect("marker");
+    let generation = root.join("generations").join("a".repeat(32));
+    let source = generation.join("data/hub/recordings");
+    fs::create_dir_all(&source).expect("recordings of the generation");
+    // Nothing to bring (the state of the recorder is not a recording): neither
+    // the lock nor a walk of the installation, as at every later start.
+    fs::write(source.join("recording-status.json"), b"{}").expect("recorder state");
+    let busy = lock(&root, ".operation.lock").expect("another operation");
+    adopt_recordings_with(&root, &source, &mut |_| panic!("nothing to wait for"));
+    drop(busy);
+    assert!(!root.join("installer-log.txt").exists());
+    let [first, later] = ["series-1-1.duckdb", "series-2-2.duckdb"];
+    fs::write(source.join(first), b"recording").expect("recording");
+    // Already in the single folder: the session neither compares nor removes.
+    let (single, repeated) = (root.join("recordings"), "series-0-0.duckdb");
+    fs::create_dir(&single).expect("single folder");
+    for folder in [&source, &single] {
+        fs::write(folder.join(repeated), b"same").expect("repeated recording");
+    }
+    let (single, log) = (root.join("recordings"), root.join("installer-log.txt"));
+    let lines = || fs::read_to_string(&log).map_or(0, |text| text.lines().count());
+    // The launcher renews the registration under the same lock: the session waits its turn.
+    let mut held = Some(lock(&root, ".operation.lock").expect("another operation"));
+    let mut waits = 0;
+    adopt_recordings_with(&root, &source, &mut |_| {
+        waits += 1;
+        if waits == 3 {
+            held.take();
+        }
+    });
+    assert_eq!(waits, 3);
+    assert_eq!(fs::read(single.join(first)).expect("adopted"), b"recording");
+    assert!(!source.join(first).exists() && source.join(repeated).exists());
+    assert_eq!(lines(), 2, "what stays and what arrived");
+    // Never released: after its two seconds it starts anyway and says so in the log.
+    fs::write(source.join(later), b"later").expect("recording");
+    let held = lock(&root, ".operation.lock").expect("another operation");
+    let mut waits = 0;
+    adopt_recordings_with(&root, &source, &mut |_| {
+        waits += 1;
+        assert!(waits <= ADOPTION_WAITS, "it must not wait for ever");
+    });
+    drop(held);
+    assert_eq!(waits, ADOPTION_WAITS);
+    assert!(source.join(later).exists() && !single.join(later).exists() && lines() == 3);
+    // A refusal is not waited for, and is written once however many starts repeat it.
+    fs::rename(&single, root.join("apartada")).expect("the single folder, set aside");
+    fs::write(&single, b"not a folder").expect("a file in its place");
+    for _ in 0..2 {
+        adopt_recordings_with(&root, &source, &mut |_| panic!("a refusal is not busy"));
+        assert!(source.join(later).exists() && lines() == 4);
+    }
     fs::remove_dir_all(root).expect("cleanup");
 }

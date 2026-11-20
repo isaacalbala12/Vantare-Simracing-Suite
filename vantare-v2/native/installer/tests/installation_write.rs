@@ -2802,6 +2802,18 @@ fn keeps(notes: &[String], path: &Path, reason: &str) -> bool {
         .iter()
         .any(|note| note.contains(&start) && note.contains(reason))
 }
+/// The single note of the session for all it keeps of a folder for one reason.
+fn summarized(notes: &[String], source: &Path, names: &[&str], reason: &str) -> bool {
+    let source = disk::path(source).expect("path").display().to_string();
+    let start = format!(
+        "Grabaciones de {source}: se conservan {} ({}",
+        names.len(),
+        names[..names.len().min(5)].join(", ")
+    );
+    notes
+        .iter()
+        .any(|note| note.starts_with(&start) && note.contains(reason))
+}
 fn adopted(moved: usize, duplicates: usize, kept: usize) -> Adoption {
     Adoption {
         moved,
@@ -2922,9 +2934,11 @@ fn a_repeated_name_loses_its_copy_only_when_size_and_hash_are_identical() {
         [index(&source), index(&single)],
         [&before, &twins].map(Clone::clone)
     );
-    for (name, ..) in copies {
-        assert!(keeps(&notes, &source.join(name), "ya existe"), "{notes:?}");
-    }
+    let repeated = copies.map(|(name, ..)| name);
+    assert!(
+        summarized(&notes, &source, &repeated, "ya existe") && notes.len() == 1,
+        "{notes:?}"
+    );
     let (adoption, notes) = fixture.adopt(&active, Duplicates::RemoveIdentical);
     assert_eq!(adoption, adopted(0, 1, 2));
     assert_eq!(index(&single), twins, "never overwritten");
@@ -3289,4 +3303,208 @@ fn an_adoption_cut_short_loses_nothing_and_the_next_one_finishes() {
         assert_eq!(index(&single), every, "{fault} at {point}");
         assert!(names(&source).is_empty(), "{fault} at {point}");
     }
+}
+
+// The gap between checking a recording and moving it (P1-1 of the data review
+// of T1, #2746). DuckDB opens its files letting others rename or delete them.
+fn written(path: &Path) -> std::io::Result<fs::File> {
+    let mut options = fs::OpenOptions::new();
+    options.read(true).write(true).share_mode(7).open(path)
+}
+
+#[test]
+fn a_writer_cannot_slip_in_between_the_check_and_the_move() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let name = "series-1-1.duckdb";
+    record(&source, &[(name, b"recording")]);
+    // The writer arrives once the adoption has checked that nobody has it open.
+    let mut writer = None;
+    let (result, notes) = fixture.adopt_until(&active, Duplicates::RemoveIdentical, &mut |_| {
+        let opening = written(&source.join(name));
+        if opening.is_ok() {
+            record(&source, &[("series-1-1.duckdb.wal", b"pending")]);
+        }
+        writer = Some(opening);
+        Ok(())
+    });
+    let refused = writer.expect("reached the move").err();
+    let sharing_violation = refused.and_then(|error| error.raw_os_error());
+    assert_eq!(
+        sharing_violation,
+        Some(32),
+        "held from the check to the move"
+    );
+    assert_eq!(result.expect("adoption"), adopted(1, 0, 0));
+    assert!(names(&source).is_empty() && names(&single) == [name]);
+    assert!(notes.len() == 1, "{notes:?}");
+}
+
+#[test]
+fn what_appears_after_the_list_was_taken_keeps_the_recording_in_place() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let files = [1, 2, 3, 4, 5].map(|number| format!("series-{number}-{number}.duckdb"));
+    for name in &files {
+        record(&source, &[(name, name.as_bytes())]);
+    }
+    let before = index(&source);
+    // While the first one is held: a `.wal` beside it, a writer on the second,
+    // a `.wal` beside the third, one in the single folder with the name of the
+    // fourth, and a recording with the name of the fifth already there.
+    let mut writer = None;
+    let mut appear = |_: &str| {
+        if writer.is_none() {
+            writer = Some(written(&source.join(&files[1])).expect("writer"));
+            for name in [&files[0], &files[2]] {
+                record(&source, &[(&format!("{name}.wal"), b"pending")]);
+            }
+            record(&single, &[(&format!("{}.wal", files[3]), b"foreign")]);
+            record(&single, &[(&files[4], b"another recording")]);
+        }
+        Ok(())
+    };
+    let (result, notes) = fixture.adopt_until(&active, Duplicates::RemoveIdentical, &mut appear);
+    assert_eq!(result.expect("adoption"), adopted(0, 0, 5));
+    for (name, recording) in &before {
+        assert_eq!(index(&source).get(name), Some(recording), "{name:?}");
+    }
+    assert_eq!(
+        fs::read(single.join(&files[4])).unwrap(),
+        b"another recording"
+    );
+    assert_eq!(children(&single), 2, "nothing arrived");
+    let reasons = ["en curso", "en uso", "en curso", "carpeta única", "mover"];
+    for (name, reason) in files.iter().zip(reasons) {
+        assert!(
+            keeps(&notes, &source.join(name), reason),
+            "{name}: {notes:?}"
+        );
+    }
+    // Once the writer and the leftovers are gone, the next adoption brings them.
+    drop(writer);
+    for name in [&files[0], &files[2]] {
+        fs::remove_file(source.join(format!("{name}.wal"))).unwrap();
+    }
+    fs::remove_file(single.join(format!("{}.wal", files[3]))).unwrap();
+    let (adoption, _) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(4, 0, 1));
+    assert_eq!(names(&source), [files[4].as_str()], "a different one stays");
+}
+
+#[test]
+fn the_session_tells_what_stays_once_per_reason_and_does_not_repeat_it() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let loose =
+        [1, 2, 3, 4, 5, 6, 7, 8].map(|number| format!("series-{number}-{number}.duckdb.wal"));
+    let loose = loose.each_ref().map(String::as_str);
+    for name in loose {
+        record(&source, &[(name, b"pending")]);
+    }
+    let repeated = "series-9-9.duckdb";
+    record(&source, &[(repeated, b"copy")]);
+    record(&single, &[(repeated, b"another recording")]);
+    let (adoption, notes) = fixture.adopt(&active, Duplicates::Keep);
+    assert_eq!(adoption, adopted(0, 0, 9));
+    assert!(notes.len() == 2, "one note per reason: {notes:?}");
+    assert!(summarized(&notes, &source, &loose, "nombre"), "{notes:?}");
+    assert!(
+        summarized(&notes, &source, &[repeated], "ya existe"),
+        "{notes:?}"
+    );
+    assert!(
+        notes[0].contains("y 3 más") && !notes[0].contains(loose[5]),
+        "{notes:?}"
+    );
+    assert_eq!(logged(&fixture.root).len(), 2);
+    // At every start the caller hears it again; the log does not grow.
+    for _ in 0..3 {
+        assert_eq!(fixture.adopt(&active, Duplicates::Keep).1, notes);
+    }
+    assert_eq!(logged(&fixture.root).len(), 2);
+    // Only what changes is written.
+    record(&source, &[("notas.txt", b"foreign")]);
+    let (adoption, _) = fixture.adopt(&active, Duplicates::Keep);
+    assert_eq!(adoption, adopted(0, 0, 10));
+    let log = logged(&fixture.root);
+    assert!(
+        log.len() == 3 && log[2].contains("se conservan 9 ("),
+        "{log:?}"
+    );
+    // Confirm and Uninstall keep one note per file, as many times as they run.
+    for lines in [13, 23] {
+        let (_, notes) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+        assert!(notes.len() == 10 && keeps(&notes, &source.join("notas.txt"), "nombre"));
+        assert_eq!(logged(&fixture.root).len(), lines);
+    }
+}
+
+#[test]
+fn two_adoptions_at_once_never_work_on_the_same_installation() {
+    use std::sync::mpsc;
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    let files = ["series-1-1.duckdb", "series-2-2.duckdb"];
+    for name in files {
+        record(&source, &[(name, name.as_bytes())]);
+    }
+    let (reached, waiting) = mpsc::channel();
+    let (resume, paused) = mpsc::channel::<()>();
+    let (installation, generation) = (&fixture, &active);
+    let (second, first, between) = std::thread::scope(|scope| {
+        // The first one stops in the middle of its first move, holding the lock.
+        let first = scope.spawn(move || {
+            let mut pause = |_: &str| {
+                let _ = reached.send(());
+                let _ = paused.recv();
+                Ok(())
+            };
+            installation.adopt_until(generation, Duplicates::Keep, &mut pause)
+        });
+        waiting.recv().expect("the first adoption reached its move");
+        let second =
+            installation.adopt_until(generation, Duplicates::RemoveIdentical, &mut |_| Ok(()));
+        let between = (names(&source), single.exists());
+        drop(resume);
+        (second, first.join().expect("first adoption"), between)
+    });
+    // Busy, code 2: the session can tell it from a refusal and wait for its turn.
+    assert_eq!(second.0.map_err(|error| error.code), Err(2));
+    assert!(second.1.is_empty(), "{:?}", second.1);
+    assert_eq!(between, (files.map(str::to_owned).to_vec(), false));
+    assert_eq!(first.0.expect("first adoption"), adopted(2, 0, 0));
+    assert!(names(&source).is_empty() && names(&single) == files);
+    // Only a lock that somebody holds is busy: one that cannot be opened for any
+    // other reason is a refusal, which nobody waits for.
+    let lock = fixture.root.join(".operation.lock");
+    fs::remove_file(&lock).unwrap();
+    fs::create_dir(&lock).unwrap();
+    let (unusable, _) = fixture.adopt_until(&active, Duplicates::Keep, &mut |_| Ok(()));
+    assert_eq!(unusable.map_err(|error| error.code), Err(1));
+}
+
+#[test]
+fn a_repeated_copy_beside_a_wal_is_never_compared_or_removed() {
+    let fixture = Fixture::new();
+    let (source, single, active) = fixture.installed();
+    // Identical to the one in the single folder, but one of the two has
+    // changes that never reached the file: nothing proves they are the same.
+    let [unclosed, twin] = ["series-1-1.duckdb", "series-2-2.duckdb"];
+    record(&source, &[(unclosed, b"same"), (twin, b"same")]);
+    record(&source, &[("series-1-1.duckdb.wal", b"pending")]);
+    record(&single, &[(unclosed, b"same"), (twin, b"same")]);
+    record(&single, &[("series-2-2.duckdb.wal", b"pending")]);
+    let (before, twins) = (index(&source), index(&single));
+    let (adoption, notes) = fixture.adopt(&active, Duplicates::RemoveIdentical);
+    assert_eq!(adoption, adopted(0, 0, 3));
+    assert_eq!([index(&source), index(&single)], [before, twins]);
+    assert!(
+        keeps(&notes, &source.join(unclosed), "en curso"),
+        "{notes:?}"
+    );
+    assert!(
+        keeps(&notes, &source.join(twin), "carpeta única"),
+        "{notes:?}"
+    );
 }

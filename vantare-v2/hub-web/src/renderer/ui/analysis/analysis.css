@@ -425,3 +425,59 @@
     display: none;
   }
 }
+.v-an-dash {
+  color: var(--text-3);
+}
+.v-an-lap-notes {
+  display: grid;
+  gap: var(--space-1);
+}
+.v-an-lap-notes:empty {
+  display: none;
+}
+/* Mejor sector: recuadro (una forma, no solo color), alineado con las demás cifras. */
+.v-an-sector-best {
+  display: inline-block;
+  margin-inline-start: calc(var(--space-1) * -1);
+  padding-inline: var(--space-1);
+  border: 1px solid var(--accent-bright);
+  border-radius: var(--radius-xs);
+  color: var(--text-1);
+  line-height: 20px;
+}
+.v-an-laps--sectors .v-an-lap-sector {
+  inline-size: 84px;
+}
+.v-an-laps--sectors .v-an-lap-delta {
+  inline-size: 72px;
+}
+.v-an-laps--sectors .v-an-lap-vmax {
+  inline-size: 64px;
+}
+.v-an-laps--sectors .v-an-lap-vavg {
+  inline-size: 72px;
+}
+.v-an-laps--sectors .v-an-lap-pedal {
+  inline-size: 96px;
+}
+.v-an-laps--sectors .v-an-lap-data {
+  inline-size: var(--field-w);
+}
+.v-an-laps--sectors .v-an-lap-note {
+  white-space: normal;
+}
+/* Con sectores las 12 columnas piden unos 1 060 px: antes se ocultan las de
+   velocidad y pedales (siguen en las cifras de arriba y en Comparar). */
+@container (width < 1060px) {
+  .v-an-laps--sectors .v-an-session-narrow {
+    display: table-cell;
+  }
+  .v-an-laps--sectors :is(.v-an-lap-secondary, .v-an-lap-vmax) {
+    display: none;
+  }
+}
+@container (width < 760px) {
+  .v-an-laps--sectors .v-an-lap-data {
+    inline-size: 120px;
+  }
+}

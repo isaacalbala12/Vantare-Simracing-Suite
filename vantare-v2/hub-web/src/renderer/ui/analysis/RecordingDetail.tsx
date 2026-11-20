@@ -20,6 +20,12 @@ import {
   recordingBestTime,
   summarizeLaps,
 } from "../../app/analysis-laps";
+import {
+  hasSectors,
+  lapSectors,
+  type SectorIndex,
+  sectorBests,
+} from "../../app/analysis-sectors";
 import { Icon } from "../../assets/icons/Icon";
 import {
   decimal,
@@ -38,6 +44,7 @@ import { TrackedCaps } from "../TrackedCaps";
 import { AnalysisError, AnalysisNotice } from "./Analysis";
 import { CompareAction, LapChoices } from "./LapChoices";
 import { RecordingChart } from "./RecordingChart";
+import { SectorCells } from "./SectorCells";
 import { SessionTrack, SessionVehicle } from "./SessionIdentity";
 import { useRecordingClock } from "./useRecordingClock";
 
@@ -59,16 +66,22 @@ function Pedal({
     </span>
   );
 }
+type Sectors = {
+  isBest: (lap: AnalysisLap, sector: SectorIndex) => boolean;
+  perSession: boolean;
+};
 function LapRow({
   lap,
   best,
   state,
   controller,
+  sectors,
 }: {
   lap: AnalysisLap;
   best: number | null;
   state: AnalysisSnapshot;
   controller?: AnalysisController;
+  sectors?: Sectors;
 }) {
   const { ms: time, official } = lapTime(lap);
   const kind = lapDataKind(lap);
@@ -77,12 +90,13 @@ function LapRow({
     <tr data-best={delta === 0 || undefined}>
       <th scope="row" className="v-an-lap-label">{`${t.lap} ${lap.lap}`}</th>
       <td className="v-an-number">{formatLapTime(time, official)}</td>
+      {sectors && <SectorCells lap={lap} {...sectors} />}
       <td
         className={`v-an-number ${delta === null ? "" : delta === 0 ? "v-an-gain" : "v-an-loss"}`}
       >
         {delta === null ? t.dash : delta === 0 ? t.fastest : deltaTime(delta)}
       </td>
-      <td className="v-an-number">
+      <td className="v-an-number v-an-lap-vmax">
         {lap.speed.max === null ? t.dash : decimal(lap.speed.max * 3.6)}
       </td>
       <td className="v-an-number v-an-lap-secondary">
@@ -105,6 +119,9 @@ function LapRow({
         </Badge>
         {estimatedLap(lap) && (
           <small className="v-an-lap-note">{t.estimatedData}</small>
+        )}
+        {sectors && official && !lapSectors(lap) && (
+          <small className="v-an-lap-note">{t.noSectorsGiven}</small>
         )}
       </td>
       <td>
@@ -202,6 +219,10 @@ export function AnalysisLaps({
           return lap.sealed && !lap.gap && lap.lapTimeApproxMs === best.ms;
         });
   const sessions = orderedSessions(opened?.sessions);
+  const withSectors = hasSectors(opened?.laps ?? []);
+  const sectors: Sectors | undefined = withSectors
+    ? sectorBests(opened?.laps ?? [], opened?.sessions ?? [])
+    : undefined;
   const latest = sessions[0]?.session;
   const grouped = (opened?.sessions.length ?? 0) > 1;
   const sharedIdentity = opened?.sessions.every(
@@ -299,22 +320,41 @@ export function AnalysisLaps({
             bestTime={summary.bestTime}
             bestLap={summary.best?.lap}
           />
-          {summary.approximate && (
-            <p className="v-an-lap-note">{t.approximate}</p>
-          )}
+          <div className="v-an-lap-notes">
+            {summary.approximate && (
+              <p className="v-an-lap-note">{t.approximate}</p>
+            )}
+            {opened.laps.length > 0 &&
+              (sectors ? (
+                <p className="v-an-lap-note">
+                  <span className="v-an-sector-best" aria-hidden="true">
+                    {t.sectorSample}
+                  </span>{" "}
+                  {t.sectorLegend(sectors.perSession)}
+                </p>
+              ) : (
+                <p className="v-an-lap-note">{t.recordingWithoutSectors}</p>
+              ))}
+            {sectors && summary.approximate && (
+              <p className="v-an-lap-note">{t.approximateNoSectors}</p>
+            )}
+          </div>
           <div className="v-an-laps-card">
             <Card
               title={<TrackedCaps>{t.laps}</TrackedCaps>}
               actions={<CompareAction state={state} controller={controller} />}
             >
               <div className="v-an-tablewrap">
-                <table className="v-table v-an-table v-an-laps">
+                <table
+                  className={`v-table v-an-table v-an-laps${sectors ? " v-an-laps--sectors" : ""}`}
+                >
                   <caption className="v-sr-only">
                     {[
                       t.laps,
                       !sessions.length || summary.approximate
                         ? t.approximate
                         : undefined,
+                      sectors ? t.sectorsCaption : undefined,
                       t.speed,
                     ]
                       .filter(Boolean)
@@ -323,20 +363,28 @@ export function AnalysisLaps({
                   <thead>
                     <tr>
                       {[
-                        t.lap,
-                        t.time,
-                        t.delta,
-                        t.speedMax,
-                        t.speedMean,
-                        t.throttleColumn,
-                        t.brakeColumn,
-                        t.data,
-                        comparisonText.choices,
-                      ].map((label, i) => (
+                        [t.lap],
+                        [t.time],
+                        ...(sectors
+                          ? [1, 2, 3].map((n) => [
+                              t.sector(n),
+                              "v-an-lap-sector",
+                              t.sectorName(n),
+                            ])
+                          : []),
+                        [t.delta, "v-an-lap-delta"],
+                        [t.speedMax, "v-an-lap-vmax"],
+                        [t.speedMean, "v-an-lap-secondary v-an-lap-vavg"],
+                        [t.throttleColumn, "v-an-lap-secondary v-an-lap-pedal"],
+                        [t.brakeColumn, "v-an-lap-secondary v-an-lap-pedal"],
+                        [t.data, "v-an-lap-data"],
+                        [comparisonText.choices, "v-an-lap-compare"],
+                      ].map(([label, name = "", sector]) => (
                         <th
                           scope="col"
                           key={label}
-                          className={`v-an-lap-column${i >= 4 && i <= 6 ? " v-an-lap-secondary" : ""}`}
+                          aria-label={sector}
+                          className={`v-an-lap-column ${name}`}
                         >
                           {label}
                         </th>
@@ -348,35 +396,37 @@ export function AnalysisLaps({
                       <tbody key={position ?? "unassigned"}>
                         {grouped && session && number !== undefined && (
                           <tr className="v-an-session-row">
-                            {[9, 6].map((columns) => (
-                              <th
-                                key={columns}
-                                scope="rowgroup"
-                                colSpan={columns}
-                                className={
-                                  columns === 9
-                                    ? "v-an-lap-secondary"
-                                    : "v-an-session-narrow"
-                                }
-                              >
-                                <SessionMeta
-                                  session={session}
-                                  title={[
-                                    sessionType(session) ??
-                                      t.sessionNumber(number),
-                                    ...(sharedIdentity
-                                      ? []
-                                      : [
-                                          session.trackName,
-                                          session.vehicle,
-                                          session.className,
-                                        ]),
-                                  ]
-                                    .filter(Boolean)
-                                    .join(" · ")}
-                                />
-                              </th>
-                            ))}
+                            {(sectors ? [12, 8] : [9, 6]).map(
+                              (columns, index) => (
+                                <th
+                                  key={columns}
+                                  scope="rowgroup"
+                                  colSpan={columns}
+                                  className={
+                                    index
+                                      ? "v-an-session-narrow"
+                                      : "v-an-lap-secondary"
+                                  }
+                                >
+                                  <SessionMeta
+                                    session={session}
+                                    title={[
+                                      sessionType(session) ??
+                                        t.sessionNumber(number),
+                                      ...(sharedIdentity
+                                        ? []
+                                        : [
+                                            session.trackName,
+                                            session.vehicle,
+                                            session.className,
+                                          ]),
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" · ")}
+                                  />
+                                </th>
+                              ),
+                            )}
                           </tr>
                         )}
                         {laps.map((lap) => (
@@ -386,6 +436,7 @@ export function AnalysisLaps({
                             key={lap.index}
                             lap={lap}
                             best={summary.bestTime}
+                            sectors={sectors}
                           />
                         ))}
                       </tbody>

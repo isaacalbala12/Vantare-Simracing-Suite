@@ -50,6 +50,7 @@ export const CHECKS_PAGINAS = [
 export const CHECKS_ANALISIS = [
   "checkAnalysisComparison",
   "checkAnalysisSessions",
+  "checkAnalysisSectors",
   "checkRecordingStatus",
   "checkStrategyScreen",
 ] as const;

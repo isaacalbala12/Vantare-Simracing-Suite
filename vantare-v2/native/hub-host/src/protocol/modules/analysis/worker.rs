@@ -262,7 +262,8 @@ fn open_reply(
                 lap_time_approx_ms: approx_ms(lap),
                 session,
                 lap_time_ms: official.and_then(|lap| lap.official_ms),
-                sectors_ms: official.and_then(|lap| lap.sector_ms.clone()),
+                sectors_ms: official
+                    .and_then(|lap| metadata::valid_sectors(lap.official_ms, lap.sector_ms.as_deref())),
                 speed: signal(&lap.speed),
                 throttle: signal(&lap.throttle),
                 brake: signal(&lap.brake),

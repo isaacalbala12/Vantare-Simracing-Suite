@@ -124,6 +124,20 @@ export const analysisText = {
   maxSpeed: "Velocidad máx.",
   kmh: "km/h",
   approximate: "Tiempos aproximados, no oficiales.",
+  sector: (n: number) => `S${n}`,
+  sectorName: (n: number) => `Sector ${n}`,
+  noData: "sin dato",
+  bestSector: (n: number, perSession: boolean) =>
+    `Mejor S${n} de la ${perSession ? "sesión" : "grabación"}`,
+  bestSectorHidden: (n: number) => `, mejor S${n}`,
+  sectorLegend: (perSession: boolean) =>
+    `El recuadro marca el mejor tiempo de cada sector en ${perSession ? "su sesión" : "esta grabación"}.`,
+  sectorSample: "00.000",
+  sectorsCaption: "El mejor tiempo de cada sector va marcado",
+  noSectorsGiven: "sin sectores: el juego no los dio",
+  approximateNoSectors:
+    "Las vueltas con tiempo aproximado (≈) no tienen sectores.",
+  recordingWithoutSectors: "Esta grabación no tiene tiempos por sector.",
   fastest: "mejor",
   speedMax: "Vel. máx.",
   speedMean: "Vel. media",
@@ -169,6 +183,16 @@ export function lapTime(ms: number | null | undefined, official = false) {
   }
   const tenths = Math.round(ms / 100);
   return `≈${Math.floor(tenths / 600)}:${(Math.floor(tenths / 10) % 60).toString().padStart(2, "0")}.${tenths % 10}`;
+}
+/** Tiempo de sector: `41.096`, y con minutos desde 60 s (`1:02.091`). */
+export function sectorTime(ms: number) {
+  const rounded = Math.round(ms);
+  const minutes = Math.floor(rounded / 60000);
+  const seconds = Math.floor(rounded / 1000) % 60;
+  const millis = String(rounded % 1000).padStart(3, "0");
+  return minutes > 0
+    ? `${minutes}:${String(seconds).padStart(2, "0")}.${millis}`
+    : `${seconds}.${millis}`;
 }
 export const decimal = (n: number) =>
   n.toLocaleString("es-ES", { maximumFractionDigits: 1 });

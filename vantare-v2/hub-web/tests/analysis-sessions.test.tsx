@@ -244,7 +244,7 @@ it("keeps session identities in the groups when the circuit differs", () => {
   );
   const headers = screen
     .getByRole("table")
-    .querySelectorAll('th[scope="rowgroup"][colspan="9"]');
+    .querySelectorAll('th[scope="rowgroup"][colspan="12"]');
   expect(headers[0]?.textContent).toContain("Spa · Porsche 911 GT3 R · GT3");
   expect(headers[1]?.textContent).toContain("Monza · Porsche 911 GT3 R · GT3");
 });

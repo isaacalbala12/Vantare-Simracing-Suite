@@ -79,6 +79,7 @@ async function runAnalysis() {
     const { checkAnalysisSessions } = await import(
       "./analysis-sessions-web.ts"
     );
+    const { checkAnalysisSectors } = await import("./analysis-sectors-web.ts");
     const comparisonContext = await browser.newContext({
       timezoneId: "UTC",
       locale: "es-ES",
@@ -102,6 +103,12 @@ async function runAnalysis() {
           comparisonPage,
           server.resolvedUrls?.local[0] ?? "",
           resolve(evidence, "analysis-sessions"),
+        ),
+      );
+      await timed("checkAnalysisSectors", () =>
+        checkAnalysisSectors(
+          comparisonPage,
+          server.resolvedUrls?.local[0] ?? "",
         ),
       );
       await timed("checkRecordingStatus", () =>

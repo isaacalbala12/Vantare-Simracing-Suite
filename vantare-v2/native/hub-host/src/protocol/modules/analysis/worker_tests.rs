@@ -345,6 +345,9 @@ fn inspect_and_open_join_real_metadata_by_full_key() {
         Some([31_000, 30_000, 29_125].as_slice())
     );
     assert_eq!(laps[2].sectors_ms, None);
+    // La vuelta de 91 250 ms trae sectores que suman 90 125: no cuadran y el
+    // host manda «sin sectores» (misma regla que `valid_sectors`).
+    assert_eq!(laps[1].sectors_ms, None);
     drop(current);
     std::fs::remove_dir_all(root).unwrap();
 }

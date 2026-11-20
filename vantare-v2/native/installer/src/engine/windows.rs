@@ -8,14 +8,15 @@ use std::{
 };
 use windows::Win32::{
     Storage::FileSystem::{
-        CopyFileW, GetDriveTypeW, GetVolumeInformationW, MOVEFILE_WRITE_THROUGH, MoveFileExW,
-        REPLACE_FILE_FLAGS, ReplaceFileW,
+        CopyFileW, FILE_DISPOSITION_INFO, FileDispositionInfo, GetDriveTypeW,
+        GetVolumeInformationW, MOVEFILE_WRITE_THROUGH, MoveFileExW, REPLACE_FILE_FLAGS,
+        ReplaceFileW, SetFileInformationByHandle,
     },
     System::Com::CoCreateGuid,
 };
 use windows::{
     Win32::{
-        Foundation::{PROPERTYKEY, RPC_E_CHANGED_MODE},
+        Foundation::{HANDLE, PROPERTYKEY, RPC_E_CHANGED_MODE},
         System::Com::{
             APTTYPE, APTTYPE_MTA, APTTYPEQUALIFIER, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED,
             CoCreateInstance, CoGetApartmentType, CoInitializeEx, CoTaskMemFree, CoUninitialize,
@@ -288,6 +289,34 @@ pub fn replace_backed_up(source: &Path, target: &Path, backup: &Path) -> Result<
             REPLACE_FILE_FLAGS(0),
             None,
             None,
+        )
+    }
+    .map_err(|cause| error(&cause))
+}
+/// A rename inside the volume: it never replaces a file and never becomes a copy.
+pub fn move_new(source: &Path, target: &Path) -> Result<()> {
+    let source = wide(source.as_os_str())?;
+    let target = wide(target.as_os_str())?;
+    unsafe {
+        MoveFileExW(
+            PCWSTR(source.as_ptr()),
+            PCWSTR(target.as_ptr()),
+            MOVEFILE_WRITE_THROUGH,
+        )
+    }
+    .map_err(|cause| error(&cause))
+}
+/// Removes the file behind this handle, whatever its path holds by then. The
+/// handle must have been opened with `DELETE` access.
+pub fn delete_open(file: &std::fs::File) -> Result<()> {
+    use std::os::windows::io::AsRawHandle;
+    let info = FILE_DISPOSITION_INFO { DeleteFile: true };
+    unsafe {
+        SetFileInformationByHandle(
+            HANDLE(file.as_raw_handle()),
+            FileDispositionInfo,
+            (&raw const info).cast(),
+            u32::try_from(size_of::<FILE_DISPOSITION_INFO>()).expect("one flag"),
         )
     }
     .map_err(|cause| error(&cause))

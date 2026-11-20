@@ -836,14 +836,19 @@ fn retire_orphan(directory: &Path, channel: &str, note: &mut dyn FnMut(&str)) ->
 fn retire_member(path: &Path, member: &installation::Member) -> Result<()> {
     let mut file = disk::open_exclusive(path)
         .map_err(|error| WriteError::new(2, format!("en uso o sin permiso ({error})")))?;
-    let mut hash = Sha256::new();
-    let size = io::copy(&mut file, &mut hash)?;
+    let (size, sha256) = fingerprint(&mut file)?;
     ensure(
-        size == member.size && format!("{:x}", hash.finalize()) == member.sha256,
+        size == member.size && sha256 == member.sha256,
         "no coincide con el tamaño y el SHA-256 del manifiesto",
     )?;
     drop(file);
     Ok(fs::remove_file(path)?)
+}
+/// Size and SHA-256 of the bytes behind an open handle.
+fn fingerprint(file: &mut fs::File) -> Result<(u64, String)> {
+    let mut hash = Sha256::new();
+    let size = io::copy(file, &mut hash)?;
+    Ok((size, format!("{:x}", hash.finalize())))
 }
 /// Folders that held members, deepest first; one with anything left stays.
 fn remove_empty_parents(directory: &Path, members: &[&String]) -> Result<()> {
@@ -1127,4 +1132,182 @@ pub fn uninstall(
         disk::remove_file(&root.join(name))?;
     }
     finalize(control)
+}
+
+/// What one adoption did with the recordings of a generation.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Adoption {
+    pub moved: usize,
+    pub duplicates: usize,
+    pub kept: usize,
+}
+/// The session only moves. Confirm and Uninstall also remove a copy proven
+/// identical to the recording that is already in the single folder.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Duplicates {
+    Keep,
+    RemoveIdentical,
+}
+/// Brings the recordings of `generations/<id>/data/hub/recordings` into the
+/// single `<root>/recordings` folder (ADR 0111 §4). Nothing calls it yet.
+/// An error means that nothing was attempted, or that a checkpoint cut it
+/// short. Whatever is doubtful stays where it is, with its path and reason in
+/// `note`; running it again continues where it stopped.
+pub fn adopt_recordings(
+    root: &Path,
+    generation: &str,
+    duplicates: Duplicates,
+    checkpoint: &mut dyn FnMut(&str) -> Result<()>,
+    note: &mut dyn FnMut(&str),
+) -> Result<Adoption> {
+    let root = disk::open_root(root, false)?;
+    let _operation = disk::lock(&root, ".operation.lock")?;
+    // Without both references nobody knows which generation is `previous`.
+    let document = installation::read_state(&root)?
+        .filter(references_bound)
+        .ok_or_else(|| WriteError::new(1, "Las referencias de state.json no son fiables"))?;
+    let note = &mut logged(&root, note);
+    adopt(
+        &root,
+        &document.state,
+        generation,
+        duplicates,
+        checkpoint,
+        note,
+    )
+}
+fn adopt(
+    root: &Path,
+    state: &State,
+    generation: &str,
+    duplicates: Duplicates,
+    checkpoint: &mut dyn FnMut(&str) -> Result<()>,
+    note: &mut dyn FnMut(&str),
+) -> Result<Adoption> {
+    let source = disk::generation(root, generation)?.join("data/hub/recordings");
+    // `previous` keeps its copy: it is what a failed version goes back to.
+    ensure(
+        state
+            .previous
+            .as_ref()
+            .is_none_or(|previous| !previous.generation.eq_ignore_ascii_case(generation)),
+        "La generación anterior conserva sus grabaciones para la vuelta atrás",
+    )?;
+    let (source, single) = (disk::path(&source)?, disk::path(&root.join("recordings"))?);
+    let mut adoption = Adoption::default();
+    if !source.is_dir() {
+        return Ok(adoption);
+    }
+    ensure(
+        !single.try_exists()? || single.is_dir(),
+        "La carpeta única de grabaciones no es una carpeta",
+    )?;
+    // (name, is a regular file): a link or a folder is neither followed nor moved.
+    let list = |directory: &Path| -> Result<Vec<(String, bool)>> {
+        let mut listed = Vec::new();
+        for entry in fs::read_dir(directory)? {
+            let entry = entry?;
+            let name = entry.file_name().to_string_lossy().into_owned();
+            listed.push((name, entry.file_type()?.is_file()));
+        }
+        listed.sort();
+        Ok(listed)
+    };
+    let listed = list(&source)?;
+    let present = if single.is_dir() {
+        list(&single)?
+    } else {
+        Vec::new()
+    };
+    // A `.wal` or a temporary beside a recording: still being written, or cut short.
+    let unfinished = |folder: &[(String, bool)], name: &str| {
+        let prefix = format!("{name}.");
+        folder
+            .iter()
+            .any(|(other, _)| other.to_ascii_lowercase().starts_with(&prefix))
+    };
+    for (name, is_file) in &listed {
+        if name == "recording-status.json" {
+            continue; // The state of the recorder, which writes its own in the single folder.
+        }
+        let (path, target) = (source.join(name), single.join(name));
+        let outcome = if !is_file {
+            Err("no es un archivo normal".to_owned())
+        } else if !recording_name(name) {
+            Err("el nombre no es de una grabación".to_owned())
+        } else if unfinished(&listed, name) {
+            Err("tiene al lado un .wal o un temporal: está en curso o sin cerrar".to_owned())
+        } else if unfinished(&present, name) {
+            Err("en la carpeta única hay un .wal o un temporal con su nombre".to_owned())
+        } else if !present
+            .iter()
+            .any(|(other, _)| other.eq_ignore_ascii_case(name))
+        {
+            checkpoint("adopt-move")?;
+            move_recording(&path, &single, &target).map(|()| adoption.moved += 1)
+        } else if duplicates == Duplicates::Keep {
+            Err("ya existe en la carpeta única y este paso no compara".to_owned())
+        } else {
+            checkpoint("adopt-remove")?;
+            remove_identical(&path, &target).map(|()| adoption.duplicates += 1)
+        };
+        if let Err(reason) = outcome {
+            adoption.kept += 1;
+            note(&format!(
+                "Grabaciones: se conserva {}; motivo: {reason}",
+                path.display()
+            ));
+        }
+    }
+    if adoption.moved + adoption.duplicates > 0 {
+        note(&format!(
+            "Grabaciones de {}: adoptadas {}; copias repetidas retiradas {}",
+            source.display(),
+            adoption.moved,
+            adoption.duplicates
+        ));
+    }
+    Ok(adoption)
+}
+/// `series-<epoch>-<pid>.duckdb`: the only name the recorder gives a recording.
+fn recording_name(name: &str) -> bool {
+    installation::safe_member(name)
+        && name
+            .strip_prefix("series-")
+            .and_then(|rest| rest.strip_suffix(".duckdb"))
+            .and_then(|pair| pair.split_once('-'))
+            .is_some_and(|(epoch, process)| {
+                [epoch, process].iter().all(|digits| {
+                    !digits.is_empty() && digits.bytes().all(|byte| byte.is_ascii_digit())
+                })
+            })
+}
+fn unavailable(whose: &'static str) -> impl Fn(io::Error) -> String {
+    move |error| format!("{whose} está en uso o no se puede leer ({error})")
+}
+/// One rename inside the volume: the recording is whole in the source or whole
+/// in the single folder, never a copy and never over another file.
+fn move_recording(path: &Path, single: &Path, target: &Path) -> std::result::Result<(), String> {
+    // Readable, and nobody else has it open right now.
+    drop(disk::open_recording(path, true).map_err(unavailable("la grabación"))?);
+    fs::create_dir_all(single)
+        .map_err(WriteError::from)
+        .and_then(|()| windows::move_new(path, target))
+        .map_err(|error| format!("no se pudo mover ({error})"))
+}
+/// The only deletion of user data in the engine. The copy goes away through
+/// the exclusive handle that hashed it, while nobody can write the one kept.
+fn remove_identical(path: &Path, target: &Path) -> std::result::Result<(), String> {
+    let mut twin =
+        disk::open_recording(target, false).map_err(unavailable("la de la carpeta única"))?;
+    let mut copy = disk::open_recording(path, true).map_err(unavailable("la copia"))?;
+    let identical = (|| -> Result<bool> {
+        Ok(copy.metadata()?.len() == twin.metadata()?.len()
+            && fingerprint(&mut copy)? == fingerprint(&mut twin)?)
+    })()
+    .map_err(|error| format!("no se pudo comparar ({error})"))?;
+    if !identical {
+        return Err("su contenido es distinto del de la carpeta única".to_owned());
+    }
+    windows::delete_open(&copy).map_err(|error| format!("no se pudo retirar la copia ({error})"))
 }

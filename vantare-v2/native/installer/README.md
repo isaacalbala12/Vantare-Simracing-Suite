@@ -393,3 +393,65 @@ Tests en el último bloque de `tests/installation_write.rs`: A → B → C, Repa
 (sana y dañada), vuelta atrás, carpetas ajenas, manifiesto roto o de otro canal,
 archivo alterado o no enumerado, archivo ocupado, permiso de lectura denegado,
 imagen en uso, barrido cortado y desinstalación.
+
+## Adoptar grabaciones — ADR 0111, T1 (#2755)
+
+[ADR 0111](../../docs/adr/0111-grabaciones-carpeta-unica-por-instalacion.md)
+saca las grabaciones de Análisis de cada generación y las reúne en una sola
+carpeta, `<raíz>/recordings/`. `operations::adopt_recordings` es la operación
+que las trae desde `generations/<id>/data/hub/recordings/`. **Todavía no la
+llama nadie**: ni la sesión (T2), ni Confirm ni Desinstalar (T3). Ninguna
+instalación cambia de comportamiento con este trozo.
+
+Una grabación es un archivo `series-<época>-<pid>.duckdb`, el único nombre que
+le da el grabador. Para cada una:
+
+| Situación | Qué hace |
+| --- | --- |
+| En la carpeta única no existe ese nombre | La **mueve** con un renombrado dentro del mismo disco: es instantáneo, no copia nada y conserva contenido y fechas |
+| Existe y es igual (mismo tamaño y mismo SHA-256) | **Borra la copia** de la generación. Solo con `Duplicates::RemoveIdentical` |
+| Existe y es distinta | La conserva donde está y lo anota. Nunca escribe encima de la carpeta única |
+| Existe y se pide `Duplicates::Keep` | La conserva sin comparar. Es el modo de la sesión, que solo mueve |
+
+Se conserva en el origen, con su ruta y el motivo en las notas (y en el
+[registro de la instalación](#registro-de-la-instalación-2752)), todo lo dudoso:
+
+- un archivo que otro programa tiene abierto o que no se puede leer;
+- una grabación con un `.wal` o un temporal al lado (`series-….duckdb.wal`,
+  `series-….duckdb.creating-…`): está en curso o no se cerró bien. Tampoco se
+  mueven esos acompañantes sueltos;
+- una grabación cuyo nombre ya tiene un `.wal` o un temporal en la carpeta única;
+- cualquier nombre que no sea el de una grabación, y las carpetas.
+  `recording-status.json` (el estado del grabador) se deja sin anotar.
+
+Garantías:
+
+- **Nunca borra sin huella idéntica.** El único borrado de datos del usuario es
+  el de la copia repetida. Se hace por el mismo manejador exclusivo con el que
+  se calculó su huella, y mientras tanto nadie puede escribir la grabación que
+  se queda.
+- **Un corte no deja nada a medias.** Cada archivo cambia de sitio en un solo
+  paso: está entero en el origen o entero en la carpeta única. No hay archivos
+  temporales, lista ni marcador; repetir la operación continúa donde se quedó y,
+  si no queda nada, no cambia ni anota nada.
+- **Nunca toca la generación anterior**: es la copia a la que se vuelve si la
+  versión nueva falla. Si `state.json` no deja claras las dos referencias, no
+  hace nada.
+- **Solo toca dos carpetas**: la de grabaciones de la generación indicada (por
+  su identificador de 32 hexadecimales) y `<raíz>/recordings/`, que crea al
+  recibir la primera grabación y que hereda los permisos de la raíz.
+- **No sigue enlaces.** Como el resto del motor, se niega a trabajar si hay un
+  enlace o punto de reanálisis en la instalación, y cada grabación se abre como
+  ella misma, nunca a través de un enlace.
+- Trabaja bajo `.operation.lock`. No cierra ni mata ningún proceso.
+
+Límites conocidos, que deciden T2 y T3:
+
+- Una grabación que quedó sin cerrar (con `.wal`) no se adopta: se queda en su
+  generación hasta que alguien decida cómo traer la pareja.
+- No se comprueba que el archivo sea una base DuckDB válida. Una copia a medias
+  que dejara una actualización cortada tendría nombre de grabación.
+- Si se juntan más de 256 grabaciones, el catálogo del Hub avisa del límite
+  hasta que el núcleo pode en su siguiente arranque (ADR 0111 §7).
+
+Tests en el último bloque de `tests/installation_write.rs`.

@@ -162,6 +162,30 @@ pub fn open_exclusive(path: &Path) -> io::Result<fs::File> {
     exclusive(&mut options);
     options.open(path)
 }
+/// A recording opened as itself, never through a link. `owned` proves that
+/// nobody else has it open and lets it be removed through this handle;
+/// otherwise others may read it but nobody can write it while it is compared.
+pub fn open_recording(path: &Path, owned: bool) -> io::Result<fs::File> {
+    use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
+    const GENERIC_READ: u32 = 0x8000_0000;
+    const DELETE: u32 = 0x0001_0000;
+    const OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .access_mode(if owned {
+            GENERIC_READ | DELETE
+        } else {
+            GENERIC_READ
+        })
+        .share_mode(u32::from(!owned))
+        .custom_flags(OPEN_REPARSE_POINT)
+        .open(path)?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file() || metadata.file_attributes() & 0x400 != 0 {
+        return Err(io::Error::other("no es un archivo normal"));
+    }
+    Ok(file)
+}
 pub fn binary_guard(root: &Path) -> Result<Vec<fs::File>> {
     binary_guard_except(root, None)
 }

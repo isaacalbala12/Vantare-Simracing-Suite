@@ -91,11 +91,11 @@ fn installation() -> Option<PathBuf> {
     #[cfg(not(windows))]
     None
 }
-/// ADR 0111 §3: only a folder of a local disk, strictly inside the installation
-/// and spelled without `..`; never a network path. The session builds it from
-/// the root it runs from: anything else is not its argument. Only the shape is
-/// judged here. A link is refused by Analysis each time it reads the folder,
-/// so that a linked folder costs the user Analysis and not the whole Hub.
+/// ADR 0111 §3: exactly `<root>\recordings` of this installation, on a local
+/// disk and spelled without `..`; never a network path. The session builds it
+/// from the root it runs from: anything else is not its argument, and is
+/// written down. What the folder itself is (missing, a link, a junction or a
+/// file) never stops the Hub: Analysis says why nothing is recorded there.
 fn single_folder(value: String, installation: Option<&Path>) -> io::Result<PathBuf> {
     use std::path::{Component, Prefix};
     let path = PathBuf::from(value);
@@ -104,21 +104,37 @@ fn single_folder(value: String, installation: Option<&Path>) -> io::Result<PathB
     let local = parts.next().is_some_and(disk)
         && parts.next() == Some(Component::RootDir)
         && parts.all(|part| matches!(part, Component::Normal(_)));
-    if local && installation.is_some_and(|root| inside(root, &path)) {
+    let named = |name: &std::ffi::OsStr| name.eq_ignore_ascii_case("recordings");
+    let of = |root: &Path| path.parent().is_some_and(|up| same_folder(root, up));
+    if local && path.file_name().is_some_and(named) && installation.is_some_and(of) {
         return Ok(path);
+    }
+    if let Some(root) = installation {
+        refused(root);
     }
     Err(io::Error::new(
         io::ErrorKind::InvalidInput,
-        "recordings folder outside the installation",
+        "recordings folder is not the one of the installation",
     ))
 }
-/// Strictly below the root, both compared as the disk names them.
-fn inside(root: &Path, path: &Path) -> bool {
-    let Ok(root) = root.canonicalize() else {
-        return false;
-    };
-    let reached = |ancestor: &Path| ancestor.canonicalize().is_ok_and(|found| found == root);
-    path.ancestors().skip(1).any(reached)
+/// The parent is the root itself, both compared as the disk names them, on a
+/// local drive and below no link.
+fn same_folder(root: &Path, parent: &Path) -> bool {
+    #[cfg(windows)]
+    let local = vantare_installer::engine::write_fs::path(parent).is_ok();
+    #[cfg(not(windows))]
+    let local = false;
+    let named = |folder: &Path| folder.canonicalize().ok();
+    local && named(root).is_some_and(|found| Some(found) == named(parent))
+}
+/// The output of this program reaches nobody: the log of the installation
+/// does, once and without the path.
+fn refused(root: &Path) {
+    let note = "Hub: no arranca porque la sesión le ha pasado una carpeta de grabaciones que no es la de esta instalación.";
+    #[cfg(windows)]
+    vantare_installer::engine::write_fs::log_once(root, note);
+    #[cfg(not(windows))]
+    let _ = (root, note);
 }
 
 #[cfg(test)]

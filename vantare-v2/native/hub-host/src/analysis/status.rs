@@ -327,7 +327,31 @@ fn read_with(
     paths: &BTreeMap<String, PathBuf>,
     open: impl FnOnce(&Path) -> std::io::Result<fs::File>,
 ) -> Option<AnalysisRecordingStatus> {
-    super::regular_directory(root).ok()?;
+    match super::regular_directory(root) {
+        Ok(()) => {}
+        // A link, a junction or a file in its place: never read, and said, so
+        // that Analysis can tell why nothing is recorded (ADR 0111, T2b). The
+        // core never writes this pair: it reports its own trouble as degraded.
+        Err(error) if error.code == super::ErrorCode::Unreadable => {
+            return Some(AnalysisRecordingStatus {
+                state: AnalysisRecordingState::Stopped,
+                cause: Some(AnalysisRecordingCause::InvalidDirectory),
+                row_id: None,
+                started_at_ms: 0,
+                durable_watermark: None,
+                attempted: None,
+                limits: AnalysisRecordingLimits {
+                    max_recordings: 0,
+                    max_bytes: 0,
+                },
+                last_prune: AnalysisLastPrune {
+                    at_ms: 0,
+                    items: Vec::new(),
+                },
+            });
+        }
+        Err(_) => return None,
+    }
     let path = root.join("recording-status.json");
     // std OpenOptions on Windows keeps FILE_SHARE_DELETE for atomic Core replacement.
     let file = open(&path).ok()?;

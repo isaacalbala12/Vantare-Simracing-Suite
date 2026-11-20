@@ -7,12 +7,16 @@ y su PR 1, [#2745](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull
 
 ## Estado
 
-**Propuesto. Pendiente de decisión de la raíz.** Este documento no autoriza
-ninguna implementación, promoción ni publicación. Es solo lectura de código y
-de evidencia: no se ha ejecutado el instalador, ni Vantare, ni se ha tocado el
-PC de juego ni datos de nadie. Base leída: `origin/nightly` `286822afc`.
+**Aceptado (raíz, 20-11-2026).** La raíz acepta la opción A y las doce
+respuestas de §13 tal como se recomiendan, y fija el orden de trabajo de §12.
+Aceptar la decisión no demuestra que esté implementada: cada trozo va en su
+propio PR. No autoriza ninguna promoción ni publicación.
 
-Si se acepta, **enmienda dos frases de [ADR 0103](0103-instalacion-nativa.md)**
+El documento es solo lectura de código y de evidencia: no se ha ejecutado el
+instalador, ni Vantare, ni se ha tocado el PC de juego ni datos de nadie. Base
+leída: `origin/nightly` `286822afc`.
+
+**Enmienda dos frases de [ADR 0103](0103-instalacion-nativa.md)**
 (detalle en «Relación con otras ADR»). No cambia
 [ADR 0099](0099-arquitectura-rust-nativa.md) ni
 [ADR 0107](0107-hub-electron-nucleo-y-overlays-rust.md).
@@ -428,14 +432,27 @@ del anfitrión, ni `state.json`, ni el manifiesto.** No hay dependencias nuevas.
 | **T4** | Medición antes/después en el servidor y recorrido en máquina virtual | Evidencia | S | T2 y T3 |
 | **T5** | Documentos (`native/README.md`, README de instalador, storage y anfitrión) y texto de desinstalación que nombre las grabaciones | Documentos y un texto | S · menos de 200 líneas | T2 |
 
-Orden: T1 → T2 → T3 → T4, con T5 junto a T2. T2 es el que hace efecto para
-el usuario; T3 es limpieza y puede ir después sin riesgo. T1 y T3 tocan el
-motor del instalador y los datos del usuario: revisión independiente con
-mutaciones, como en #2745.
+### Orden de trabajo decidido por la raíz (20-11-2026)
 
-Fuera de este ADR, como tarea pequeña aparte: que el catálogo use la época
-que ya va en el nombre del archivo en lugar de la fecha de creación, para
-arreglar las fechas de las grabaciones que ya se hayan copiado alguna vez.
+1. **T1**, cuando se fusione #2745.
+2. **T2 junto con T5.** T2 es el que hace efecto para el usuario.
+3. **T3**, que **sustituye al PR 2 de #2740**: el PR 2 original queda
+   cancelado. Donde este documento dice «PR 2 de #2740», ese trabajo lo
+   hace T3.
+
+**Revisión de datos por Opus en T1 y T3**, además de la revisión
+independiente con mutaciones como en #2745: son los dos trozos que tocan el
+motor del instalador y los datos del usuario.
+
+T4 (medición y máquina virtual) no figura en ese orden; sigue dependiendo de
+T2 y T3, como indica la tabla.
+
+### Fechas del catálogo: issue propia
+
+Por decisión de la raíz, va **aparte, como issue propia**, y no forma parte de
+T1–T5: que el catálogo use la época que ya va en el nombre del archivo en
+lugar de la fecha de creación, para arreglar las fechas de las grabaciones
+que ya se hayan copiado alguna vez.
 
 ## 13. Riesgos y preguntas para la raíz
 
@@ -457,6 +474,9 @@ arreglar las fechas de las grabaciones que ya se hayan copiado alguna vez.
    sale del código y de las fechas.
 
 ### Preguntas (con recomendación)
+
+**Decisión de la raíz (20-11-2026): se aceptan las doce respuestas tal como
+se recomiendan.** El texto se conserva como se presentó.
 
 1. **¿Se acepta la carpeta única `<raíz>/recordings/`?** Recomiendo que sí.
 2. **¿Dentro de la raíz de instalación o en otra carpeta del usuario?**
@@ -491,7 +511,7 @@ arreglar las fechas de las grabaciones que ya se hayan copiado alguna vez.
 
 ## Relación con otras ADR
 
-- **Enmendaría [ADR 0103](0103-instalacion-nativa.md)** en dos frases, solo
+- **Enmienda [ADR 0103](0103-instalacion-nativa.md)** en dos frases, solo
   para las grabaciones:
   - «El cambio de versión desplaza juntos binarios y copia de datos»: sigue
     siendo cierto para todo `data/` menos las grabaciones.

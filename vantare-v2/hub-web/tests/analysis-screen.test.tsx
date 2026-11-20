@@ -308,6 +308,25 @@ it.each([
   mount(bridge(scene), true, enabled);
   expect(await screen.findByText(text)).toBeTruthy();
 });
+it("says in the main area why there are no recordings when their folder is not a folder", async () => {
+  mount(bridge("status-folderUnusable"));
+  // The same clear message the status panel gives, where the user is looking.
+  const title = await screen.findByRole("heading", {
+    name: statusText.folderUnusable,
+  });
+  const notice = title.closest(".v-an-notice");
+  expect(notice?.textContent).toContain(statusText.folderUnusableHelp);
+  // Trying again does not turn a link into a folder: no such button, and no
+  // sign of the passing failure it is offered for.
+  expect(
+    screen.queryByRole("button", { name: "Volver a intentar" }),
+  ).toBeNull();
+  expect(
+    screen.queryByText("No se puede leer la carpeta de grabaciones"),
+  ).toBeNull();
+  // Announced once: the notice repeats the text, not the announcement.
+  expect(notice?.querySelector("[role=status], [role=alert]")).toBeNull();
+});
 it("shows the loading skeleton after 300ms and cancels on unmount", async () => {
   vi.useFakeTimers();
   const request = vi.fn((r: AnalysisRequest) =>

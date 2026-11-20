@@ -598,6 +598,10 @@ Esto conserva compatibilidad sin añadir Hub/Admin al flujo local de workers.
 Los tests de procesos de Runtime preparan también el ejecutable Services.
 El corpus de telemetría y lifecycle conservan sus gates cuando corresponden.
 Nextest usa `--build-jobs`; `-j` controla hilos de test.
+`gates.ps1 -Gate test` y `-Gate archive` pasan `--tests`: los examples no son
+targets de test y solo se compilaban para comprobar que compilaban (#2431, D).
+`ci-gates.ps1` y `comprobar.ps1` los siguen cubriendo con Clippy `--all-targets`
+sobre la misma selección, así que no pueden quedarse obsoletos.
 
 ### Cola fase 1: pesados y ligeros (#1993)
 

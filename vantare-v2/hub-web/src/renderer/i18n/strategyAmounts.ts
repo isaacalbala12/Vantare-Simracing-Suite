@@ -4,6 +4,9 @@
 
 type Amount = "fuel" | "ve";
 
+const lapsWord = (laps: number) =>
+  `${laps} ${laps === 1 ? "vuelta" : "vueltas"}`;
+
 export const amounts = {
   group: (stop: number) =>
     `Combustible, energía y neumáticos de la parada ${stop}`,
@@ -27,14 +30,14 @@ export const amounts = {
     // «la parada 3» o «meta», según la posición; los números son los del anfitrión
     arrival: (laps: number, life: number | null) =>
       life === null
-        ? `Las de ahora llegan con ${laps} vueltas.`
-        : `Las de ahora llegan con ${laps} vueltas; aguantan ${life}.`,
+        ? `Las de ahora llegan con ${lapsWord(laps)}.`
+        : `Las de ahora llegan con ${lapsWord(laps)}; aguantan ${life}.`,
     kept: (next: string, laps: number, life: number | null) =>
       life === null
-        ? `Sin cambiar, llegarían ${next} con ${laps} vueltas.`
-        : `Sin cambiar, llegarían ${next} con ${laps} vueltas; aguantan ${life}.`,
+        ? `Sin cambiar, llegarían ${next} con ${lapsWord(laps)}.`
+        : `Sin cambiar, llegarían ${next} con ${lapsWord(laps)}; aguantan ${life}.`,
     beyondLife: (next: string, laps: number, life: number | null) =>
-      `Sin cambiar, las ruedas llegarían ${next} con ${laps} vueltas${life === null ? "" : ` y aguantan ${life}`}. Así no hay plan: cambia las ruedas en esta parada.`,
+      `Sin cambiar, las ruedas llegarían ${next} con ${lapsWord(laps)}${life === null ? "" : ` y aguantan ${life}`}. Así no hay plan: cambia las ruedas en esta parada.`,
     nextStop: (stop: number) => `a la parada ${stop}`,
     finish: "a meta",
   },
@@ -122,8 +125,8 @@ export const amounts = {
       `Has fijado «No cambiar» en los neumáticos de la parada ${stop}.`,
     tyresChange: (stop: number) =>
       `Has fijado «Cambiar» en los neumáticos de la parada ${stop}.`,
-    withTyres: (stop: number, value: string) =>
-      `En la parada ${stop} has fijado ${value} y «No cambiar» en los neumáticos.`,
+    withTyres: (stop: number, value: string, keep: boolean) =>
+      `En la parada ${stop} has fijado ${value} y «${keep ? "No cambiar" : "Cambiar"}» en los neumáticos.`,
   },
   pending:
     "«Restablecer» vuelve al último plan válido, con lo que tuviera fijado; para quitar todo lo fijado, usa «Volver todo a automático».",
@@ -162,7 +165,7 @@ export const amounts = {
     stop: (stop: number) =>
       `Con lo que fijaste en la parada ${stop} no hay plan que termine la carrera. Cambia esa cantidad o vuelve a «Automático».`,
     tyres: (stop: number, next: string, laps: number, life: number | null) =>
-      `En la parada ${stop} las ruedas no aguantan sin cambiar: llegarían ${next} con ${laps} vueltas${life === null ? "" : ` y aguantan ${life}`}.`,
+      `En la parada ${stop} las ruedas no aguantan sin cambiar: llegarían ${next} con ${lapsWord(laps)}${life === null ? "" : ` y aguantan ${life}`}.`,
     generic:
       "Con lo que fijaste no hay plan que termine la carrera. Cambia algo de lo fijado o vuelve todo a automático.",
     backStop: (stop: number) => `Volver la parada ${stop} a automático`,

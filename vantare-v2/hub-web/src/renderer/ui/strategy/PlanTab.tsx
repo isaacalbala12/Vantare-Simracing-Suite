@@ -690,6 +690,7 @@ function Result({
           locked={recalculating}
           set={actions.edit.setStopService}
           back={backToAutomatic}
+          clear={fixedCount > 0 ? () => void clearAll() : undefined}
         />
       </>
     );

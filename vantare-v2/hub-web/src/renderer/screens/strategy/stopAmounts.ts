@@ -108,7 +108,12 @@ export function fixedSummary(edit: StrategyEditView | null): string {
   ].filter(Boolean);
   if (fixed.changeTyres === null)
     return amounts.summary.one(n, parts.join(" y "));
-  if (parts.length > 0) return amounts.summary.withTyres(n, parts.join(" y "));
+  if (parts.length > 0)
+    return amounts.summary.withTyres(
+      n,
+      parts.join(" y "),
+      fixed.changeTyres === false,
+    );
   return fixed.changeTyres
     ? amounts.summary.tyresChange(n)
     : amounts.summary.tyres(n);

@@ -181,7 +181,8 @@ mod tests {
                 Err(crate::analysis::ErrorCode::Unreadable),
                 "{kind}"
             );
-            let status = read(&named.recordings(), &Default::default()).expect("a status");
+            let status =
+                read(&named.recordings(), &std::collections::BTreeMap::new()).expect("a status");
             assert_eq!(status.cause, Some(InvalidDirectory), "{kind}");
             if kind == "link" {
                 std::fs::remove_dir(&single).expect("fixture");

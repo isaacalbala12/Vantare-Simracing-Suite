@@ -376,12 +376,29 @@ pub(super) fn verify_pe(path: &Path) -> Result<(), ReadError> {
 }
 
 pub(super) fn walk(root: &Path, skip_data: bool) -> Result<Vec<(PathBuf, bool)>, ReadError> {
+    walk_leaving(root, skip_data, None)
+}
+/// The whole installation, except its entry `recordings` (ADR 0111, T2b):
+/// whatever the user put there, a link or a junction included, is neither
+/// checked, entered nor followed. Only that name, and only at the root.
+pub(super) fn walk_installation(root: &Path) -> Result<Vec<(PathBuf, bool)>, ReadError> {
+    walk_leaving(root, false, Some("recordings"))
+}
+fn walk_leaving(
+    root: &Path,
+    skip_data: bool,
+    own: Option<&str>,
+) -> Result<Vec<(PathBuf, bool)>, ReadError> {
     let mut pending = vec![root.to_path_buf()];
     let mut files = Vec::new();
     while let Some(directory) = pending.pop() {
+        let top = directory == root;
         for entry in fs::read_dir(directory)? {
             let entry = entry?;
             let path = entry.path();
+            if own.is_some_and(|name| top && entry.file_name().eq_ignore_ascii_case(name)) {
+                continue;
+            }
             require(
                 !entry
                     .file_name()

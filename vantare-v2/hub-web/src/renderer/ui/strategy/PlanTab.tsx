@@ -20,6 +20,8 @@ import { amounts } from "../../i18n/strategyAmounts";
 import {
   acceptedTag,
   addedLoad,
+  automaticCompare,
+  automaticFigure,
   canAccept,
   certificateNotice,
   clock,
@@ -29,10 +31,12 @@ import {
   isAcceptedOnly,
   isAcceptedOnView,
   isOutdatedSame,
+  keptInParallel,
   lapTime,
   load,
   movedStops,
   pinnedCount,
+  pitIsPinned,
   planSubtitle,
   planSummary,
   reserveFigure,
@@ -42,7 +46,6 @@ import {
   tyresNote,
 } from "../../screens/strategy/planText";
 import {
-  automaticGap,
   finishFigures,
   fixedStops,
   fixedSummary,
@@ -63,7 +66,7 @@ import {
 import { type EditActions, StintEditor, StopEditor } from "./PlanAdjust";
 import { type ExportActions, ExportMenu, ExportNotice } from "./PlanExport";
 import { PlanTimeline, type TimelineMark } from "./PlanTimeline";
-import { AgainCard, PinnedTag, SlowerLine } from "./StopAmounts";
+import { AgainCard, AutomaticLine, PinnedTag } from "./StopAmounts";
 
 const t = strategy.calc;
 
@@ -299,7 +302,7 @@ function Legs({
                 <span>{t.services[pit.service]}</span>
                 <span>
                   {`${addedLoad(pit)} · ${pit.changeTyres ? t.freshTyres : t.sameTyres}`}
-                  {(pit.pinned.fuelLiters || pit.pinned.vePercent) && (
+                  {pitIsPinned(pit) && (
                     <>
                       {" "}
                       <PinnedTag />
@@ -521,7 +524,8 @@ function Result({
     if (answer) setFocusRecalc(true);
   };
   const backToAutomatic = async (stop: number) => {
-    const answer = await actions.edit.setStopService(stop, null, null);
+    // the whole stop goes back: both amounts and the tyres
+    const answer = await actions.edit.setStopService(stop, null, null, null);
     if (answer && "value" in answer) setFocusRecalc(true);
   };
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -576,14 +580,13 @@ function Result({
       ? undefined
       : { kind: view === "stops" ? "stop" : "stint", index };
   const shown = timeline ? scheduleTimeline(timeline, edit) : null;
-  // slower than the automatic plan, when the host gave its figures
-  const gap = fixedCount > 0 ? automaticGap(result, edit?.automatic) : null;
+  // faster, the same or slower than the automatic plan, when the host gave its figures
+  const compare =
+    fixedCount > 0 ? automaticCompare(result, edit?.automatic) : null;
   // the stops with something fixed: the edit says it, a plan with no edit has its own marks
   const pinned = edit
     ? edit.stops.map(stopIsFixed)
-    : timeline?.pits.map(
-        ({ pinned: marks }) => marks.fuelLiters || marks.vePercent,
-      );
+    : timeline?.pits.map(pitIsPinned);
   const proposal = timeline?.pits.map((pit) => pit.lap) ?? [];
   const moves = movedStops(timeline, edit);
   // The notice of the export goes away, or tries again, and the focus stays on the
@@ -862,9 +865,10 @@ function Result({
         ) : (
           <Notice result={result} />
         ))}
-      {!edited && !recalculating && view === "summary" && gap && (
-        <SlowerLine
-          text={amounts.slower(gap.text, gap.automatic)}
+      {!edited && !recalculating && view === "summary" && compare && (
+        <AutomaticLine
+          compare={compare}
+          why={keptInParallel(timeline)}
           clear={() => void clearAll()}
           disabled={actions.pending}
         />
@@ -915,8 +919,8 @@ function Result({
           durationText={
             other && view === "summary"
               ? durationNote(accepted?.compare ?? null)
-              : gap
-                ? amounts.figure.slower(gap.text)
+              : compare
+                ? automaticFigure(compare)
                 : undefined
           }
           fixedCount={pinnedCount(timeline)}

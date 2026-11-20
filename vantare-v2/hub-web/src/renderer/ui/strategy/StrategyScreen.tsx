@@ -13,7 +13,11 @@ import { SectionChrome, SectionPanel } from "../../app/SectionChrome";
 import { strategy as t } from "../../i18n/strategy";
 import { amounts } from "../../i18n/strategyAmounts";
 import { planAnnouncement } from "../../screens/strategy/planText";
-import { amountText, limitLines } from "../../screens/strategy/stopAmounts";
+import {
+  amountText,
+  limitLines,
+  tyreLines,
+} from "../../screens/strategy/stopAmounts";
 import {
   strategyAccept,
   strategyShowAccepted,
@@ -301,6 +305,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
     index: number,
     fuelLiters: number | null,
     vePercent: number | null,
+    changeTyres: boolean | null,
   ) {
     if (!view) return undefined;
     setAnnouncement("");
@@ -310,6 +315,7 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
       index,
       fuelLiters,
       vePercent,
+      changeTyres,
     );
     if (!result) return undefined;
     planAnswered(result);
@@ -337,6 +343,17 @@ export function StrategyScreen({ client }: { client: StrategyClient }) {
           ...(issue ? [issue] : []),
         ];
       });
+      // the tyres: what was fixed, and what the host says of them if they do not last
+      if (before?.changeTyres !== changeTyres) {
+        const { edit } = result.value.plan;
+        const issue = edit ? tyreLines(edit, index)?.issue : null;
+        said.push(
+          changeTyres === false
+            ? amounts.announce.tyresKeep(index + 1)
+            : amounts.announce.tyresChange(index + 1),
+        );
+        if (issue) said.push(issue);
+      }
       if (said.length > 0) setAnnouncement(said.join(" "));
     }
     return result;

@@ -159,7 +159,7 @@ describe("the amounts of a stop", () => {
     // arriving is a stretch of the model, not a figure
     expect(screen.getByText("Se llega con entre 0,4 y 4,4 L.")).toBeTruthy();
     expect(screen.getByText("Puedes fijar de 96 a 99 %.")).toBeTruthy();
-    expect(screen.getAllByText("lo decide el cálculo")).toHaveLength(2);
+    expect(screen.getAllByText("lo decide el cálculo")).toHaveLength(3);
     // the pit time of the stop, as the host sends it
     expect(screen.getByText("Tiempo en boxes")).toBeTruthy();
     expect(screen.getByText("1:02,0")).toBeTruthy();
@@ -168,9 +168,10 @@ describe("the amounts of a stop", () => {
     expect(
       screen.queryByRole("button", { name: "Volver todo a automático" }),
     ).toBeNull();
-    // tyres are not an amount to fix (#2691)
-    expect(screen.queryByText(/Cambiar neumáticos/)).toBeNull();
-    expect(screen.queryByRole("group", { name: /Neumáticos/ })).toBeNull();
+    // the tyres are the third row of the stop (E5h)
+    expect(
+      screen.getByRole("group", { name: "Neumáticos de la parada 2" }),
+    ).toBeTruthy();
   });
 
   it("fixes the fuel at what the plan loads when «A mano» is chosen, keeping the energy automatic", async () => {
@@ -200,7 +201,7 @@ describe("the amounts of a stop", () => {
     expect(screen.getAllByText("fijado por ti")).toHaveLength(1);
     expect(
       screen.getByRole("radio", {
-        name: "Parada 2, vuelta 85, con cantidades fijadas por ti",
+        name: "Parada 2, vuelta 85, con algo fijado por ti",
       }),
     ).toBeTruthy();
     // the file does not change with it
@@ -488,7 +489,7 @@ describe("the amounts of a stop", () => {
     await heading("Plan modificado");
     expect(
       screen.getByText(
-        /«Restablecer» vuelve al último plan válido, con las cantidades que tuviera fijadas/,
+        /«Restablecer» vuelve al último plan válido, con lo que tuviera fijado/,
       ),
     ).toBeTruthy();
     click("Restablecer");
@@ -546,7 +547,7 @@ describe("a recalculation with something fixed", () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText("2,0 s más que el automático")).toBeTruthy();
-    expect(screen.getByText("1 con cantidades fijadas")).toBeTruthy();
+    expect(screen.getByText("1 parada con algo fijado")).toBeTruthy();
     // the stop with something fixed carries the pin in the list
     const list = screen.getByRole("list", { name: "Stints y paradas" });
     expect(within(list).getAllByText("fijado por ti")).toHaveLength(1);
@@ -571,7 +572,7 @@ describe("a recalculation with something fixed", () => {
     click("Resumen");
     expect(screen.queryByText(/más lento que el plan automático/)).toBeNull();
     expect(screen.queryByText(/más que el automático/)).toBeNull();
-    expect(screen.getByText("1 con cantidades fijadas")).toBeTruthy();
+    expect(screen.getByText("1 parada con algo fijado")).toBeTruthy();
   });
 
   it("says the plan is the fastest respecting what was fixed only when it is proven", async () => {
@@ -665,7 +666,7 @@ describe("«Calcular de nuevo» with something fixed", () => {
       name: "¿Calcular de nuevo y perder lo que fijaste?",
     });
     expect(question.textContent).toContain(
-      "Se pierden las cantidades que fijaste a mano en 1 parada",
+      "Se pierde lo que fijaste a mano en 1 parada",
     );
     expect(document.activeElement).toBe(
       within(question).getByRole("button", { name: "Cancelar" }),

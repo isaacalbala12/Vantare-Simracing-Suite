@@ -2,14 +2,14 @@ import type { HostError } from "../../../contract/generated/contract";
 import type {
   StrategyAmountLimits,
   StrategyAutomaticPlan,
-  StrategyCalculationView,
-  StrategyEditStop,
   StrategyEditView,
   StrategyStopAmount,
   StrategyTimeline,
 } from "../../../contract/generated/strategy";
 import { amounts } from "../../i18n/strategyAmounts";
-import { clock, liters, percent, secondsText } from "./planText";
+import { liters, percent, stopIsFixed } from "./planText";
+
+export { stopIsFixed };
 
 // Only reading aids: every number shown comes from the host (the limits of each
 // stop, the lap a resource runs out in, the figures of the automatic plan). The
@@ -86,16 +86,12 @@ export function amountMessage(error: Refusal, step: number | null): string {
 export const refusalAmount = (amount: StrategyStopAmount): Amount =>
   amount === "fuelLiters" ? "fuel" : "ve";
 
-// Which amount of which stop is fixed by hand, as the host says it.
-export const isFixed = (stop: StrategyEditStop, amount: Amount) =>
-  (amount === "fuel" ? stop.fixed.fuelLiters : stop.fixed.vePercent) !== null;
-export const stopIsFixed = (stop: StrategyEditStop) =>
-  isFixed(stop, "fuel") || isFixed(stop, "ve");
+// The stops with something fixed by hand (an amount or the tyres), as the host says it.
 export const fixedStops = (edit: StrategyEditView | null) =>
   edit ? edit.stops.filter(stopIsFixed).length : 0;
 
-// «Has fijado 60 L en la parada 2.» for one stop with one amount; the count when
-// there are more.
+// «Has fijado 60 L en la parada 2.» for one stop with one amount; the same with
+// the tyres («No cambiar»); the count when there are more.
 export function fixedSummary(edit: StrategyEditView | null): string {
   if (!edit) return "";
   const stops = edit.stops.flatMap((stop, index) =>
@@ -104,13 +100,18 @@ export function fixedSummary(edit: StrategyEditView | null): string {
   const [only] = stops;
   if (stops.length === 0) return "";
   if (stops.length > 1) return amounts.summary.many(stops.length);
+  const { fixed } = only.stop;
+  const n = only.index + 1;
   const parts = [
-    only.stop.fixed.fuelLiters !== null &&
-      withUnit("fuel", only.stop.fixed.fuelLiters),
-    only.stop.fixed.vePercent !== null &&
-      withUnit("ve", only.stop.fixed.vePercent),
+    fixed.fuelLiters !== null && withUnit("fuel", fixed.fuelLiters),
+    fixed.vePercent !== null && withUnit("ve", fixed.vePercent),
   ].filter(Boolean);
-  return amounts.summary.one(only.index + 1, parts.join(" y "));
+  if (fixed.changeTyres === null)
+    return amounts.summary.one(n, parts.join(" y "));
+  if (parts.length > 0) return amounts.summary.withTyres(n, parts.join(" y "));
+  return fixed.changeTyres
+    ? amounts.summary.tyresChange(n)
+    : amounts.summary.tyres(n);
 }
 
 export type Limits = {
@@ -174,21 +175,32 @@ export function limitLines(
   }
 }
 
-// The difference between a plan with fixed amounts and the automatic one, as it
-// is said («2,0 s»). Null unless the host gave the automatic figures and this
-// plan is the slower of the two.
-export function automaticGap(
-  result: StrategyCalculationView | null,
-  automatic: StrategyAutomaticPlan | null | undefined,
-) {
-  const total = result?.metrics?.totalSeconds;
-  if (total === undefined || !automatic) return null;
-  // Decided by the root (PR 2723): this subtraction of two figures the host sent is
-  // formatting, not a calculation of the plan; the host stays the one that works out
-  // both durations. 0,05 s is what «0,0 s» rounds to, so it is not said.
-  const gap = total - automatic.totalSeconds;
-  if (!(gap >= 0.05)) return null;
-  return { text: secondsText(gap), automatic: clock(automatic.totalSeconds) };
+// What the host says of the tyres of stop `index`, as sentences: how many laps the
+// ones on the car have, and, where «No cambiar» is fixed, what would happen. The
+// laps, the life and whether they fit are the host's; the screen only says «la parada
+// 3» or «meta» by the position of the stop.
+export function tyreLines(edit: StrategyEditView, index: number) {
+  const stop = edit.stops[index];
+  if (!stop) return null;
+  const { lifeLaps, arrivalLaps, keptLaps, issue } = stop.tyres;
+  const next =
+    index + 1 < edit.stops.length
+      ? amounts.tyres.nextStop(index + 2)
+      : amounts.tyres.finish;
+  const kept = stop.fixed.changeTyres === false;
+  return {
+    arrival: amounts.tyres.arrival(arrivalLaps, lifeLaps),
+    kept:
+      kept && issue === null
+        ? amounts.tyres.kept(next, keptLaps, lifeLaps)
+        : null,
+    issue:
+      kept && issue === "beyondLife"
+        ? amounts.tyres.beyondLife(next, keptLaps, lifeLaps)
+        : null,
+    // the stop that follows: what the notice of «no plan» says
+    noPlan: amounts.noPlan.tyres(index + 1, next, keptLaps, lifeLaps),
+  };
 }
 
 // How the plan finishes, as it is and as the automatic plan does: what the last

@@ -162,6 +162,30 @@ pub fn open_exclusive(path: &Path) -> io::Result<fs::File> {
     exclusive(&mut options);
     options.open(path)
 }
+/// A recording opened as itself, never through a link. `owned` proves that
+/// nobody else has it open and lets it be removed through this handle;
+/// otherwise others may read it but nobody can write it while it is compared.
+pub fn open_recording(path: &Path, owned: bool) -> io::Result<fs::File> {
+    use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
+    const GENERIC_READ: u32 = 0x8000_0000;
+    const DELETE: u32 = 0x0001_0000;
+    const OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .access_mode(if owned {
+            GENERIC_READ | DELETE
+        } else {
+            GENERIC_READ
+        })
+        .share_mode(u32::from(!owned))
+        .custom_flags(OPEN_REPARSE_POINT)
+        .open(path)?;
+    let metadata = file.metadata()?;
+    if !metadata.is_file() || metadata.file_attributes() & 0x400 != 0 {
+        return Err(io::Error::other("no es un archivo normal"));
+    }
+    Ok(file)
+}
 pub fn binary_guard(root: &Path) -> Result<Vec<fs::File>> {
     binary_guard_except(root, None)
 }
@@ -292,4 +316,78 @@ pub fn copy_data(source: &Path, destination: &Path) -> Result<()> {
 pub fn generation(root: &Path, id: &str) -> Result<PathBuf> {
     ensure(validation::hex(id, 32), "Referencia de generación inválida")?;
     path(&root.join("generations").join(id))
+}
+
+/// Each file of the installation log; one rotation keeps at most two.
+pub const LOG_LIMIT: u64 = 64 * 1024;
+/// Installation log for the notes nobody would otherwise see: the launcher has
+/// no console. Best effort on purpose, so that it can never fail its caller.
+/// Paths are written relative to the root; a failed rotation stops the growth.
+pub fn log(root: &Path, note: &str) {
+    let write = || -> io::Result<()> {
+        let path = root.join("installer-log.txt");
+        super::reject_links(&path).map_err(io::Error::other)?;
+        if fs::metadata(&path).is_ok_and(|file| file.len() >= LOG_LIMIT) {
+            fs::rename(&path, root.join("installer-log.old.txt"))?;
+        }
+        let seconds = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_err(io::Error::other)?
+            .as_secs();
+        let note: String = note
+            .replace(&root.display().to_string(), "<raíz>")
+            .chars()
+            .take(1024)
+            .map(|character| {
+                if character.is_control() {
+                    ' '
+                } else {
+                    character
+                }
+            })
+            .collect();
+        let mut file = fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(path)?;
+        file.write_all(format!("{} {note}\n", utc(seconds)).as_bytes())
+    };
+    let _ = write();
+}
+/// `YYYY-MM-DD hh:mm:ssZ` without a calendar dependency (days to civil date).
+fn utc(seconds: u64) -> String {
+    let shifted = seconds / 86400 + 719_468;
+    let day_of_era = shifted % 146_097;
+    let year_of_era =
+        (day_of_era - day_of_era / 1460 + day_of_era / 36524 - day_of_era / 146_096) / 365;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let shifted_month = (5 * day_of_year + 2) / 153;
+    let month = if shifted_month < 10 {
+        shifted_month + 3
+    } else {
+        shifted_month - 9
+    };
+    format!(
+        "{:04}-{month:02}-{:02} {:02}:{:02}:{:02}Z",
+        year_of_era + shifted / 146_097 * 400 + u64::from(month <= 2),
+        day_of_year - (153 * shifted_month + 2) / 5 + 1,
+        seconds % 86400 / 3600,
+        seconds % 3600 / 60,
+        seconds % 60
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn log_stamps_are_utc_civil_dates() {
+        for (seconds, stamp) in [
+            (0, "1970-01-01 00:00:00Z"),
+            (951_868_799, "2000-02-29 23:59:59Z"),
+            (1_795_183_402, "2026-11-20 14:03:22Z"),
+            (4_107_542_400, "2100-03-01 00:00:00Z"),
+        ] {
+            assert_eq!(super::utc(seconds), stamp);
+        }
+    }
 }

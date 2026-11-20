@@ -349,19 +349,109 @@ Qué hace ahora el motor, en `operations::confirm` y en `operations::uninstall`:
 - **Fallos.** Nada de esto puede hacer fallar la confirmación ni la
   desinstalación: lo que no se puede retirar se queda y se anota.
 
-Al confirmar, las notas salen por la salida de errores del lanzador; al
-desinstalar, van al registro del desinstalador. Las generaciones sin referencia
-que ya existan en una instalación anterior se retiran igual en su siguiente
-confirmación.
+Las generaciones sin referencia que ya existan en una instalación anterior se
+retiran igual en su siguiente confirmación.
+
+### Registro de la instalación (#2752)
+
+Las notas del motor («se conserva X; motivo: Y» y lo retirado) se escriben en
+`installer-log.txt`, en la raíz de la instalación. Antes, al confirmar un
+arranque solo salían por la salida de errores del lanzador, que no tiene
+consola: en uso real no quedaban en ningún sitio. Al desinstalar siguen yendo
+además al registro del desinstalador.
+
+- **Formato.** Texto UTF-8, una nota por línea, con fecha y hora UTC delante.
+  Las rutas se escriben relativas a la instalación (`<raíz>\…`): no aparece
+  nada del equipo fuera de ella. No es un formato que lea ningún programa.
+- **Tope.** Cada fichero llega a 64 KiB como mucho (más una nota); al llenarse
+  pasa a `installer-log.old.txt`, que sustituye al anterior. Nunca hay más de
+  dos. Una nota no ocupa más de 1 024 caracteres.
+- **Nunca hace fallar nada.** Si el registro no se puede escribir (ocupado, sin
+  permiso, es una carpeta o un enlace) la nota se pierde y la operación sigue.
+  Un enlace en su lugar no se sigue.
+- **Si no hay nada que anotar, no se crea.** No lo borra la desinstalación: se
+  queda junto a los datos del usuario y una reinstalación lo conserva.
+- `installer-notices.txt` no sirve para esto: son las licencias de las fuentes
+  y cada Setup lo sobrescribe.
 
 Qué sigue sin hacerse:
 
 - La carpeta `data/` de esas generaciones sigue en disco (segundo PR de #2740).
 - Los binarios de la generación anterior no se tocan.
-- Tras desinstalar y volver a instalar no hay confirmación de arranque: lo que
-  quede se retira en la primera actualización confirmada.
+- Tras desinstalar, lo que no se pudo retirar se queda (por ejemplo, un `.exe`
+  de una generación sin referencia que otro programa tenía abierto): con
+  `state.json` borrado ya no hay otro barrido. Solo se retira si se vuelve a
+  instalar y después se confirma una actualización; reinstalar, por sí solo,
+  no confirma ningún arranque.
+- La propiedad se prueba por contenido, y eso tiene un límite: una carpeta
+  ajena con nombre de 32 caracteres hexadecimales que contenga un manifiesto
+  copiado de este producto y archivos idénticos a los que declara pierde esos
+  archivos. Es inocuo: son binarios reproducibles desde el paquete, y su
+  `data/` y cualquier archivo distinto o no enumerado se conservan.
 
 Tests en el último bloque de `tests/installation_write.rs`: A → B → C, Reparar
 (sana y dañada), vuelta atrás, carpetas ajenas, manifiesto roto o de otro canal,
 archivo alterado o no enumerado, archivo ocupado, permiso de lectura denegado,
 imagen en uso, barrido cortado y desinstalación.
+
+## Adoptar grabaciones — ADR 0111, T1 (#2755)
+
+[ADR 0111](../../docs/adr/0111-grabaciones-carpeta-unica-por-instalacion.md)
+saca las grabaciones de Análisis de cada generación y las reúne en una sola
+carpeta, `<raíz>/recordings/`. `operations::adopt_recordings` es la operación
+que las trae desde `generations/<id>/data/hub/recordings/`. **Todavía no la
+llama nadie**: ni la sesión (T2), ni Confirm ni Desinstalar (T3). Ninguna
+instalación cambia de comportamiento con este trozo.
+
+Una grabación es un archivo `series-<época>-<pid>.duckdb`, el único nombre que
+le da el grabador. Para cada una:
+
+| Situación | Qué hace |
+| --- | --- |
+| En la carpeta única no existe ese nombre | La **mueve** con un renombrado dentro del mismo disco: es instantáneo, no copia nada y conserva contenido y fechas |
+| Existe y es igual (mismo tamaño y mismo SHA-256) | **Borra la copia** de la generación. Solo con `Duplicates::RemoveIdentical` |
+| Existe y es distinta | La conserva donde está y lo anota. Nunca escribe encima de la carpeta única |
+| Existe y se pide `Duplicates::Keep` | La conserva sin comparar. Es el modo de la sesión, que solo mueve |
+
+Se conserva en el origen, con su ruta y el motivo en las notas (y en el
+[registro de la instalación](#registro-de-la-instalación-2752)), todo lo dudoso:
+
+- un archivo que otro programa tiene abierto o que no se puede leer;
+- una grabación con un `.wal` o un temporal al lado (`series-….duckdb.wal`,
+  `series-….duckdb.creating-…`): está en curso o no se cerró bien. Tampoco se
+  mueven esos acompañantes sueltos;
+- una grabación cuyo nombre ya tiene un `.wal` o un temporal en la carpeta única;
+- cualquier nombre que no sea el de una grabación, y las carpetas.
+  `recording-status.json` (el estado del grabador) se deja sin anotar.
+
+Garantías:
+
+- **Nunca borra sin huella idéntica.** El único borrado de datos del usuario es
+  el de la copia repetida. Se hace por el mismo manejador exclusivo con el que
+  se calculó su huella, y mientras tanto nadie puede escribir la grabación que
+  se queda.
+- **Un corte no deja nada a medias.** Cada archivo cambia de sitio en un solo
+  paso: está entero en el origen o entero en la carpeta única. No hay archivos
+  temporales, lista ni marcador; repetir la operación continúa donde se quedó y,
+  si no queda nada, no cambia ni anota nada.
+- **Nunca toca la generación anterior**: es la copia a la que se vuelve si la
+  versión nueva falla. Si `state.json` no deja claras las dos referencias, no
+  hace nada.
+- **Solo toca dos carpetas**: la de grabaciones de la generación indicada (por
+  su identificador de 32 hexadecimales) y `<raíz>/recordings/`, que crea al
+  recibir la primera grabación y que hereda los permisos de la raíz.
+- **No sigue enlaces.** Como el resto del motor, se niega a trabajar si hay un
+  enlace o punto de reanálisis en la instalación, y cada grabación se abre como
+  ella misma, nunca a través de un enlace.
+- Trabaja bajo `.operation.lock`. No cierra ni mata ningún proceso.
+
+Límites conocidos, que deciden T2 y T3:
+
+- Una grabación que quedó sin cerrar (con `.wal`) no se adopta: se queda en su
+  generación hasta que alguien decida cómo traer la pareja.
+- No se comprueba que el archivo sea una base DuckDB válida. Una copia a medias
+  que dejara una actualización cortada tendría nombre de grabación.
+- Si se juntan más de 256 grabaciones, el catálogo del Hub avisa del límite
+  hasta que el núcleo pode en su siguiente arranque (ADR 0111 §7).
+
+Tests en el último bloque de `tests/installation_write.rs`.

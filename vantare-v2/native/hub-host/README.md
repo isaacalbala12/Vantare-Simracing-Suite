@@ -766,21 +766,27 @@ El argumento se valida al arrancar y, si no cumple, el anfitrión no arranca
 - ruta absoluta de un disco local (`C:\…`): se rechazan las rutas de red
   (`\\servidor\…`), las de dispositivo (`\\?\…`, `\\.\…`), las relativas y las
   que contienen `..`;
-- estrictamente dentro de la raíz de instalación. La raíz no viene de ningún
-  argumento ni variable: se deduce del propio ejecutable
+- **exactamente `<raíz>\recordings`** (#2777): el nombre es `recordings` y su
+  carpeta madre es la raíz de instalación. No valen otra carpeta de la
+  instalación, `recordings:algo`, `recordings.` ni `NUL`. La raíz no viene de
+  ningún argumento ni variable: se deduce del propio ejecutable
   (`<raíz>/generations/<id>/bin/vantare-hub.exe`). Las dos rutas se comparan
   como las nombra el disco, así que valen las mayúsculas distintas y los
   nombres cortos de Windows;
-- una carpeta que aún no existe se acepta;
+- la carpeta madre está en una unidad local (no una unidad de red asignada) y
+  no cuelga de ningún enlace;
 - un anfitrión que no está instalado (ejecutado desde `target/`) rechaza el
   argumento: fuera de una instalación no hay carpeta única.
 
-Los enlaces no se miran al arrancar, a propósito: si la carpeta o su carpeta
-madre son un enlace o punto de reanálisis, el anfitrión arranca y es Análisis
-quien la rechaza cada vez que lee («Directorio no regular»). Un enlace en la
-carpeta de grabaciones no debe dejar al usuario sin Hub. Esto arregla solo el
-anfitrión: hoy el lanzador de la raíz sigue negándose a arrancar si hay un
-enlace en cualquier punto de la instalación (#2759, punto 10; va aparte).
+Un rechazo deja una línea en `installer-log.txt`, sin la ruta: la salida de
+este programa no llega a ningún sitio. Solo puede ocurrir con un lanzamiento
+roto o manipulado, porque la sesión construye el argumento desde su raíz.
 
-Si la carpeta no existe, el catálogo sale vacío; no es un error. La interfaz
-sigue sin ver rutas y el protocolo no cambia.
+**Lo que sea la carpeta en sí nunca impide arrancar.** No se mira al arrancar:
+puede no existir (catálogo vacío, no es un error), o ser un enlace, una unión
+o un archivo. En esos tres casos Vantare no la usa: Análisis no lee nada
+(«Directorio no regular») y `analysis.status` responde «detenida, carpeta no
+válida» (`stopped` + `invalidDirectory`, valores que ya estaban en el
+contrato). La interfaz lo muestra con un texto propio que explica cómo
+arreglarlo. El núcleo nunca escribe esa pareja, así que no se confunde con un
+fallo suyo. La interfaz sigue sin ver rutas y el protocolo no cambia.

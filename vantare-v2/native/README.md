@@ -77,6 +77,11 @@ quien primero escribe en ella: esa adopción o el núcleo al empezar a grabar.
 Graba y poda solo el núcleo; lee solo el anfitrión. Actualizar, Reparar, volver
 atrás y desinstalar no la tocan: al desinstalar, las grabaciones se conservan.
 
+Si `recordings` es un enlace, una unión o un archivo, Vantare arranca igual y
+no la usa: la sesión desactiva la grabación (no pasa `--series-dir`), lo anota
+una vez en `installer-log.txt` y Análisis muestra un aviso propio. No se graba
+ni se lee al otro lado del enlace (#2777; detalle en el README del instalador).
+
 Regla de publicación: desde la primera versión con esta carpeta, ninguna
 versión que no la conozca debe publicarse con un número mayor en el mismo
 canal. Buscaría las grabaciones dentro de su generación y dejaría de mostrar

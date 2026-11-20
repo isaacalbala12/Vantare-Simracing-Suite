@@ -126,12 +126,13 @@ mod tests {
     use super::*;
     #[cfg(windows)]
     #[test]
-    fn the_recordings_folder_must_be_local_and_inside_the_installation() {
+    fn the_recordings_folder_is_exactly_the_one_of_this_installation() {
+        use crate::analysis::status::{AnalysisRecordingCause::InvalidDirectory, read};
         use std::os::windows::fs::symlink_dir;
         let name = format!("vantare-host-recordings-{}", std::process::id());
         let base = std::env::temp_dir().join(name);
         let (root, outside) = (base.join("Vantare"), base.join("fuera"));
-        for folder in [&root, &outside] {
+        for folder in [&root.join("generations"), &outside.join("recordings")] {
             std::fs::create_dir_all(folder).expect("fixture");
         }
         let parse = |value: &Path, installation| {
@@ -147,34 +148,53 @@ mod tests {
         for spelling in [&single, &shouted] {
             assert!(parse(spelling, Some(&root)).is_ok(), "{spelling:?}");
         }
-        // A link is not a reason to stop the whole Hub: the argument is taken
-        // and Analysis alone refuses the folder, every time it reads it.
-        let (link, back) = (root.join("enlace"), root.join("vuelta"));
-        symlink_dir(&outside, &link).expect("link to the outside");
-        symlink_dir(&root, &back).expect("link back to the root");
-        std::fs::create_dir(outside.join("recordings")).expect("a folder behind the link");
-        for linked in [
-            link.clone(),
-            link.join("recordings"),
-            back.join("recordings"),
-        ] {
-            let named = parse(&linked, Some(&root)).expect("links are left to the reading");
-            let read = crate::analysis::recordings(&named.recordings());
-            let refused = read.map_err(|error| error.code);
+        // Whatever the folder itself is never stops the Hub: a link or a file
+        // in its place is taken, and Analysis says why there are no recordings.
+        std::fs::remove_dir(&single).expect("fixture");
+        for kind in ["link", "file"] {
+            if kind == "link" {
+                symlink_dir(outside.join("recordings"), &single).expect("link");
+            } else {
+                std::fs::write(&single, b"not a folder").expect("file");
+            }
+            let named = parse(&single, Some(&root)).expect("the Hub starts");
+            let read_through = crate::analysis::recordings(&named.recordings());
+            let refused = read_through.map_err(|error| error.code);
             assert_eq!(
                 refused,
                 Err(crate::analysis::ErrorCode::Unreadable),
-                "{linked:?}"
+                "{kind}"
             );
+            let status = read(&named.recordings(), &Default::default()).expect("a status");
+            assert_eq!(status.cause, Some(InvalidDirectory), "{kind}");
+            if kind == "link" {
+                std::fs::remove_dir(&single).expect("fixture");
+            }
         }
+        // Anything else is not the argument of the session.
+        let (link, back) = (root.join("enlace"), root.join("vuelta"));
+        symlink_dir(&outside, &link).expect("link to the outside");
+        symlink_dir(&root, &back).expect("link back to the root");
         for (value, why) in [
             (root.clone(), "the root itself"),
+            (
+                root.join("generations"),
+                "another folder of the installation",
+            ),
+            (root.join("generations/recordings"), "the name, deeper"),
+            (single.join("recordings"), "inside the single folder"),
+            (root.join("recordings:flujo"), "a stream of the folder"),
+            (root.join("recordings."), "a name Windows trims"),
+            (root.join("recordings "), "a name Windows trims"),
+            (root.join("NUL"), "a device"),
             (outside.join("recordings"), "outside"),
             (
                 base.join("Vantare2/recordings"),
                 "a neighbour with the same start",
             ),
-            (single.join("../../fuera"), "dots"),
+            (single.join("../recordings"), "dots"),
+            (link.join("recordings"), "through a link to the outside"),
+            (back.join("recordings"), "through a link back to the root"),
             (r"\\servidor\recurso\recordings".into(), "a network path"),
             (
                 format!(r"\\?\{}", single.display()).into(),
@@ -185,6 +205,9 @@ mod tests {
         ] {
             assert!(parse(&value, Some(&root)).is_err(), "{why}: {value:?}");
         }
+        // A refusal is written where somebody will read it, without the path.
+        let log = std::fs::read_to_string(root.join("installer-log.txt")).expect("log");
+        assert!(log.lines().count() == 1 && !log.contains("fuera"), "{log}");
         // A host outside an installation has no single folder to be given.
         assert!(parse(&single, None).is_err());
         // Without the argument nothing changes: the folder inside the data.

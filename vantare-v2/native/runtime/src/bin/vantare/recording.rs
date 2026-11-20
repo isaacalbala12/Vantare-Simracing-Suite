@@ -21,14 +21,40 @@ pub(super) fn directory(installation: Option<&Path>, hub: &Path) -> PathBuf {
     installation.unwrap_or(hub).join(RECORDINGS_DIR)
 }
 
-/// The Hub host reads the folder the core writes to.
+/// What an installed session tells the core and the Hub host, decided once
+/// and before either exists (ADR 0111). `adopt` brings the recordings of this
+/// generation first; the core records in the single folder and the Hub reads
+/// it. A single folder that is a link, a junction or a file is never used:
+/// nothing is brought, the core is not told to record (without `--series-dir`
+/// it records nowhere) and `note` says so. The Hub still learns the folder,
+/// and Analysis shows why there is no recording.
 #[cfg(windows)]
-pub(super) fn hub_argument(installation: &Path, hub: &Path) -> [String; 2] {
-    let recordings = directory(Some(installation), hub);
-    [
-        "--recordings-dir".into(),
-        recordings.to_string_lossy().into_owned(),
-    ]
+pub(super) fn installed(
+    installation: &Path,
+    data: &Path,
+    photo: &str,
+    core: Vec<String>,
+    adopt: &mut dyn FnMut(),
+    note: &mut dyn FnMut(&str),
+) -> (Vec<String>, Vec<String>) {
+    let (hub, text) = (data.join("hub"), |path: PathBuf| {
+        path.to_string_lossy().into_owned()
+    });
+    let folder = directory(Some(installation), &hub);
+    let mut host = vec!["--control-stdin".into(), "--pipe".into(), photo.to_owned()];
+    for (flag, document) in [
+        ("--data-dir", "hub"),
+        ("--layout", "Vantare/native/layout.json"),
+        ("--engineer-settings", "Vantare/native/engineer.json"),
+        ("--launcher-file", "Vantare/native/launcher.json"),
+    ] {
+        host.extend([flag.into(), text(data.join(document))]);
+    }
+    host.extend(["--recordings-dir".into(), text(folder.clone())]);
+    // Sin implementar: una carpeta que no lo es se usa igual. Lo corrige el commit siguiente.
+    let _ = &note;
+    adopt();
+    (startup_args(core, Ok(hub), Some(installation)), host)
 }
 
 pub(super) fn startup_args(
@@ -302,24 +328,54 @@ mod tests {
     /// would show no recordings while the core kept recording.
     #[cfg(windows)]
     #[test]
-    fn core_and_hub_receive_the_same_recordings_folder_from_one_place() {
-        let hub = TempDir::new();
-        let installation = Path::new("C:/Programs/Vantare");
-        let core = || startup_args(vec!["--live".into()], Ok(hub.0.clone()), Some(installation));
-        let host = hub_argument(installation, &hub.0);
-        let single = installation
-            .join("recordings")
-            .to_string_lossy()
-            .into_owned();
-        assert_eq!(core()[1..], ["--series-dir".to_owned(), single.clone()]);
-        assert_eq!(host, ["--recordings-dir".to_owned(), single]);
-        // Not recording changes what the core does, never where the Hub reads.
-        hub.save(r#"{"general":{"grabacion":false}}"#);
-        assert_eq!(core(), ["--live"]);
-        assert_eq!(hub_argument(installation, &hub.0), host);
+    fn an_installed_session_tells_both_children_and_never_uses_a_folder_that_is_not_one() {
+        let base = TempDir::new();
+        let (installation, data) = (base.0.join("Vantare"), base.0.join("datos"));
+        let settings = data.join("hub").join(HUB_SETTINGS_FILE);
+        for folder in [&installation, &data.join("hub"), &base.0.join("fuera")] {
+            fs::create_dir_all(folder).unwrap();
+        }
+        let told = || {
+            let (mut adopted, mut notes) = (0, Vec::new());
+            let core = vec!["--live".to_owned()];
+            let (mut adopt, mut note) = (|| adopted += 1, |text: &str| notes.push(text.to_owned()));
+            let (core, host) = installed(&installation, &data, "foto", core, &mut adopt, &mut note);
+            (core, host, adopted, notes.len())
+        };
+        let single = installation.join("recordings");
+        let folder = single.to_string_lossy().into_owned();
+        let (core, host, adopted, notes) = told();
+        assert_eq!(core, ["--live", "--series-dir", folder.as_str()]);
+        assert_eq!(host[..3], ["--control-stdin", "--pipe", "foto"]);
+        let hub = data.join("hub").to_string_lossy().into_owned();
+        assert_eq!(host[3..5], ["--data-dir", hub.as_str()]);
+        assert_eq!(host[11..], ["--recordings-dir", folder.as_str()]);
+        assert_eq!((adopted, notes), (1, 0), "brought before either is told");
+        // Not recording changes what the core does: never what is brought, nor
+        // where the Hub reads.
+        fs::write(&settings, r#"{"general":{"grabacion":false}}"#).unwrap();
+        assert_eq!(told(), (vec!["--live".to_owned()], host.clone(), 1, 0));
+        fs::remove_file(&settings).unwrap();
+        // A link, a file: nothing is brought, the core is not told to record
+        // and says why once; the Hub still learns the folder to show the warning.
+        for kind in ["link", "file"] {
+            if kind == "link" {
+                std::os::windows::fs::symlink_dir(base.0.join("fuera"), &single).unwrap();
+            } else {
+                fs::write(&single, b"not a folder").unwrap();
+            }
+            assert_eq!(
+                told(),
+                (vec!["--live".to_owned()], host.clone(), 0, 1),
+                "{kind}"
+            );
+            if kind == "link" {
+                fs::remove_dir(&single).unwrap();
+            }
+        }
         // In development nothing moves: the folder inside the Hub data, which is
         // also where a host without the argument reads.
-        assert_eq!(directory(None, &hub.0), hub.0.join("recordings"));
+        assert_eq!(directory(None, &base.0), base.0.join("recordings"));
     }
 
     #[test]

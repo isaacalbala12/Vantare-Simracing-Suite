@@ -1149,9 +1149,10 @@ pub enum Duplicates {
     RemoveIdentical,
 }
 /// Brings the recordings of `generations/<id>/data/hub/recordings` into the
-/// single `<root>/recordings` folder (ADR 0111 §4). Nothing calls it yet.
-/// An error means that nothing was attempted, or that a checkpoint cut it
-/// short. Whatever is doubtful stays where it is, with its path and reason in
+/// single `<root>/recordings` folder (ADR 0111 §4). The session calls it at
+/// every start with `Duplicates::Keep`. An error means that nothing was
+/// attempted (code 2: another operation holds the lock), or that a checkpoint
+/// cut it short. Whatever is doubtful stays where it is, with its reason in
 /// `note`; running it again continues where it stopped.
 pub fn adopt_recordings(
     root: &Path,
@@ -1161,12 +1162,21 @@ pub fn adopt_recordings(
     note: &mut dyn FnMut(&str),
 ) -> Result<Adoption> {
     let root = disk::open_root(root, false)?;
-    let _operation = disk::lock(&root, ".operation.lock")?;
+    // Busy is not a refusal: the caller may wait for its turn.
+    let _operation = disk::lock(&root, ".operation.lock")
+        .map_err(|_| WriteError::new(2, "Hay otra operación de la instalación en curso"))?;
     // Without both references nobody knows which generation is `previous`.
     let document = installation::read_state(&root)?
         .filter(references_bound)
         .ok_or_else(|| WriteError::new(1, "Las referencias de state.json no son fiables"))?;
-    let note = &mut logged(&root, note);
+    let note = &mut |text: &str, once: bool| {
+        if once {
+            disk::log_once(&root, text);
+        } else {
+            disk::log(&root, text);
+        }
+        note(text);
+    };
     adopt(
         &root,
         &document.state,
@@ -1182,7 +1192,7 @@ fn adopt(
     generation: &str,
     duplicates: Duplicates,
     checkpoint: &mut dyn FnMut(&str) -> Result<()>,
-    note: &mut dyn FnMut(&str),
+    note: &mut dyn FnMut(&str, bool),
 ) -> Result<Adoption> {
     let source = disk::generation(root, generation)?.join("data/hub/recordings");
     // `previous` keeps its copy: it is what a failed version goes back to.
@@ -1208,6 +1218,9 @@ fn adopt(
     } else {
         Vec::new()
     };
+    // The session finds what stays again at every start: one note per reason,
+    // written to the log once. Confirm and Uninstall keep one note per file.
+    let mut stays = BTreeMap::<String, Vec<&str>>::new();
     for (name, is_file) in &listed {
         if name == "recording-status.json" {
             continue; // The state of the recorder, which writes its own in the single folder.
@@ -1241,19 +1254,40 @@ fn adopt(
         };
         if let Err(reason) = outcome {
             adoption.kept += 1;
-            note(&format!(
-                "Grabaciones: se conserva {}; motivo: {reason}",
-                path.display()
-            ));
+            if duplicates == Duplicates::Keep {
+                stays.entry(reason).or_default().push(name);
+            } else {
+                let path = path.display();
+                note(
+                    &format!("Grabaciones: se conserva {path}; motivo: {reason}"),
+                    false,
+                );
+            }
         }
     }
+    let source = source.display();
+    for (reason, names) in &stays {
+        let shown = names[..names.len().min(5)].join(", ");
+        let more = match names.len() - names.len().min(5) {
+            0 => String::new(),
+            more => format!(" y {more} más"),
+        };
+        let count = names.len();
+        note(
+            &format!(
+                "Grabaciones de {source}: se conservan {count} ({shown}{more}); motivo: {reason}"
+            ),
+            true,
+        );
+    }
     if adoption.moved + adoption.duplicates > 0 {
-        note(&format!(
-            "Grabaciones de {}: adoptadas {}; copias repetidas retiradas {}",
-            source.display(),
-            adoption.moved,
-            adoption.duplicates
-        ));
+        note(
+            &format!(
+                "Grabaciones de {source}: adoptadas {}; copias repetidas retiradas {}",
+                adoption.moved, adoption.duplicates
+            ),
+            false,
+        );
     }
     Ok(adoption)
 }

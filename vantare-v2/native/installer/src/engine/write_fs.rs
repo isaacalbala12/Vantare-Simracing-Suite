@@ -324,6 +324,14 @@ pub const LOG_LIMIT: u64 = 64 * 1024;
 /// no console. Best effort on purpose, so that it can never fail its caller.
 /// Paths are written relative to the root; a failed rotation stops the growth.
 pub fn log(root: &Path, note: &str) {
+    append(root, note, false);
+}
+/// A note the current log already holds is not written again: what a session
+/// finds at every start would otherwise push everything else out of the log.
+pub fn log_once(root: &Path, note: &str) {
+    append(root, note, true);
+}
+fn append(root: &Path, note: &str, once: bool) {
     let write = || -> io::Result<()> {
         let path = root.join("installer-log.txt");
         super::reject_links(&path).map_err(io::Error::other)?;
@@ -346,6 +354,13 @@ pub fn log(root: &Path, note: &str) {
                 }
             })
             .collect();
+        let held = |log: String| {
+            log.lines()
+                .any(|line| line.get(21..) == Some(note.as_str()))
+        };
+        if once && fs::read_to_string(&path).is_ok_and(held) {
+            return Ok(());
+        }
         let mut file = fs::OpenOptions::new()
             .append(true)
             .create(true)

@@ -10,7 +10,7 @@ mod manual;
 pub use manual::{ManualEvent, ManualField, select_event};
 pub mod repository;
 pub use editing::{
-    EditedPlan, FixedRecalculation, fixed_stop_bounds, recalculate_edited_plan,
+    EditedPlan, FixedRecalculation, fixed_stop_bounds, fixed_stop_tyres, recalculate_edited_plan,
     recalculate_edited_plan_detailed, recalculate_edited_plan_fixed,
 };
 

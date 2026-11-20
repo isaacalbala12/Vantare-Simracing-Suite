@@ -54,7 +54,10 @@ try {
         try {
             $output = & pwsh -NoProfile -File native/scripts/compilar.ps1 cargo run --offline -j 4 --manifest-path native/Cargo.toml
             $output | Write-Host
-            if ($LASTEXITCODE -or $output[-1] -cne $branch) { throw "Artefacto de otra rama; esperado $branch." }
+            # PowerShell no garantiza el orden entre stderr (líneas de cargo, como
+            # ErrorRecord) y stdout (la sonda): se cuentan solo los marcadores de rama.
+            $marks = @($output | ForEach-Object { "$_" } | Where-Object { $_ -cmatch '^[AB]$' })
+            if ($LASTEXITCODE -or $marks.Count -ne 1 -or $marks[0] -cne $branch) { throw "Artefacto de otra rama; esperado $branch." }
         } finally { Pop-Location }
     }
     'PASS: A -> B -> A en dos checkouts con target de slot y limpieza dirigida.'

@@ -7,7 +7,8 @@ publish.workspace = true
 
 [features]
 # Isolated update authority for QA only; forbidden in distribution.
-hub-update-qa = ["vantare-services/hub-update-qa"]
+# Implica installer-qa: la clave TEST nunca se compila sin el contexto Windows aislado.
+hub-update-qa = ["installer-qa", "vantare-services/hub-update-qa"]
 # Ablaciones de diagnóstico opt-in; nunca en builds de producto/distribución.
 bench = []
 qa-e2e = ["vantare-services/qa-e2e", "vantare-ipc/qa-e2e"]

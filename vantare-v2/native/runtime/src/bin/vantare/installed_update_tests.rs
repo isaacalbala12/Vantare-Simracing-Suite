@@ -32,13 +32,15 @@ fn assert_preserved(root: &Path, state: &[u8]) {
 }
 #[test]
 fn stage_publishes_only_after_the_extracted_total_matches_the_signed_offer() {
-    for extra in [0, 1] {
+    // Solo el primer caso coincide con lo firmado: sobra un byte o cambia la versión empaquetada.
+    for (extra, packaged) in [(0, "0.0.990"), (1, "0.0.990"), (0, "0.0.991")] {
+        let accepted = extra == 0 && packaged == "0.0.990";
         let root = qa_root();
         fs::create_dir_all(&root).expect("root");
         let state = installed(&root);
         let source = root.join("package-source");
         fs::create_dir_all(&source).expect("source");
-        let raw = manifest("0.0.990");
+        let raw = manifest(packaged);
         fs::write(source.join("manifest.json"), &raw).expect("manifest");
         fs::write(source.join("fixture.txt"), b"hello").expect("member");
         let archive = root.join("package.zip");
@@ -65,11 +67,11 @@ fn stage_publishes_only_after_the_extracted_total_matches_the_signed_offer() {
         });
         assert_eq!(
             result.is_ok(),
-            extra == 0,
-            "extra={extra}, result={result:?}"
+            accepted,
+            "extra={extra}, packaged={packaged}, result={result:?}"
         );
         assert_preserved(&root, &state);
-        if extra == 0 {
+        if accepted {
             assert_eq!(
                 fs::read(root.join("staging/pending.json")).expect("pending"),
                 pending
@@ -93,6 +95,60 @@ fn stage_publishes_only_after_the_extracted_total_matches_the_signed_offer() {
         );
         fs::remove_dir_all(root).expect("cleanup");
     }
+}
+
+#[test]
+fn apply_honours_a_qa_signed_pending_only_in_the_isolated_qa_build() {
+    let root = qa_root();
+    fs::create_dir_all(root.join("staging")).expect("staging");
+    let state = installed(&root);
+    // Oferta de la versión ya instalada: quien acepta su firma la retira; quien no, la conserva.
+    let mut current = offer();
+    current.version = "0.0.989".into();
+    current.url = current.url.replace("0.0.990", "0.0.989");
+    let pending = root.join("staging/pending.json");
+    fs::write(&pending, signed(&current)).expect("pending");
+    let qa = cfg!(feature = "hub-update-qa");
+    assert_eq!(apply(&root).is_ok(), qa);
+    assert_eq!(pending.exists(), !qa);
+    assert_preserved(&root, &state);
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+#[cfg(feature = "hub-update-qa")]
+#[test]
+fn qa_authority_stops_before_reading_a_root_without_the_isolated_context() {
+    use crate::installed::{root as launch, session};
+    use vantare_installer::engine::context::{Context, qa_path};
+    let arguments = |mode: &str, root: &Path| -> Vec<String> {
+        vec![
+            mode.into(),
+            "-Root".into(),
+            root.to_string_lossy().into_owned(),
+        ]
+    };
+    // Los errores esperados salen del propio guard, no de una lectura posterior:
+    // compararlos distingue «se negó antes» de «falló después» sin fijar un texto.
+    let outside = Path::new("D:/VantareServer/fuera-del-guard-qa");
+    let guard = qa_path(outside)
+        .expect_err("outside the QA guard")
+        .to_string();
+    assert_eq!(apply(outside).expect_err("apply").to_string(), guard);
+    let staged = stage_with(outside, &AtomicBool::new(false), |_, _, _, _| {
+        panic!("feed consulted outside the QA guard")
+    });
+    assert_eq!(staged.expect_err("stage").to_string(), guard);
+    let inside = qa_root();
+    let isolation = Context::from_qa_env(&inside)
+        .expect_err("this test process carries no injected QA context")
+        .to_string();
+    for (root, expected) in [(outside, &guard), (inside.as_path(), &isolation)] {
+        let launched = launch(&arguments("--root", root));
+        assert_eq!(&launched.expect_err("root").to_string(), expected);
+        let started = session(&arguments("--session", root));
+        assert_eq!(&started.expect_err("session").to_string(), expected);
+    }
+    assert!(!outside.exists() && !inside.exists());
 }
 
 #[test]

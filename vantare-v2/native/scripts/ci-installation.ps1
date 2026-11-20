@@ -10,6 +10,11 @@ if ($LASTEXITCODE) { throw 'real services signer build failed' }
 if ($LASTEXITCODE) { throw 'real package verifier build failed' }
 & cargo test --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features hub-update-qa --locked --offline -j 4 --target-dir $target hub_update_feed::tests
 if ($LASTEXITCODE) { throw 'isolated Hub feed QA authority regression' }
+# #2771: the real TEST-authority launcher, before the matrix replaces it with installer-qa only.
+& cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features hub-update-qa --locked --offline -j 4 --target-dir $target
+if ($LASTEXITCODE) { throw 'isolated Hub update QA launcher build failed' }
+pwsh -NoProfile -File native/packaging/hub-update-qa-exe-tests.ps1 -QaExecutable "$target/debug/vantare.exe" -CleanExecutable "$target/debug/vantare-services.exe" -EvidenceDirectory "$env:RUNNER_TEMP/hub-update-qa-exe" -RefusalRoot "$env:RUNNER_TEMP/hub-update-qa-refusal"
+if ($LASTEXITCODE) { throw 'real Hub update QA launcher escaped the gate or ran without isolation' }
 foreach ($shell in @('powershell.exe', 'pwsh')) {
   $policy = if ($shell -eq 'powershell.exe') { @('-ExecutionPolicy', 'Bypass') } else { @() }
   & $shell -NoProfile @policy -File native/packaging/build-tooling-tests.ps1 -QaRoot "$env:RUNNER_TEMP/installation-tooling" -Verifier "$target/debug/examples/matrix-verifier.exe" -ServicesExecutable "$target/debug/vantare-services.exe" -PackageVerifier "$target/debug/examples/verify-package.exe"

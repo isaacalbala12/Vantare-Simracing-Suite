@@ -140,3 +140,9 @@ El publicador heredado rechaza ZIP>128MiB antes de firmar o crear Setup.
 no es un override runtime ni cambia el verificador antiguo. La distribución
 prohíbe esa feature y su marcador. Tests normales rechazan firmas QA; el gate
 QA aislado prueba aceptación y cero peticiones ZIP al exceder los límites.
+Desde #2771 la feature implica `installer-qa`: ese `vantare.exe` solo arranca
+`--root` o `--session` con el contexto Windows aislado inyectado, y `stage` y
+`apply` solo operan bajo el guard QA. El marcador y la clave TEST viven en
+estáticos `#[used]`, que el enlazador conserva enteros; `hub-update-qa-exe-tests.ps1`
+comprueba en el EXE real (Debug en instalación, Release en distribución) que
+esos bytes están, que el gate lo rechaza y que el candidato limpio no los lleva.

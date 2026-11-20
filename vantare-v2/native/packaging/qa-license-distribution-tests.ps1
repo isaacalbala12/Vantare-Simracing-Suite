@@ -22,6 +22,19 @@ $available=@($metadata.packages|Where-Object {$_.id -cin $metadata.workspace_mem
     $_.targets|Where-Object {'bin' -cin $_.kind}|ForEach-Object {$_.name}
 }|Sort-Object -Unique)
 if($qa -cnotin $available){throw 'The QA target must be present in Cargo metadata.'}
+# #2771: only runtime forwards the Hub update TEST authority, always together with the
+# isolated installer context; no manifest enables it by default, feature or dependency.
+$members=@($metadata.packages|Where-Object {$_.id -cin $metadata.workspace_members})
+$declared=@($members|Where-Object {$null -ne $_.features.PSObject.Properties['hub-update-qa']}|ForEach-Object {
+    $_.name+'='+((@($_.features.'hub-update-qa')|Sort-Object) -join ',')
+}|Sort-Object)
+if(($declared -join ';') -cne 'vantare-runtime=installer-qa,vantare-services/hub-update-qa;vantare-services='){throw 'Hub update TEST authority declared outside its isolated feature.'}
+$implicit=@($members|ForEach-Object {
+    $package=$_
+    @($package.dependencies|Where-Object {@($_.features) -ccontains 'hub-update-qa'}|ForEach-Object {$package.name})
+    @($package.features.PSObject.Properties|Where-Object {$_.Name -cne 'hub-update-qa' -and @($_.Value|Where-Object {$_ -clike '*hub-update-qa'}).Count}|ForEach-Object {$package.name})
+})
+if($implicit.Count){throw "Hub update TEST authority enabled implicitly: $($implicit -join ',')"}
 Assert-PublicBins $available $inventory
 foreach($mode in @('direct','override')){
     $bad=[IO.File]::ReadAllText($inventoryPath)|ConvertFrom-Json

@@ -14,9 +14,13 @@
 //! Todos los niveles posibles en una vuelta están en la misma «escalera» de la
 //! rejilla (capacidad menos lo gastado, más pasos enteros), así que lo que
 //! admite una parada es siempre un tramo seguido de la rejilla, o nada.
+//!
+//! Las ruedas van aparte (#2743): no dependen de la rejilla ni de los niveles.
+//! Unas ruedas aguantan mientras las vueltas que llevan no pasen de su vida,
+//! así que basta contar, parada a parada, las vueltas desde el último cambio.
 use super::fixed::Fixed;
 use super::greedy::Span;
-use super::{FixedStop, Input, Resource, amount};
+use super::{FixedStop, Input, Resource, amount, units};
 
 /// Un tramo de litros o de puntos porcentuales, con los dos extremos dentro.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -58,6 +62,68 @@ pub struct ResourceBounds {
 pub struct StopBounds {
     pub fuel: ResourceBounds,
     pub ve: ResourceBounds,
+}
+
+/// Las ruedas en una parada: las vueltas que llevan y si aguantan sin cambiarse.
+///
+/// Vale para el cálculo del Hub, que monta ruedas nuevas en toda parada que no
+/// tenga fijado seguir con las mismas. Con inventario físico de neumáticos la
+/// búsqueda puede no cambiarlas por su cuenta y esta cuenta no la describe.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TyreBounds {
+    /// Vida máxima de unas ruedas, en vueltas. `None`: sin límite.
+    pub life_laps: Option<u32>,
+    /// Vueltas que llevan las ruedas al llegar a la parada, con lo fijado en
+    /// las paradas anteriores.
+    pub arrival_laps: u32,
+    /// Vueltas que llevarían al acabar el tramo siguiente si en esta parada no
+    /// se cambian. Ni esta cuenta ni `arrival_laps` dependen de lo fijado en
+    /// esta parada o en las posteriores.
+    pub kept_laps: u32,
+    /// En esta parada está fijado no cambiar y `kept_laps` pasa de la vida:
+    /// así no hay plan.
+    pub beyond_life: bool,
+}
+
+/// Las ruedas de cada parada del calendario `stints` (una parada entre cada
+/// dos tramos). La edad vuelve a cero en toda parada que no tenga fijado
+/// seguir con las mismas ruedas.
+pub(crate) fn stop_tyres(
+    input: &Input,
+    stints: &[u32],
+    fixed: &[FixedStop],
+) -> Result<Vec<TyreBounds>, String> {
+    // La vida como la lee el cálculo: vueltas enteras, y cero es «sin límite».
+    let life_laps = if input.tyre_life_laps.value > 0.0 {
+        Some(
+            u32::try_from(units(input.tyre_life_laps.value)? / 1_000_000)
+                .map_err(|error| error.to_string())?,
+        )
+    } else {
+        None
+    };
+    let keeps = |stop: usize| {
+        fixed
+            .get(stop)
+            .is_some_and(|fixed| fixed.change_tyres == Some(false))
+    };
+    // Vueltas que llevan las ruedas al empezar el tramo.
+    let mut age = 0_u32;
+    Ok(stints
+        .windows(2)
+        .enumerate()
+        .map(|(stop, laps)| {
+            let arrival_laps = age.saturating_add(laps[0]);
+            let kept_laps = arrival_laps.saturating_add(laps[1]);
+            age = if keeps(stop) { arrival_laps } else { 0 };
+            TyreBounds {
+                life_laps,
+                arrival_laps,
+                kept_laps,
+                beyond_life: keeps(stop) && life_laps.is_some_and(|life| kept_laps > life),
+            }
+        })
+        .collect())
 }
 
 /// Límites de cada parada del calendario `stints` (una parada entre cada dos

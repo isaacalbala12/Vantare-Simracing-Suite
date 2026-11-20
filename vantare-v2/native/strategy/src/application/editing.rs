@@ -4,7 +4,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use serde::{Deserialize, Serialize};
 
 use super::Fallback;
-use super::solver::{self, FixedStop, GreedyRefusal, Input, SolverOutcome, StopBounds, Window};
+use super::solver::{
+    self, FixedStop, GreedyRefusal, Input, SolverOutcome, StopBounds, TyreBounds, Window,
+};
 
 const MAX_PIT_STOPS: usize = 16;
 
@@ -167,6 +169,29 @@ pub fn fixed_stop_bounds(
         return Ok(None);
     }
     solver::stop_bounds(&constrained, &edited.stints, fixed).map(Some)
+}
+
+/// Las ruedas de cada parada del calendario editado (una entrada por parada,
+/// en orden), con lo fijado en las paradas anteriores: las vueltas que llevan
+/// al llegar, las que llevarían al acabar el tramo siguiente si no se cambian
+/// y si lo fijado hoy en la parada («no cambiar») pasa de la vida máxima.
+///
+/// Es la regla de [`recalculate_edited_plan_fixed`]: con el calendario fijo,
+/// unas ruedas que no se cambian tienen plan exactamente cuando los tramos que
+/// hacen seguidos caben en su vida. La primera parada con `beyond_life` es la
+/// que el recálculo señala como culpable cuando solo hay ruedas fijadas. No
+/// depende de la rejilla, así que también vale con pasos finos. Los errores
+/// son los del recálculo con la misma entrada.
+pub fn fixed_stop_tyres(
+    input: &Input,
+    edited: &EditedPlan,
+    fixed: &[FixedStop],
+) -> Result<Vec<TyreBounds>, String> {
+    let constrained = constrain(input, edited, fixed)?;
+    if let Some(invalid) = solver::check_fixed_stops(&constrained, fixed)? {
+        return Err(invalid.to_string());
+    }
+    solver::stop_tyres(&constrained, &edited.stints, fixed)
 }
 
 /// La parada fijada que impide el plan. El respaldo ya la trae cuando se negó

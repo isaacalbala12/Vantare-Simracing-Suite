@@ -90,32 +90,36 @@ impl State {
         self.stamps.clear();
         let paths =
             crate::analysis::recordings(&self.root).map_err(|e| map_catalog_error(e.code))?;
+        let now_ms = u64::try_from(
+            std::time::SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_millis(),
+        )
+        .unwrap_or(u64::MAX);
         let mut entries = Vec::new();
         for path in paths {
             let m = std::fs::symlink_metadata(&path).map_err(|_| HostError::AnalysisUnreadable)?;
             if !m.is_file() || super::reparse(&m) {
                 return Err(HostError::AnalysisChanged);
             }
-            let created = m.created().map_err(|_| HostError::AnalysisUnreadable)?;
-            let ms = created
-                .duration_since(UNIX_EPOCH)
-                .map_err(|_| HostError::AnalysisUnreadable)?
-                .as_millis();
-            if ms >= (1_u128 << 53) || m.len() >= (1_u64 << 53) {
+            // La fecha es la época del nombre; copiar el archivo (cada actualización
+            // lo hace) reinicia la fecha de creación. Sin época válida, la del archivo.
+            let ms = if let Some(ms) = crate::analysis::status::recording_epoch_ms(&path, now_ms) {
+                ms
+            } else {
+                created_ms(&m)?
+            };
+            if ms >= (1_u64 << 53) || m.len() >= (1_u64 << 53) {
                 return Err(HostError::AnalysisTooLarge);
             }
-            entries.push((
-                created,
-                path,
-                u64::try_from(ms).map_err(|_| HostError::AnalysisTooLarge)?,
-                m.len(),
-            ));
+            entries.push((ms, path, m.len()));
         }
         entries.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
         let mut tokens = BTreeMap::new();
         let mut rows = Vec::new();
         let recording_file = self.recording_file();
-        for (_, path, started_at_ms, size_bytes) in entries {
+        for (started_at_ms, path, size_bytes) in entries {
             let id = vantare_services::random_id().map_err(|_| HostError::AnalysisUnreadable)?;
             self.stamps.insert(
                 id.clone(),
@@ -556,4 +560,12 @@ pub struct AnalysisSessionSummary {
     pub class_position_at_close: Option<u32>,
     pub laps_completed: Option<u32>,
     pub best_lap_ms: Option<u32>,
+}
+
+fn created_ms(m: &std::fs::Metadata) -> Result<u64, HostError> {
+    let created = m.created().map_err(|_| HostError::AnalysisUnreadable)?;
+    let since = created
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| HostError::AnalysisUnreadable)?;
+    u64::try_from(since.as_millis()).map_err(|_| HostError::AnalysisTooLarge)
 }

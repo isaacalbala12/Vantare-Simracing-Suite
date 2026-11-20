@@ -351,10 +351,19 @@ mod tests {
                 PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root")),
             )
         } else {
+            if !Path::new("D:/VantareServer/qa").is_dir() {
+                eprintln!(
+                    "omitido: no existe la raíz QA D:/VantareServer/qa; este test solo corre en el servidor o en CI"
+                );
+                return;
+            }
             let variable = "VANTARE_QA_SHORTCUT_ROOT";
             let parent = PathBuf::from("D:/VantareServer/qa/isa-1840");
             std::fs::create_dir_all(&parent).expect("QA parent");
-            // SAFETY: the name is unique to this test, so nothing else reads it concurrently.
+            // SAFETY: the name is exclusive to this test and only this test reads it
+            // (through the shell expansion below). On Windows `set_var` calls
+            // SetEnvironmentVariableW, which is thread-safe at system level, and the
+            // queue and CI run nextest (one process per test).
             unsafe { std::env::set_var(variable, &parent) };
             (variable, parent)
         };

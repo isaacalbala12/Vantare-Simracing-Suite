@@ -2104,7 +2104,7 @@ async function amountStates(
     },
     { index: 1, fuelLiters: null, vePercent: null },
   );
-  if (!zoomed) await tyreStates(page, base, shot, status, paradas);
+  if (!zoomed) await tyreStates(page, shot, status, paradas);
 }
 
 // «Neumáticos: Cambiar / No cambiar» (E5h): the row with the keyboard, what the host says
@@ -2112,7 +2112,6 @@ async function amountStates(
 // without. Tyres that last 90 laps (`plannedFujiLongLife`) and 43 (`plannedFuji`).
 async function tyreStates(
   page: Page,
-  base: string,
   shot: (name: string) => Promise<void>,
   status: () => Promise<string | null>,
   paradas: (scene: string) => Promise<void>,

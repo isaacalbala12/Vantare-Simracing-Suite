@@ -295,7 +295,16 @@ pub(super) fn adopt_recordings(root: &Path) {
     }
 }
 pub(super) fn adopt_recordings_with(root: &Path, own: &Path, wait: &mut dyn FnMut(Duration)) {
-    let _ = own; // Sin implementar: lo usa el commit siguiente.
+    // Nothing of this generation left to bring, as at every start after the
+    // first: the lock is not asked for and the installation is not walked.
+    let state = |entry: fs::DirEntry| entry.file_name() == "recording-status.json";
+    let nothing = match fs::read_dir(own) {
+        Ok(mut found) => found.all(|entry| entry.is_ok_and(state)),
+        Err(error) => error.kind() == io::ErrorKind::NotFound,
+    };
+    if nothing {
+        return;
+    }
     let adopt = || {
         let (view, _) =
             active(root).map_err(|error| disk::WriteError::new(1, error.to_string()))?;

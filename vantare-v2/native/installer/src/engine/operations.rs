@@ -1162,9 +1162,13 @@ pub fn adopt_recordings(
     note: &mut dyn FnMut(&str),
 ) -> Result<Adoption> {
     let root = disk::open_root(root, false)?;
-    // Busy is not a refusal: the caller may wait for its turn.
-    let _operation = disk::lock(&root, ".operation.lock")
-        .map_err(|_| WriteError::new(2, "Hay otra operación de la instalación en curso"))?;
+    // Busy is not a refusal: the caller may wait for its turn. Only a lock
+    // that somebody holds is busy; failing to open it otherwise is a failure.
+    let _operation =
+        disk::try_lock(&root, ".operation.lock").map_err(|error| match error.raw_os_error() {
+            Some(32) => WriteError::new(2, "Hay otra operación de la instalación en curso"),
+            _ => error.into(),
+        })?;
     // Without both references nobody knows which generation is `previous`.
     let document = installation::read_state(&root)?
         .filter(references_bound)

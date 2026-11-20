@@ -149,11 +149,14 @@ pub fn read_optional(path: &Path, limit: Option<u64>) -> Result<Option<serde_jso
     }
 }
 pub fn lock(root: &Path, name: &str) -> Result<fs::File> {
+    Ok(try_lock(root, name)?)
+}
+/// `lock`, keeping the reason: only a sharing violation says somebody holds it.
+pub fn try_lock(root: &Path, name: &str) -> io::Result<fs::File> {
     let mut options = fs::OpenOptions::new();
     options.read(true).write(true).create(true).truncate(false);
     exclusive(&mut options);
-    let file = options.open(root.join(name))?;
-    Ok(file)
+    options.open(root.join(name))
 }
 /// Fails while any other handle is open; a mapped image refuses write access.
 pub fn open_exclusive(path: &Path) -> io::Result<fs::File> {

@@ -11,6 +11,13 @@ arquitectura no acredita su implementación, integración ni publicación.
 Los pasos 0 y 1a–1d están integrados en la base `nightly@5cc23113a`;
 los pasos 3–8 requieren sus propias entregas y PR a nightly.
 
+**Enmendada por [ADR 0111](0111-grabaciones-carpeta-unica-por-instalacion.md)
+(2026-11-20):** por decisión de la raíz, las grabaciones de Análisis viven en
+una carpeta por instalación, fuera de `generations/`. Donde este documento
+dice que binarios y datos cambian juntos, o que un proceso instalado no
+escribe fuera de su generación, manda ADR 0111 solo para las grabaciones. El
+resto de `data/` y la vuelta atrás siguen igual.
+
 ## Contexto
 
 ADR [0099](0099-arquitectura-rust-nativa.md) fija Rust, GPUI y un único dueño

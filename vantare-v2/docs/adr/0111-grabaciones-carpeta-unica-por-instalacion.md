@@ -439,20 +439,20 @@ del anfitrión, ni `state.json`, ni el manifiesto.** No hay dependencias nuevas.
 3. **T3**, que **sustituye al PR 2 de #2740**: el PR 2 original queda
    cancelado. Donde este documento dice «PR 2 de #2740», ese trabajo lo
    hace T3.
+4. **T4** (medición y máquina virtual), al final: depende de T2 y T3. Este
+   último punto lo propone el orquestador del Hub; la raíz puede moverlo.
 
 **Revisión de datos por Opus en T1 y T3**, además de la revisión
 independiente con mutaciones como en #2745: son los dos trozos que tocan el
 motor del instalador y los datos del usuario.
 
-T4 (medición y máquina virtual) no figura en ese orden; sigue dependiendo de
-T2 y T3, como indica la tabla.
-
 ### Fechas del catálogo: issue propia
 
-Por decisión de la raíz, va **aparte, como issue propia**, y no forma parte de
-T1–T5: que el catálogo use la época que ya va en el nombre del archivo en
-lugar de la fecha de creación, para arreglar las fechas de las grabaciones
-que ya se hayan copiado alguna vez.
+Por decisión de la raíz, va **aparte, como issue propia**
+([#2749](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2749)),
+y no forma parte de T1–T5: que el catálogo use la época que ya va en el
+nombre del archivo en lugar de la fecha de creación, para arreglar las fechas
+de las grabaciones que ya se hayan copiado alguna vez.
 
 ## 13. Riesgos y preguntas para la raíz
 

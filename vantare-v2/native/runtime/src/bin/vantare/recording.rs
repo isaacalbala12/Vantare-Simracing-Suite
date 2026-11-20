@@ -14,12 +14,36 @@ pub(super) fn hub_data(root: &Root, installed: bool) -> PathBuf {
     }
 }
 
-pub(super) fn startup_args(mut args: Vec<String>, hub: Result<PathBuf, Error>) -> Vec<String> {
+/// The one place that decides where the recordings live (ADR 0111 §3):
+/// installed, a single folder in the installation root, shared by every
+/// generation; in development, inside the Hub data, as before.
+pub(super) fn directory(installation: Option<&Path>, hub: &Path) -> PathBuf {
+    // Sin implementar: la carpeta de siempre, dentro de los datos del Hub.
+    let _ = installation;
+    hub.join(RECORDINGS_DIR)
+}
+
+/// The Hub host reads the folder the core writes to.
+#[cfg(windows)]
+#[cfg_attr(not(test), allow(dead_code))] // Lo conecta el commit siguiente.
+pub(super) fn hub_argument(installation: &Path, hub: &Path) -> [String; 2] {
+    let recordings = directory(Some(installation), hub);
+    [
+        "--recordings-dir".into(),
+        recordings.to_string_lossy().into_owned(),
+    ]
+}
+
+pub(super) fn startup_args(
+    mut args: Vec<String>,
+    hub: Result<PathBuf, Error>,
+    installation: Option<&Path>,
+) -> Vec<String> {
     if explicit_or_replay(&args) {
         return args;
     }
     match hub {
-        Ok(hub) => configure(&mut args, &hub),
+        Ok(hub) => configure(&mut args, &hub, &directory(installation, &hub)),
         Err(error) => super::log(format!(
             "grabación desactivada: raíz de datos no disponible ({error})"
         )),
@@ -32,11 +56,11 @@ fn explicit_or_replay(args: &[String]) -> bool {
         .any(|arg| arg == "--series-dir" || arg == "--replay")
 }
 
-fn configure(args: &mut Vec<String>, hub: &Path) {
+fn configure(args: &mut Vec<String>, hub: &Path, recordings: &Path) {
     if !explicit_or_replay(args) && enabled(hub) {
         args.extend([
             "--series-dir".into(),
-            hub.join(RECORDINGS_DIR).to_string_lossy().into_owned(),
+            recordings.to_string_lossy().into_owned(),
         ]);
     }
 }
@@ -100,7 +124,7 @@ mod tests {
             fs::write(self.0.join(HUB_SETTINGS_FILE), bytes).unwrap();
         }
         fn startup(&self, args: Vec<String>) -> Vec<String> {
-            startup_args(args, Ok(self.0.clone()))
+            startup_args(args, Ok(self.0.clone()), None)
         }
         fn expected(&self) -> Vec<String> {
             vec![
@@ -159,7 +183,7 @@ mod tests {
             hub.save(format!(r#"{{"general":{{"grabacion":{enabled}}}}}"#));
             let args = vec!["--series-dir".into(), "my development recordings".into()];
             let mut configured = args.clone();
-            configure(&mut configured, &hub.0);
+            configure(&mut configured, &hub.0, &hub.0.join("recordings"));
             assert_eq!(configured, args);
             assert_eq!(hub.startup(args.clone()), args);
         }
@@ -179,7 +203,7 @@ mod tests {
             ],
         ] {
             let mut configured = args.clone();
-            configure(&mut configured, &hub.0);
+            configure(&mut configured, &hub.0, &hub.0.join("recordings"));
             assert_eq!(configured, args);
             assert_eq!(hub.startup(args.clone()), args);
         }
@@ -206,8 +230,10 @@ mod tests {
             vec!["--series-dir".into(), "explicit".into()],
             vec!["--replay".into(), "session.lmu.gz".into()],
         ] {
+            let missing = Err(vantare_ipc::paths::Error::MissingBase);
+            let installation = Path::new("C:/Programs/Vantare");
             assert_eq!(
-                startup_args(args.clone(), Err(vantare_ipc::paths::Error::MissingBase)),
+                startup_args(args.clone(), missing, Some(installation)),
                 args
             );
         }
@@ -273,6 +299,30 @@ mod tests {
             |_| panic!("successful read must not wait"),
         ));
         assert_eq!(calls, 1);
+    }
+
+    /// ADR 0111 §6: if the core and the Hub saw different folders, the Hub
+    /// would show no recordings while the core kept recording.
+    #[cfg(windows)]
+    #[test]
+    fn core_and_hub_receive_the_same_recordings_folder_from_one_place() {
+        let hub = TempDir::new();
+        let installation = Path::new("C:/Programs/Vantare");
+        let core = || startup_args(vec!["--live".into()], Ok(hub.0.clone()), Some(installation));
+        let host = hub_argument(installation, &hub.0);
+        let single = installation
+            .join("recordings")
+            .to_string_lossy()
+            .into_owned();
+        assert_eq!(core()[1..], ["--series-dir".to_owned(), single.clone()]);
+        assert_eq!(host, ["--recordings-dir".to_owned(), single]);
+        // Not recording changes what the core does, never where the Hub reads.
+        hub.save(r#"{"general":{"grabacion":false}}"#);
+        assert_eq!(core(), ["--live"]);
+        assert_eq!(hub_argument(installation, &hub.0), host);
+        // In development nothing moves: the folder inside the Hub data, which is
+        // also where a host without the argument reads.
+        assert_eq!(directory(None, &hub.0), hub.0.join("recordings"));
     }
 
     #[test]

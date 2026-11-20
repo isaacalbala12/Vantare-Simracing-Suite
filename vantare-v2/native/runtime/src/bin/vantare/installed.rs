@@ -280,6 +280,19 @@ pub(super) fn data(root: &Path) -> io::Result<(PathBuf, PathBuf)> {
     Ok((view.data_path.clone(), image))
 }
 
+/// Turns of 50 ms that the adoption waits for another operation: two seconds.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(super) const ADOPTION_WAITS: u32 = 40;
+/// The recordings of this generation go to the single folder of the
+/// installation before the core and the Hub start (ADR 0111 §4). It only
+/// moves, and nothing here can stop the session: what could not be brought
+/// stays where it was, is written to the installation log and is tried again
+/// at the next start.
+#[cfg_attr(not(test), allow(dead_code))] // Sin implementar: lo escribe y lo conecta el commit siguiente.
+pub(super) fn adopt_recordings_with(root: &Path, wait: &mut dyn FnMut(Duration)) {
+    let _ = (root, wait);
+}
+
 pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {
     let (root, _background) = parse(args, "--session")?;
     let (data, image) = data(&root)?;

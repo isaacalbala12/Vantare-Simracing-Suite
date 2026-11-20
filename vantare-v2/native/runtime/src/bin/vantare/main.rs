@@ -558,6 +558,7 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             config.core.args,
             vantare_ipc::paths::Root::from_env()
                 .map(|root| recording::hub_data(&root, config.installation.is_some())),
+            config.installation.as_deref(),
         );
         let hub_image = config.core.path.with_file_name("vantare-hub.exe");
         let mut core = Service::new("núcleo", config.core, config.restarts)

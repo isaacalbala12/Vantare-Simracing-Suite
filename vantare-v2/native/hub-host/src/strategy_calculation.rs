@@ -3,7 +3,7 @@ use super::{
     StrategyFields,
     accepted::{self, StrategyAcceptedView},
     editing::{Editing, Recalculation, StrategyEditError, StrategyEditView},
-    valid_text,
+    valid_text, writable_text,
 };
 use crate::protocol::HostError;
 use serde::{Deserialize, Serialize};
@@ -53,8 +53,15 @@ pub struct StrategyComputeForm {
 }
 
 impl StrategyComputeForm {
+    /// The entries as a manual event, every text one that can be written (compute).
     pub(super) fn manual(&self) -> Result<ManualEvent, HostError> {
-        manual_with(&self.fields, &self.inputs)
+        manual_with(&self.fields, &self.inputs, writable_text)
+    }
+
+    /// The entries a stored plan holds: read with the rule of a document that is
+    /// read, so a plan saved before #2711 still opens and exports.
+    pub(super) fn stored(&self) -> Result<ManualEvent, HostError> {
+        manual_with(&self.fields, &self.inputs, valid_text)
     }
 
     /// The entries a document holds for one variant, as the form that
@@ -103,12 +110,14 @@ impl StrategyComputeForm {
 }
 
 /// The 13 fields and the 15 inputs as one manual event: `compute` and `create` with
-/// inputs read them the same way (every text valid, then the crate's checks).
+/// inputs read them the same way (every text valid for `text`, then the crate's
+/// checks).
 pub(super) fn manual_with(
     fields: &StrategyFields,
     inputs: &StrategySolverFields,
+    text: fn(&str) -> bool,
 ) -> Result<ManualEvent, HostError> {
-    let mut manual = fields.manual()?;
+    let mut manual = fields.manual_with(text)?;
     for (entry, target) in [
         (&inputs.base_pace_seconds, &mut manual.base_pace_seconds),
         (&inputs.fuel_per_lap_liters, &mut manual.fuel_per_lap_liters),
@@ -126,7 +135,7 @@ pub(super) fn manual_with(
         (&inputs.reserve_laps, &mut manual.reserve_laps),
         (&inputs.service_mode, &mut manual.service_mode),
     ] {
-        if !valid_text(entry) {
+        if !text(entry) {
             return Err(HostError::StrategyInvalidText);
         }
         target.clone_from(entry);

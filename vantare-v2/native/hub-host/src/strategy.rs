@@ -167,7 +167,14 @@ pub struct StrategyFields {
 }
 
 impl StrategyFields {
+    /// The 13 fields as a manual event, every text one that can be written.
     fn manual(&self) -> Result<ManualEvent, HostError> {
+        self.manual_with(writable_text)
+    }
+
+    /// The same, with the rule of the texts: `writable_text` for what is written
+    /// and `valid_text` for what is read from a stored plan.
+    fn manual_with(&self, text: fn(&str) -> bool) -> Result<ManualEvent, HostError> {
         if ![
             self.name.as_str(),
             self.duration_minutes.as_str(),
@@ -184,7 +191,7 @@ impl StrategyFields {
             self.driver_initials.as_str(),
         ]
         .into_iter()
-        .all(valid_text)
+        .all(text)
         {
             return Err(HostError::StrategyInvalidText);
         }
@@ -487,12 +494,12 @@ impl State {
             Some(_) if pace.is_some() || consumption.is_some() => {
                 return Err(HostError::Rejected);
             }
-            Some(inputs) => calculation::manual_with(fields, inputs)?,
+            Some(inputs) => calculation::manual_with(fields, inputs, writable_text)?,
             None => {
                 let mut manual = fields.manual()?;
                 let pace = pace.unwrap_or_default();
                 let consumption = consumption.unwrap_or_default();
-                if !valid_text(pace) || !valid_text(consumption) {
+                if !writable_text(pace) || !writable_text(consumption) {
                     return Err(HostError::StrategyInvalidText);
                 }
                 manual.base_pace_seconds = pace.into();
@@ -548,7 +555,7 @@ impl State {
         }
         let mut next = doc.clone();
         if let Some(inputs) = inputs {
-            let manual = calculation::manual_with(fields, inputs)?;
+            let manual = calculation::manual_with(fields, inputs, writable_text)?;
             confirm_inputs(&manual, &mut next, event, variant)?;
         } else {
             let manual = fields.manual()?;
@@ -798,6 +805,11 @@ impl State {
         };
         if !accepted::plan_is_valid(&plan) {
             return Err(HostError::StrategyNotAcceptable);
+        }
+        // the texts of the plan are written now: a mark stored by an older version
+        // is read, but not copied into a new plan
+        if !accepted::plan_is_writable(&plan) {
+            return Err(HostError::StrategyInvalidText);
         }
         let mut next = doc.clone();
         if next.schema_version() != SCHEMA_VERSION_V2_PLAN {
@@ -1078,8 +1090,17 @@ fn validate_projection(doc: &Document, collection_error: HostError) -> Result<()
     }
     Ok(())
 }
+/// The text a document takes when it is READ (opened, projected, a stored plan): a
+/// file saved before #2711 may hold the marks of `file::misleading`, and it must
+/// open as it always did, never as «protegido».
 fn valid_text(value: &str) -> bool {
     value.len() <= TEXT_LIMIT && !value.chars().any(char::is_control)
+}
+/// The text a document takes when it is WRITTEN (create, confirm, compute, accept):
+/// the same, and none of the marks a person cannot see and that could read as
+/// another text. Export turns them into spaces for what was stored before.
+fn writable_text(value: &str) -> bool {
+    valid_text(value) && !value.chars().any(file::misleading)
 }
 fn projectable_text(value: &Value) -> bool {
     value["value"].as_str().is_none_or(valid_text)
@@ -1164,3 +1185,6 @@ mod accepted_tests;
 #[cfg(test)]
 #[path = "strategy_export_tests.rs"]
 mod export_tests;
+#[cfg(test)]
+#[path = "strategy_text_tests.rs"]
+mod text_tests;

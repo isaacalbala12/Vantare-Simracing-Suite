@@ -459,7 +459,7 @@ it("keeps the draft visible when confirmation fails", async () => {
   expect((button("Guardar") as HTMLButtonElement).disabled).toBe(true);
   click("Confirmar datos");
   expect((await screen.findByRole("alert")).textContent).toBe(
-    "No se han podido usar esos datos. Revisa lo que has escrito.",
+    "No se han podido usar esos datos. Revisa lo que has escrito: un texto demasiado largo o con caracteres que no se ven (como las marcas de dirección de escritura) no se puede guardar.",
   );
   expect(field("Nombre de la carrera").value).toBe("Copa Fuji");
   click("Cancelar edición");

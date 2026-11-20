@@ -105,6 +105,12 @@ pub(super) fn invisible(c: char) -> bool {
     matches!(c, '\u{061c}' | '\u{200e}' | '\u{200f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
 }
 
+/// What makes a text read in another order or end in the middle: the bidirectional
+/// marks and the line and paragraph separators U+2028 and U+2029 (#2711).
+pub(super) fn misleading(c: char) -> bool {
+    invisible(c) || matches!(c, '\u{2028}' | '\u{2029}')
+}
+
 /// The same rule as `fileName` in `hub-web/src/contract/modules/strategy.ts`.
 pub(super) fn valid_file_name(name: &str) -> bool {
     !name.is_empty()

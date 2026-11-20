@@ -7,7 +7,7 @@
 use super::{
     StrategyField, StrategyReason,
     calculation::{StrategyCalculationView, StrategyCertificate, StrategyComputeForm, StrategyPit},
-    valid_text,
+    valid_text, writable_text,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
@@ -182,10 +182,23 @@ pub(super) fn plan_is_valid(plan: &StrategyAcceptedPlan) -> bool {
     reason_fits
         && stints_fit
         && numbers
-        && plan.entries.manual().is_ok()
+        && plan.entries.stored().is_ok()
         && valid_text(&plan.accepted_at)
         && is_rfc3339(&plan.accepted_at)
         && valid_text(&timeline.pilot)
+}
+
+/// What a plan that is being accepted adds on top of `plan_is_valid`: its texts
+/// (the 28 entries, the date and the pilot) can be written, so the plan does not
+/// copy a mark that could read as another text.
+pub(super) fn plan_is_writable(plan: &StrategyAcceptedPlan) -> bool {
+    plan.entries.manual().is_ok()
+        && writable_text(&plan.accepted_at)
+        && plan
+            .result
+            .timeline
+            .as_ref()
+            .is_none_or(|timeline| writable_text(&timeline.pilot))
 }
 
 /// The most laps the crate takes in a race (`Input::validate`).
@@ -284,14 +297,15 @@ fn same_entry(field: ManualField, before: &str, after: &str) -> bool {
     false
 }
 
-/// The text of a change when it can travel: short, and with no control character.
+/// The text of a change when it can travel: short, with no control character and
+/// none of the marks that could read as another text (it is shown on screen).
 fn shown(text: &str) -> Option<String> {
-    (text.len() <= STRATEGY_CHANGE_TEXT_LIMIT && valid_text(text)).then(|| text.to_owned())
+    (text.len() <= STRATEGY_CHANGE_TEXT_LIMIT && writable_text(text)).then(|| text.to_owned())
 }
 
 /// The entries that differ from the copy, in the order of the form.
 pub(super) fn changes(copy: &StrategyComputeForm, now: &ManualEvent) -> Vec<StrategyChange> {
-    let Ok(before) = copy.manual() else {
+    let Ok(before) = copy.stored() else {
         return Vec::new();
     };
     ManualField::ALL

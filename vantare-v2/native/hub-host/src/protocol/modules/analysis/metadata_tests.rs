@@ -19,6 +19,8 @@ fn any_other_number_of_sectors_means_no_sectors() {
         &[69_000, 69_000],
         &[34_500, 34_500, 34_500, 34_500],
         &[1; 16],
+        // Cuatro sectores cuyos tres primeros ya suman la vuelta: también fuera.
+        &[41_204, 62_188, 34_608, 1],
     ] {
         assert_eq!(valid_sectors(Some(LAP), Some(sectors)), None, "{sectors:?}");
     }
@@ -26,7 +28,7 @@ fn any_other_number_of_sectors_means_no_sectors() {
 
 #[test]
 fn a_zero_sector_means_no_sectors_even_if_the_sum_matches() {
-    for sectors in [[0, 62_188, 75_812], [41_204, 0, 96_796], [41_204, 62_188, 0]] {
+    for sectors in [[0, 62_188, 75_812], [41_204, 0, 96_796], [41_204, 96_796, 0]] {
         assert_eq!(valid_sectors(Some(LAP), Some(&sectors)), None);
     }
 }

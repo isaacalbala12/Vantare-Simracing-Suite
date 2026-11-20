@@ -731,7 +731,7 @@ async function adjustStates(
   );
   // the button that was pressed keeps the focus through the change
   await focusVisible(later);
-  assert.equal(await page.getByText("valor anterior").count(), 8);
+  assert.equal(await page.getByText("valor anterior").count(), 7);
   assert.equal(await notSaved.count(), 1);
   assert.equal(await fileState(), "saved");
   await saveShot("plan-pend");
@@ -1778,6 +1778,15 @@ const amountBox = (page: Page, what: string, stop: number) =>
     name: `${what} de la parada ${stop}`,
     exact: true,
   });
+const tyreRadio = (
+  page: Page,
+  stop: number,
+  label: string,
+  checked?: boolean,
+) =>
+  page
+    .getByRole("group", { name: `Neumáticos de la parada ${stop}` })
+    .getByRole("radio", { name: label, exact: true, checked });
 const modeRadio = (page: Page, what: string, stop: number, label: string) =>
   page
     .getByRole("group", {
@@ -1835,10 +1844,16 @@ async function amountStates(
       name === "m-fijado" ||
       name === "m-recalculado" ||
       name === "m-calcular" ||
+      name.startsWith("t-") ||
       (await timeline.count()) === 0;
-    await (fromHeading ? page.locator(".strategy-plan") : timeline).evaluate(
-      (node) => node.scrollIntoView({ block: "start" }),
-    );
+    // the three rows of a stop do not fit under the timeline: those shots start at the editor
+    const editor = ["t-nocambiar", "t-ultima", "t-nocabe"].includes(name);
+    await (editor
+      ? page.locator(".strategy-editor").first()
+      : fromHeading
+        ? page.locator(".strategy-plan")
+        : timeline
+    ).evaluate((node) => node.scrollIntoView({ block: "start" }));
     await page.screenshot({
       path: resolve(evidence, `${prefix}${name}-${suffix}.png`),
     });
@@ -1858,15 +1873,14 @@ async function amountStates(
     page.getByText("Se llega con entre 0,4 y 4,4 L.", { exact: true }),
   );
   assert.equal(await page.getByText("fijado por ti").count(), 0);
-  // tyres are shown, not fixed (#2691): no way to choose them
-  assert.equal(
-    await page.getByText(/Cambiar neumáticos|No cambiar/).count(),
-    0,
+  // the tyres are the third row: «Cambiar» on, nothing pinned, no read-only card
+  await visible(tyreRadio(page, 2, "Cambiar", true));
+  await visible(
+    page.getByText("Las de ahora llegan con 42 vueltas; aguantan 43.", {
+      exact: true,
+    }),
   );
-  assert.equal(
-    await page.getByRole("group", { name: /Neumáticos/ }).count(),
-    0,
-  );
+  assert.equal(await page.getByText("Nuevos", { exact: true }).count(), 0);
   await shot("m-auto");
 
   // m-fijado: 60 L leaves no plan; the lap is the host's
@@ -1937,7 +1951,10 @@ async function amountStates(
   await manualEnergy.focus();
   await focused(manualEnergy);
   await page.keyboard.press("ArrowLeft");
-  await visible(page.getByText("lo decide el cálculo", { exact: true }));
+  // the energy and the tyres both say it: the first one is enough
+  await visible(
+    page.getByText("lo decide el cálculo", { exact: true }).first(),
+  );
   await typeAmount(fuel, "70,5");
   await visible(
     page.getByText(
@@ -1992,7 +2009,7 @@ async function amountStates(
     ),
   );
   await visible(page.getByText("2,0 s más que el automático", { exact: true }));
-  await visible(page.getByText("1 con cantidades fijadas", { exact: true }));
+  await visible(page.getByText("1 parada con algo fijado", { exact: true }));
   assert.equal(
     await page.locator(".strategy-legs .strategy-fixed-tag").count(),
     1,
@@ -2087,4 +2104,141 @@ async function amountStates(
     },
     { index: 1, fuelLiters: null, vePercent: null },
   );
+  if (!zoomed) await tyreStates(page, shot, status, paradas);
+}
+
+// «Neumáticos: Cambiar / No cambiar» (E5h): the row with the keyboard, what the host says
+// of the tyres, the three lines against the automatic plan and the plan the tyres leave
+// without. Tyres that last 90 laps (`plannedFujiLongLife`) and 43 (`plannedFuji`).
+async function tyreStates(
+  page: Page,
+  shot: (name: string) => Promise<void>,
+  status: () => Promise<string | null>,
+  paradas: (scene: string) => Promise<void>,
+) {
+  // the arrow key changes the choice and sends it: the focus stays on the radio
+  const keep = async (stop: number) => {
+    const from = tyreRadio(page, stop, "Cambiar");
+    await from.focus();
+    await focused(from);
+    await page.keyboard.press("ArrowRight");
+    const to = tyreRadio(page, stop, "No cambiar", true);
+    await visible(to);
+    await focused(to);
+  };
+  const last = async () => (await setStopRequests(page)).at(-1);
+  await paradas("plannedFujiLongLife");
+  await keep(2);
+  await visible(
+    page.getByText(
+      "Sin cambiar, llegarían a la parada 3 con 84 vueltas; aguantan 90.",
+      { exact: true },
+    ),
+  );
+  await visible(
+    page.getByText(
+      "Has fijado «No cambiar» en los neumáticos de la parada 2.",
+      {
+        exact: true,
+      },
+    ),
+  );
+  const sent = await last();
+  assert.deepEqual(
+    {
+      index: sent?.index,
+      fuelLiters: sent?.fuelLiters,
+      vePercent: sent?.vePercent,
+      changeTyres: sent?.changeTyres,
+    },
+    { index: 1, fuelLiters: null, vePercent: null, changeTyres: false },
+  );
+  assert.equal(
+    await page.locator(".strategy-screen").getByRole("status").count(),
+    1,
+  );
+  assert.equal(
+    await status(),
+    "Parada 2: neumáticos sin cambiar, fijado por ti.",
+  );
+  await shot("t-nocambiar");
+  await pressKey(button(page, "Recalcular"), "Enter");
+  await press(button(page, "Resumen"));
+  await visible(
+    page.getByText(
+      "El plan respeta lo que fijaste y tarda lo mismo que el plan automático (6:01:04).",
+      { exact: true },
+    ),
+  );
+  await visible(page.getByText(/^No cambiar las ruedas solo ahorra tiempo/));
+  await visible(page.getByText("igual que el automático", { exact: true }));
+  assert.equal(
+    await button(page, "Volver todo a automático").count(),
+    0,
+    "«igual» has nothing to go back for",
+  );
+  await shot("t-igual");
+  // the last stop: keeping them saves the 6,8 s the host says
+  await press(button(page, "Ajustar paradas"));
+  await pickStop(page, 5);
+  await keep(5);
+  await visible(page.getByText("0:58,2", { exact: true }));
+  await visible(page.getByText("antes 1:05,0", { exact: true }));
+  await visible(
+    page.getByText(
+      "Sin cambiar, llegarían a meta con 66 vueltas; aguantan 90.",
+      { exact: true },
+    ),
+  );
+  await shot("t-ultima");
+  await pressKey(button(page, "Recalcular"), "Enter");
+  await press(button(page, "Resumen"));
+  await visible(
+    page.getByText(
+      "Lo que fijaste hace el plan 6,8 s más rápido que el plan automático (6:01:04).",
+      { exact: true },
+    ),
+  );
+  await visible(
+    page.getByText("6,8 s menos que el automático", { exact: true }),
+  );
+  await visible(page.getByText("2 paradas con algo fijado", { exact: true }));
+  await visible(button(page, "Volver todo a automático"));
+  assert.equal(
+    await page.locator(".strategy-legs .strategy-fixed-tag").count(),
+    2,
+  );
+  await shot("t-mas-rapido");
+
+  // tyres that do not last: the amber note, and no plan after recalculating
+  await paradas("plannedFuji");
+  await keep(2);
+  await visible(
+    page.getByText(
+      "Sin cambiar, las ruedas llegarían a la parada 3 con 84 vueltas y aguantan 43. Así no hay plan: cambia las ruedas en esta parada.",
+      { exact: true },
+    ),
+  );
+  assert.equal(await page.getByRole("alert").count(), 0);
+  assert.equal(
+    await page.locator(".strategy-screen").getByRole("status").count(),
+    1,
+  );
+  await shot("t-nocabe");
+  await pressKey(button(page, "Recalcular"), "Enter");
+  const alert = page
+    .getByRole("alert")
+    .filter({ hasText: "Ningún plan cumple lo que fijaste" });
+  await visible(alert);
+  assert.match(
+    (await alert.textContent()) ?? "",
+    /En la parada 2 las ruedas no aguantan sin cambiar: llegarían a la parada 3 con 84 vueltas y aguantan 43\./,
+  );
+  await shot("t-sin-plan");
+  // the button takes the whole stop back, the tyres too
+  await pressKey(button(page, "Volver la parada 2 a automático"), "Enter");
+  await visible(button(page, "Recalcular"));
+  assert.equal(await page.getByText("fijado por ti").count(), 0);
+  await visible(tyreRadio(page, 2, "Cambiar", true));
+  assert.equal((await last())?.changeTyres, null);
 }

@@ -1,8 +1,10 @@
 import type {
   StrategyAcceptedView,
+  StrategyAutomaticPlan,
   StrategyCalculationView,
   StrategyChange,
   StrategyCompare,
+  StrategyEditStop,
   StrategyEditView,
   StrategyField,
   StrategyMetrics,
@@ -76,10 +78,63 @@ export type Notice = {
   details: string[];
 };
 
-// How many stops of a plan carry an amount fixed by hand (the plan's own marks).
+// Something fixed by hand in a stop of the edit (an amount or the tyres), as the host says it.
+export const stopIsFixed = (stop: StrategyEditStop) =>
+  stop.fixed.fuelLiters !== null ||
+  stop.fixed.vePercent !== null ||
+  stop.fixed.changeTyres !== null;
+
+// The plan's own marks of one stop: something in it was fixed by hand.
+export const pitIsPinned = ({ pinned }: StrategyPit) =>
+  pinned.fuelLiters || pinned.vePercent || pinned.changeTyres;
+
+// How many stops of a plan carry something fixed by hand (the plan's own marks).
 export const pinnedCount = (timeline: StrategyTimeline | null | undefined) =>
-  timeline?.pits.filter(({ pinned }) => pinned.fuelLiters || pinned.vePercent)
-    .length ?? 0;
+  timeline?.pits.filter(pitIsPinned).length ?? 0;
+
+// A plan with fixed values against the automatic one: how its duration compares,
+// as it is said («2,0 s»). Null unless the host gave both durations. The difference
+// of two durations the host sent is formatting, not a calculation of the plan (decided
+// by the root, PR 2723); 0,05 s is what «0,0 s» rounds to, so under it they are «same».
+export type AutomaticCompare = {
+  kind: "slower" | "faster" | "same";
+  text: string;
+  automatic: string;
+};
+export function automaticCompare(
+  result: StrategyCalculationView | null,
+  automatic: StrategyAutomaticPlan | null | undefined,
+): AutomaticCompare | null {
+  const total = result?.metrics?.totalSeconds;
+  if (total === undefined || !automatic) return null;
+  const gap = total - automatic.totalSeconds;
+  const kind = gap >= 0.05 ? "slower" : gap <= -0.05 ? "faster" : "same";
+  return {
+    kind,
+    text: secondsText(Math.abs(gap)),
+    automatic: clock(automatic.totalSeconds),
+  };
+}
+
+// The sentence of that comparison, said for the plan and for the announcement.
+export function automaticSentence({ kind, text, automatic }: AutomaticCompare) {
+  return kind === "same"
+    ? amounts.same(automatic)
+    : amounts[kind](text, automatic);
+}
+
+// The note of the duration figure: «6,8 s menos que el automático»
+export const automaticFigure = ({ kind, text }: AutomaticCompare) =>
+  kind === "same" ? amounts.figure.same : amounts.figure[kind](text);
+
+// Keeping the tyres saves time only when changing them is what takes longest in the
+// stop: with both services at once it may save nothing. Said once, as a general rule,
+// when some stop keeps its tyres and does its services at once (the plan's flags).
+export const keptInParallel = (timeline: StrategyTimeline | null | undefined) =>
+  !!timeline?.pits.some(
+    (pit) =>
+      pit.pinned.changeTyres && !pit.changeTyres && pit.service === "parallel",
+  );
 
 // The sentence under the plan: what the certificate does and does not say.
 export function certificateNotice(result: StrategyCalculationView): Notice {
@@ -624,12 +679,19 @@ export function planAnnouncement(
           ? amounts.announce.noPlanFor(plan.edit.cause.stop + 1)
           : a.noSolution;
       if (!result.metrics) return a.unfinished;
+      // with something fixed, how the recalculated plan compares with the automatic one
+      const compare = plan.edit?.stops.some(stopIsFixed)
+        ? automaticCompare(result, plan.edit.automatic)
+        : null;
+      const against = compare ? ` ${automaticSentence(compare)}` : "";
       if (result.certificate !== "proven")
-        return recalculated ? a.recalculatedUnproven : a.unproven;
+        return recalculated
+          ? `${a.recalculatedUnproven}${against}`
+          : a.unproven;
       const duration = durationWords(result.metrics.totalSeconds);
       const stops = t.time.stops(result.metrics.pitCount);
       return recalculated
-        ? a.recalculated(duration, stops)
+        ? `${a.recalculated(duration, stops)}${against}`
         : a.done(duration, stops);
     }
     default:

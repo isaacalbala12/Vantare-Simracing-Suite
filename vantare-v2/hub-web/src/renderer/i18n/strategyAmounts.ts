@@ -5,7 +5,8 @@
 type Amount = "fuel" | "ve";
 
 export const amounts = {
-  group: (stop: number) => `Combustible y energía de la parada ${stop}`,
+  group: (stop: number) =>
+    `Combustible, energía y neumáticos de la parada ${stop}`,
   fuel: "Combustible",
   energy: "Energía virtual",
   // el nombre de cada casilla, con su parada
@@ -17,7 +18,26 @@ export const amounts = {
   manual: "A mano",
   decided: "lo decide el cálculo",
   pinned: "fijado por ti",
-  pinnedStop: "con cantidades fijadas por ti",
+  pinnedStop: "con algo fijado por ti",
+  tyres: {
+    name: "Neumáticos",
+    how: (stop: number) => `Neumáticos de la parada ${stop}`,
+    change: "Cambiar",
+    keep: "No cambiar",
+    // «la parada 3» o «meta», según la posición; los números son los del anfitrión
+    arrival: (laps: number, life: number | null) =>
+      life === null
+        ? `Las de ahora llegan con ${laps} vueltas.`
+        : `Las de ahora llegan con ${laps} vueltas; aguantan ${life}.`,
+    kept: (next: string, laps: number, life: number | null) =>
+      life === null
+        ? `Sin cambiar, llegarían ${next} con ${laps} vueltas.`
+        : `Sin cambiar, llegarían ${next} con ${laps} vueltas; aguantan ${life}.`,
+    beyondLife: (next: string, laps: number, life: number | null) =>
+      `Sin cambiar, las ruedas llegarían ${next} con ${laps} vueltas${life === null ? "" : ` y aguantan ${life}`}. Así no hay plan: cambia las ruedas en esta parada.`,
+    nextStop: (stop: number) => `a la parada ${stop}`,
+    finish: "a meta",
+  },
   unit: { fuel: "L", ve: "%" } as Record<Amount, string>,
   // los botones de + y − de cada casilla
   more: (step: string, unit: string, what: string, stop: number) =>
@@ -79,13 +99,17 @@ export const amounts = {
     notInUseFuel: "Este coche no usa combustible: no se puede fijar.",
     notInUseEnergy: "Este coche no usa energía virtual: no se puede fijar.",
   },
-  foot: "Lo que fijes a mano se respeta al recalcular; el resto lo decide el cálculo. Al pasar a «A mano» se fija el valor que ha calculado Vantare; luego puedes cambiarlo. Las ruedas y el modo de servicio los decide siempre el cálculo.",
+  foot: "Lo que fijes a mano se respeta al recalcular; el resto lo decide el cálculo. Al pasar a «A mano» se fija el valor que ha calculado Vantare; luego puedes cambiarlo. El modo de servicio es para toda la carrera (se cambia en Carrera › Boxes).",
   clear: "Volver todo a automático",
   announce: {
     fixed: (stop: number, what: "fuel" | "ve", value: string) =>
       `Parada ${stop}: ${what === "fuel" ? "combustible fijado" : "energía fijada"} en ${value}.`,
     automatic: (stop: number, what: "fuel" | "ve") =>
       `Parada ${stop}: ${what === "fuel" ? "combustible" : "energía"} en automático.`,
+    tyresKeep: (stop: number) =>
+      `Parada ${stop}: neumáticos sin cambiar, fijado por ti.`,
+    tyresChange: (stop: number) =>
+      `Parada ${stop}: neumáticos nuevos, como decide el cálculo.`,
     cleared: "Todo vuelve a automático. Recalcula para ver el plan.",
     noPlanFor: (stop: number) =>
       `Ningún plan cumple lo que fijaste: mira la parada ${stop}.`,
@@ -93,10 +117,16 @@ export const amounts = {
   summary: {
     one: (stop: number, value: string) =>
       `Has fijado ${value} en la parada ${stop}.`,
-    many: (stops: number) => `Has fijado cantidades en ${stops} paradas.`,
+    many: (stops: number) => `Has fijado algo a mano en ${stops} paradas.`,
+    tyres: (stop: number) =>
+      `Has fijado «No cambiar» en los neumáticos de la parada ${stop}.`,
+    tyresChange: (stop: number) =>
+      `Has fijado «Cambiar» en los neumáticos de la parada ${stop}.`,
+    withTyres: (stop: number, value: string) =>
+      `En la parada ${stop} has fijado ${value} y «No cambiar» en los neumáticos.`,
   },
   pending:
-    "«Restablecer» vuelve al último plan válido, con las cantidades que tuviera fijadas; para quitar todo lo fijado, usa «Volver todo a automático».",
+    "«Restablecer» vuelve al último plan válido, con lo que tuviera fijado; para quitar todo lo fijado, usa «Volver todo a automático».",
   certificate: {
     // a plan with amounts fixed always comes from a recalculation of fixed stops
     title:
@@ -106,11 +136,19 @@ export const amounts = {
   },
   figure: {
     slower: (amount: string) => `${amount} más que el automático`,
+    faster: (amount: string) => `${amount} menos que el automático`,
+    same: "igual que el automático",
     fixedStops: (count: number) =>
       count === 1
-        ? "1 con cantidades fijadas"
-        : `${count} con cantidades fijadas`,
+        ? "1 parada con algo fijado"
+        : `${count} paradas con algo fijado`,
   },
+  faster: (amount: string, automatic: string) =>
+    `Lo que fijaste hace el plan ${amount} más rápido que el plan automático (${automatic}).`,
+  same: (automatic: string) =>
+    `El plan respeta lo que fijaste y tarda lo mismo que el plan automático (${automatic}).`,
+  sameWhy:
+    "No cambiar las ruedas solo ahorra tiempo cuando el cambio es lo que más tarda de la parada. Si repostar o recargar la energía tarda más, la parada dura lo mismo.",
   slower: (amount: string, automatic: string) =>
     `Lo que fijaste hace el plan ${amount} más lento que el plan automático (${automatic}).`,
   finish: (what: "fuel" | "ve", value: string, automatic: string) =>
@@ -119,12 +157,14 @@ export const amounts = {
       : `Llegarás a meta con ${value} de ${what === "fuel" ? "combustible" : "energía"} (con el automático, ${automatic}).`,
   noPlan: {
     heading: "Sin plan con lo que fijaste",
-    sub: "Con las cantidades que fijaste no se puede terminar la carrera.",
+    sub: "Con lo que fijaste no se puede terminar la carrera.",
     title: "Ningún plan cumple lo que fijaste",
     stop: (stop: number) =>
       `Con lo que fijaste en la parada ${stop} no hay plan que termine la carrera. Cambia esa cantidad o vuelve a «Automático».`,
+    tyres: (stop: number, next: string, laps: number, life: number | null) =>
+      `En la parada ${stop} las ruedas no aguantan sin cambiar: llegarían ${next} con ${laps} vueltas${life === null ? "" : ` y aguantan ${life}`}.`,
     generic:
-      "Con las cantidades que fijaste no hay plan que termine la carrera. Cambia alguna o vuelve a «Automático».",
+      "Con lo que fijaste no hay plan que termine la carrera. Cambia algo de lo fijado o vuelve todo a automático.",
     backStop: (stop: number) => `Volver la parada ${stop} a automático`,
     pick: "Elige la parada",
     pending: "Recalcula para ver si hay plan con lo que has fijado ahora.",
@@ -132,7 +172,7 @@ export const amounts = {
   again: {
     title: "¿Calcular de nuevo y perder lo que fijaste?",
     detail: (stops: number) =>
-      `Se pierden las cantidades que fijaste a mano en ${stops === 1 ? "1 parada" : `${stops} paradas`}: el cálculo nuevo decide todo.`,
+      `Se pierde lo que fijaste a mano en ${stops === 1 ? "1 parada" : `${stops} paradas`}: el cálculo nuevo decide todo.`,
     confirm: "Calcular de nuevo",
     cancel: "Cancelar",
   },

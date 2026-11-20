@@ -6,7 +6,7 @@ import type {
 import { Icon } from "../../assets/icons/Icon";
 import { strategy } from "../../i18n/strategy";
 import { amounts } from "../../i18n/strategyAmounts";
-import { stopIsFixed } from "../../screens/strategy/stopAmounts";
+import { stopIsFixed, tyreLines } from "../../screens/strategy/stopAmounts";
 import { Button } from "../Button";
 import { Choices } from "./PlanAdjust";
 import { type AmountActions, PinMark, StopAmounts } from "./StopAmounts";
@@ -43,6 +43,13 @@ export function FixedNoPlan({
   }, [cause]);
   const index = Math.min(selected, edit.stops.length - 1);
   const n = amounts.noPlan;
+  // Where the crate points at is the tyres when that stop cannot keep them (the host
+  // marks it): the sentence says it; otherwise it is an amount.
+  const culprit = cause === undefined ? undefined : edit.stops[cause];
+  const tyres =
+    culprit?.tyres.issue === "beyondLife" && cause !== undefined
+      ? tyreLines(edit, cause)
+      : null;
   return (
     <>
       {edited ? (
@@ -66,7 +73,11 @@ export function FixedNoPlan({
           </span>
           <div>
             <strong>{n.title}</strong>
-            <p>{cause === undefined ? n.generic : n.stop(cause + 1)}</p>
+            <p>
+              {cause === undefined
+                ? n.generic
+                : (tyres?.noPlan ?? n.stop(cause + 1))}
+            </p>
             {cause !== undefined && (
               <div className="strategy-actions">
                 <Button

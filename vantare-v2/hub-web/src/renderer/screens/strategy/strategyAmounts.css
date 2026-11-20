@@ -244,3 +244,27 @@
     grid-column: 1 / -1;
   }
 }
+
+/* E5h · la línea de comparación con el automático gana dos tonos (más rápido, igual) y una
+   segunda frase opcional. La fila «Neumáticos» reutiliza las clases de las cantidades. */
+.strategy-slower[data-tone="ok"] > .strategy-icon {
+  /* --ok tal cual da 1,8:1 sobre el panel claro; mezclado con la tinta, 4,5:1 */
+  color: color-mix(in srgb, var(--ok) 55%, var(--text-1));
+}
+
+.strategy-slower[data-tone="info"] > .strategy-icon {
+  color: var(--text-3);
+}
+
+.strategy-slower-text {
+  flex: 1 1 18rem;
+  min-width: 0;
+}
+
+.strategy-slower-text > p {
+  margin: 0;
+}
+
+.strategy-slower-text > .strategy-help {
+  margin-top: var(--space-1);
+}

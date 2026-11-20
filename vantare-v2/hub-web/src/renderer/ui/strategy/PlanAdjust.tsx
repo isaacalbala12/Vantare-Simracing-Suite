@@ -401,11 +401,6 @@ export function StopEditor({
       <div className="strategy-editor-columns">
         <div className="strategy-metrics">
           <Metric
-            label={a.stops.tyres}
-            value={pit.changeTyres ? a.stops.freshTyres : a.stops.sameTyres}
-            previous={stale}
-          />
-          <Metric
             label={a.stops.service}
             value={t.services[pit.service]}
             previous={stale}

@@ -16,12 +16,17 @@ import { Icon } from "../../assets/icons/Icon";
 import { strategy } from "../../i18n/strategy";
 import { amounts } from "../../i18n/strategyAmounts";
 import {
+  type AutomaticCompare,
+  automaticSentence,
+} from "../../screens/strategy/planText";
+import {
   type Amount,
   amountMessage,
   amountText,
   limitLines,
   parseAmount,
   refusalAmount,
+  tyreLines,
 } from "../../screens/strategy/stopAmounts";
 import { Button } from "../Button";
 
@@ -34,6 +39,7 @@ export type AmountActions = {
     index: number,
     fuelLiters: number | null,
     vePercent: number | null,
+    changeTyres: boolean | null,
   ) => Promise<AmountAnswer | undefined>;
   // resolves to whether the host took it
   clearStopServices: () => Promise<boolean>;
@@ -306,6 +312,78 @@ function AmountRow(row: Row) {
   );
 }
 
+// The tyres of one stop: «Cambiar» (the calculation's own choice, nothing fixed) or
+// «No cambiar» (fixed, and the plan has to respect it). The sentences and every number
+// in them are the host's (`tyres` of the stop).
+function TyresRow({
+  edit,
+  index,
+  disabled,
+  send,
+}: {
+  edit: StrategyEditView;
+  index: number;
+  disabled: boolean;
+  send: (changeTyres: boolean | null) => void;
+}) {
+  const stop = edit.stops[index];
+  const lines = tyreLines(edit, index);
+  const id = useId();
+  if (!stop || !lines) return null;
+  const { changeTyres } = stop.fixed;
+  const note = lines.issue ?? lines.kept;
+  const described = [`${id}-help`, note ? `${id}-note` : undefined]
+    .filter(Boolean)
+    .join(" ");
+  const choice = (value: boolean | null, label: string, on: boolean) => (
+    <label>
+      <input
+        type="radio"
+        name={id}
+        checked={on}
+        aria-describedby={described}
+        onChange={() => send(value)}
+      />
+      {label}
+    </label>
+  );
+  return (
+    <div
+      className="strategy-amount"
+      data-kind="tyres"
+      data-fixed={changeTyres !== null || undefined}
+    >
+      <span className="strategy-amount-name">
+        {amounts.tyres.name}
+        {changeTyres !== null && <PinnedTag />}
+      </span>
+      <fieldset className="strategy-amount-mode" disabled={disabled}>
+        <legend className="v-sr-only">{amounts.tyres.how(index + 1)}</legend>
+        {choice(null, amounts.tyres.change, changeTyres !== false)}
+        {choice(false, amounts.tyres.keep, changeTyres === false)}
+      </fieldset>
+      <div className="strategy-amount-value">
+        {changeTyres === null && <small>{amounts.decided}</small>}
+      </div>
+      <div className="strategy-amount-help">
+        <p id={`${id}-help`} className="strategy-help">
+          {lines.arrival}
+        </p>
+        {note && (
+          <p
+            id={`${id}-note`}
+            className="strategy-amount-note"
+            data-tone={lines.issue ? "warn" : "info"}
+          >
+            <Icon name={lines.issue ? "warn" : "info"} />
+            <span>{note}</span>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // The fuel and the energy of one stop: each one automatic (what the calculation
 // loads) or by hand (a box that the host validates at once). Everything said of
 // what fits comes from the `limits` of this stop in the last view of the host.
@@ -371,7 +449,7 @@ export function StopAmounts({
     setMessages((now) => ({ ...now, [amount]: undefined }));
     const fuel = amount === "fuel" ? value : stop.fixed.fuelLiters;
     const ve = amount === "ve" ? value : stop.fixed.vePercent;
-    const answer = await set(index, fuel, ve);
+    const answer = await set(index, fuel, ve, stop.fixed.changeTyres);
     if (answer === undefined) return false;
     if ("error" in answer) {
       const { error } = answer;
@@ -392,6 +470,8 @@ export function StopAmounts({
     return true;
   }
 
+  const sendTyres = (changeTyres: boolean | null) =>
+    void set(index, stop.fixed.fuelLiters, stop.fixed.vePercent, changeTyres);
   const rows = (["fuel", "ve"] as const).map((amount) =>
     unused[amount] ? (
       <div key={amount} className="strategy-amount" data-unused="">
@@ -428,6 +508,7 @@ export function StopAmounts({
     <fieldset className="strategy-amounts">
       <legend className="v-sr-only">{amounts.group(index + 1)}</legend>
       {rows}
+      <TyresRow edit={edit} index={index} disabled={locked} send={sendTyres} />
     </fieldset>
   );
 }
@@ -491,26 +572,40 @@ export function AgainCard({
   );
 }
 
-// The plan with fixed amounts is slower than the automatic one: said once, with
-// the way back to automatic.
-export function SlowerLine({
-  text,
+// The plan with what was fixed against the automatic one: said once. Faster (✓) and
+// slower (⚠) come with the way back to automatic; «same» (ⓘ) has nothing to go back
+// for and says why keeping the tyres may save nothing, when that applies.
+export function AutomaticLine({
+  compare,
+  why,
   clear,
   disabled,
 }: {
-  text: string;
+  compare: AutomaticCompare;
+  why: boolean;
   clear: () => void;
   disabled: boolean;
 }) {
+  const { kind } = compare;
+  const tone = kind === "slower" ? "warn" : kind === "faster" ? "ok" : "info";
   return (
-    <div className="strategy-notice strategy-slower" data-tone="warn">
+    <div className="strategy-notice strategy-slower" data-tone={tone}>
       <span className="strategy-icon">
-        <Icon name="warn" />
+        <Icon
+          name={tone === "warn" ? "warn" : tone === "ok" ? "check" : "info"}
+        />
       </span>
-      <p>{text}</p>
-      <Button size="sm" variant="ghost" disabled={disabled} onClick={clear}>
-        {amounts.clear}
-      </Button>
+      <div className="strategy-slower-text">
+        <p>{automaticSentence(compare)}</p>
+        {kind === "same" && why && (
+          <p className="strategy-help">{amounts.sameWhy}</p>
+        )}
+      </div>
+      {kind !== "same" && (
+        <Button size="sm" variant="ghost" disabled={disabled} onClick={clear}>
+          {amounts.clear}
+        </Button>
+      )}
     </div>
   );
 }

@@ -53,14 +53,14 @@ export function strategyResetEdit(act: Act, plan: StrategyPlanView) {
 
 // Fixing by hand what a stop does. The request says how the whole stop stays:
 // both amounts and the tyres, and `null` for what the calculation decides. The
-// host validates at once and, if it refuses an amount, changes nothing. This
-// screen fixes amounts only: the tyres go back as the host has them.
+// host validates at once and, if it refuses an amount, changes nothing.
 export function strategySetStopService(
   act: Act,
   plan: StrategyPlanView,
   index: number,
   fuelLiters: number | null,
   vePercent: number | null,
+  changeTyres: boolean | null,
 ) {
   return plan.computeId === null
     ? undefined
@@ -70,7 +70,7 @@ export function strategySetStopService(
         index,
         fuelLiters,
         vePercent,
-        changeTyres: plan.edit?.stops[index]?.fixed.changeTyres ?? null,
+        changeTyres,
       });
 }
 

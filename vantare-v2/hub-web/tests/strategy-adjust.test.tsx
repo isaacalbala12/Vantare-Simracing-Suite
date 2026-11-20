@@ -412,12 +412,15 @@ describe("adjusting a stop", () => {
     fireEvent.click(screen.getByRole("radio", { name: "Parada 2, vuelta 85" }));
     expect(screen.getByText("+77 L")).toBeTruthy();
     expect(screen.getByText("+97 %")).toBeTruthy();
-    expect(screen.getByText("Nuevos")).toBeTruthy();
+    // the tyres are a row of the editor now, not a read-only card
+    expect(
+      screen.getByRole("group", { name: "Neumáticos de la parada 2" }),
+    ).toBeTruthy();
     expect(screen.queryByText("valor anterior")).toBeNull();
     click("+ 1 vuelta");
     await heading("Plan modificado");
-    // four figures of the plan and four values of the stop
-    expect(screen.getAllByText("valor anterior")).toHaveLength(8);
+    // four figures of the plan and three values of the stop (the tyres are a row now)
+    expect(screen.getAllByText("valor anterior")).toHaveLength(7);
   });
 
   it("sends a single request for a double click on + 1 vuelta", async () => {

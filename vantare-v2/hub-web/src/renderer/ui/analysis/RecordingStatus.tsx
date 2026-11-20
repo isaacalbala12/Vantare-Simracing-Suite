@@ -47,7 +47,7 @@ export function RecordingStatus({
   if (state.recordingStatusPending) return null;
   const status = state.recordingStatus;
   const usage =
-    status && !state.error
+    status && !state.error && status.limits.maxRecordings > 0
       ? recordingUsage(state.rows, status.limits)
       : undefined;
   const kind = recordingIndicator(
@@ -62,7 +62,7 @@ export function RecordingStatus({
     ? "live"
     : kind === "idle"
       ? "ok"
-      : kind === "stopped"
+      : kind === "stopped" || kind === "folderUnusable"
         ? "err"
         : kind === "degraded" ||
             kind === "quotaUnmet" ||

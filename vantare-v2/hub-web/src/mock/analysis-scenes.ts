@@ -63,6 +63,7 @@ export function analysisScene(context: MockContext, clock = Date.now) {
         "status-stopped",
         "status-limit",
         "status-pendingOff",
+        "status-folderUnusable",
       ].includes(name);
       const status = active
         ? {
@@ -105,6 +106,12 @@ export function analysisScene(context: MockContext, clock = Date.now) {
         : null;
       if (name === "status-unavailable")
         return { kind: "failure", id, error: { kind: "analysisUnreadable" } };
+      if (name === "status-folderUnusable" && status)
+        Object.assign(status, {
+          state: "stopped",
+          cause: "invalidDirectory",
+          limits: { maxRecordings: 0, maxBytes: 0 },
+        });
       return {
         kind: "response",
         id,
@@ -132,6 +139,8 @@ export function analysisScene(context: MockContext, clock = Date.now) {
       if (name === "loading") return null;
       if (name === "catalog-error")
         return { kind: "failure", id, error: { kind: "analysisTooMany" } };
+      if (name === "status-folderUnusable")
+        return { kind: "failure", id, error: { kind: "analysisUnreadable" } };
       return {
         kind: "response",
         id,

@@ -41,6 +41,10 @@ export function recordingIndicator(
   atLimit: boolean,
   catalogRecording: boolean,
 ) {
+  // Only the host reports this pair, when the recordings folder is a link, a
+  // junction or a file: the session records nothing, whatever the choice says.
+  if (status?.state === "stopped" && status.cause === "invalidDirectory")
+    return "folderUnusable";
   const running = status?.state === "recording" || status?.state === "degraded";
   const catalogLive = status === undefined && catalogRecording;
   if (!enabled && enabledAtStart === false && !running && !catalogLive)

@@ -7,7 +7,7 @@ El Setup y Uninstall de `native/installer` y el lanzador `Vantare.exe` son el ú
 - `VantareSetup.exe` verifica el ZIP, el manifiesto y los hashes antes de escribir. Cada generación vive en `generations/<id>`; `state.json` liga activa y anterior a sus manifiestos por SHA-256. `data/` se conserva en actualización, rollback y desinstalación salvo elección expresa del usuario.
 - La raíz contiene `Vantare.exe`, que se renueva al instalar, reparar y actualizar si difiere de la generación activa. El lanzador crea una sesión Rust para la generación activa. El Hub confirma una actualización pendiente mediante un token aleatorio de ese arranque. Un fallo de arranque restaura la generación anterior de motor 2 y ofrece Reparar. No se vuelve automáticamente a motor 1.
 - Feed, Check, Apply, Confirm, rollback, Register y SetStartup son Rust. `shell::sync` proyecta registro y accesos de Windows; los valores o accesos ajenos se conservan. La preferencia de inicio de instalaciones anteriores se migra una vez.
-- Uninstall retira solo los miembros de manifiestos ligados por SHA. Una generación huérfana se conserva y se diagnostica; su retención sigue aplazada hasta ligar su SHA al estado.
+- Uninstall retira solo los miembros de manifiestos ligados por SHA. De una generación que `state.json` ya no nombra se retiran, al confirmar un arranque y al desinstalar, los archivos que coinciden con su propio manifiesto; su `data/` y lo que no coincide se conservan (#2740, detalle en `installer/README.md`).
 - El indicador de arranque se retiró tras medir cinco aperturas del Hub release bajo QA: mediana 343 ms desde proceso hasta ventana visible.
 
 ## Construir y publicar

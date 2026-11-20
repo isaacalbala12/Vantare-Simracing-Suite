@@ -5,9 +5,10 @@ use super::{
 };
 use crate::model::{Mode, Progress};
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    fs,
+    fs, io,
     path::{Path, PathBuf},
     sync::atomic::{AtomicBool, Ordering},
 };
@@ -669,6 +670,11 @@ pub enum BootRecovery {
 /// A window from the active generation has acknowledged readiness. The
 /// launcher has already checked that its session is alive before calling.
 pub fn confirm(root: &Path) -> Result<()> {
+    confirm_reporting(root, &mut |note| eprintln!("{note}"))
+}
+/// `confirm`, handing the caller the log of the generations left without a
+/// reference: what was retired and what was kept, with its path and reason.
+pub fn confirm_reporting(root: &Path, note: &mut dyn FnMut(&str)) -> Result<()> {
     let root = disk::open_root(root, false)?;
     let _operation = disk::lock(&root, ".operation.lock")?;
     let marker = disk::read_json(&root.join("boot-pending.json"), Some(4096))?;
@@ -687,7 +693,170 @@ pub fn confirm(root: &Path) -> Result<()> {
         "Versión actualizada y arranque confirmado",
         &manifest.version,
     )?;
-    disk::remove_file(&root.join("boot-pending.json"))
+    disk::remove_file(&root.join("boot-pending.json"))?;
+    // The way back ended with the marker: from here on nothing can fail the
+    // confirmation, and no earlier step retires a generation.
+    match installation::read_state(&root) {
+        Ok(Some(document)) if references_bound(&document) => {
+            retire_orphans(&root, &document.state, note);
+        }
+        _ => note(&kept(
+            &root.join("generations"),
+            "las referencias de state.json no son fiables",
+        )),
+    }
+    Ok(())
+}
+
+/// Both references decoded and bound by SHA: the only basis for deleting files.
+fn references_bound(document: &installation::StateDocument) -> bool {
+    document.previous_present
+        && document.warning.is_none()
+        && document.state.active.valid()
+        && document
+            .state
+            .previous
+            .as_ref()
+            .is_none_or(Generation::valid)
+}
+fn kept(path: &Path, reason: impl std::fmt::Display) -> String {
+    format!(
+        "Generación sin referencia: se conserva {}; motivo: {reason}",
+        path.display()
+    )
+}
+/// Binaries of the generations that `state.json` no longer names (#2740).
+/// Runs only after a confirmed boot or while uninstalling, never fails its
+/// caller and never lists, reads or removes a `data` folder.
+fn retire_orphans(root: &Path, state: &State, note: &mut dyn FnMut(&str)) {
+    let listed = match generations(root) {
+        Ok(listed) => listed,
+        Err(error) => {
+            note(&kept(&root.join("generations"), error));
+            return;
+        }
+    };
+    for (id, directory) in listed {
+        if std::iter::once(&state.active)
+            .chain(state.previous.iter())
+            .any(|reference| reference.generation.eq_ignore_ascii_case(&id))
+        {
+            continue;
+        }
+        if !validation::hex(&id, 32) {
+            note(&kept(&directory, "el nombre no es de una generación"));
+            continue;
+        }
+        match retire_orphan(&directory, &state.channel, note) {
+            Ok(0) => {}
+            Ok(retired) => note(&format!(
+                "Generación sin referencia: retirados {retired} archivos de {}; sus datos se conservan",
+                directory.display()
+            )),
+            Err(error) => note(&kept(&directory, error)),
+        }
+    }
+}
+/// `state.json` keeps no SHA for an orphan, so ownership is proven by content:
+/// a valid manifest of this product and channel, and each file equal to its
+/// declaration. Anything else stays where it is, with its reason in the log.
+fn retire_orphan(directory: &Path, channel: &str, note: &mut dyn FnMut(&str)) -> Result<usize> {
+    let listed = installation::walk(directory, true)?;
+    if listed.is_empty() {
+        // Only the data is left, or nothing: this fails unless it is empty.
+        let _ = fs::remove_dir(directory);
+        return Ok(0);
+    }
+    let manifest = super::Manifest::read(&directory.join("manifest.json"))
+        .map_err(|error| WriteError::new(1, format!("manifiesto ausente o no válido ({error})")))?;
+    ensure(manifest.channel == channel, "manifiesto de otro canal")?;
+    let files = || listed.iter().filter(|(_, is_directory)| !is_directory);
+    // A live image keeps the whole generation, as `binary_guard` does.
+    for (file, _) in files().filter(|(file, _)| {
+        file.extension()
+            .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"))
+    }) {
+        disk::open_exclusive(file).map_err(|error| {
+            WriteError::new(2, format!("{} está en uso ({error})", file.display()))
+        })?;
+    }
+    let mut retired = 0;
+    for (file, _) in files() {
+        let relative = file
+            .strip_prefix(directory)
+            .map_err(|error| WriteError::new(1, error.to_string()))?
+            .to_string_lossy()
+            .replace('\\', "/");
+        if relative.eq_ignore_ascii_case("manifest.json") {
+            continue;
+        }
+        let declared = manifest
+            .files
+            .iter()
+            .find(|member| member.path.eq_ignore_ascii_case(&relative));
+        match declared.map(|member| retire_member(file, member)) {
+            Some(Ok(())) => retired += 1,
+            Some(Err(error)) => note(&kept(file, error)),
+            None => note(&kept(file, "no figura en el manifiesto")),
+        }
+    }
+    let finish = || -> Result<()> {
+        let members: Vec<_> = manifest.files.iter().map(|file| &file.path).collect();
+        remove_empty_parents(directory, &members)?;
+        // Manifest last, once nothing else is left beside the data: a sweep
+        // that was cut short resumes from it.
+        if let [(last, false)] = installation::walk(directory, true)?.as_slice()
+            && last
+                .file_name()
+                .is_some_and(|name| name.eq_ignore_ascii_case("manifest.json"))
+        {
+            disk::remove_file(last)?;
+            let _ = fs::remove_dir(directory);
+        }
+        Ok(())
+    };
+    if let Err(error) = finish() {
+        note(&kept(directory, error));
+    }
+    Ok(retired)
+}
+/// The bytes are hashed through the exclusive handle that proves nobody else
+/// has the file open; only a file equal to its declaration is removed.
+fn retire_member(path: &Path, member: &installation::Member) -> Result<()> {
+    let mut file = disk::open_exclusive(path)
+        .map_err(|error| WriteError::new(2, format!("en uso o sin permiso ({error})")))?;
+    let mut hash = Sha256::new();
+    let size = io::copy(&mut file, &mut hash)?;
+    ensure(
+        size == member.size && format!("{:x}", hash.finalize()) == member.sha256,
+        "no coincide con el tamaño y el SHA-256 del manifiesto",
+    )?;
+    drop(file);
+    Ok(fs::remove_file(path)?)
+}
+/// Folders that held members, deepest first; one with anything left stays.
+fn remove_empty_parents(directory: &Path, members: &[&String]) -> Result<()> {
+    let mut parents = BTreeSet::new();
+    for member in members {
+        parents.extend(
+            Path::new(member)
+                .ancestors()
+                .skip(1)
+                .filter(|path| !path.as_os_str().is_empty())
+                .map(Path::to_path_buf),
+        );
+    }
+    for parent in parents.iter().rev() {
+        let path = directory.join(parent);
+        if path.is_dir()
+            && fs::read_dir(&path)?.next().is_none()
+            && let Err(error) = fs::remove_dir(&path)
+            && (!path.is_dir() || fs::read_dir(&path)?.next().is_none())
+        {
+            return Err(error.into());
+        }
+    }
+    Ok(())
 }
 
 /// Called by the root launcher after the failed session has exited. Motor 1
@@ -876,15 +1045,11 @@ pub fn uninstall(
     let Some(document) = installation::read_state(&root)? else {
         return finalize(control);
     };
-    let state = document.state;
     ensure(
-        state.channel == "beta"
-            && document.previous_present
-            && document.warning.is_none()
-            && state.active.valid()
-            && state.previous.as_ref().is_none_or(Generation::valid),
+        document.state.channel == "beta" && references_bound(&document),
         "Referencia de generación inválida",
     )?;
+    let state = document.state;
     drop(disk::binary_guard(&root)?);
     // Authenticate all referenced inventories before deleting any member. A
     // generation without a state binding has no authority over foreign files.
@@ -898,11 +1063,7 @@ pub fn uninstall(
             .chain(state.previous.iter())
             .find(|reference| reference.generation == id);
         let Some(reference) = reference else {
-            (control.warning)(&format!(
-                "Binarios conservados: {}; motivo: generación sin referencia SHA en active/previous (retención aplazada)",
-                directory.display()
-            ));
-            continue;
+            continue; // Retired below, by content.
         };
         let path = directory.join("manifest.json");
         if !path.try_exists()? {
@@ -940,27 +1101,9 @@ pub fn uninstall(
             disk::remove_file(&directory.join(member))?;
             (control.checkpoint)("uninstall-member")?;
         }
-        let mut parents = BTreeSet::new();
-        for member in &members {
-            parents.extend(
-                Path::new(member)
-                    .ancestors()
-                    .skip(1)
-                    .filter(|path| !path.as_os_str().is_empty())
-                    .map(Path::to_path_buf),
-            );
-        }
-        for parent in parents.iter().rev() {
-            let path = directory.join(parent);
-            if path.is_dir()
-                && fs::read_dir(&path)?.next().is_none()
-                && let Err(error) = fs::remove_dir(&path)
-                && (!path.is_dir() || fs::read_dir(&path)?.next().is_none())
-            {
-                return Err(error.into());
-            }
-        }
+        remove_empty_parents(&directory, &members.iter().collect::<Vec<_>>())?;
     }
+    retire_orphans(&root, &state, &mut *control.warning);
     disk::remove_file(&state_path)?;
     for name in [
         "boot-pending.json",

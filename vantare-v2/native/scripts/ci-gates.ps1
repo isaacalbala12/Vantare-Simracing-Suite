@@ -42,6 +42,13 @@ try {
             # After archiving: QA features must never enter the ordinary suite archive.
             & (Join-Path $PSScriptRoot '../gates.ps1') -Gate qa-license
         }
+        # Misma decisión que el job `policy` (`affected-crates.py --overlays`), que es
+        # la que construye o no el artefacto de overlays: no recalcularla aquí.
+        $overlays = $true
+        if ($DiffBase) {
+            $overlays = (& python (Join-Path $PSScriptRoot 'affected-crates.py') --base $DiffBase --overlays) -ceq 'true'
+            if ($LASTEXITCODE) { throw 'No se pudo calcular el ámbito de overlays.' }
+        }
         $revision = & git rev-parse HEAD
         if ($LASTEXITCODE) { throw 'No se pudo identificar el build archivado.' }
         $lifecycle = @(Get-Content (Join-Path $env:VANTARE_SLOT_TARGET 'debug/ci-lifecycle/manifest.json') -Raw | ConvertFrom-Json)
@@ -50,7 +57,7 @@ try {
             workspace = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot))
             target = $env:VANTARE_SLOT_TARGET
             telemetry = [bool]$Telemetry
-            overlays = (-not $packages.Count -or 'vantare-runtime' -cin $packages)
+            overlays = $overlays
             lifecycle = ($lifecycle.Count -gt 0)
             packages = $packages
         } | ConvertTo-Json | Set-Content (Join-Path $env:VANTARE_SLOT_TARGET 'ci-scope.json') -Encoding utf8

@@ -20,7 +20,7 @@ class ScopeTests(unittest.TestCase):
                      'dependencies': []}]
         self.assertEqual(affected.select(packages, paths), [])
         self.assertFalse(affected.installation_affected(paths))
-        self.assertFalse(affected.overlays_affected(paths))
+        self.assertFalse(affected.overlays_affected(packages, paths))
         self.assertEqual(affected.select(packages, paths + ['vantare-v2/native/ui/src/lib.rs']),
                          ['vantare-ui'])
 
@@ -62,13 +62,42 @@ class ScopeTests(unittest.TestCase):
                      'vantare-v2/native/runtime/build.rs', '.github/workflows/ci.yml']:
             self.assertTrue(affected.installation_affected([path]))
 
-    def test_overlay_build_is_needed_for_runtime_dependencies_and_unknown_inputs(self):
-        for crate in ['runtime', 'domain', 'ipc', 'services', 'launcher', 'profiling', 'ui', 'installer']:
-            self.assertTrue(affected.overlays_affected([f'vantare-v2/native/{crate}/src/lib.rs']))
-        for crate in ['engineer', 'strategy', 'storage', 'hub', 'admin']:
-            self.assertFalse(affected.overlays_affected([f'vantare-v2/native/{crate}/src/lib.rs']))
-            self.assertTrue(affected.overlays_affected([f'vantare-v2/native/{crate}/Cargo.toml']))
-        self.assertTrue(affected.overlays_affected(['vantare-v2/native/new-module/data.json']))
+    def test_overlays_follow_the_real_dependency_graph(self):
+        # Regresión #2753: strategy -> hub-host -> runtime. Una lista fija de
+        # crates «independientes» decía false mientras el ámbito archivado
+        # (misma selección) traía runtime y exigía descargar los overlays.
+        packages = [
+            {'name': name, 'manifest_path': f'D:/repo/vantare-v2/native/{directory}/Cargo.toml',
+             'dependencies': [{'name': dep} for dep in deps]}
+            for name, directory, deps in [
+                ('vantare-strategy', 'strategy', []),
+                ('vantare-hub-host', 'hub-host', ['vantare-strategy']),
+                ('vantare-runtime', 'runtime', ['vantare-hub-host']),
+                ('vantare-engineer', 'engineer', ['vantare-runtime']),
+                ('vantare-hub', 'hub', ['vantare-strategy'])]]
+        self.assertTrue(affected.overlays_affected(packages, ['vantare-v2/native/strategy/src/lib.rs']))
+        self.assertFalse(affected.overlays_affected(packages, ['vantare-v2/native/engineer/src/lib.rs']))
+        self.assertFalse(affected.overlays_affected(packages, ['vantare-v2/docs/guide.md']))
+        self.assertTrue(affected.overlays_affected(packages, ['vantare-v2/native/Cargo.lock']))
+        self.assertTrue(affected.overlays_affected(packages, ['.github/workflows/branch-channel-gates.yml']))
+
+    def test_overlays_decision_equals_archived_scope_with_real_metadata(self):
+        # Mismo predicado que ci-gates.ps1 archiva en ci-scope.json.
+        native = Path(__file__).resolve().parents[1]
+        metadata = json.loads(subprocess.check_output(
+            ['cargo', 'metadata', '--locked', '--offline', '--no-deps', '--format-version', '1'], cwd=native))
+        packages = [p for p in metadata['packages'] if p['id'] in metadata['workspace_members']]
+        cases = [[f'vantare-v2/native/{crate}/src/lib.rs']
+                 for crate in ['strategy', 'engineer', 'storage', 'runtime', 'ui', 'installer', 'domain']]
+        cases += [['vantare-v2/docs/guide.md'], ['vantare-v2/native/Cargo.lock'],
+                  ['vantare-v2/native/overlays-rune/src/main.rs']]
+        for paths in cases:
+            archived = affected.select_for_ci(packages, paths, fast=True)
+            self.assertEqual(affected.overlays_affected(packages, paths),
+                             'vantare-runtime' in archived, paths)
+        # strategy alcanza runtime por hub-host: el caso real de #2750.
+        self.assertTrue(affected.overlays_affected(
+            packages, ['vantare-v2/native/strategy/src/lib.rs']))
 
     def test_fast_path_never_selects_hub_or_admin(self):
         packages = [

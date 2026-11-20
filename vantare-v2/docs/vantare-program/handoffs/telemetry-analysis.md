@@ -51,4 +51,6 @@ No acredita juego físico LMU/ACC, OBS, audio, DPI, latencia ni aceptación visu
 
 Isaac revisa el paso 3 y decide el paso 2 antes de autorizar más recorrido. La conexión de grabación requiere #1975 y autorización/medición propias. La prueba diferida del hueco 4 pertenece al 6C si se elige esa ruta. No comenzar los pasos 4–8 por este handoff.
 
-Última actualización: 2026-11-05 · VANTA-133 / #1974 · cierre único de la tanda de pasos 0, 1 y 3. Estado, HEAD, CI y medidas finales en la issue y los PR.
+**2026-11-20 · VANTA-138 / [#2746](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/2746):** propuesto [ADR 0111](../../adr/0111-grabaciones-carpeta-unica-por-instalacion.md), dónde viven las grabaciones (una carpeta por instalación fuera de `generations/`). Solo documento, **pendiente de decisión de la raíz**; no hay código ni cambio de contrato. El PR 2 de #2740 espera a esa decisión. PR y head en #2746.
+
+Última actualización anterior: 2026-11-05 · VANTA-133 / #1974 · cierre único de la tanda de pasos 0, 1 y 3. Estado, HEAD, CI y medidas finales en la issue y los PR.

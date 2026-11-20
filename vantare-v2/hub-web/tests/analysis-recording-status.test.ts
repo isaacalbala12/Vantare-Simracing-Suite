@@ -11,6 +11,7 @@ import {
   recordingUsage,
 } from "../src/renderer/app/analysis-recording-status";
 import { HostFailure } from "../src/renderer/bridge/client";
+import { recordingStatusText } from "../src/renderer/i18n/recording-status.es";
 
 const status: AnalysisRecordingStatus = {
   state: "recording",
@@ -168,6 +169,40 @@ it("treats a clean stop as idle and a failed writer as stopped", () => {
       true,
     ),
   ).toBe("quotaUnmet");
+});
+
+it("says why nothing is recorded when the recordings folder is not a folder", () => {
+  // What the host reports for a link, a junction or a file in its place.
+  const unusable = {
+    ...status,
+    state: "stopped" as const,
+    cause: "invalidDirectory" as const,
+    limits: { maxRecordings: 0, maxBytes: 0 },
+  };
+  // Whatever the saved choice says: nothing is recorded, and the user is told why.
+  for (const [enabled, atStart] of [
+    [true, true],
+    [true, false],
+    [false, false],
+  ])
+    expect(recordingIndicator(unusable, enabled, atStart, false, false)).toBe(
+      "folderUnusable",
+    );
+  // The core reports its own trouble with the folder as a degraded recording.
+  expect(
+    recordingIndicator(
+      { ...status, state: "degraded", cause: "invalidDirectory" },
+      true,
+      true,
+      false,
+      false,
+    ),
+  ).toBe("stopped");
+  // A text of its own, without paths: the renderer never sees one.
+  const text = recordingStatusText as Record<string, unknown>;
+  expect(text.folderUnusable).toBeTruthy();
+  expect(text.folderUnusableHelp).toMatch(/enlace.*unión.*desactivadas/);
+  expect(text.folderUnusableHelp).not.toMatch(/[\\/:]/);
 });
 
 it("distinguishes a finish timeout from a clean stop", () => {

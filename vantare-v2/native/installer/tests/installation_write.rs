@@ -3625,6 +3625,7 @@ fn only_the_entry_named_recordings_at_the_root_is_left_alone() {
         active.join("data/recordings"),
         active.join("data/hub/recordings"),
     ] {
+        fs::create_dir_all(place.parent().expect("a parent")).unwrap();
         symlink_dir(&outside, &place).unwrap();
         assert!(!opens(), "{place:?}");
         fs::remove_dir(&place).unwrap();

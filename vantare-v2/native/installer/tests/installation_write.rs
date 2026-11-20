@@ -3475,6 +3475,13 @@ fn two_adoptions_at_once_never_work_on_the_same_installation() {
     assert_eq!(between, (files.map(str::to_owned).to_vec(), false));
     assert_eq!(first.0.expect("first adoption"), adopted(2, 0, 0));
     assert!(names(&source).is_empty() && names(&single) == files);
+    // Only a lock that somebody holds is busy: one that cannot be opened for any
+    // other reason is a refusal, which nobody waits for.
+    let lock = fixture.root.join(".operation.lock");
+    fs::remove_file(&lock).unwrap();
+    fs::create_dir(&lock).unwrap();
+    let (unusable, _) = fixture.adopt_until(&active, Duplicates::Keep, &mut |_| Ok(()));
+    assert_eq!(unusable.map_err(|error| error.code), Err(1));
 }
 
 #[test]

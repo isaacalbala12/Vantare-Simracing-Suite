@@ -155,6 +155,13 @@ fn the_session_brings_its_recordings_waits_its_turn_and_never_fails() {
     let generation = root.join("generations").join("a".repeat(32));
     let source = generation.join("data/hub/recordings");
     fs::create_dir_all(&source).expect("recordings of the generation");
+    // Nothing to bring (the state of the recorder is not a recording): neither
+    // the lock nor a walk of the installation, as at every later start.
+    fs::write(source.join("recording-status.json"), b"{}").expect("recorder state");
+    let busy = lock(&root, ".operation.lock").expect("another operation");
+    adopt_recordings_with(&root, &source, &mut |_| panic!("nothing to wait for"));
+    drop(busy);
+    assert!(!root.join("installer-log.txt").exists());
     let [first, later] = ["series-1-1.duckdb", "series-2-2.duckdb"];
     fs::write(source.join(first), b"recording").expect("recording");
     // Already in the single folder: the session neither compares nor removes.
@@ -168,7 +175,7 @@ fn the_session_brings_its_recordings_waits_its_turn_and_never_fails() {
     // The launcher renews the registration under the same lock: the session waits its turn.
     let mut held = Some(lock(&root, ".operation.lock").expect("another operation"));
     let mut waits = 0;
-    adopt_recordings_with(&root, &mut |_| {
+    adopt_recordings_with(&root, &source, &mut |_| {
         waits += 1;
         if waits == 3 {
             held.take();
@@ -182,7 +189,7 @@ fn the_session_brings_its_recordings_waits_its_turn_and_never_fails() {
     fs::write(source.join(later), b"later").expect("recording");
     let held = lock(&root, ".operation.lock").expect("another operation");
     let mut waits = 0;
-    adopt_recordings_with(&root, &mut |_| {
+    adopt_recordings_with(&root, &source, &mut |_| {
         waits += 1;
         assert!(waits <= ADOPTION_WAITS, "it must not wait for ever");
     });
@@ -193,7 +200,7 @@ fn the_session_brings_its_recordings_waits_its_turn_and_never_fails() {
     fs::rename(&single, root.join("apartada")).expect("the single folder, set aside");
     fs::write(&single, b"not a folder").expect("a file in its place");
     for _ in 0..2 {
-        adopt_recordings_with(&root, &mut |_| panic!("a refusal is not busy"));
+        adopt_recordings_with(&root, &source, &mut |_| panic!("a refusal is not busy"));
         assert!(source.join(later).exists() && lines() == 4);
     }
     fs::remove_dir_all(root).expect("cleanup");

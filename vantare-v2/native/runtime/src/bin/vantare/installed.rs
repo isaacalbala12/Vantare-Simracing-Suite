@@ -288,9 +288,14 @@ pub(super) const ADOPTION_WAITS: u32 = 40;
 /// stays where it was, is written to the installation log and is tried again
 /// at the next start.
 pub(super) fn adopt_recordings(root: &Path) {
-    adopt_recordings_with(root, &mut std::thread::sleep);
+    // The session was started on its own data folder, `generations/<id>/data`.
+    if let Some(data) = std::env::var_os("VANTARE_NATIVE_DATA_ROOT") {
+        let own = Path::new(&data).join("hub/recordings");
+        adopt_recordings_with(root, &own, &mut std::thread::sleep);
+    }
 }
-pub(super) fn adopt_recordings_with(root: &Path, wait: &mut dyn FnMut(Duration)) {
+pub(super) fn adopt_recordings_with(root: &Path, own: &Path, wait: &mut dyn FnMut(Duration)) {
+    let _ = own; // Sin implementar: lo usa el commit siguiente.
     let adopt = || {
         let (view, _) =
             active(root).map_err(|error| disk::WriteError::new(1, error.to_string()))?;

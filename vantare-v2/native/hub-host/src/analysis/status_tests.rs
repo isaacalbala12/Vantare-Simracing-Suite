@@ -404,3 +404,62 @@ fn only_plain_names_are_probed() {
         assert!(!plain_name(name), "{name}");
     }
 }
+#[test]
+fn epoch_comes_from_the_name_only_when_valid() {
+    let now = 1_800_000_000_000_u64;
+    let at = |name: &str| recording_epoch_ms(Path::new(name), now);
+    assert_eq!(at("series-1700000000000-42.duckdb"), Some(1_700_000_000_000));
+    // Nombre de reserva con nanosegundos.
+    assert_eq!(at("series-1700000000000123456-42.duckdb"), Some(1_700_000_000_000));
+    // Hasta un día de margen por relojes desajustados.
+    assert_eq!(at("series-1800000000000-1.duckdb"), Some(now));
+    for name in [
+        "series-0-42.duckdb",
+        "series-1800086400001-1.duckdb",
+        "series-99999999999999999999-1.duckdb",
+        "series-abc-1.duckdb",
+        "series--1.duckdb",
+        "series-17.duckdb",
+        "recording.duckdb",
+        "series-17-1.duckdb.wal",
+    ] {
+        assert_eq!(at(name), None, "{name}");
+    }
+}
+fn created_ms(path: &Path) -> u64 {
+    let created = std::fs::metadata(path).unwrap().created().unwrap();
+    u64::try_from(created.duration_since(std::time::UNIX_EPOCH).unwrap().as_millis()).unwrap()
+}
+#[test]
+fn catalog_dates_and_orders_by_the_name_epoch_not_the_copy_date() {
+    let root = fs::canonicalize(std::env::temp_dir())
+        .unwrap()
+        .join(vantare_services::random_id().unwrap());
+    std::fs::create_dir(&root).unwrap();
+    // Copiadas ahora (fecha de creación = ahora) en orden contrario a su época.
+    for name in ["series-1700000003000-1.duckdb", "series-1700000001000-1.duckdb", "series-1700000002000-1.duckdb"] {
+        std::fs::write(root.join(name), []).unwrap();
+    }
+    let rows = crate::analysis::catalog::State::new(root.clone()).catalog().unwrap();
+    let dates: Vec<u64> = rows.iter().map(|row| row.started_at_ms).collect();
+    assert_eq!(dates, [1_700_000_003_000, 1_700_000_002_000, 1_700_000_001_000]);
+    std::fs::remove_dir_all(root).unwrap();
+}
+#[test]
+fn catalog_keeps_the_file_date_without_a_valid_epoch() {
+    let root = fs::canonicalize(std::env::temp_dir())
+        .unwrap()
+        .join(vantare_services::random_id().unwrap());
+    std::fs::create_dir(&root).unwrap();
+    let names = ["manual.duckdb", "series-0-1.duckdb", "series-99999999999999-1.duckdb", "series-x-1.duckdb"];
+    for name in names {
+        std::fs::write(root.join(name), []).unwrap();
+    }
+    let rows = crate::analysis::catalog::State::new(root.clone()).catalog().unwrap();
+    assert_eq!(rows.len(), names.len(), "ninguna grabación se oculta");
+    let expected = created_ms(&root.join("manual.duckdb"));
+    for row in &rows {
+        assert!(row.started_at_ms.abs_diff(expected) < 60_000, "{}", row.started_at_ms);
+    }
+    std::fs::remove_dir_all(root).unwrap();
+}

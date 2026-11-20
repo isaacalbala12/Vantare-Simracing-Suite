@@ -129,6 +129,30 @@ pub fn recording_name(name: &str) -> bool {
                 .split_once(".creating-")
                 .is_some_and(|(base, suffix)| database(base) && pair(suffix)))
 }
+/// Fecha de una grabación a partir de su nombre `series-<época>-<pid>.duckdb`
+/// (milisegundos desde 1970; el Core usa nanosegundos solo si el nombre ya
+/// existía). `None` si no hay época válida: 0, desbordada o más de un día en
+/// el futuro. Así el catálogo no depende de la fecha de creación del archivo,
+/// que cada copia (actualización o Reparar) reinicia.
+pub fn recording_epoch_ms(path: &Path, now_ms: u64) -> Option<u64> {
+    const NANOS_FROM: u64 = 100_000_000_000_000; // 1e14 ms sería el año 5138
+    const FUTURE_MARGIN_MS: u64 = 24 * 60 * 60 * 1000;
+    let name = path.file_name()?.to_str()?;
+    let (epoch, _) = name
+        .strip_prefix("series-")?
+        .strip_suffix(".duckdb")?
+        .split_once('-')?;
+    if epoch.is_empty() || !epoch.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    let value = epoch.parse::<u64>().ok()?;
+    let ms = if value >= NANOS_FROM {
+        value / 1_000_000
+    } else {
+        value
+    };
+    (ms > 0 && ms <= now_ms.saturating_add(FUTURE_MARGIN_MS)).then_some(ms)
+}
 fn cause(s: &str) -> AnalysisRecordingCause {
     use AnalysisRecordingCause::{
         FinishTimeout, HelperMissing, InvalidDirectory, PruneIncomplete, QuotaUnmet, Unknown,

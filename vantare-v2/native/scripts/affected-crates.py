@@ -91,21 +91,13 @@ def installation_affected(paths):
     return False
 
 
-def overlays_affected(paths):
-    # These current leaf crates cannot change Runtime/UI. Manifests, new paths,
-    # and every integration push remain conservative. The archive's actual scope
-    # independently requires the UI artifact when Runtime was selected.
-    independent = {'engineer', 'strategy', 'storage', 'hub', 'admin'}
-    for path in paths:
-        if path.startswith('vantare-v2/native/overlays-rune/') or path == '.github/workflows/overlays-rune.yml':
-            continue
-        if path.endswith('.md'):
-            continue
-        parts = path.replace('\\', '/').split('/')
-        if len(parts) >= 5 and parts[:2] == ['vantare-v2', 'native'] and parts[2] in independent and parts[3] in {'src', 'tests', 'benches'}:
-            continue
-        return True
-    return False
+def overlays_affected(packages, paths):
+    # Fuente única: la misma selección de crates que archiva `ci-gates.ps1` en
+    # `ci-scope.json`. Los overlays de lifecycle hacen falta si y solo si entra
+    # `vantare-runtime`; el resto de la lista depende del grafo real (p. ej.
+    # strategy -> hub-host -> runtime), no de una lista fija que se desactualiza.
+    # Sin crates afectados (docs, Rune aislado) no hay lifecycle ni overlays.
+    return 'vantare-runtime' in select_for_ci(packages, paths, fast=True)
 
 
 LEGACY = {'vantare-hub', 'vantare-admin'}
@@ -161,15 +153,18 @@ def main():
         paths = [path for path in paths if path]
     elif not args.crate:
         parser.error('--base o --crate requerido')
-    if args.installation or args.overlays:
-        decision = overlays_affected(paths) if args.overlays else installation_affected(paths)
-        print('true' if decision else 'false')
+    if args.installation:
+        print('true' if installation_affected(paths) else 'false')
         return
     metadata = json.loads(subprocess.check_output(
         ['cargo', 'metadata', '--locked', '--offline', '--no-deps', '--format-version', '1'],
         cwd=native))
     members = [p for p in metadata['packages'] if p['id'] in metadata['workspace_members']]
-    if args.legacy_check:
+    if args.overlays:
+        if not args.base:
+            parser.error('--overlays exige --base')
+        print('true' if overlays_affected(members, paths) else 'false')
+    elif args.legacy_check:
         if not args.base:
             parser.error('--legacy-check exige --base')
         print(','.join(select_legacy_checks(members, paths)))

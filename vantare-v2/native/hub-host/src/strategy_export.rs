@@ -13,7 +13,7 @@ use super::{
     },
     file::{
         INTERNAL_IDS, Kind, STRATEGY_PICK_LIFETIME, Ticket, checked_path, device_name, direct,
-        file_of, invisible, same_file, valid_file_name,
+        file_of, invisible, misleading, same_file, valid_file_name,
     },
 };
 use crate::protocol::HostError;
@@ -608,7 +608,7 @@ enum Cell {
 fn scrub(text: &str) -> String {
     text.chars()
         .map(|c| {
-            if invisible(c) || matches!(c, '\u{2028}' | '\u{2029}') {
+            if misleading(c) {
                 ' '
             } else {
                 c

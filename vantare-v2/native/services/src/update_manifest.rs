@@ -51,18 +51,33 @@ pub fn verify(json: &[u8]) -> Result<Vec<u8>> {
     verify_with(json, &key)
 }
 
+/// Autoridad TEST del feed del Hub; solo existe con `hub-update-qa`.
+///
+/// Con `#[used]` el compilador emite los dos estáticos enteros y contiguos, y rustc los
+/// entrega al enlazador como símbolos vivos de todo binario que enlace esta biblioteca,
+/// llame o no al verificador. Con `black_box` y una matriz local, el EXE de Debug no
+/// llevaba la clave contigua. La referencia de Rust no promete `#[used]` para el binario
+/// final: por eso `packaging/hub-update-qa-exe-tests.ps1` busca esos bytes, los mismos
+/// que rechaza `no-qa.ps1`, en el EXE real de Debug y de Release.
+#[cfg(feature = "hub-update-qa")]
+mod qa_authority {
+    #[used]
+    static MARKER: [u8; 42] = *b"VANTARE_QA_HUB_UPDATE_NOT_FOR_DISTRIBUTION";
+    /// Mitad pública de la semilla pública `[42; 32]` de `examples/matrix-verifier.rs`.
+    #[used]
+    pub(super) static PUBLIC_KEY: [u8; 32] = [
+        0x19, 0x7f, 0x6b, 0x23, 0xe1, 0x6c, 0x85, 0x32, 0xc6, 0xab, 0xc8, 0x38, 0xfa, 0xcd, 0x5e,
+        0xa7, 0x89, 0xbe, 0x0c, 0x76, 0xb2, 0x92, 0x03, 0x34, 0x03, 0x9b, 0xfa, 0x8b, 0x3d, 0x36,
+        0x8d, 0x61,
+    ];
+}
+
 /// Hub feed uses the production authority unless the isolated QA build is selected.
 /// Legacy `verify()` never accepts the QA authority, even in that build.
 pub fn verify_hub_update(json: &[u8]) -> Result<Vec<u8>> {
     #[cfg(feature = "hub-update-qa")]
     {
-        std::hint::black_box("VANTARE_QA_HUB_UPDATE_NOT_FOR_DISTRIBUTION");
-        let public_key = [
-            0x19, 0x7f, 0x6b, 0x23, 0xe1, 0x6c, 0x85, 0x32, 0xc6, 0xab, 0xc8, 0x38, 0xfa, 0xcd,
-            0x5e, 0xa7, 0x89, 0xbe, 0x0c, 0x76, 0xb2, 0x92, 0x03, 0x34, 0x03, 0x9b, 0xfa, 0x8b,
-            0x3d, 0x36, 0x8d, 0x61,
-        ];
-        verify_with(json, &public_key)
+        verify_with(json, &qa_authority::PUBLIC_KEY)
     }
     #[cfg(not(feature = "hub-update-qa"))]
     {
@@ -196,15 +211,25 @@ mod hub_authority_tests {
     use super::*;
     #[test]
     fn hub_qa_signature_never_changes_the_legacy_authority() {
-        let signed = sign(
-            br#"{"schema":2,"product":"vantare-hub"}"#,
-            &SigningKey::from_bytes(&[42; 32]),
-        )
-        .expect("sign test Hub offer");
+        let payload = br#"{"schema":2,"product":"vantare-hub"}"#;
+        let signed =
+            sign(payload, &SigningKey::from_bytes(&[42; 32])).expect("sign test Hub offer");
         assert!(verify(&signed).is_err());
         assert_eq!(
             verify_hub_update(&signed).is_ok(),
             cfg!(feature = "hub-update-qa")
         );
+        // No hay rotación ni segunda clave: otra clave o una firma truncada se rechazan
+        // en las dos builds y por las dos entradas.
+        let mut seed = Zeroizing::new([0_u8; 32]);
+        getrandom::fill(seed.as_mut()).expect("test entropy");
+        let rotated = sign(payload, &SigningKey::from_bytes(&seed)).expect("sign with another key");
+        let mut truncated: SignedManifest = serde_json::from_slice(&signed).expect("envelope");
+        truncated.signature.truncate(84);
+        let truncated = serde_json::to_vec(&truncated).expect("json");
+        for envelope in [rotated, truncated] {
+            assert!(verify(&envelope).is_err());
+            assert!(verify_hub_update(&envelope).is_err());
+        }
     }
 }

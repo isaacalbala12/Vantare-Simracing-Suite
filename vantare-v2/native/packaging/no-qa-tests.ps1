@@ -40,6 +40,9 @@ if(@(Get-ChildItem -LiteralPath $betaOutput -Recurse -File -ErrorAction Silently
 'Beta entry points reject absent ConfigFile and empty registry; local empty smoke allowed PASS'
 $markers=@('qa-e2e','VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','qa-rfc8032','VANTARE_QA_','qa-fixture-public')
 $markers+=@(Get-NativeKnownTestLicenseMarkers)
+# #2771: the Hub update TEST authority (matrix-verifier seed) is one of those denied keys,
+# so the loops below reject each of its spellings in an EXE and in a ZIP member.
+if('GX9rI-FshTLGq8g4-s1ep4m-DHaykgM0A5v6iz02jWE' -cnotin $markers){throw 'Hub update TEST key missing from the denylist.'}
 $hex=@($markers|Where-Object {$_ -cmatch '^[0-9A-F]{64}$'})[0]
 $markers+=($hex.Substring(0,32).ToLowerInvariant()+$hex.Substring(32))
 foreach($marker in $markers) {

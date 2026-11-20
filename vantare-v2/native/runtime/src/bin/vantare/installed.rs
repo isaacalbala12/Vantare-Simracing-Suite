@@ -340,6 +340,11 @@ pub(super) fn adopt_recordings_with(root: &Path, own: &Path, wait: &mut dyn FnMu
 
 pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {
     let (root, _background) = parse(args, "--session")?;
+    // Autoridad TEST: sin HKCU y carpetas inyectados la sesión no lee ni escribe nada.
+    #[cfg(feature = "hub-update-qa")]
+    Context::from_qa_env(&root)
+        .and_then(|context| context.validate_root(&root))
+        .map_err(io_error)?;
     let (data, image) = data(&root)?;
     if std::env::var_os("VANTARE_NATIVE_DATA_ROOT").as_deref() != Some(data.as_os_str()) {
         return Err(io_error("Raíz de datos de sesión incompatible"));
@@ -448,7 +453,15 @@ fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
     })
 }
 
+/// La autoridad TEST (`hub-update-qa`) solo opera bajo el guard QA, antes de leer nada.
+#[cfg(feature = "hub-update-qa")]
+fn qa_root(root: &Path) -> io::Result<()> {
+    vantare_installer::engine::context::qa_path(root).map_err(io_error)
+}
+
 pub(super) fn apply(root: &Path) -> io::Result<ExitCode> {
+    #[cfg(feature = "hub-update-qa")]
+    qa_root(root)?;
     let pending = root.join("staging/pending.json");
     let bytes = fs::read(&pending)?;
     if bytes.len() > 65536 {
@@ -502,6 +515,8 @@ pub(super) fn stage_with(
         Option<&str>,
     ) -> io::Result<Option<super::hub_update_feed::Downloaded>>,
 ) -> io::Result<()> {
+    #[cfg(feature = "hub-update-qa")]
+    qa_root(root)?;
     let (view, _) = active(root)?;
     let current = view.manifest.as_ref().expect("active manifest");
     if current.channel != "beta" {

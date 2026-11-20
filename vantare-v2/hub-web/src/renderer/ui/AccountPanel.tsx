@@ -258,7 +258,7 @@ export function AccountPanel({
           <Icon name="v-studio" />
           <TrackedCaps>{text.modules}</TrackedCaps>
         </h2>
-        <p>{text.modulesHelp}</p>
+        <p>{strategyOpen ? text.modulesHelpTesting : text.modulesHelp}</p>
         <div>
           {value.modules.map((module) => {
             const copy = accountModules[module.id];

@@ -509,5 +509,11 @@ it.each([
     });
     await waitFor(() => expect(pill("Estrategia")).toBe(expected));
     expect(pill("Ingeniero")).toBe(text.soon);
+    // the help line under «Módulos» agrees with the card
+    const help = document.querySelector(".v-account-modules > p")?.textContent;
+    expect(help).toBe(
+      expected === text.inTesting ? text.modulesHelpTesting : text.modulesHelp,
+    );
+    expect(text.modulesHelpTesting).not.toBe(text.modulesHelp);
   },
 );

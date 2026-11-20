@@ -32,6 +32,9 @@ export const accountText = {
   modules: "Módulos",
   modulesHelp:
     "Acceso gratuito durante la beta. Estrategia e Ingeniero estarán disponibles próximamente.",
+  // with Estrategia open (beta on nightly)
+  modulesHelpTesting:
+    "Acceso gratuito durante la beta. Estrategia está en pruebas en la versión nightly e Ingeniero estará disponible próximamente.",
   included: "Incluido",
   soon: "Próximamente",
   inTesting: "En pruebas",

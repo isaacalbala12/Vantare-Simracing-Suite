@@ -11,6 +11,7 @@ import {
   recordingZone,
 } from "../../app/analysis-dates";
 import { orderedSessions, recordingBestTime } from "../../app/analysis-laps";
+import { folderUnusable } from "../../app/analysis-recording-status";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import {
   date,
@@ -339,6 +340,13 @@ export function AnalysisCatalog({
             </div>
           </>
         ) : null
+      ) : state.error && folderUnusable(state.recordingStatus) ? (
+        // Not a passing failure: trying again would not turn a link into a folder.
+        <AnalysisNotice
+          icon="stop"
+          title={recordingStatusText.folderUnusable}
+          help={recordingStatusText.folderUnusableHelp}
+        />
       ) : state.error ? (
         <AnalysisNotice icon="x" title={t.catalogTitle} help={t.catalogHelp}>
           <Button onClick={controller?.load}>{t.retry}</Button>

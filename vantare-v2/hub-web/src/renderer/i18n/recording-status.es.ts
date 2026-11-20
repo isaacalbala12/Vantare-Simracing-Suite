@@ -34,7 +34,7 @@ export const recordingStatusText = {
   stoppedHelp:
     "La grabación se ha detenido. Se volverá a intentar la próxima vez que arranque Vantare.",
   folderUnusableHelp:
-    "La carpeta de grabaciones es un enlace, una unión o un archivo, y Vantare no la usa. Las grabaciones están desactivadas. Para activarlas, deja «recordings» como una carpeta normal dentro de la instalación.",
+    "La carpeta de grabaciones es un enlace, una unión o un archivo, y Vantare no la usa. Las grabaciones están desactivadas. Para activarlas, deja «recordings» como una carpeta normal dentro de la instalación y vuelve a abrir Vantare.",
   limitHelp:
     "Para seguir grabando, Vantare borra las grabaciones más antiguas.",
   disabledHelp:

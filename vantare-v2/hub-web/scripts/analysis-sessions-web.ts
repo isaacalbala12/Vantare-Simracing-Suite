@@ -110,7 +110,7 @@ export async function checkAnalysisSessions(
             await page
               .getByRole("heading", { name: "Spa · Porsche 911 GT3 R · GT3" })
               .waitFor();
-            await assertSessionColumns(table, 9);
+            await assertSessionColumns(table, 8);
             await page
               .locator(".v-an-stats")
               .getByText("1:51.625", { exact: true })
@@ -135,7 +135,7 @@ export async function checkAnalysisSessions(
         }
         if (name === "sessions-dark-900") {
           await page.setViewportSize({ width: 720, height: 1400 });
-          await assertSessionColumns(page.locator(".v-an-laps"), 6);
+          await assertSessionColumns(page.locator(".v-an-laps"), 8);
           await page.setViewportSize({ width, height: 1400 });
         }
         const report = await new AxeBuilder({ page })

@@ -1,5 +1,6 @@
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
 import { comparisonScene } from "./analysis-comparison-scene";
+import { sectorsData } from "./analysis-sectors-scene";
 import type { MockContext } from "./context";
 import { create } from "./modules/analysis";
 export const analysisQaNow = Date.UTC(2026, 10, 17, 12);
@@ -244,6 +245,18 @@ export function analysisScene(context: MockContext, clock = Date.now) {
           if (crossSessions) laps[0].session = 0;
         }
         return answer;
+      }
+      if (name.startsWith("sectors-")) {
+        const original = mock({
+          ...value,
+          request: { method: "analysis.open", id: "a".repeat(64) },
+        });
+        if (
+          original?.kind === "response" &&
+          original.result.method === "analysis.open"
+        )
+          Object.assign(original.result, sectorsData(name.slice(8)));
+        return original;
       }
       if (name === "opening") {
         pendingOpen = id;

@@ -1,0 +1,112 @@
+import assert from "node:assert/strict";
+import AxeBuilder from "@axe-core/playwright";
+import type { Page } from "playwright-core";
+import { analysisQaNow } from "../src/mock/analysis-scenes.ts";
+import { analysisText as t } from "../src/renderer/i18n/analysis.es.ts";
+
+type Scene = "con" | "mezcla" | "v1";
+export type Case = {
+  scene: Scene;
+  view: "vueltas";
+  width: 1280 | 900;
+  theme: "dark" | "light";
+  rail?: "collapsed";
+};
+export async function open(page: Page, base: string, test: Case) {
+  await page.setViewportSize({ width: test.width, height: 1400 });
+  await page.goto(`${base}?escena=analysis-qa-sectors-${test.scene}`);
+  await page.getByRole("tab", { name: t.recordings, exact: true }).waitFor();
+  if (test.theme === "light") {
+    await page
+      .getByRole("button", { name: "Cambiar tema claro u oscuro", exact: true })
+      .click();
+    await page.waitForFunction(
+      () => document.documentElement.dataset.scheme === "light",
+    );
+  }
+  await page
+    .getByRole("button", { name: /Circuito sin identificar/ })
+    .nth(1)
+    .click();
+  await page.locator(".v-an-laps").waitFor();
+  if (test.rail)
+    await page
+      .getByRole("button", { name: "Contraer o ampliar información" })
+      .click();
+}
+
+export async function checkVueltas(page: Page, test: Case) {
+  const table = page.locator(".v-an-laps");
+  const headings = await table.locator("thead th:visible").allTextContents();
+  const sectors = test.scene !== "v1";
+  const wide = test.rail === "collapsed";
+  assert.deepEqual(headings.slice(0, 2), [t.lap, t.time]);
+  assert.equal(headings.includes("S1"), sectors, "S1–S3 solo con sectores");
+  assert.equal(
+    headings.length,
+    sectors ? (wide ? 12 : 8) : 9,
+    `columnas visibles ${headings.join("|")}`,
+  );
+  if (sectors) assert.deepEqual(headings.slice(2, 5), ["S1", "S2", "S3"]);
+  if (test.scene === "mezcla")
+    assert.deepEqual(
+      await table
+        .locator('th[scope="rowgroup"]:visible')
+        .evaluateAll((cells) =>
+          cells.map((cell) => (cell as HTMLTableCellElement).colSpan),
+        ),
+      [wide ? 12 : 8, wide ? 12 : 8],
+    );
+  assert.equal(
+    await table.evaluate(
+      (el) => el.scrollWidth <= (el.parentElement?.clientWidth ?? 0) + 1,
+    ),
+    true,
+    "la tabla cabe en su contenedor",
+  );
+  assert.equal(
+    await table.locator(".v-an-sector-best").count(),
+    sectors ? 3 : 0,
+  );
+  if (test.scene === "con") {
+    for (const n of [1, 2, 3])
+      assert.equal(await table.getByText(t.bestSectorHidden(n)).count(), 1);
+    await table.getByText("41.096", { exact: true }).waitFor();
+    await table.getByText("1:02.091", { exact: true }).waitFor();
+  }
+  if (test.scene === "mezcla") {
+    await table.getByText(t.noSectorsGiven).waitFor();
+    await page.getByText(t.approximateNoSectors).waitFor();
+  }
+  if (test.scene === "v1")
+    await page.getByText(t.recordingWithoutSectors).waitFor();
+  else await page.getByText(t.sectorLegend(false)).waitFor();
+}
+
+const ci: Case[] = [
+  { scene: "con", view: "vueltas", width: 1280, theme: "dark" },
+  { scene: "con", view: "vueltas", width: 900, theme: "dark" },
+  {
+    scene: "con",
+    view: "vueltas",
+    width: 1280,
+    theme: "dark",
+    rail: "collapsed",
+  },
+  { scene: "mezcla", view: "vueltas", width: 1280, theme: "light" },
+  { scene: "v1", view: "vueltas", width: 900, theme: "dark" },
+];
+/** Sectores por vuelta (VANTA-138): columnas, marca, notas y «Por sector». */
+export async function checkAnalysisSectors(page: Page, base: string) {
+  await page.clock.setFixedTime(analysisQaNow);
+  for (const test of ci) {
+    const name = [test.view, test.scene, test.theme, test.width, test.rail]
+      .filter(Boolean)
+      .join("-");
+    console.log(name);
+    await open(page, base, test);
+    await checkVueltas(page, test);
+    const report = await new AxeBuilder({ page }).include(".v-shell").analyze();
+    assert.deepEqual(report.violations, [], name);
+  }
+}

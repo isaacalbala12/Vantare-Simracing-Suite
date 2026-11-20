@@ -17,6 +17,29 @@ type LapKey = (u64, u64, u32, u32);
 const MAX_OFFICIAL_LAPS: usize = 8192;
 const MAX_SAFE_INTEGER: u64 = (1 << 53) - 1;
 
+/// Diferencia máxima, en ms, entre la suma de los tres sectores y el tiempo
+/// oficial de la vuelta. Cada valor llega redondeado por separado a ms: los
+/// tres redondeos de sector y el de la vuelta pueden sumar hasta 2 ms con datos
+/// correctos; más que eso indica una conversión mal hecha.
+const SECTOR_SUM_TOLERANCE_MS: u64 = 2;
+
+/// Única regla de validez de los sectores de una vuelta (los sectores reales de
+/// LMU aún no se han comprobado con el juego): solo con tiempo oficial,
+/// exactamente 3 valores, todos mayores que 0, y que sumen ese tiempo. Si algo
+/// falla, la vuelta va «sin sectores» y la pantalla no tiene nada que validar.
+pub(super) fn valid_sectors(lap_ms: Option<u32>, sectors: Option<&[u32]>) -> Option<Vec<u32>> {
+    let lap_ms = u64::from(lap_ms?);
+    let &[first, second, third] = sectors? else {
+        return None;
+    };
+    let sum: u64 = [first, second, third].into_iter().map(u64::from).sum();
+    (first > 0
+        && second > 0
+        && third > 0
+        && sum.abs_diff(lap_ms) <= SECTOR_SUM_TOLERANCE_MS)
+        .then(|| vec![first, second, third])
+}
+
 pub(super) fn session_indices(
     sessions: &[SessionSummary],
 ) -> Result<BTreeMap<SessionKey, u32>, HostError> {
@@ -132,3 +155,7 @@ pub(super) fn official_times(
     }
     Ok(official)
 }
+
+#[cfg(test)]
+#[path = "metadata_tests.rs"]
+mod tests;

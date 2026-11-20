@@ -623,3 +623,103 @@ describe("the texts of the tyres", () => {
     expect(orphans).toEqual([]);
   });
 });
+
+// Pulido tras la pantalla de neumáticos (#2765)
+const fuelByHand = (stop: number) =>
+  fireEvent.click(
+    within(
+      screen.getByRole("group", {
+        name: `Combustible de la parada ${stop}: cómo se decide`,
+      }),
+    ).getByRole("radio", { name: "A mano" }),
+  );
+
+describe("pulido de la pantalla de neumáticos", () => {
+  it("«igual» con solo cantidades fijadas no da la regla de las ruedas", async () => {
+    await stops("plannedFujiLongLife", undefined, withAutomatic(0));
+    pick(2, 85);
+    fuelByHand(2);
+    await recalculate();
+    expect(line(/tarda lo mismo que el plan automático/)).toBeTruthy();
+    expect(screen.queryByText(/solo ahorra tiempo cuando/)).toBeNull();
+  });
+
+  it("la fila de ruedas se bloquea mientras se recalcula", async () => {
+    await stops("plannedFujiRecalculating");
+    pick(2, 85);
+    fireEvent.click(keep(2));
+    await heading("Plan modificado");
+    click("Recalcular");
+    await heading("Recalculando…");
+    expect((tyres(2) as HTMLFieldSetElement).disabled).toBe(true);
+  });
+
+  it("sin parada señalada, «Volver todo a automático» existe en la pantalla y quita lo fijado", async () => {
+    const request = await stops("plannedFuji", undefined, (view) => {
+      if (view.plan.edit?.cause) view.plan.edit.cause = null;
+      return view;
+    });
+    pick(2, 85);
+    fireEvent.click(keep(2));
+    await heading("Plan modificado");
+    click("Recalcular");
+    await screen.findByRole("alert");
+    click("Volver todo a automático");
+    await waitFor(() =>
+      expect(
+        request.mock.calls.some(
+          ([r]) => r.method === "strategy.clearStopServices",
+        ),
+      ).toBe(true),
+    );
+    await waitFor(() => expect(screen.queryByText("fijado por ti")).toBeNull());
+  });
+
+  it("con una sola vuelta dice «vuelta», no «vueltas»", async () => {
+    await stops("plannedFujiLongLife", undefined, (view) => {
+      const stop = view.plan.edit?.stops[1];
+      if (stop) {
+        stop.tyres.arrivalLaps = 1;
+        stop.tyres.keptLaps = 1;
+      }
+      return view;
+    });
+    pick(2, 85);
+    expect(screen.getByText(/^Las de ahora llegan con 1 vuelta;/)).toBeTruthy();
+    fireEvent.click(keep(2));
+    expect(
+      await screen.findByText(
+        /^Sin cambiar, llegarían a la parada 3 con 1 vuelta;/,
+      ),
+    ).toBeTruthy();
+  });
+
+  it.each([
+    [1, "1 vuelta"],
+    [2, "2 vueltas"],
+  ])("los textos de neumáticos con %s vuelta(s)", (laps, said) => {
+    const t = amounts.tyres;
+    expect(t.arrival(laps, null)).toContain(`con ${said}.`);
+    expect(t.kept("a meta", laps, null)).toContain(`con ${said}.`);
+    expect(t.beyondLife("a meta", laps, null)).toContain(`con ${said}.`);
+    expect(amounts.noPlan.tyres(2, "a meta", laps, null)).toContain(
+      `con ${said}.`,
+    );
+  });
+
+  it("la cabecera distingue «Cambiar» (true) de «No cambiar» (false) con una cantidad", async () => {
+    await stops("plannedFujiLongLife", undefined, (view) => {
+      const stop = view.plan.edit?.stops[1];
+      if (stop) stop.fixed.changeTyres = true;
+      return view;
+    });
+    pick(2, 85);
+    fuelByHand(2);
+    expect(
+      await screen.findByText(
+        /^En la parada 2 has fijado .* y «Cambiar» en los neumáticos\.$/,
+      ),
+    ).toBeTruthy();
+    expect(screen.queryByText(/«No cambiar» en los neumáticos/)).toBeNull();
+  });
+});

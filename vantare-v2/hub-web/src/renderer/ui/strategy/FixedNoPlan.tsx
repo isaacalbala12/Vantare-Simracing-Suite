@@ -23,6 +23,7 @@ export function FixedNoPlan({
   locked,
   set,
   back,
+  clear,
 }: {
   edit: StrategyEditView;
   steps: StrategyServiceSteps;
@@ -32,6 +33,8 @@ export function FixedNoPlan({
   set: AmountActions["setStopService"];
   // the stop the host points at goes back to automatic
   back: (stop: number) => void;
+  // everything fixed goes back to automatic; given when something is fixed
+  clear?: () => void;
 }) {
   const cause = edit.cause?.stop;
   const [selected, setSelected] = useState(
@@ -78,6 +81,18 @@ export function FixedNoPlan({
                 ? n.generic
                 : (tyres?.noPlan ?? n.stop(cause + 1))}
             </p>
+            {cause === undefined && clear && (
+              <div className="strategy-actions">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  disabled={locked}
+                  onClick={clear}
+                >
+                  {amounts.clear}
+                </Button>
+              </div>
+            )}
             {cause !== undefined && (
               <div className="strategy-actions">
                 <Button

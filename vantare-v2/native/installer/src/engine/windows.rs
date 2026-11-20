@@ -333,20 +333,47 @@ pub fn registry_exists(prefix: &str, path: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // A passing test leaves nothing in the shared QA root; a failed one keeps its tree.
+    struct Cleanup(PathBuf);
+    impl Drop for Cleanup {
+        fn drop(&mut self) {
+            if !std::thread::panicking() {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+    }
     #[test]
     fn environment_shortcut_target_is_expanded_instead_of_returning_raw_path() {
-        let variable = if std::env::var("CI").as_deref() == Ok("true") {
-            "RUNNER_TEMP"
+        // The queue points TEMP outside the QA guard, so local runs use the shared QA root.
+        let (variable, parent) = if std::env::var("CI").as_deref() == Ok("true") {
+            (
+                "RUNNER_TEMP",
+                PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root")),
+            )
         } else {
-            "TEMP"
+            if !Path::new("D:/VantareServer/qa").is_dir() {
+                eprintln!(
+                    "omitido: no existe la raíz QA D:/VantareServer/qa; este test solo corre en el servidor o en CI"
+                );
+                return;
+            }
+            let variable = "VANTARE_QA_SHORTCUT_ROOT";
+            let parent = PathBuf::from("D:/VantareServer/qa/isa-1840");
+            std::fs::create_dir_all(&parent).expect("QA parent");
+            // SAFETY: the name is exclusive to this test and only this test reads it
+            // (through the shell expansion below). On Windows `set_var` calls
+            // SetEnvironmentVariableW, which is thread-safe at system level, and the
+            // queue and CI run nextest (one process per test).
+            unsafe { std::env::set_var(variable, &parent) };
+            (variable, parent)
         };
-        let parent = PathBuf::from(std::env::var_os(variable).expect("QA temporary root"));
         let name = format!(
             "Vantare link env {}",
             super::super::write_fs::id().expect("ID")
         );
         let root = parent.join(&name);
         super::super::context::qa_path(&root).expect("QA guard");
+        let _cleanup = Cleanup(root.clone());
         std::fs::create_dir_all(&root).expect("owned root");
         let target = root.join("fixture.exe");
         std::fs::write(&target, b"inert fixture").expect("owned target");

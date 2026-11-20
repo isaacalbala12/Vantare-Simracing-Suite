@@ -24,13 +24,11 @@ export function AccountRail({ value, pending, demo, act }: AccountPanelProps) {
   const rows = [
     [
       text.state,
-      demo
-        ? text.demoActive
-        : value.sessionNotice
-          ? text.reauthenticate
-          : signedIn
-            ? text.sessionConnected
-            : text.signedOut,
+      value.sessionNotice
+        ? text.reauthenticate
+        : signedIn
+          ? text.sessionConnected
+          : text.signedOut,
     ],
     [text.lastAccess, text.unknown],
     [text.duringBeta, text.freeBeta],
@@ -45,9 +43,7 @@ export function AccountRail({ value, pending, demo, act }: AccountPanelProps) {
             <div key={label}>
               <dt>{label}</dt>
               <dd>
-                {index === 0 && (
-                  <i className={signedIn || demo ? "is-active" : ""} />
-                )}
+                {index === 0 && <i className={signedIn ? "is-active" : ""} />}
                 {content}
               </dd>
             </div>

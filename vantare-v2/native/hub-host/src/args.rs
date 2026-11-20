@@ -132,7 +132,7 @@ mod tests {
     use super::*;
     #[cfg(windows)]
     #[test]
-    fn the_recordings_folder_must_be_local_inside_the_installation_and_free_of_links() {
+    fn the_recordings_folder_must_be_local_and_inside_the_installation() {
         use std::os::windows::fs::symlink_dir;
         let name = format!("vantare-host-recordings-{}", std::process::id());
         let base = std::env::temp_dir().join(name);
@@ -153,9 +153,25 @@ mod tests {
         for spelling in [&single, &shouted] {
             assert!(parse(spelling, Some(&root)).is_ok(), "{spelling:?}");
         }
+        // A link is not a reason to stop the whole Hub: the argument is taken
+        // and Analysis alone refuses the folder, every time it reads it.
         let (link, back) = (root.join("enlace"), root.join("vuelta"));
         symlink_dir(&outside, &link).expect("link to the outside");
         symlink_dir(&root, &back).expect("link back to the root");
+        for linked in [
+            link.clone(),
+            link.join("recordings"),
+            back.join("recordings"),
+        ] {
+            let named = parse(&linked, Some(&root)).expect("links are left to the reading");
+            let read = crate::analysis::recordings(&named.recordings());
+            let refused = read.map_err(|error| error.code);
+            assert_eq!(
+                refused,
+                Err(crate::analysis::ErrorCode::Unreadable),
+                "{linked:?}"
+            );
+        }
         for (value, why) in [
             (root.clone(), "the root itself"),
             (outside.join("recordings"), "outside"),
@@ -164,9 +180,6 @@ mod tests {
                 "a neighbour with the same start",
             ),
             (single.join("../../fuera"), "dots"),
-            (link.clone(), "a link"),
-            (link.join("recordings"), "through a link"),
-            (back.join("recordings"), "through a link back to the root"),
             (r"\\servidor\recurso\recordings".into(), "a network path"),
             (
                 format!(r"\\?\{}", single.display()).into(),

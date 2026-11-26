@@ -34,7 +34,10 @@ export async function checkAccountLicense(
     await page.evaluate(() => document.fonts.ready);
   };
   const pill = (name: string) =>
-    page.locator(".v-account-pill").getByText(name, { exact: true });
+    page
+      .getByRole("region", { name: "Isaac Albalá" })
+      .locator(".v-account-pill")
+      .getByText(name, { exact: true });
   for (const scheme of ["dark", "light"]) {
     await open(scheme, "cuenta-transicion");
     await pill(text.unverified).waitFor();

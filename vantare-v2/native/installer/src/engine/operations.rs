@@ -12,6 +12,7 @@ use std::{
     fs, io,
     path::{Path, PathBuf},
     sync::atomic::{AtomicBool, Ordering},
+    time::{Duration, Instant},
 };
 
 pub struct Package<'a> {
@@ -733,6 +734,14 @@ pub fn confirm(root: &Path) -> Result<()> {
 /// `confirm`, handing the caller the log of the generations left without a
 /// reference: what was retired and what was kept, with its path and reason.
 pub fn confirm_reporting(root: &Path, note: &mut dyn FnMut(&str)) -> Result<()> {
+    confirm_within(root, GATHER_BUDGET, note)
+}
+/// Confirm runs with the Hub open while the launcher holds its locks: the
+/// recordings are compared for this long at most, and what is left waits,
+/// untouched, for the next sweep (#2746, condition 9).
+pub const GATHER_BUDGET: Duration = Duration::from_secs(30);
+/// `confirm_reporting` with its own limit for gathering the recordings.
+pub fn confirm_within(root: &Path, budget: Duration, note: &mut dyn FnMut(&str)) -> Result<()> {
     let root = disk::open_root(root, false)?;
     let _operation = disk::lock(&root, ".operation.lock")?;
     let note = &mut logged(&root, note);
@@ -757,6 +766,18 @@ pub fn confirm_reporting(root: &Path, note: &mut dyn FnMut(&str)) -> Result<()> 
     // confirmation, and no earlier step retires a generation.
     match installation::read_state(&root) {
         Ok(Some(document)) if references_bound(&document) => {
+            let deadline = Instant::now().checked_add(budget);
+            let mut within = |_: &str| {
+                ensure(
+                    deadline.is_none_or(|deadline| Instant::now() < deadline),
+                    "se acabó el tiempo de Confirm",
+                )
+            };
+            if let Err(error) = gather(&root, &document.state, &mut within, note) {
+                note(&format!(
+                    "Grabaciones: se sigue en la siguiente recogida; motivo: {error}"
+                ));
+            }
             retire_orphans(&root, &document.state, note);
         }
         _ => note(&kept(
@@ -1172,6 +1193,13 @@ pub fn uninstall(
         }
         disk::write_json(&retained, &saved)?;
     }
+    // Before anything is retired and while `state.json` still names `previous`.
+    gather(
+        &root,
+        &state,
+        control.checkpoint,
+        &mut logged(&root, control.warning),
+    )?;
     for (_, directory, manifest) in owned {
         installation::walk(&directory, false)?;
         // Manifest last: an interrupted retirement can resume from the binding.
@@ -1253,15 +1281,20 @@ pub fn adopt_recordings(
         &document.state,
         generation,
         duplicates,
+        false,
         checkpoint,
         note,
     )
 }
+/// `sweep`: Confirm and Uninstall gathering from every generation (ADR 0111
+/// T3). They move only a recording whose header says it is whole, and write
+/// one note per reason, as the session does.
 fn adopt(
     root: &Path,
     state: &State,
     generation: &str,
     duplicates: Duplicates,
+    sweep: bool,
     checkpoint: &mut dyn FnMut(&str) -> Result<()>,
     note: &mut dyn FnMut(&str, bool),
 ) -> Result<Adoption> {
@@ -1290,7 +1323,9 @@ fn adopt(
         Vec::new()
     };
     // The session finds what stays again at every start: one note per reason,
-    // written to the log once. Confirm and Uninstall keep one note per file.
+    // written to the log once. The sweep writes one note per reason too, so
+    // that many generations do not rotate the log; a direct call, one per file.
+    let summarize = sweep || duplicates == Duplicates::Keep;
     let mut stays = BTreeMap::<String, Vec<&str>>::new();
     for (name, is_file) in &listed {
         if name == "recording-status.json" {
@@ -1314,7 +1349,10 @@ fn adopt(
                 Err(error) => Err(unavailable("la grabación")(error)),
                 Ok(file) => {
                     checkpoint("adopt-move")?;
-                    move_recording(&file, name, &source, &single).map(|()| adoption.moved += 1)
+                    let whole = if sweep { intact(&file) } else { Ok(()) };
+                    whole
+                        .and_then(|()| move_recording(&file, name, &source, &single))
+                        .map(|()| adoption.moved += 1)
                 }
             }
         } else if duplicates == Duplicates::Keep {
@@ -1325,7 +1363,7 @@ fn adopt(
         };
         if let Err(reason) = outcome {
             adoption.kept += 1;
-            if duplicates == Duplicates::Keep {
+            if summarize {
                 stays.entry(reason).or_default().push(name);
             } else {
                 let path = path.display();
@@ -1348,7 +1386,7 @@ fn adopt(
             &format!(
                 "Grabaciones de {source}: se conservan {count} ({shown}{more}); motivo: {reason}"
             ),
-            true,
+            duplicates == Duplicates::Keep,
         );
     }
     if adoption.moved + adoption.duplicates > 0 {
@@ -1433,4 +1471,132 @@ fn remove_identical(path: &Path, target: &Path) -> std::result::Result<(), Strin
         return Err("su contenido es distinto del de la carpeta única".to_owned());
     }
     windows::delete_open(&copy).map_err(|error| format!("no se pudo retirar la copia ({error})"))
+}
+/// A DuckDB file is a header block with its mark, two database headers and the
+/// blocks the newest header counts. A copy cut short, or one that never reached
+/// the disk, does not pass, and stays where it is (#2746, condition 6). Checked
+/// against two real files of the DuckDB in use: 12 288 bytes with no blocks,
+/// and five blocks of 16 384.
+fn intact(mut file: &fs::File) -> std::result::Result<(), String> {
+    const HEADERS: u64 = 3 * 4096;
+    let broken = || "no es una grabación completa: puede ser una copia cortada".to_owned();
+    let mut head = [0_u8; 3 * 4096];
+    io::Read::read_exact(&mut file, &mut head).map_err(|_| broken())?;
+    let word = |at: usize| u64::from_le_bytes(head[at..at + 8].try_into().expect("eight bytes"));
+    // checksum, iteration, meta block, free list, block count, block size.
+    let newest = if word(8192 + 8) > word(4096 + 8) {
+        8192
+    } else {
+        4096
+    };
+    let (blocks, size) = (word(newest + 32), word(newest + 40));
+    let length = file.metadata().map_err(|_| broken())?.len();
+    let counted = blocks
+        .checked_mul(size)
+        .and_then(|bytes| bytes.checked_add(HEADERS))
+        .is_some_and(|expected| length >= expected);
+    if &head[8..12] == b"DUCK" && size >= 4096 && size.is_power_of_two() && counted {
+        Ok(())
+    } else {
+        Err(broken())
+    }
+}
+/// Generations a sweep never gathers from: `None` when `boot-pending.json`
+/// cannot be read, so that nothing is gathered (ADR 0111 T3).
+fn staged(root: &Path) -> Option<Option<String>> {
+    match disk::read_optional(&root.join("boot-pending.json"), Some(4096)) {
+        Ok(None) => Some(None),
+        Ok(Some(marker)) => marker["stagedGeneration"]
+            .as_str()
+            .filter(|id| validation::hex(id, 32))
+            .map(|id| Some(id.to_owned())),
+        Err(_) => None,
+    }
+}
+/// ADR 0111 T3: after a confirmed boot and while uninstalling, the active
+/// generation and then the orphans, newest first, bring their recordings to
+/// the single folder: a recording only if whole, and a repeated copy is
+/// removed only when its hash matches. Never `previous`, never the generation
+/// an unconfirmed update staged. Doubts stay with a note; only a cut of
+/// `checkpoint` is returned, and the next sweep continues where it stopped.
+fn gather(
+    root: &Path,
+    state: &State,
+    checkpoint: &mut dyn FnMut(&str) -> Result<()>,
+    note: &mut dyn FnMut(&str),
+) -> Result<()> {
+    let kept = |reason: &dyn std::fmt::Display| {
+        format!("Grabaciones: no se recogen de las generaciones; motivo: {reason}")
+    };
+    let Some(staged) = staged(root) else {
+        note(&kept(
+            &"boot-pending.json no se puede leer o no nombra su generación",
+        ));
+        return Ok(());
+    };
+    // A link, a junction or a file there is never used (T2b): said once.
+    match disk::path(&root.join("recordings")) {
+        Ok(single) if single.try_exists().is_ok_and(|exists| !exists) || single.is_dir() => {}
+        Ok(_) => {
+            note(&kept(&"la carpeta única de grabaciones no es una carpeta"));
+            return Ok(());
+        }
+        Err(error) => {
+            note(&kept(&error));
+            return Ok(());
+        }
+    }
+    let listed = match generations(root) {
+        Ok(listed) => listed,
+        Err(error) => {
+            note(&kept(&error));
+            return Ok(());
+        }
+    };
+    let named = |id: &str, reference: Option<&Generation>| {
+        reference.is_some_and(|reference| reference.generation.eq_ignore_ascii_case(id))
+    };
+    let mut orphans: Vec<_> = listed
+        .into_iter()
+        .filter(|(id, _)| {
+            validation::hex(id, 32)
+                && !named(id, Some(&state.active))
+                && !named(id, state.previous.as_ref())
+        })
+        .map(|(id, directory)| {
+            let created = fs::metadata(&directory)
+                .and_then(|metadata| metadata.created())
+                .unwrap_or(std::time::UNIX_EPOCH);
+            (std::cmp::Reverse(created), id)
+        })
+        .collect();
+    orphans.sort();
+    let order = std::iter::once(state.active.generation.clone())
+        .chain(orphans.into_iter().map(|(_, id)| id))
+        .filter(|id| {
+            staged
+                .as_deref()
+                .is_none_or(|staged| !staged.eq_ignore_ascii_case(id))
+        });
+    for id in order {
+        let mut cut = false;
+        let mut step = |point: &str| checkpoint(point).inspect_err(|_| cut = true);
+        let result = adopt(
+            root,
+            state,
+            &id,
+            Duplicates::RemoveIdentical,
+            true,
+            &mut step,
+            &mut |text: &str, _: bool| note(text),
+        );
+        match result {
+            Err(error) if cut => return Err(error),
+            Err(error) => note(&format!(
+                "Grabaciones de la generación {id}: no se recogen; motivo: {error}"
+            )),
+            Ok(_) => {}
+        }
+    }
+    Ok(())
 }

@@ -309,12 +309,36 @@ pub fn copy_data(source: &Path, destination: &Path) -> Result<()> {
                 fs::create_dir_all(parent)?;
             }
             super::windows::copy_new(&source.join(relative), &target)?;
+            flush(&target)?;
         }
     }
     ensure(
         data_index(source)? == before && data_index(destination)? == before,
         "Los datos cambiaron durante la copia; no se activa la generación",
     )
+}
+/// A copy reaches the disk before its hash is trusted and the generation is
+/// activated: after a power cut it is whole, never a file of zeros with the
+/// name of a recording (#2746, condition 11). `CopyFileW` copies the read-only
+/// attribute, which is lifted for a moment to open the copy for writing.
+pub fn flush(path: &Path) -> Result<()> {
+    let read_only = |value: bool| -> io::Result<()> {
+        let mut permissions = fs::metadata(path)?.permissions();
+        permissions.set_readonly(value);
+        fs::set_permissions(path, permissions)
+    };
+    let locked = fs::metadata(path)?.permissions().readonly();
+    if locked {
+        read_only(false)?;
+    }
+    let flushed = fs::OpenOptions::new()
+        .write(true)
+        .open(path)
+        .and_then(|file| file.sync_all());
+    if locked {
+        read_only(true)?;
+    }
+    Ok(flushed?)
 }
 pub fn generation(root: &Path, id: &str) -> Result<PathBuf> {
     ensure(validation::hex(id, 32), "Referencia de generación inválida")?;

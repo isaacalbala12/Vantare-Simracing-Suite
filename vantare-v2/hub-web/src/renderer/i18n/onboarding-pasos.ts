@@ -1,3 +1,5 @@
+import { perMonth } from "./plan-price";
+
 export const onboardingStepsText = {
   normalPrice: "Precio normal: ",
   externalPage: "Abre una página externa en el navegador.",
@@ -7,10 +9,10 @@ export const onboardingStepsText = {
   firstMonth: "PRIMER MES",
   pro: "PRO",
   plus: "PRO PLUS",
-  proPrice: "3,99 €",
-  proNormal: "5,99 €",
-  plusPrice: "6,99 €",
-  plusNormal: "9,99 €",
+  proPrice: perMonth("3,99 €"),
+  proNormal: perMonth("5,99 €"),
+  plusPrice: perMonth("6,99 €"),
+  plusNormal: perMonth("9,99 €"),
   proFeatures: [
     "Todos los widgets",
     "Sin la marca Vantare",

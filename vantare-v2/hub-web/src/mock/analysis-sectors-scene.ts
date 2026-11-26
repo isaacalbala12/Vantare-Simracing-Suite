@@ -111,3 +111,34 @@ export function sectorsData(variant: string) {
   }
   return { sessions: data.sessions, laps };
 }
+/**
+ * Tiempo transcurrido de una vuelta de estas escenas al recorrer `fraction` (0–1) de la pista.
+ * Con sectores oficiales en A y B, cada sector ocupa el mismo tramo en ambas (el de B) y el
+ * transcurrido de cada vuelta pasa por sus propios cortes; así la curva A−B cuadra con los
+ * sectores. Sin ellos, avanza en línea recta hasta el tiempo de vuelta (oficial o aproximado).
+ */
+export function sectorsElapsed(variant: string, a: number, b: number) {
+  const laps = sectorsData(variant).laps;
+  const [lapA, lapB] = [laps[a], laps[b]];
+  const total = (lap?: AnalysisLap) =>
+    (lap?.lapTimeMs ?? lap?.lapTimeApproxMs ?? 112_000) / 1000;
+  const split =
+    lapA?.sectorsMs && lapB?.sectorsMs
+      ? { a: lapA.sectorsMs, b: lapB.sectorsMs }
+      : undefined;
+  return (side: "a" | "b", fraction: number) => {
+    const lap = side === "a" ? lapA : lapB;
+    if (!split) return fraction * total(lap);
+    const sectors = split[side];
+    const share = split.b.map((ms) => ms / split.b.reduce((x, y) => x + y, 0));
+    let from = 0;
+    let elapsed = 0;
+    for (const [index, width] of share.entries()) {
+      if (fraction <= from + width || index === share.length - 1)
+        return elapsed + ((fraction - from) / width) * (sectors[index] / 1000);
+      from += width;
+      elapsed += sectors[index] / 1000;
+    }
+    return elapsed;
+  };
+}

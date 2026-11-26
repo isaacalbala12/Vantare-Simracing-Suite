@@ -96,6 +96,24 @@ pub fn real_user_folders() -> Result<Vec<PathBuf>> {
     .map(known_folder)
     .collect()
 }
+/// Nombre corto 8.3 de una ruta existente, si el volumen lo genera: los tests del guard
+/// construyen con él un alias del perfil real que como texto no se parece al largo.
+#[cfg(test)]
+pub fn short_path(path: &Path) -> Result<PathBuf> {
+    use std::os::windows::ffi::OsStringExt;
+    use windows::Win32::Storage::FileSystem::GetShortPathNameW;
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let mut buffer = vec![0_u16; 1024];
+    let length = unsafe { GetShortPathNameW(PCWSTR(wide.as_ptr()), Some(&mut buffer[..])) };
+    let length = usize::try_from(length).unwrap_or(0);
+    ensure(
+        length > 0 && length < buffer.len(),
+        "Windows no da nombre corto",
+    )?;
+    Ok(PathBuf::from(std::ffi::OsString::from_wide(
+        &buffer[..length],
+    )))
+}
 fn known_folder(id: GUID) -> Result<PathBuf> {
     let value = unsafe { SHGetKnownFolderPath(&raw const id, KF_FLAG_DONT_VERIFY, None) }
         .map_err(|cause| error(&cause))?;

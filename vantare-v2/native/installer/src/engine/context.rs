@@ -445,10 +445,17 @@ mod tests {
     /// un perfil con sus carpetas, un temporal fuera y un hermano de nombre parecido.
     struct Tree(PathBuf);
     impl Tree {
-        fn new() -> Self {
+        /// `None` (y lo dice) fuera de la CI si no existe la raíz QA del servidor.
+        fn new() -> Option<Self> {
             let parent = if std::env::var("CI").as_deref() == Ok("true") {
                 PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
             } else {
+                if !Path::new("D:/VantareServer/qa").is_dir() {
+                    eprintln!(
+                        "omitido: no existe la raíz QA D:/VantareServer/qa; este test solo corre en el servidor o en CI"
+                    );
+                    return None;
+                }
                 PathBuf::from("D:/VantareServer/qa/isa-2794")
             };
             let tree = Self(parent.join(disk::id().expect("ID")));
@@ -461,7 +468,7 @@ mod tests {
             ] {
                 std::fs::create_dir_all(tree.0.join(directory)).expect("tree");
             }
-            tree
+            Some(tree)
         }
         fn at(&self, relative: &str) -> PathBuf {
             self.0.join(relative)
@@ -488,7 +495,7 @@ mod tests {
 
     #[test]
     fn github_hosted_temporary_root_is_the_only_ci_prefix() {
-        let tree = Tree::new();
+        let Some(tree) = Tree::new() else { return };
         let folders = || Ok(tree.folders());
         for temp in ["a/_temp", "Users/runneradmin2/_temp"] {
             let temp = tree.at(temp);
@@ -518,7 +525,7 @@ mod tests {
 
     #[test]
     fn ci_prefix_never_reaches_real_user_folders_or_a_drive_root() {
-        let tree = Tree::new();
+        let Some(tree) = Tree::new() else { return };
         let folders = || Ok(tree.folders());
         let profile = tree.at("Users/runneradmin");
         let mut rejected = vec![
@@ -552,40 +559,56 @@ mod tests {
         assert_eq!(ci_prefix(hosted(&temp, &[]), || Ok(missing)), None);
     }
 
+    /// Perfil real (USERPROFILE): los scripts de CI cambian LOCALAPPDATA, APPDATA, TEMP y
+    /// TMP, pero no el perfil.
+    fn real_profile() -> PathBuf {
+        PathBuf::from(std::env::var_os("USERPROFILE").expect("USERPROFILE"))
+    }
+
     #[test]
     fn short_names_cannot_hide_the_real_profile() {
-        // En windows-latest %TEMP% ya viene con nombre corto (C:\Users\RUNNER~1\...):
-        // comparado como texto no se solaparía con el perfil real.
-        let temp = std::env::temp_dir();
-        let profile = std::env::var_os("USERPROFILE")
-            .map(PathBuf::from)
-            .expect("USERPROFILE");
-        let (Some(inside), Some(home)) = (canonical(&temp), canonical(&profile)) else {
-            panic!("temporal y perfil reales canonicalizables");
+        // Alias construido a propósito: en windows-latest el perfil tiene nombre corto
+        // (C:\Users\RUNNER~1), que como texto no se parece al largo.
+        let profile = real_profile();
+        let short = match super::super::windows::short_path(&profile) {
+            Ok(short) if short != profile => short,
+            other => {
+                // En CI el caso tiene que ejercitarse; fuera, se dice y no se da por probado.
+                assert!(
+                    std::env::var("CI").as_deref() != Ok("true"),
+                    "Windows no dio nombre corto del perfil en CI: {other:?}"
+                );
+                eprintln!("omitido: el volumen no da nombre corto del perfil ({other:?})");
+                return;
+            }
         };
-        if !inside.starts_with(&format!("{home}/")) {
-            eprintln!("omitido: el temporal de este proceso no está dentro del perfil ({temp:?})");
-            return;
-        }
+        assert_ne!(
+            short.to_string_lossy().to_lowercase(),
+            profile.to_string_lossy().to_lowercase()
+        );
         assert_eq!(
-            ci_prefix(hosted(&temp, &[]), super::super::windows::real_user_folders),
-            None
+            ci_prefix(
+                hosted(&short, &[]),
+                super::super::windows::real_user_folders
+            ),
+            None,
+            "{short:?}"
         );
     }
 
     #[test]
-    fn production_folder_list_covers_the_real_profile_and_local_app_data() {
+    fn production_folder_list_covers_the_real_profile() {
         let folders = super::super::windows::real_user_folders().expect("Windows known folders");
         assert_eq!(folders.len(), 5, "{folders:?}");
         let listed: Vec<_> = folders
             .iter()
             .map(|folder| canonical(folder).expect("canonical"))
             .collect();
-        // El entorno solo hace de oráculo independiente; el guard no lo lee.
-        for variable in ["USERPROFILE", "LOCALAPPDATA"] {
-            let expected =
-                canonical(Path::new(&std::env::var_os(variable).expect(variable))).expect(variable);
-            assert!(listed.contains(&expected), "{variable}: {listed:?}");
+        // El entorno solo es un oráculo independiente: el guard pregunta a Windows.
+        let home = canonical(&real_profile()).expect("profile");
+        assert_eq!(listed[0], home, "{listed:?}");
+        for folder in &listed[1..] {
+            assert!(folder.starts_with(&format!("{home}/")), "{folder}");
         }
     }
 

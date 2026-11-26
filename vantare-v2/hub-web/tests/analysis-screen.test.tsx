@@ -308,6 +308,46 @@ it.each([
   mount(bridge(scene), true, enabled);
   expect(await screen.findByText(text)).toBeTruthy();
 });
+it("says in the main area why there are no recordings when their folder is not a folder", async () => {
+  mount(bridge("status-folderUnusable"));
+  // The same clear message the status panel gives, where the user is looking.
+  const title = await screen.findByRole("heading", {
+    name: statusText.folderUnusable,
+  });
+  const notice = title.closest(".v-an-notice");
+  expect(notice?.textContent).toContain(statusText.folderUnusableHelp);
+  // Trying again does not turn a link into a folder: no such button, and no
+  // sign of the passing failure it is offered for.
+  expect(
+    screen.queryByRole("button", { name: "Volver a intentar" }),
+  ).toBeNull();
+  expect(
+    screen.queryByText("No se puede leer la carpeta de grabaciones"),
+  ).toBeNull();
+  // Announced once: the notice repeats the text, not the announcement.
+  expect(notice?.querySelector("[role=status], [role=alert]")).toBeNull();
+});
+it("shows the unusable folder as an error and measures no space without limits", async () => {
+  // Con grabaciones en la lista y un estado sin límites, el panel sigue
+  // diciendo por qué no se graba, en rojo, y no mide el espacio contra nada.
+  const unusable = bridge("status-folderUnusable");
+  const catalog = bridge();
+  mount(
+    vi.fn((request: AnalysisRequest) =>
+      request.method === "analysis.status"
+        ? unusable(request)
+        : catalog(request),
+    ),
+  );
+  const said = await screen.findByText(statusText.folderUnusable, {
+    selector: "[role=status]",
+  });
+  expect(said.closest(".v-badge")?.classList).toContain("v-badge--err");
+  await screen.findAllByText("Circuito sin identificar");
+  // Ni el bloque «Espacio» del panel ni la línea de uso de la tira.
+  expect(screen.queryByText(statusText.space)).toBeNull();
+  expect(document.body.textContent).not.toMatch(/\d\s+de\s+0\b/);
+});
 it("shows the loading skeleton after 300ms and cancels on unmount", async () => {
   vi.useFakeTimers();
   const request = vi.fn((r: AnalysisRequest) =>

@@ -458,9 +458,9 @@ Garantías:
 - **Solo toca dos carpetas**: la de grabaciones de la generación indicada (por
   su identificador de 32 hexadecimales) y `<raíz>/recordings/`, que crea al
   recibir la primera grabación y que hereda los permisos de la raíz.
-- **No sigue enlaces.** Como el resto del motor, se niega a trabajar si hay un
-  enlace o punto de reanálisis en la instalación, y cada grabación se abre como
-  ella misma, nunca a través de un enlace.
+- **No sigue enlaces.** Si la carpeta única es un enlace, una unión o un
+  archivo, no trae nada (ver «`recordings` que no es una carpeta»). Cada
+  grabación se abre como ella misma, nunca a través de un enlace.
 - Trabaja bajo `.operation.lock`: dos adopciones a la vez no trabajan sobre la
   misma instalación. Si otra operación tiene el candado, falla con el código 2
   («ocupado») sin tocar nada, para que quien la llama pueda distinguirlo de un
@@ -519,6 +519,51 @@ Límites conocidos:
   consigue el candado.
 - Si se juntan más de 256 grabaciones, el catálogo del Hub avisa del límite
   hasta que el núcleo pode en su siguiente arranque (ADR 0111 §7).
+
+### `recordings` que no es una carpeta (T2b, #2777)
+
+Regla de producto: **Vantare nunca deja de arrancar por culpa de la carpeta de
+grabaciones.** Un usuario puede poner en `<raíz>\recordings` una unión a otro
+disco (`mklink /J`), un enlace o, por error, un archivo.
+
+- **El motor no la mira.** Al abrir la instalación (`write_fs::open_root`, que
+  usan el lanzador y todas las operaciones) se recorre la raíz entera y se
+  rechaza cualquier enlace, **salvo la entrada `recordings` del primer nivel**:
+  ni se comprueba, ni se entra en ella, ni se sigue. Es la única excepción, por
+  nombre exacto (como compara Windows, sin distinguir mayúsculas). Un enlace
+  con otro nombre, o con ese nombre en cualquier otro sitio (dentro de
+  `generations`, de una generación o de su `data/`), se rechaza como siempre.
+- **Ninguna operación llega a ella por ruta.** Instalar, actualizar, Reparar,
+  Confirm, la vuelta atrás, descartar un marcador viejo, Desinstalar, la
+  retirada de generaciones sin referencia y el registro de Windows trabajan en
+  `generations/`, `staging/` y una lista fija de archivos de la raíz. Los tests
+  lo ejercitan con una unión a una carpeta con archivos, un enlace a un
+  archivo, una unión rota y un archivo normal, y comprueban tras cada paso que
+  lo que hay al otro lado sigue idéntico byte a byte y que la entrada no cambia.
+- **La adopción no trae nada**: es la única operación que escribe ahí y
+  rechaza una carpeta única que sea un enlace o no sea una carpeta. Dentro de
+  una carpeta normal, un enlace con nombre de grabación no se lee ni se pisa.
+- **La sesión desactiva la grabación**: no le pasa `--series-dir` al núcleo
+  (sin él no graba en ningún sitio), no llama a la adopción y deja una línea,
+  una sola vez, en `installer-log.txt`. El Hub arranca y Análisis explica por
+  qué no hay grabaciones (ver el README del anfitrión).
+- **El núcleo lo comprueba también**: si le llega una carpeta que no es una
+  carpeta normal, no escribe, no poda y no lee nada en ella.
+- **La poda no sigue enlaces**: como el motor ya no mira dentro de la carpeta
+  única, un enlace puesto ahí (con nombre de grabación, como WAL de una
+  grabación o dentro de un temporal) no se sigue ni se borra; la grabación se
+  queda con él y la poda lo anota, sin la ruta.
+- `packaging/installer-cleanup.ps1` solo comprueba las carpetas **por encima**
+  de las rutas que toca (la raíz, su temporal y su petición), no el contenido
+  de la raíz: no le afecta.
+
+Vantare no sigue el enlace: no graba ni lee al otro lado. Llevar las
+grabaciones a otro disco sería una función aparte (carpeta elegible).
+
+Límite que no se puede quitar: **las versiones ya publicadas** rechazan el
+enlace al arrancar. Si una versión con este cambio falla y se vuelve a una de
+ellas, un usuario con la unión puesta no podrá abrir Vantare hasta que la quite
+o llegue una versión corregida.
 
 Tests en el último bloque de `tests/installation_write.rs` (el hueco entre
 comprobar y mover, lo que aparece después de tomar la lista, el resumen del

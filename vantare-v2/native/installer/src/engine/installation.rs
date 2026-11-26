@@ -376,12 +376,29 @@ pub(super) fn verify_pe(path: &Path) -> Result<(), ReadError> {
 }
 
 pub(super) fn walk(root: &Path, skip_data: bool) -> Result<Vec<(PathBuf, bool)>, ReadError> {
+    walk_leaving(root, skip_data, None)
+}
+/// The whole installation, except its entry `recordings` (ADR 0111, T2b):
+/// whatever the user put there, a link or a junction included, is neither
+/// checked, entered nor followed. Only that name, and only at the root.
+pub(super) fn walk_installation(root: &Path) -> Result<Vec<(PathBuf, bool)>, ReadError> {
+    walk_leaving(root, false, Some("recordings"))
+}
+fn walk_leaving(
+    root: &Path,
+    skip_data: bool,
+    own: Option<&str>,
+) -> Result<Vec<(PathBuf, bool)>, ReadError> {
     let mut pending = vec![root.to_path_buf()];
     let mut files = Vec::new();
     while let Some(directory) = pending.pop() {
+        let top = directory == root;
         for entry in fs::read_dir(directory)? {
             let entry = entry?;
             let path = entry.path();
+            if own.is_some_and(|name| top && entry.file_name().eq_ignore_ascii_case(name)) {
+                continue;
+            }
             require(
                 !entry
                     .file_name()
@@ -525,5 +542,29 @@ mod member_tests {
         ] {
             assert!(!super::safe_member(path), "{path}");
         }
+    }
+}
+
+// ADR 0111 T2b: solo el recorrido de la instalación entera deja en paz a
+// `recordings`. Cualquier otro (una generación, sus datos, un árbol que se
+// borra) sigue rechazando un enlace con ese nombre en su primer nivel.
+#[cfg(all(test, windows))]
+mod walk_tests {
+    #[test]
+    fn only_the_installation_walk_leaves_recordings_alone() {
+        let name = format!("vantare-walk-{}", std::process::id());
+        let base = std::env::temp_dir().join(name);
+        let (tree, outside) = (base.join("arbol"), base.join("fuera"));
+        for folder in [&tree, &outside] {
+            std::fs::create_dir_all(folder).unwrap();
+        }
+        std::fs::write(outside.join("mio.txt"), b"mine").unwrap();
+        std::os::windows::fs::symlink_dir(&outside, tree.join("recordings")).unwrap();
+        assert!(super::walk(&tree, false).is_err());
+        assert!(super::walk(&tree, true).is_err());
+        let nothing: Vec<(std::path::PathBuf, bool)> = Vec::new();
+        assert_eq!(super::walk_installation(&tree).unwrap(), nothing);
+        std::fs::remove_dir(tree.join("recordings")).unwrap();
+        std::fs::remove_dir_all(base).unwrap();
     }
 }

@@ -278,13 +278,23 @@ fn project(
             result,
         });
     }
+    let mut said = if dead {
+        None
+    } else {
+        text(v.get("cause")?).ok()?.map(cause)
+    };
+    // `stopped` + `invalidDirectory` solo lo dice el anfitrión, de una carpeta
+    // que no es una carpeta normal (read_with). El núcleo cierra como `stopped`
+    // con esa misma causa una grabación que no pudo empezar en su carpeta: es
+    // un fallo pasajero y se dice como tal, nunca como un enlace (ADR 0111, T2b).
+    if state == AnalysisRecordingState::Stopped
+        && said == Some(AnalysisRecordingCause::InvalidDirectory)
+    {
+        said = Some(AnalysisRecordingCause::Unknown);
+    }
     Some(AnalysisRecordingStatus {
         state,
-        cause: if dead {
-            None
-        } else {
-            text(v.get("cause")?).ok()?.map(cause)
-        },
+        cause: said,
         row_id,
         started_at_ms: safe(v.get("startedAtMs")?)?,
         durable_watermark: decimal(v.get("durableWatermark")?).ok()?,
@@ -327,7 +337,31 @@ fn read_with(
     paths: &BTreeMap<String, PathBuf>,
     open: impl FnOnce(&Path) -> std::io::Result<fs::File>,
 ) -> Option<AnalysisRecordingStatus> {
-    super::regular_directory(root).ok()?;
+    match super::regular_directory(root) {
+        Ok(()) => {}
+        // Un enlace, una unión o un archivo en su lugar: no se lee y se dice,
+        // para que Análisis explique por qué no se graba (ADR 0111, T2b). La
+        // pareja es solo del anfitrión: `project` nunca la pasa desde el núcleo.
+        Err(error) if error.code == super::ErrorCode::Unreadable => {
+            return Some(AnalysisRecordingStatus {
+                state: AnalysisRecordingState::Stopped,
+                cause: Some(AnalysisRecordingCause::InvalidDirectory),
+                row_id: None,
+                started_at_ms: 0,
+                durable_watermark: None,
+                attempted: None,
+                limits: AnalysisRecordingLimits {
+                    max_recordings: 0,
+                    max_bytes: 0,
+                },
+                last_prune: AnalysisLastPrune {
+                    at_ms: 0,
+                    items: Vec::new(),
+                },
+            });
+        }
+        Err(_) => return None,
+    }
     let path = root.join("recording-status.json");
     // std OpenOptions on Windows keeps FILE_SHARE_DELETE for atomic Core replacement.
     let file = open(&path).ok()?;

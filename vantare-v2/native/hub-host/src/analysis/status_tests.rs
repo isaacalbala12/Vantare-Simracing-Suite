@@ -163,6 +163,13 @@ fn maps_core_text_once_and_rejects_unsafe_fields() {
             Some(expected)
         );
     }
+    // El núcleo cierra como `stopped` con esa causa una grabación que no pudo
+    // empezar: un fallo pasajero, nunca el «no es una carpeta» del anfitrión.
+    let mut v = core();
+    v["state"] = json!("stopped");
+    v["cause"] = json!("directorio inválido");
+    let said = project(&v, Path::new("."), &BTreeMap::default()).unwrap();
+    assert_eq!(said.cause, Some(Unknown));
     for (reason, result) in [
         ("cuota de nº", "borrada"),
         ("cuota de bytes", "omitida en uso"),
@@ -254,7 +261,11 @@ fn write_recording(root: &Path) {
     fs::write(root.join("series-123-456.duckdb"), []).unwrap();
 }
 fn rejects_recording_directory(root: &Path) {
-    assert!(read(root, &BTreeMap::new()).is_none());
+    // Never read; and the Hub says that nothing is recorded there.
+    let said = read(root, &BTreeMap::new()).expect("a status of its own");
+    let stopped = AnalysisRecordingState::Stopped;
+    let cause = Some(AnalysisRecordingCause::InvalidDirectory);
+    assert_eq!((said.state, said.cause, said.row_id), (stopped, cause, None));
     assert_eq!(
         super::super::recordings(root).unwrap_err().code,
         super::super::ErrorCode::Unreadable

@@ -71,10 +71,27 @@ pub(super) fn wal(path: &Path) -> PathBuf {
     name.push(".wal");
     name.into()
 }
+/// Visto como él mismo: ni enlace, ni unión, ni otro punto de reanálisis.
+/// Desde ADR 0111 T2b el instalador ya no mira dentro de `recordings`, así que
+/// solo esto impide que la poda salga de la carpeta.
+fn plain(meta: &fs::Metadata) -> bool {
+    #[cfg(windows)]
+    let reparse = {
+        use std::os::windows::fs::MetadataExt;
+        meta.file_attributes() & 0x400 != 0
+    };
+    #[cfg(not(windows))]
+    let reparse = false;
+    !meta.file_type().is_symlink() && !reparse
+}
+/// Una carpeta normal: ni enlace, ni unión, ni archivo.
+pub(super) fn folder(meta: &fs::Metadata) -> bool {
+    plain(meta) && meta.is_dir()
+}
 // Rechaza enlaces también dentro de temporales: nunca salir del directorio dueño.
 fn files(path: &Path, output: &mut Vec<PathBuf>) -> io::Result<()> {
     let meta = fs::symlink_metadata(path)?;
-    if meta.file_type().is_symlink() {
+    if !plain(&meta) {
         return Err(io::Error::other("enlace omitido"));
     }
     if meta.is_dir() {
@@ -157,11 +174,14 @@ pub(super) fn exclusive(path: &Path, delete: bool) -> io::Result<fs::File> {
         const GENERIC_READ: u32 = 0x8000_0000;
         const DELETE: u32 = 0x0001_0000;
         const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x0400_0000;
+        // Abre el propio enlace, nunca su destino, aunque lo cambien después de mirarlo.
+        const FILE_FLAG_OPEN_REPARSE_POINT: u32 = 0x0020_0000;
+        let delete = if delete { FILE_FLAG_DELETE_ON_CLOSE } else { 0 };
         fs::OpenOptions::new()
             .read(true)
             .access_mode(GENERIC_READ | DELETE)
             .share_mode(0)
-            .custom_flags(if delete { FILE_FLAG_DELETE_ON_CLOSE } else { 0 })
+            .custom_flags(delete | FILE_FLAG_OPEN_REPARSE_POINT)
             .open(path)
     }
     #[cfg(not(windows))]
@@ -205,9 +225,15 @@ fn remove(candidate: &Candidate) -> io::Result<()> {
                 "grabación de solo lectura",
             ));
         }
-        let wal = wal(&candidate.path);
-        if wal.try_exists()? {
-            drop(exclusive(&wal, true)?);
+        // Un WAL que no es un archivo normal no se borra ni se sigue; la
+        // grabación se queda con él y la poda lo anota, sin la ruta.
+        match fs::symlink_metadata(wal(&candidate.path)) {
+            Ok(meta) if !plain(&meta) || !meta.is_file() => {
+                return Err(io::Error::other("el WAL no es un archivo normal"));
+            }
+            Ok(_) => drop(exclusive(&wal(&candidate.path), true)?),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(error),
         }
         drop(guard);
         // La apertura que comprueba exclusividad es también la que borra.

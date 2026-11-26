@@ -18,6 +18,7 @@ const scenes = [
   "quotaUnmet",
   "degraded",
   "stopped",
+  "folderUnusable",
   "limit",
   "disabled",
   "unavailable",
@@ -75,6 +76,10 @@ export async function checkRecordingStatus(
         await visible(indicator.getByText(t[kind], { exact: true }));
         if (scene === "recordingPreviousDay")
           await visible(indicator.getByText(/^Empezó el 16 nov/));
+        if (scene === "folderUnusable")
+          await visible(
+            indicator.getByText(t.folderUnusableHelp, { exact: true }),
+          );
         if (scene === "quotaUnmet")
           await visible(indicator.getByText(t.quotaUnmetHelp, { exact: true }));
         if (scene === "pendingOff" || scene === "pendingOn") {

@@ -104,7 +104,7 @@ pub fn open_root(root: &Path, initialize: bool) -> Result<PathBuf> {
         fs::create_dir_all(&root)?;
         write_new(&marker, b"offline-candidate-v1")?;
     }
-    installation::walk(&root, false)?;
+    installation::walk_installation(&root)?;
     ensure(
         fs::read(&marker)? == b"offline-candidate-v1",
         "Marcador de instalación desconocido",

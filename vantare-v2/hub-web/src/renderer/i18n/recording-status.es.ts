@@ -13,6 +13,7 @@ export const recordingStatusText = {
   recording: a.recording,
   degraded: "Grabando con pérdidas",
   stopped: "Detenida por un error",
+  folderUnusable: "Carpeta de grabaciones no válida",
   limit: "Grabando · al límite de espacio",
   quotaUnmet: "No se pudo cumplir el límite de espacio",
   disabled: a.disabled,
@@ -32,6 +33,8 @@ export const recordingStatusText = {
     "No se pudieron borrar todas las grabaciones antiguas. La grabación sigue activa.",
   stoppedHelp:
     "La grabación se ha detenido. Se volverá a intentar la próxima vez que arranque Vantare.",
+  folderUnusableHelp:
+    "La carpeta de grabaciones es un enlace, una unión o un archivo, y Vantare no la usa. Las grabaciones están desactivadas. Para activarlas, deja «recordings» como una carpeta normal dentro de la instalación y vuelve a abrir Vantare.",
   limitHelp:
     "Para seguir grabando, Vantare borra las grabaciones más antiguas.",
   disabledHelp:

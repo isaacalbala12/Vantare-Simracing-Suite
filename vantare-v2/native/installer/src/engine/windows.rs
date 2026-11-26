@@ -23,8 +23,9 @@ use windows::{
             IPersistFile, STGM_READ, STGM_READWRITE, StructuredStorage::PROPVARIANT,
         },
         UI::Shell::{
-            FOLDERID_Desktop, FOLDERID_Programs, FOLDERID_Startup, IShellLinkW,
-            KF_FLAG_DONT_VERIFY, PropertiesSystem::IPropertyStore, SHGetKnownFolderPath, ShellLink,
+            FOLDERID_Desktop, FOLDERID_LocalAppData, FOLDERID_Profile, FOLDERID_Programs,
+            FOLDERID_Startup, IShellLinkW, KF_FLAG_DONT_VERIFY, PropertiesSystem::IPropertyStore,
+            SHGetKnownFolderPath, ShellLink,
         },
     },
     core::{GUID, Interface, PCWSTR},
@@ -79,6 +80,41 @@ pub fn folder(name: &str) -> Result<PathBuf> {
         "Startup" => FOLDERID_Startup,
         _ => return Err(WriteError::new(1, "Carpeta Windows desconocida")),
     };
+    known_folder(id)
+}
+/// Carpetas reales del usuario que el instalador puede tocar, leídas por API y no del
+/// entorno: el guard QA de CI nunca acepta una raíz que las contenga o caiga dentro.
+pub fn real_user_folders() -> Result<Vec<PathBuf>> {
+    [
+        FOLDERID_Profile,
+        FOLDERID_LocalAppData,
+        FOLDERID_Programs,
+        FOLDERID_Desktop,
+        FOLDERID_Startup,
+    ]
+    .into_iter()
+    .map(known_folder)
+    .collect()
+}
+/// Nombre corto 8.3 de una ruta existente, si el volumen lo genera: los tests del guard
+/// construyen con él un alias del perfil real que como texto no se parece al largo.
+#[cfg(test)]
+pub fn short_path(path: &Path) -> Result<PathBuf> {
+    use std::os::windows::ffi::OsStringExt;
+    use windows::Win32::Storage::FileSystem::GetShortPathNameW;
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let mut buffer = vec![0_u16; 1024];
+    let length = unsafe { GetShortPathNameW(PCWSTR(wide.as_ptr()), Some(&mut buffer[..])) };
+    let length = usize::try_from(length).unwrap_or(0);
+    ensure(
+        length > 0 && length < buffer.len(),
+        "Windows no da nombre corto",
+    )?;
+    Ok(PathBuf::from(std::ffi::OsString::from_wide(
+        &buffer[..length],
+    )))
+}
+fn known_folder(id: GUID) -> Result<PathBuf> {
     let value = unsafe { SHGetKnownFolderPath(&raw const id, KF_FLAG_DONT_VERIFY, None) }
         .map_err(|cause| error(&cause))?;
     let path = unsafe { value.to_string() }.map_err(|cause| WriteError::new(1, cause.to_string()));

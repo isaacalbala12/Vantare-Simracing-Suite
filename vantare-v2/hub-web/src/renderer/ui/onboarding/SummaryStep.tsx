@@ -67,7 +67,7 @@ export function SummaryStep({
     [
       text.plan,
       account.signedIn ? (account.planLabel ?? text.unconfirmed) : text.guest,
-      !account.signedIn || !!account.planLabel,
+      account.signedIn && !!account.planLabel,
     ],
     [text.performance, automatic ? text.automatic : t(`track.${level}`), true],
     [text.usage, usage ? text.enabled : text.disabled, usage],

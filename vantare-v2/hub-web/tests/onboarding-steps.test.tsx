@@ -131,15 +131,20 @@ it("reuses appearance selectors and immediately reflects palette and scheme prop
 it("keeps account status behind props without adding a login action", () => {
   const view = render(<AccountStep />);
   expect(document.querySelector(".v-ob-account > p")?.textContent).toContain(
-    "Puedes continuar sin cuenta",
+    "Necesitas una cuenta",
   );
   expect(screen.queryByRole("button")).toBeNull();
+  // The account is mandatory: the guest note says it will be asked for later.
+  expect(document.querySelector(".v-ob-account-note")?.textContent).toContain(
+    "te lo pediremos al terminar",
+  );
   view.rerender(
     <AccountStep value={{ signedIn: true, checking: false, blocked: true }} />,
   );
   expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
     "Acceso bloqueado",
   );
+  expect(document.querySelector(".v-ob-account-note")).toBeNull();
 });
 
 it("supports Tab and arrows from Automatic through the manual cadence group", async () => {

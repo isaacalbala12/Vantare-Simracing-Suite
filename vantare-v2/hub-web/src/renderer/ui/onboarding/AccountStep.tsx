@@ -39,7 +39,9 @@ export function AccountStep({
     <div className="v-ob-account" data-guest={!value.signedIn}>
       {(value.signedIn || !actions) && <p>{message}</p>}
       {actions}
-      <p className="v-ob-account-note">{text.accountLocal}</p>
+      {!value.signedIn && (
+        <p className="v-ob-account-note">{text.accountLocal}</p>
+      )}
     </div>
   );
 }

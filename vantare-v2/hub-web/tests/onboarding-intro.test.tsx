@@ -283,7 +283,7 @@ it("continues through account status, native levels and the reused appearance co
     screen.queryByRole("button", { name: "Continuar con Discord" }),
   ).toBeNull();
   expect(document.querySelector(".v-ob-account > p")?.textContent).toContain(
-    "Puedes continuar sin cuenta",
+    "Necesitas una cuenta",
   );
   fireEvent.click(screen.getByRole("button", { name: "Ahora no" }));
   fireEvent.click(screen.getByRole("radio", { name: "Ahorro" }));
@@ -855,6 +855,13 @@ it("explains protected settings and refreshes privacy without sending finish", a
 });
 it("matches GPUI summary_status: disabled usage is a dash, enabled crashes a check", async () => {
   await summaryPage();
+  // The account is mandatory: a guest's plan is pending, never confirmed.
+  const plan = screen.getByText("Plan").parentElement;
+  expect(plan?.querySelector("dd")?.textContent).toBe(
+    "Sin sesión · te la pediremos al terminar",
+  );
+  expect(plan?.querySelector("span")?.textContent).toBe("—");
+  expect(screen.queryByText(/sin cuenta/i)).toBeNull();
   expect(
     screen.getByText("Datos de uso").parentElement?.querySelector("span")
       ?.textContent,

@@ -20,6 +20,10 @@ param(
  [string]$KeyIdQA='',
  [string]$FingerprintQA='',
  [string]$CliSha256QA='',
+ [string]$MedicionAutorizadaHasta='',
+ [string]$SesionMedicionQA='',
+ [string]$EnsayoMedicionQA='',
+ [string]$PythonServidorQA='',
  [string[]]$LogsQA=@(),
  [switch]$SoloVisual,
  [switch]$SinApagado,
@@ -47,6 +51,54 @@ function Resolve-TandaPath([string]$Root,[string]$Relative){
  $path=[IO.Path]::GetFullPath((Join-Path $Root $Relative))
  if(-not $path.StartsWith($base,[StringComparison]::OrdinalIgnoreCase)){throw "Ruta fuera del kit: $Relative"}
  $path
+}
+function Assert-TandaMeasurementDeadline([string]$Until,[DateTimeOffset]$Now){
+ $styles=[Globalization.DateTimeStyles]::AssumeUniversal
+ $deadline=[DateTimeOffset]::MinValue
+ if($Until -cnotmatch '\A\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ\z' -or
+    -not [DateTimeOffset]::TryParseExact($Until,"yyyy-MM-ddTHH:mm:ss'Z'",[Globalization.CultureInfo]::InvariantCulture,$styles,[ref]$deadline) -or
+    $deadline -le $Now -or $deadline -gt $Now.AddHours(12)){
+  throw 'BLOCKED_MEASUREMENT_AUTHORIZATION: se requiere vencimiento UTC futuro dentro de 12 horas'
+ }
+ $deadline
+}
+function Assert-TandaMeasurementPreset($Manifest){
+ if($Manifest['scope'] -cne 'measurement-qa' -or $Manifest['measurement_preset'] -cne 'cita-48' -or
+    $Manifest.captures.Count -ne 0 -or $Manifest.measurements.Count -ne 48){
+  throw 'BLOCKED_MEASUREMENT_AUTHORIZATION: se requiere el kit verificado del subconjunto de 48 rondas'
+ }
+}
+function Get-TandaMeasurementContext([string]$Root){
+ $now=[DateTimeOffset]::UtcNow
+ $until=Assert-TandaMeasurementDeadline $MedicionAutorizadaHasta $now
+ Assert-TandaWindow $NoAntesUtc $LimiteUtc
+ if([DateTimeOffset]::Parse($LimiteUtc) -gt $until){throw 'BLOCKED_MEASUREMENT_AUTHORIZATION: la tanda excede la autorización'}
+ $manifest=Assert-TandaInputs $Root
+ Assert-TandaMeasurementPreset $manifest
+ $receipt=Assert-TandaPackageReceipt $Root $manifest $ZipQA $ReciboPaqueteQA $CorpusQA
+ if($receipt.qa_license.key_id -cne $KeyIdQA){throw 'QA_KEY_NOT_APPROVED'}
+ if(-not $EnsayoMedicionQA){throw 'BLOCKED_MEASUREMENT_AUTHORIZATION: falta el recibo del ensayo'}
+ $dry=Read-TandaJson $EnsayoMedicionQA
+ if($dry.guard_code -ne 6 -or $dry.gpu_executed -isnot [bool] -or $dry.gpu_executed -or $dry.input_hashes -cne 'PASS' -or
+    $dry.shutdown_executed -isnot [bool] -or $dry.shutdown_executed -or $dry.measurements -ne 48 -or $dry.zip_sha256 -cne $receipt.zip_sha256 -or
+    $dry.license_key_id -cne $KeyIdQA -or $dry.package_receipt_sha256 -ine (Get-FileHash -LiteralPath $ReciboPaqueteQA).Hash){
+  throw 'BLOCKED_MEASUREMENT_AUTHORIZATION: el ensayo no corresponde al ZIP autorizado'
+ }
+ $key=Get-TandaServerQaPrivatePath $KeyIdQA
+ $public=Join-Path (Split-Path $key -Parent) 'public-registry.txt'
+ Assert-TandaLicensePath $public
+ $registry=[IO.File]::ReadAllText($public)
+ Assert-TandaApprovedRegistry $registry $KeyIdQA
+ if((Get-FileHash -LiteralPath $public -Algorithm SHA256).Hash -ine $receipt.qa_license.registry_sha256){throw 'QA_KEY_NOT_APPROVED: registro distinto del aprobado en CI'}
+ $scannerPython=if($PythonServidorQA){$PythonServidorQA}else{$PythonExe}
+ Assert-TandaPython $scannerPython
+ $scanner=Join-Path $PSScriptRoot 'preflight_privado.py'
+ $null=& $scannerPython -I -B $scanner --private-key $key --kit-zip $ZipQA --kit-zip-sha256 $receipt.zip_sha256 $Root $EnsayoMedicionQA $ReciboPaqueteQA
+ if($LASTEXITCODE){throw 'QA_PRIVATE_PREFLIGHT_FAILED'}
+ @{
+  registry=$registry;license=$receipt.qa_license
+  authorization=@{valid_to_utc=$MedicionAutorizadaHasta;checked_utc=$now.ToString('o');key_id=$KeyIdQA;zip_sha256=$receipt.zip_sha256}
+ }
 }
 function Assert-TandaPackageReceipt([string]$Root,$Manifest,[string]$Zip,[string]$ReceiptPath,[string]$Corpus){
  if(-not $Zip -or -not $ReceiptPath -or -not $Corpus){throw 'QA_PACKAGE_RECEIPT: faltan ZIP, recibo externo o corpus'}
@@ -152,7 +204,8 @@ function Assert-TandaInputs([string]$Root,[switch]$DryValidation){
   $layout=Resolve-TandaPath $Root $case.layout
   if(-not $seen.ContainsKey($layout)){throw 'Layout de medición sin hash'}
  }
- if($manifest.captures.Count -eq 0 -or (-not $SoloVisual -and $manifest.measurements.Count -eq 0)){throw 'Tanda sin casos'}
+ if($manifest['measurement_preset'] -ceq 'cita-48'){Assert-TandaMeasurementPreset $manifest}
+ elseif($manifest.captures.Count -eq 0 -or (-not $SoloVisual -and $manifest.measurements.Count -eq 0)){throw 'Tanda sin casos'}
  $outputs=@{}
  foreach($case in $manifest.captures){
   if($case.id -notmatch '^[a-z0-9][a-z0-9-]+$' -or $outputs.ContainsKey($case.id)){throw 'ID de captura inválido/repetido'}
@@ -284,6 +337,11 @@ function Invoke-TandaDryRun([string]$Root,[string]$Output){
  if($fake.code -ne 0){throw 'El ensayo del controlador falso falló'}
  $round=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_RONDA.ps1')) (Join-Path $Output 'ronda-falsa') 30
  if($round.code -ne 0){throw 'El ensayo de la ronda real con procesos falsos falló'}
+ if($qaKit -and $manifest['measurement_preset'] -ceq 'cita-48'){
+  $transportTests=Join-Path $Root 'tools/qa-overlays/PROBAR_AUTORIZACION_MEDICION.ps1'
+  $transport=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-NonInteractive','-File',$transportTests) (Join-Path $Output 'pc-medicion-simulado') 120
+  if($transport.code -ne 0){throw 'El ensayo de la coordinación de medición con PC simulado falló'}
+ }
  $security=Invoke-TandaProcess (Get-Process -Id $PID).Path @('-NoProfile','-File',(Join-Path $Root 'tools/qa-overlays/PROBAR_SEGURIDAD.ps1')) (Join-Path $Output 'seguridad-falsa') 60
  if($security.code -ne 0){throw 'Regresiones de seguridad fallaron'}
  $credentialTests=Join-Path $Root 'tools/qa-overlays/PROBAR_CREDENCIAL_TANDA.ps1'
@@ -601,6 +659,7 @@ function Invoke-TandaWorker([string]$Root,[string]$Output,[hashtable]$License){
  }
  $state=@{source_sha=$manifest.source_sha;status='running';completed_without_error=$false;captures=@();measurements=@()}
  if($SoloVisual){$state.scope='visual-lifecycle'}
+ if($License){$state.scope='measurement-qa'}
  try {
   $python=Invoke-TandaPython @('-c','import sys, PIL, numpy; print(sys.version); print(PIL.__version__); print(numpy.__version__)') (Join-Path $Output 'logs/python-preflight') 30
   if($python.code -ne 0){throw 'BLOCKED_PYTHON: faltan Python/Pillow/numpy ya instalados; no instalar durante la tanda'}
@@ -628,9 +687,11 @@ function Invoke-TandaWorker([string]$Root,[string]$Output,[hashtable]$License){
     if($pair.code -ne 0){throw 'No se pudo guardar la pareja/revisión separada de texto'}
    }
   }
-  Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
-  Invoke-TandaLifecycle $Root $Output
-  $state.lifecycle='4 passed; 0 failed'
+  if(-not $License){
+   Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
+   Invoke-TandaLifecycle $Root $Output
+   $state.lifecycle='4 passed; 0 failed'
+  }
   $measurementCases=if(-not $SoloVisual){$manifest.measurements}
   foreach($case in $measurementCases){
    Assert-TandaWindow $NoAntesUtc $LimiteUtc;Assert-TandaSession $Sesion $Usuario
@@ -650,14 +711,98 @@ function Invoke-TandaWorker([string]$Root,[string]$Output,[hashtable]$License){
 }
 function Invoke-TandaSsh([string]$Target,[string]$Code){
  $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($Code))
- $result=& ssh -o BatchMode=yes -o ConnectTimeout=15 $Target "pwsh -NoProfile -EncodedCommand $encoded"
+ $result=& ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes $Target "pwsh -NoProfile -NonInteractive -EncodedCommand $encoded"
  if($LASTEXITCODE){throw 'SSH falló; nunca apagar sin evidencia verificada'}
  $result -join "`n"
 }
-function Invoke-TandaServer([string]$Root){
+function New-TandaRemoteMeasurement([string]$Root,[string]$Remote,$Measurement){
+ $cli="$Remote/kit/bin/vantare-qa-license.exe"
+ $qa=$Measurement.license
+ $fingerprint=(Invoke-TandaSsh $Pc ('$ErrorActionPreference="Stop";if((Get-FileHash -LiteralPath "{0}" -Algorithm SHA256).Hash -ine "{1}"){{throw "QA_SIGN_CLI_UNVERIFIED"}}; & "{0}" fingerprint; if($LASTEXITCODE){{exit $LASTEXITCODE}}' -f $cli,$qa.cli_sha256)).Trim()
+ if($fingerprint -cnotmatch '\A[0-9a-f]{64}\z'){throw 'QA_FINGERPRINT_INVALID'}
+ $session="$Remote/measurement-qa"
+ Assert-TandaApprovedRegistry $Measurement.registry $qa.key_id
+ $credential=New-TandaSignedCredential (Join-Path $Root 'bin/vantare-qa-license.exe') $fingerprint $qa.key_id $qa.cli_sha256
+ try{
+  $null=Invoke-TandaSsh $Pc ('$ErrorActionPreference="Stop"; New-Item -ItemType Directory -Path "{0}" | Out-Null; [IO.File]::WriteAllText("{0}/registry.txt","{1}")' -f $session,$Measurement.registry)
+  & scp -q -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes $credential "$($Pc):$session/credential.json"
+  if($LASTEXITCODE){throw 'QA_TRANSFER_FAILED: copia de credencial'}
+  & scp -q -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes $CorpusQA "$($Pc):$session/corpus.tar.gz"
+  if($LASTEXITCODE){throw 'QA_TRANSFER_FAILED: copia de corpus'}
+ }finally{Remove-Item -LiteralPath $credential -ErrorAction Stop}
+ $session
+}
+function Read-TandaWorkerLicense([string]$Root){
+ $absolute=[IO.Path]::GetFullPath($Root).Replace('\','/')
+ if($absolute -cnotmatch '\AC:/VantareQA/tanda-\d{8}T\d{6}Z/kit\z' -or
+    [IO.Path]::GetFullPath($Salida).Replace('\','/') -cne ($absolute -replace '/kit$','/evidence')){
+  throw 'QA_MEASUREMENT_LICENSE_MISSING: rutas de trabajador fuera de QA'
+ }
+ Assert-TandaLicensePath $absolute
+ $manifest=Assert-TandaInputs $Root
+ Assert-TandaMeasurementPreset $manifest
+ $session=Join-Path (Split-Path $Root -Parent) 'measurement-qa'
+ if(-not $SesionMedicionQA -or [IO.Path]::GetFullPath($SesionMedicionQA) -ine [IO.Path]::GetFullPath($session)){
+  throw 'QA_MEASUREMENT_LICENSE_MISSING: sesión de licencia fuera de la raíz QA'
+ }
+ $license=Read-TandaMeasurementFiles $Root $session $manifest
+ $script:CorpusQA=$license.corpus
+ $license
+}
+function Read-TandaMeasurementFiles([string]$Root,[string]$Session,$Manifest){
+ Assert-TandaLicensePath $session
+ $qa=$manifest.qa_license
+ $public=Join-Path $session 'registry.txt'
+ Assert-TandaLicensePath $public
+ if((Get-FileHash -LiteralPath $public -Algorithm SHA256).Hash -ine $qa.registry_sha256){throw 'QA_KEY_NOT_APPROVED: registro distinto de CI'}
+ $registry=[IO.File]::ReadAllText($public)
+ Assert-TandaApprovedRegistry $registry $qa.key_id
+ $credential=Join-Path $session 'credential.json'
+ Assert-TandaTransferKey $credential $qa.key_id
+ $cli=Join-Path $Root 'bin/vantare-qa-license.exe'
+ Assert-TandaLicensePath $cli
+ if((Get-FileHash -LiteralPath $cli -Algorithm SHA256).Hash -ine $qa.cli_sha256){throw 'QA_SIGN_CLI_UNVERIFIED'}
+ $corpus=Join-Path $session 'corpus.tar.gz'
+ Assert-TandaLicensePath $corpus
+ if((Get-FileHash -LiteralPath $corpus -Algorithm SHA256).Hash -ine $manifest.external_corpus.sha256){throw 'QA_PACKAGE_RECEIPT: corpus remoto distinto'}
+ @{cli=$cli;credential=$credential;registry=$registry;key_id=$qa.key_id;corpus=$corpus}
+}
+function Remove-TandaRemoteMeasurement([string]$Remote,[string]$Task,[switch]$Descartar){
+ if($Remote -cnotmatch '\AC:/VantareQA/tanda-\d{8}T\d{6}Z\z'){throw 'QA_PROFILE_CLEANUP: ruta de sesión no autorizada'}
+ if($Task -cne ('Vantare-'+[IO.Path]::GetFileName($Remote))){throw 'QA_PROFILE_CLEANUP: tarea fuera de la sesión'}
+ $session="$Remote/measurement-qa"
+ $discard=if($Descartar){'$true'}else{'$false'}
+ $null=Invoke-TandaSsh $Pc (@'
+$ErrorActionPreference='Stop'
+$path='{0}'
+$discard={3}
+$deadline=[DateTime]::UtcNow.AddSeconds(10)
+while((Get-ScheduledTask -TaskName '{2}' -ErrorAction SilentlyContinue).State -eq 'Running'){{
+ if([DateTime]::UtcNow -ge $deadline){{throw 'QA_PROFILE_CLEANUP: trabajador propio aún activo'}}
+ Start-Sleep -Milliseconds 200
+}}
+foreach($directory in 'C:/VantareQA','{1}',$path){{
+ if((Test-Path -LiteralPath $directory) -and ((Get-Item -LiteralPath $directory -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){{throw 'QA_PROFILE_CLEANUP: enlace'}}
+}}
+foreach($name in 'credential.json','registry.txt','corpus.tar.gz'){{
+ $file=Join-Path $path $name
+ if(Test-Path -LiteralPath $file -PathType Leaf){{Remove-Item -LiteralPath $file -Force}}
+}}
+if((Test-Path -LiteralPath $path -PathType Container) -and -not (Get-ChildItem -LiteralPath $path -Force)){{Remove-Item -LiteralPath $path}}
+if($discard -and (Test-Path -LiteralPath '{1}' -PathType Container)){{
+ $expected=[IO.Path]::GetFullPath('{1}')
+ $item=Get-Item -LiteralPath $expected -Force
+ if($item.FullName -cne $expected -or (Get-ChildItem -LiteralPath $expected -Force -Recurse -Attributes ReparsePoint)){{
+  throw 'QA_PROFILE_CLEANUP: zona QA no verificable'
+ }}
+ Remove-Item -LiteralPath $expected -Recurse -Force
+}}
+'@ -f $session,$Remote,$Task,$discard)
+}
+function Invoke-TandaServer([string]$Root,[hashtable]$Measurement){
  Assert-TandaCitaContinues
  Assert-TandaWindow $NoAntesUtc $LimiteUtc
- if(-not $SoloVisual){Assert-TandaMachineRegistry}
+ if(-not $SoloVisual -and -not $Measurement){Assert-TandaMachineRegistry}
  Assert-TandaPython $PythonExe -SyntaxOnly
  $manifest=Assert-TandaInputs $Root
  if($Pc -notmatch '^isaac@100\.83\.142\.118$' -or $Usuario -ne 'isaac'){throw 'Destino/usuario fuera de autorización'}
@@ -668,16 +813,22 @@ function Invoke-TandaServer([string]$Root){
  $remote="C:/VantareQA/tanda-$stamp"
  $destination=Join-Path $DestinoServidor "tanda-pc-$stamp-$($manifest.source_sha.Substring(0,9))"
  if(Test-Path -LiteralPath $destination){throw 'Destino de evidencia ya existe'}
- $null=Invoke-TandaSsh $Pc "if(Test-Path '$remote'){throw 'Ruta ya existe'};New-Item -ItemType Directory '$remote'|Out-Null"
- Assert-TandaCitaContinues
- & scp -q -r $Root "${Pc}:$remote/kit"
- if($LASTEXITCODE){throw 'Copia del kit falló; no apagar'}
+ $null=Invoke-TandaSsh $Pc "`$ErrorActionPreference='Stop';`$qa=Get-Item -LiteralPath 'C:/VantareQA' -Force;if(-not `$qa.PSIsContainer -or (`$qa.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'Raíz QA no verificable'};if(Test-Path -LiteralPath '$remote'){throw 'Ruta ya existe'};New-Item -ItemType Directory '$remote'|Out-Null"
  $task="Vantare-tanda-$stamp"
  $start=$NoAntesUtc;$end=$LimiteUtc
  $action="-NoProfile -WindowStyle Hidden -File $remote/kit/TANDA.ps1 -Modo Trabajador -Kit $remote/kit -Salida $remote/evidence -Sesion $Sesion -Usuario isaac -NoAntesUtc $start -LimiteUtc $end -SamplerTaskPrefix $task -PythonExe `"$PythonExe`""
  if($SoloVisual){$action+=' -SoloVisual'}
  $registered=@()
+ $licenseCleaned=$false
  try {
+  Assert-TandaCitaContinues
+  & scp -q -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes -r $Root "${Pc}:$remote/kit"
+  if($LASTEXITCODE){throw 'Copia del kit falló; no apagar'}
+  if($Measurement){
+   $null=Assert-TandaMeasurementDeadline $MedicionAutorizadaHasta ([DateTimeOffset]::UtcNow)
+   $session=New-TandaRemoteMeasurement $Root $remote $Measurement
+   $action+=" -MedicionAutorizadaHasta $MedicionAutorizadaHasta -SesionMedicionQA $session"
+  }
   $samplerDefinitions=if(-not $SoloVisual){Get-TandaSamplerDefinitions ($remote+'/kit') ($remote+'/evidence') $task $manifest.measurements}
   foreach($definition in $samplerDefinitions){
    $null=Invoke-TandaSsh $Pc "`$a=New-ScheduledTaskAction -Execute (Get-Command pwsh).Source -Argument '$($definition.arguments)';`$p=New-ScheduledTaskPrincipal -UserId 'isaac' -LogonType Interactive -RunLevel Highest;Register-ScheduledTask -TaskName '$($definition.name)' -Action `$a -Principal `$p|Out-Null"
@@ -699,7 +850,7 @@ function Invoke-TandaServer([string]$Root){
   $expected=Invoke-TandaSsh $Pc "& tar -cf '$archive' -C '$remote/evidence' .;if(`$LASTEXITCODE){throw 'tar fallo'};(Get-FileHash '$archive' -Algorithm SHA256).Hash"
   $temp=Join-Path $DestinoServidor ('.tanda-'+$stamp+'.tar')
   if(Test-Path -LiteralPath $temp){throw 'Descarga temporal ya existe'}
-  & scp -q "${Pc}:$archive" $temp
+  & scp -q -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes "${Pc}:$archive" $temp
   if($LASTEXITCODE -or (Get-FileHash -LiteralPath $temp -Algorithm SHA256).Hash -ine $expected.Trim()){throw 'Copia de evidencia no verificada: no apagar'}
   Expand-TandaEvidence $temp $destination
   foreach($file in (Read-TandaJson (Join-Path $destination 'evidence-hashes.json'))){
@@ -707,12 +858,22 @@ function Invoke-TandaServer([string]$Root){
    if((Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash -ine $file.sha256){throw 'Hash de evidencia incorrecto: no apagar'}
   }
   $state=Read-TandaJson (Join-Path $destination 'estado.json')
+  if($Measurement){Write-TandaJson $Measurement.authorization (Join-Path $destination 'autorizacion-medicion.json')}
   if($state.status -ne 'complete' -or -not $state.completed_without_error){throw 'Tanda abortada: evidencia copiada, no apagar'}
   if($SoloVisual -and ($state.scope -cne 'visual-lifecycle' -or $state.source_sha -cne $manifest.source_sha -or $state.measurements.Count -ne 0 -or $state.lifecycle -cne '4 passed; 0 failed' -or $state.captures.Count -ne (3*$manifest.captures.Count))){
    throw 'Evidencia visual/lifecycle incompleta o de otra tanda: no apagar'
   }
   Assert-TandaCitaContinues
   if($SinApagado){return 'COMPLETADO_SIN_APAGADO'}
+  if($Measurement){
+   if($state.scope -cne 'measurement-qa' -or $state.source_sha -cne $manifest.source_sha -or $state.captures.Count -ne 0 -or
+      ($state.measurements.id -join ',') -cne ($manifest.measurements.id -join ',') -or
+      @($state.measurements|Where-Object status -cne 'complete').Count){
+    throw 'Evidencia de medición incompleta: no apagar'
+   }
+   Remove-TandaRemoteMeasurement $remote $task
+   $licenseCleaned=$true
+  }
   # ACK solo tras verificar archivo y hashes de CADA fichero en servidor.
   $hash=(Get-FileHash -LiteralPath (Join-Path $destination 'evidence-hashes.json') -Algorithm SHA256).Hash
   $null=Invoke-TandaSsh $Pc "if(Test-Path '$remote/evidence/copia-servidor.json'){throw 'ACK ya existe'};@{verified=`$true;hash_manifest='$hash';destination='$destination'}|ConvertTo-Json|Set-Content '$remote/evidence/copia-servidor.json' -Encoding utf8"
@@ -727,7 +888,10 @@ function Invoke-TandaServer([string]$Root){
   if(-not $ack){throw 'No hay confirmación interactiva de apagado; evidencia preservada'}
   $ack|Set-Content -LiteralPath (Join-Path $destination 'apagado.json') -Encoding utf8
   if(-not ($ack|ConvertFrom-Json -AsHashtable).accepted){throw 'Apagado rechazado por la comprobación interactiva'}
- } finally { foreach($name in $registered){$null=Invoke-TandaSsh $Pc "Unregister-ScheduledTask -TaskName '$name' -Confirm:`$false -ErrorAction SilentlyContinue"} }
+ } finally {
+  try{if($Measurement -and -not $licenseCleaned){Remove-TandaRemoteMeasurement $remote $task -Descartar}}
+  finally{foreach($name in $registered){$null=Invoke-TandaSsh $Pc "Unregister-ScheduledTask -TaskName '$name' -Confirm:`$false -ErrorAction SilentlyContinue"}}
+ }
 }
 function Invoke-TandaShutdown([string]$Root,[string]$Output){
  if($env:VANTARE_SIN_GRAFICOS -eq '1' -or $env:COMPUTERNAME -ieq 'SAPPHIREOS'){throw 'GRAPHICS_DISABLED: nunca apagar el servidor'}
@@ -753,7 +917,7 @@ function Invoke-TandaShutdown([string]$Root,[string]$Output){
  Write-TandaJson $result (Join-Path $Output 'apagado.json')
 }
 function Assert-TandaCitaContinues {
- if(-not $CitaProgramada){return}
+ if(-not $CitaProgramada -and -not $MedicionAutorizadaHasta){return}
  $directory=Get-Item -LiteralPath 'D:/VantareServer/qa' -ErrorAction Stop
  if(-not $directory.PSIsContainer -or ($directory.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'No se puede comprobar CITA-CANCELAR'}
  if(@($directory.EnumerateFileSystemInfos('CITA-CANCELAR')).Count){throw 'CITA-CANCELAR activo: no lanzar ni apagar'}
@@ -761,8 +925,12 @@ function Assert-TandaCitaContinues {
 if($SinApagado -and ($Modo -cne 'Servidor' -or -not $SoloVisual)){throw 'SinApagado requiere Modo Servidor y SoloVisual'}
 if($SoloFunciones -or $ValidarEnlace){return}
 if($CitaProgramada -and ($Modo -cne 'Servidor' -or -not $SoloVisual)){throw 'Cita programada requiere Servidor y SoloVisual'}
+if($MedicionAutorizadaHasta -and ($SoloVisual -or $CitaProgramada -or $Modo -cnotin @('Servidor','Trabajador','Apagar'))){
+ throw 'BLOCKED_MEASUREMENT_AUTHORIZATION: opción exclusiva de la medición directa'
+}
 if(-not $SoloVisual -and $Modo -in @('Servidor','Trabajador','Apagar')){
- throw 'BLOCKED_MEASUREMENT_AUTHORIZATION: falta el preflight de autorización de L3; usar el kit visual para la cita'
+ $deadline=Assert-TandaMeasurementDeadline $MedicionAutorizadaHasta ([DateTimeOffset]::UtcNow)
+ if([DateTimeOffset]::Parse($LimiteUtc) -gt $deadline){throw 'BLOCKED_MEASUREMENT_AUTHORIZATION: la tanda excede la autorización'}
 }
 switch($Modo){
  'Validar' {if(-not $SoloVisual){Assert-TandaMachineRegistry};$null=Assert-TandaInputs $Kit; 'PASS: entradas/rutas/hashes/TSV'}
@@ -789,7 +957,15 @@ switch($Modo){
   $image=Resolve-TandaPath $Kit 'bin/vantare-qa-license.exe'
   New-TandaSignedCredential $image $FingerprintQA $KeyIdQA $CliSha256QA
  }
- 'Trabajador' {if(-not $Salida){throw 'Falta -Salida nueva'};Invoke-TandaWorker $Kit $Salida}
- 'Servidor' {Invoke-TandaServer $Kit}
+ 'Trabajador' {
+  if(-not $Salida){throw 'Falta -Salida nueva'}
+  $license=if(-not $SoloVisual){Read-TandaWorkerLicense $Kit}
+  Invoke-TandaWorker $Kit $Salida $license
+ }
+ 'Servidor' {
+  $measurement=if(-not $SoloVisual){Get-TandaMeasurementContext $Kit}
+  if($measurement){Write-Output ('AUTORIZACION_MEDICION '+($measurement.authorization|ConvertTo-Json -Compress))}
+  Invoke-TandaServer $Kit $measurement
+ }
  'Apagar' {if(-not $Salida){throw 'Falta salida de evidencia'};Invoke-TandaShutdown $Kit $Salida}
 }

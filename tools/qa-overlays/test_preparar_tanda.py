@@ -12,6 +12,32 @@ from preparar_tanda import SCENES, photos, prefixes, looks, specifications
 
 
 class InputsTests(unittest.TestCase):
+    def test_measurement_preset_contains_exactly_the_48_authorised_rounds(self):
+        configurations = {
+            *[(kind, look) for kind in ("standings", "relative", "delta", "fuel-strategy", "pedals")
+              for look in ("vantare", "eficiencia")],
+            ("radar", "funcional"), ("track-map", "funcional"),
+        }
+        all_configurations = configurations | {("racing-flags", "funcional")}
+        rounds = [
+            {"kind": kind, "look": look, "state": state, "motor": motor,
+             "id": f"{kind}-{look}-{state}-{motor}"}
+            for kind, look in sorted(all_configurations)
+            for state in ("replay", "waiting")
+            for motor in ("gpui", "rune")
+        ]
+        selected = packaging.select_measurement_preset(rounds)
+        self.assertEqual(len(selected), 48)
+        self.assertEqual({(row["kind"], row["look"]) for row in selected}, configurations)
+        for index in range(0, len(selected), 2):
+            first, second = selected[index:index + 2]
+            self.assertEqual((first["kind"], first["look"], first["state"]),
+                             (second["kind"], second["look"], second["state"]))
+            self.assertEqual((first["motor"], second["motor"]),
+                             ("gpui", "rune") if index % 4 == 0 else ("rune", "gpui"))
+        with self.assertRaises(ValueError):
+            packaging.select_measurement_preset(rounds[:-1])
+
     def test_measurement_kit_and_external_receipt_bind_the_ci_binaries_and_corpus(self):
         repo = Path(__file__).resolve().parents[2]
         sha = "a" * 40

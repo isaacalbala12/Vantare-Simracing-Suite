@@ -356,9 +356,10 @@ reales de bz2, cpio newc y cab.
 El ensayo sin GPU ejecuta `PROBAR_CREDENCIAL_TANDA.ps1` y el descubrimiento
 de tests Python incluye `test_preflight_privado.py`.
 
-La ejecución de medición permanece bloqueada hasta que se integre el
-preflight final de autorización de L3. La cita visual conserva su paquete
-verificado.
+La medición directa requiere autorización expresa con
+`-MedicionAutorizadaHasta <UTC>` y una fecha UTC futura a no más de doce
+horas. El límite de la tanda queda dentro de ese vencimiento. La cita
+programada solo lanza la visual.
 
 Para preparar un candidato de medición desde CI, el run se importa en
 `COMPILAR_TANDA.ps1 -ModoArtefacto Medicion -CiRunId <run> -SourceSha <sha>`
@@ -380,7 +381,29 @@ En el servidor, extraer el ZIP en una carpeta nueva y ejecutar
 -CorpusQA <grabación> -PythonExe <ruta-absoluta> -Salida <salida-nueva>`.
 El modo `VerificarCustodiaQA` toma el hash esperado de ese mismo recibo
 externo. El ensayado y el sellado preparan la revisión del kit. El guard
-`BLOCKED_MEASUREMENT_AUTHORIZATION` sigue impidiendo el modo real.
+`BLOCKED_MEASUREMENT_AUTHORIZATION` sigue impidiendo el modo real sin
+autorización vigente y ensayo del mismo paquete.
+
+`--measurement-preset` selecciona 48 rondas: Standings, Relative, Delta,
+Fuel Strategy y Pedals con dos Looks, más Radar y Track Map. Se mide cada
+configuración en GPUI y Rune con replay y Waiting. Cada estado alterna
+el motor inicial. El host arranca en frío y conserva 5 s de calentamiento
+y 50 s centrales. La estimación es de 55 minutos, con reserva para la
+transferencia y posibles diferencias del PC. Esta tanda no repite
+capturas ni lifecycle.
+
+En una ventana autorizada, el coordinador de servidor requiere
+`-ZipQA`, `-ReciboPaqueteQA`, `-CorpusQA`, `-EnsayoMedicionQA` y
+`-KeyIdQA` además de `-MedicionAutorizadaHasta` y los límites de la tanda.
+Usar `-PythonServidorQA` si el Python local para custodia tiene una ruta
+distinta de `-PythonExe`, que identifica el Python del PC de juego.
+Verifica el recibo y la custodia antes del primer SSH. Obtiene la huella
+en el PC y firma en el servidor. Solo transfiere la credencial firmada,
+el registro público y el corpus a la carpeta QA de esa sesión. El
+trabajador instala la credencial y exige el binding en un perfil QA
+nuevo antes de arrancar el núcleo. Comprueba el perfil personal antes y
+después de cada ronda. El servidor elimina el material temporal antes
+de pedir apagado y conserva la autorización en el log y en la evidencia.
 
 Para una cita limitada a paridad visual y ciclo de vida, usar el workflow
 `QA kit artifacts` de nightly. La rama `qa-kit/<sha8>` debe apuntar al SHA ya

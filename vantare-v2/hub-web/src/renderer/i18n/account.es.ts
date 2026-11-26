@@ -47,7 +47,6 @@ export const accountText = {
   sessionTitle: "Estado de la cuenta",
   yourSession: "Tu sesión",
   state: "Estado",
-  demoActive: "Activo",
   reauthenticate: "Vuelve a iniciar sesión",
   sessionConnected: "Conectada",
   lastAccess: "Último acceso",

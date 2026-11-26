@@ -11,6 +11,7 @@ import type { LauncherReviewResult } from "../contract/launcher-review-bridge";
 import { isUiMessage } from "../contract/validation";
 import { analysisScene } from "./analysis-scenes";
 import type { MockContext } from "./context";
+import { liveAccountScenes } from "./modules/account-license";
 import { studioStateVisual } from "./studio-states";
 import { studioFieldVisual } from "./studio-widget-scenes";
 export const hello = scene as Extract<HostToUi, { kind: "hello" }>;
@@ -18,6 +19,10 @@ export function helloForScene(name?: string): typeof hello {
   if (
     name === "cuenta-sesion" ||
     name === "cuenta-founders" ||
+    liveAccountScenes.includes(name ?? "") ||
+    new RegExp(
+      `^visual-(?:dark|light):(?:${liveAccountScenes.join("|")})$`,
+    ).test(name ?? "") ||
     /^visual-(?:dark|light):cuenta-(?:sesion|founders)$/.test(name ?? "")
   )
     return { ...hello, demo: false };
@@ -54,7 +59,7 @@ export function createMockHostWithTrustedReview(
     /^visual-(dark|light):(onboarding-(?:[0-7]|cuenta-(?:sesion|cargando|error)|correo-(?:sin-permiso|con-permiso|error)))$/.exec(
       sceneName,
     ) ??
-    /^visual-(dark|light):(cuenta-(?:base|sesion|founders|cambio-sesion)|acceso-(?:base|navegador|enlace-copiado|comprobando|cancelando|cerrando|cierre-incierto|error)|email-(?:formulario|codigo|crear-contrasena|consentimiento|autorizando|reiniciado|ocupado|espera)|privacidad-pendiente|privacidad-uso|inicio-(?:base|referencia|vacio|cargando|error|lanzando|sin-diseno)|ajustes-con-diseno|proximamente-base|roadmap-(?:base|published)|notificaciones-base|launcher-base|launcher-importado|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app|launcher-results-(?:many|mixed|final-pass|unsupported|unknown|accepted|rejected|finished|timeout|restart|gap|stale)|launcher-removal-(?:ready|owned|unknown|unsupported|accepted|rejected|failed|finished|timeout|gap|restart|conflict)|launcher-control-(?:ready|cancel|accepted|rejected|unknown|finished|no-steps|unsupported|closing|missing-document)|launcher-answer-(?:question|accepted|rejected(?:-account|-denied|-unavailable)?|finished|unknown|trust)|launcher-decision|launcher-shortcuts|launcher-offline|studio-canvas(?:-outside|-conflict|-readonly|-monitor|-monitor-missing|-monitor-unreadable)?|studio-base|studio-conservados|studio-bloqueado|studio-miniatura-ausente|studio-muchos|studio-pocos|studio-vacio|studio-oculto|studio-error|studio-protegido|studio-mostrando|studio-pro-bloqueado|testing-reference|testing-tester-reference|testing-tester-report-reference|testing-tester-questionnaires-reference|testing-tester-community-reference|calendar-reference|calendar-live-reference|calendar-launch-reference|calendar-ics-replace-reference|calendar-notice-reference)$/.exec(
+    /^visual-(dark|light):(cuenta-(?:base|sesion|founders|cambio-sesion|tester|sin-verificar|transicion|compra-(?:completada|expira)|limite-dispositivos|bloqueada-(?:no-disponible|caducada|recuperar|reloj|revocada|actualizar))|acceso-(?:navegador-completa|correo-verificado)|acceso-(?:base|navegador|enlace-copiado|comprobando|cancelando|cerrando|cierre-incierto|error)|email-(?:formulario|codigo|crear-contrasena|consentimiento|autorizando|reiniciado|ocupado|espera)|privacidad-pendiente|privacidad-uso|inicio-(?:base|referencia|vacio|cargando|error|lanzando|sin-diseno)|ajustes-con-diseno|proximamente-base|roadmap-(?:base|published)|notificaciones-base|launcher-base|launcher-importado|launcher-ready|launcher-aplicaciones|launcher-escaneando|launcher-borrar-app|launcher-results-(?:many|mixed|final-pass|unsupported|unknown|accepted|rejected|finished|timeout|restart|gap|stale)|launcher-removal-(?:ready|owned|unknown|unsupported|accepted|rejected|failed|finished|timeout|gap|restart|conflict)|launcher-control-(?:ready|cancel|accepted|rejected|unknown|finished|no-steps|unsupported|closing|missing-document)|launcher-answer-(?:question|accepted|rejected(?:-account|-denied|-unavailable)?|finished|unknown|trust)|launcher-decision|launcher-shortcuts|launcher-offline|studio-canvas(?:-outside|-conflict|-readonly|-monitor|-monitor-missing|-monitor-unreadable)?|studio-base|studio-conservados|studio-bloqueado|studio-miniatura-ausente|studio-muchos|studio-pocos|studio-vacio|studio-oculto|studio-error|studio-protegido|studio-mostrando|studio-pro-bloqueado|testing-reference|testing-tester-reference|testing-tester-report-reference|testing-tester-questionnaires-reference|testing-tester-community-reference|calendar-reference|calendar-live-reference|calendar-launch-reference|calendar-ics-replace-reference|calendar-notice-reference)$/.exec(
       sceneName,
     );
   sceneName = visual?.[2] ?? sceneName;

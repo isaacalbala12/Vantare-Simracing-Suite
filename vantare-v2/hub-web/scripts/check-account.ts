@@ -8,6 +8,7 @@ import {
   foundersCopy,
   accountText as text,
 } from "../src/renderer/i18n/account.es.ts";
+import { checkAccountLicense } from "./check-account-license.ts";
 import { accountScenes } from "./visual-diff/account.ts";
 export async function checkAccount(page: Page, base: string, evidence: string) {
   const reports = [];
@@ -137,6 +138,7 @@ export async function checkAccount(page: Page, base: string, evidence: string) {
       );
     await check(scheme, "founders");
   }
+  await checkAccountLicense(page, base, evidence);
   await writeFile(
     resolve(evidence, "account-interactions.json"),
     JSON.stringify({

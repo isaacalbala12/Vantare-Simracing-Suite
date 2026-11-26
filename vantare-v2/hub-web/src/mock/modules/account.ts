@@ -1,11 +1,27 @@
 import demoIdentity from "../../../fixtures/demo-identity.json";
 import type { AccountView } from "../../contract/generated/account";
-import { accountMethods } from "../../contract/generated/account";
+import {
+  accountLimits,
+  accountMethods,
+} from "../../contract/generated/account";
 import corpus from "../../contract/generated/corpus/account.json";
 import { isAccount } from "../../contract/modules/account";
 import { oneOf, record } from "../../contract/validation-common";
 import type { MockContext, MockHandler } from "../context";
+import {
+  accountMessages,
+  applyPolicy,
+  coreAccess,
+  initialPolicy,
+  liveAccountScenes,
+  type Policy,
+  renew,
+} from "./account-license";
 import { accountScene } from "./account-scenes";
+
+const DAY_MS = 86_400_000; // reset cooldown: "una vez cada 24 h" (AccountRail device help)
+const BROWSER_MS = 5000; // reserve_browser (account/mod.rs:366)
+const RESOLVE_MS = 1500; // simulated time for scenes that finish a flow
 export function create(context: MockContext): MockHandler {
   const sample = corpus.host.find((v) => v.kind === "response");
   if (
@@ -123,6 +139,65 @@ export function create(context: MockContext): MockHandler {
       },
     };
   }
+  let policy: Policy = initialPolicy(context.sceneName, current, context.core);
+  if (
+    context.sceneName.startsWith("cuenta-") &&
+    liveAccountScenes.includes(context.sceneName)
+  ) {
+    current = applyPolicy(
+      {
+        ...current,
+        name: demoIdentity.name,
+        session: "signedIn",
+        gate: "none",
+        channel: "development",
+        error: null,
+        email: null,
+      },
+      policy,
+    );
+    context.core.access = coreAccess(context.core, policy);
+  }
+  const completes = context.sceneName === "cuenta-compra-completada";
+  const expires = context.sceneName === "cuenta-compra-expira";
+  let timers: Array<ReturnType<typeof setTimeout>> = [];
+  let lastReset: number | undefined;
+  let lastPortal: number | undefined;
+  const publish = () =>
+    context.emit?.({
+      kind: "event",
+      event: { topic: "account", value: structuredClone(current) },
+    });
+  // The host derives plan/modules/access from one policy (account/mod.rs:104).
+  const setPolicy = (next: Policy) => {
+    policy = next;
+    current = applyPolicy(current, policy);
+    context.core.access = coreAccess(context.core, policy);
+    context.emit?.({
+      kind: "event",
+      event: { topic: "core", value: structuredClone(context.core) },
+    });
+  };
+  const stopTimers = () => {
+    for (const timer of timers) clearTimeout(timer);
+    timers = [];
+  };
+  const later = (ms: number, run: () => void) =>
+    timers.push(setTimeout(run, ms));
+  // After sign-in the host renews the license on its own (reducer next_command).
+  const signIn = (name: string) => {
+    const renewed = renew(policy);
+    setPolicy(renewed.policy);
+    current = {
+      ...current,
+      gate: "none",
+      session: "signedIn",
+      email: null,
+      name,
+      error: null,
+      copyLink: { available: false, copied: false },
+    };
+  };
   let waiting: number | undefined;
   const fail = (
     id: number,
@@ -142,6 +217,7 @@ export function create(context: MockContext): MockHandler {
         verified: context.core.access.verified,
         blocked: context.core.access.blocked,
       };
+      policy = initialPolicy(context.sceneName, current, context.core);
     }
     if (value.kind === "subscribe" && value.topic === "account") {
       return {
@@ -192,6 +268,12 @@ export function create(context: MockContext): MockHandler {
     }
     switch (request.method) {
       case "account.begin":
+        stopTimers();
+        if (context.sceneName === "acceso-navegador-completa")
+          later(RESOLVE_MS, () => {
+            signIn(demoIdentity.name);
+            publish();
+          });
         current = {
           ...current,
           gate: "waitingBrowser",
@@ -201,6 +283,7 @@ export function create(context: MockContext): MockHandler {
         };
         break;
       case "account.cancel":
+        stopTimers();
         current = {
           ...current,
           gate: "choose",
@@ -234,16 +317,75 @@ export function create(context: MockContext): MockHandler {
         current = { ...current, gate: "none", email: null };
         break;
       case "account.logout":
+        // SignedOut maps to Access::default() (navigation.rs:21); the host
+        // clears profile and purchase wait on logout (account/mod.rs:296).
+        stopTimers();
+        setPolicy({ ...policy, state: "none" });
         current = {
           ...current,
           gate: "choose",
           session: "signedOut",
           name: "",
           photo: null,
-          verified: false,
           email: null,
+          error: null,
+          sessionNotice: false,
+          deviceLimit: false,
+          purchase: { waiting: false, message: null },
+          notice: accountMessages.loggedOut,
         };
         break;
+      case "account.check": {
+        // Operation::Check only runs with a session (dispatch.rs:121).
+        if (current.session !== "signedIn") break;
+        const renewed = renew(policy);
+        setPolicy(renewed.policy);
+        current = {
+          ...current,
+          notice: renewed.notice,
+          deviceLimit:
+            renewed.policy.state === "active"
+              ? false
+              : renewed.policy.limit === true,
+        };
+        break;
+      }
+      case "account.photoRefresh":
+        if (current.session !== "signedIn") return fail(id, "denied");
+        current = { ...current, name: current.name || demoIdentity.name };
+        break;
+      case "account.portal": {
+        if (current.session !== "signedIn") return fail(id, "denied");
+        const at = Date.now();
+        if (lastPortal !== undefined && at - lastPortal < BROWSER_MS)
+          return fail(id, "busy");
+        lastPortal = at;
+        break;
+      }
+      case "account.deviceReset": {
+        if (current.session !== "signedIn") return fail(id, "denied");
+        const at = Date.now();
+        if (lastReset !== undefined && at - lastReset < DAY_MS) {
+          // reset_active_device raises rate_limit: a generic error, and
+          // app.rs already ran revoke_local, so this device loses its rights.
+          setPolicy({ ...policy, state: "none" });
+          current = {
+            ...current,
+            deviceLimit: false,
+            notice: accountMessages.resetFailed,
+          };
+          break;
+        }
+        lastReset = at;
+        // revoke_local leaves NoCredential until the next renewal (app.rs:215).
+        setPolicy({ ...policy, state: "none", limit: false });
+        current = {
+          ...current,
+          deviceLimit: false,
+          notice: accountMessages.deviceFreed,
+        };
+        break;
+      }
       case "account.email": {
         const action = request.action;
         if (action.action === "open") {
@@ -289,6 +431,10 @@ export function create(context: MockContext): MockHandler {
         } else if (action.action === "reset" && email.stage === "newPassword") {
           current = { ...current, email: { ...email, stage: "consent" } };
         } else if (action.action === "finish" && email.stage === "consent") {
+          if (context.sceneName === "acceso-correo-verificado") {
+            signIn("Piloto QA");
+            break;
+          }
           current =
             context.sceneName === "acceso-correo-completo"
               ? {
@@ -307,6 +453,36 @@ export function create(context: MockContext): MockHandler {
       }
       case "account.purchase":
         if (current.session !== "signedIn") return fail(id, "denied");
+        if (current.purchase.waiting) return fail(id, "busy");
+        stopTimers();
+        // Like the host: the rights arrive through the policy while the wait
+        // stays open until purchaseWaitSeconds or a stop (observe_policy,
+        // account/mod.rs:343). Scenes shorten the times.
+        if (completes)
+          later(RESOLVE_MS, () => {
+            setPolicy({
+              ...policy,
+              state: "active",
+              grant: {
+                ...policy.grant,
+                founders: request.product === "founders",
+              },
+            });
+            publish();
+          });
+        later(
+          expires ? RESOLVE_MS : accountLimits.purchaseWaitSeconds * 1000,
+          () => {
+            current = {
+              ...current,
+              purchase: {
+                waiting: false,
+                message: accountMessages.purchaseExpired,
+              },
+            };
+            publish();
+          },
+        );
         current = {
           ...current,
           purchase: {
@@ -317,6 +493,7 @@ export function create(context: MockContext): MockHandler {
         };
         break;
       case "account.purchaseStop":
+        stopTimers();
         current = {
           ...current,
           purchase: {

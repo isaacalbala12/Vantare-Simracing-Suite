@@ -181,6 +181,18 @@ async function start() {
   });
   contents.setWindowOpenHandler(() => ({ action: "deny" }));
   let disconnect: (() => void) | undefined;
+  // `ready` lets the launcher confirm an updated generation and retire the
+  // previous one. A first paint alone may be a bundle that failed to mount:
+  // wait also for the renderer, which connects only once React has committed
+  // its tree (#2785). Sent once; a reload does not confirm again.
+  let painted = false,
+    connected = false,
+    acknowledged = false;
+  const acknowledge = () => {
+    if (!compatible || !painted || !connected || acknowledged) return;
+    acknowledged = true;
+    host.send({ kind: "ready" });
+  };
   const removeReview = host.listen(review.receive);
   // The same closed QA bootstrap as createHost; captures never emit OS notices.
   const notices = notificationDelivery({
@@ -597,6 +609,8 @@ async function start() {
     try {
       frame.postMessage("vantare:port", null, [port2]);
       port1.postMessage(hello);
+      connected = true;
+      acknowledge();
     } catch {
       disconnect?.();
     }
@@ -631,7 +645,8 @@ async function start() {
         if (!currentWindow.isDestroyed()) currentWindow.setFocusable(true);
       }
     } else currentWindow.show();
-    if (compatible) host.send({ kind: "ready" });
+    painted = true;
+    acknowledge();
   });
   if (devUrl) await window.loadURL(devUrl);
   else await window.loadURL("app://hub/");

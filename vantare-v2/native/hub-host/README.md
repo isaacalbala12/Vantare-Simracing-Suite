@@ -53,6 +53,30 @@ la intención pendiente y permite cerrar. En EOF el
 anfitrión aplica un límite de dos segundos para un renderer bloqueado. Una
 entrada en Live cierra el Hub. `hub-ready` solo se publica tras mostrar la ventana.
 
+## Arranque instalado y confirmación (P6, #2785)
+
+Electron envía `ready` una sola vez, cuando la ventana ya se pintó (visible o
+minimizada) **y** el renderer se conectó desde el marco principal de confianza.
+El renderer solo se conecta cuando React ha montado el árbol: un bundle que
+falla al montar no confirma y la raíz revierte al vencer su minuto. Con una
+versión de protocolo distinta no se envía nunca. El anfitrión rechaza `ready`
+antes de un `hello` compatible y solo escribe `hub-ready` con el token de este
+arranque (32 hex), una vez y de forma atómica. Si tras mostrarse la generación
+sigue pendiente más de un minuto, el anfitrión se detiene; antes de mostrarse,
+solo la raíz decide. No cambian el cable (v70), el minuto, el residente, los
+servicios ni los derechos.
+
+Un `vantare-hub.exe` instalado abierto a mano se redirige a
+`Vantare.exe --root -Root <raíz>` con la raíz como carpeta de trabajo, sin
+token, datos ni modo de arranque heredados; una segunda redirección se rechaza.
+«Iniciar minimizado» solo se aplica cuando arranca Windows (`--background`).
+Al terminar la sesión no queda ningún proceso de la interfaz: el Job Object
+termina también los auxiliares que sobreviven al proceso principal.
+
+Si la confirmación diera falsos rollbacks en máquinas lentas, se revierte el
+cambio de `hub-web/src/main/index.ts` (volver a enviar `ready` en
+`ready-to-show`) y sus tests; no hace falta tocar Rust ni el lanzador.
+
 ## Geometría de Studio (ADR 0109, v37)
 
 `studio.geometry` acepta mover, redimensionar, anclar, volver al tamaño automático

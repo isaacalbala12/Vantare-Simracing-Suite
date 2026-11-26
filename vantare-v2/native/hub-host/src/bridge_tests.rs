@@ -232,7 +232,7 @@ fn peer_process() {
         done.wait();
         return;
     }
-    if matches!(mode.as_str(), "owner" | "descendant") {
+    if matches!(mode.as_str(), "owner" | "descendant" | "leave-descendant") {
         owner_peer(&mode, &name, &token, &done);
         return;
     }
@@ -303,10 +303,113 @@ fn owner_peer(mode: &str, name: &str, token: &str, done: &Signal) {
         )
         .expect("PID handoff");
         Signal::open(ready).expect("ready event").set();
+        if mode == "leave-descendant" {
+            // Like an Electron helper: the main process ends, the helper stays.
+            std::mem::forget(child);
+            return;
+        }
         done.wait();
         let _killed = child.0.kill();
         let _joined = child.0.wait();
     }
+}
+/// Releases the helpers even when an assertion fails: a failing run must not
+/// leave its own processes behind either (they wait for this event).
+struct Release<'a>(&'a Signal);
+impl Drop for Release<'_> {
+    fn drop(&mut self) {
+        self.0.set();
+    }
+}
+#[test]
+fn a_clean_ui_exit_leaves_no_descendant_once_the_host_lets_it_go() {
+    let root = Root::new();
+    let done = Signal::new().expect("stop");
+    let _release = Release(&done);
+    let ready = Signal::new().expect("ready");
+    let path = root.path.join("left-pids.json");
+    let command = command("leave-descendant", "", "", &done.name, &ready.name, &path);
+    let null = File::options().write(true).open("NUL").expect("stderr");
+    let mut ui = UiChild(crate::job::spawn(&command, &null).expect("UI in its job"));
+    let handle = test_support::process(ui.0.id()).expect("UI handle");
+    ready.wait_or_exit(&handle);
+    let ids: Vec<u32> = serde_json::from_slice(&std::fs::read(path).expect("IDs")).expect("PIDs");
+    assert_eq!(ids.first(), Some(&ui.0.id()));
+    let descendant = test_support::process(ids[1]).expect("our descendant");
+    assert!(ui.0.wait().expect("UI exit").success());
+    assert!(
+        test_support::running(&descendant),
+        "a helper outlives the UI"
+    );
+    // The normal end of a session: the host releases its UI child.
+    drop(ui);
+    test_support::terminated(&descendant);
+}
+fn connected() -> (Pipe, Pipe, Listener) {
+    let (name, _stop, listener, mut server) = endpoint();
+    let client = std::thread::spawn(move || {
+        let stop = Arc::new(Stop::new().expect("client stop"));
+        connect(&name, stop, Duration::from_secs(5)).expect("client")
+    });
+    server.accept().expect("accept");
+    (server, client.join().expect("client thread"), listener)
+}
+fn confirming_session(root: &Path, token: &str) -> Session {
+    let core = format!(
+        "vantare-hub-test-core-{}",
+        vantare_services::random_id().expect("core id")
+    );
+    let confirmation = ready::Ready::new(root.to_owned(), Some(token.to_owned()));
+    Session::new(
+        &args(root),
+        Core::start(&core, root).expect("unconnected core"),
+        Settings::load(&args(root)),
+        Some(confirmation.expect("boot token")),
+        crate::privacy::State::isolated(root),
+    )
+}
+#[test]
+fn ready_confirms_only_after_a_compatible_hello() {
+    let token = "0123456789abcdef0123456789abcdef";
+    let root = Root::new();
+    let marker = root.path.join("hub-ready");
+    let (mut server, mut client, _listener) = connected();
+    let denied = |result: io::Result<bool>| matches!(result, Err(error) if error.kind() == io::ErrorKind::PermissionDenied);
+    // Before any hello a ready frame is a protocol violation, not a confirmation.
+    let mut session = confirming_session(&root.path, token);
+    assert!(denied(session.receive(&mut server, &UiToHost::Ready {})));
+    // An incompatible UI is told so and can never confirm: the launcher reverts.
+    let mut session = confirming_session(&root.path, token);
+    let found = protocol::VERSION + 1;
+    let refused = session.receive(&mut server, &UiToHost::Hello { version: found });
+    assert!(matches!(refused, Err(error) if error.kind() == io::ErrorKind::InvalidData));
+    let mut reader = frame::Reader::default();
+    let answer = loop {
+        if let Some(value) = reader.next::<HostToUi>(&mut client).expect("answer") {
+            break value;
+        }
+    };
+    assert!(matches!(
+        answer,
+        HostToUi::Failure {
+            id: 0,
+            error: HostError::Incompatible { expected: protocol::VERSION, found: seen }
+        } if seen == found
+    ));
+    assert!(denied(session.receive(&mut server, &UiToHost::Ready {})));
+    assert!(!marker.exists());
+    // Compatible: this boot's token.
+    let mut session = confirming_session(&root.path, token);
+    let hello = UiToHost::Hello {
+        version: protocol::VERSION,
+    };
+    assert!(session.receive(&mut server, &hello).expect("hello"));
+    assert!(
+        session
+            .receive(&mut server, &UiToHost::Ready {})
+            .expect("ready")
+    );
+    assert_eq!(std::fs::read_to_string(&marker).expect("marker"), token);
 }
 
 #[test]

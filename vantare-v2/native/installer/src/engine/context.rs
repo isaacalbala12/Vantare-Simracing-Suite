@@ -302,11 +302,29 @@ fn ci_prefix(
     }
     // Volumen local y nunca la raíz de una unidad.
     let prefix = disk::path(&prefix).ok()?;
-    let folders = real_folders().ok()?;
-    folders
-        .iter()
-        .all(|real| overlap(&prefix, real).is_ok_and(|shared| !shared))
-        .then_some(prefix)
+    // Comparación en forma canónica en los dos lados (nombres largos en vez de 8.3,
+    // unidades `subst` y enlaces resueltos): el texto solo se saltaría `RUNNER~1`.
+    // Lo que no se pueda canonicalizar deja sin rama de CI.
+    let own = canonical(&prefix)?;
+    for real in real_folders().ok()? {
+        let real = canonical(&real)?;
+        if own == real
+            || own.starts_with(&format!("{real}/"))
+            || real.starts_with(&format!("{own}/"))
+        {
+            return None;
+        }
+    }
+    Some(prefix)
+}
+fn canonical(path: &Path) -> Option<String> {
+    let full = std::fs::canonicalize(path).ok()?;
+    Some(
+        full.to_string_lossy()
+            .replace('\\', "/")
+            .trim_end_matches('/')
+            .to_lowercase(),
+    )
 }
 fn below_prefix(path: &Path, prefix: &Path) -> bool {
     !prefix.as_os_str().is_empty() && path != prefix && path.starts_with(prefix)
@@ -393,21 +411,25 @@ pub(crate) fn cleanup_marker(root: &Path, verified_image: Option<&str>) -> Resul
 
 #[cfg(all(test, windows))]
 mod tests {
-    use super::{WriteError, below_prefix, ci_prefix, same_path};
+    use super::{WriteError, below_prefix, canonical, ci_prefix, disk, same_path};
     use std::path::{Path, PathBuf};
 
-    // Disposición real de windows-latest (logs de CI de #2786): perfil en C:, temporal en D:.
-    const RUNNER_TEMP: &str = "D:\\a\\_temp";
-    fn hosted(overrides: &[(&str, Option<&str>)]) -> impl Fn(&str) -> Option<std::ffi::OsString> {
+    fn hosted(
+        temp: &Path,
+        overrides: &[(&str, Option<&str>)],
+    ) -> impl Fn(&str) -> Option<std::ffi::OsString> {
         let mut values: Vec<(String, Option<String>)> = [
             ("CI", "true"),
             ("GITHUB_ACTIONS", "true"),
             ("RUNNER_ENVIRONMENT", "github-hosted"),
-            ("RUNNER_TEMP", RUNNER_TEMP),
         ]
         .iter()
         .map(|(name, value)| (name.to_string(), Some(value.to_string())))
         .collect();
+        values.push((
+            "RUNNER_TEMP".into(),
+            Some(temp.to_string_lossy().into_owned()),
+        ));
         for (name, value) in overrides {
             values.retain(|(known, _)| known.as_str() != *name);
             values.push((name.to_string(), value.map(str::to_string)));
@@ -419,24 +441,64 @@ mod tests {
                 .and_then(|(_, value)| value.clone().map(Into::into))
         }
     }
-    fn real() -> Result<Vec<PathBuf>, WriteError> {
-        Ok([
-            "C:\\Users\\runneradmin",
-            "C:\\Users\\runneradmin\\AppData\\Local",
-            "C:\\Users\\runneradmin\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs",
-            "C:\\Users\\runneradmin\\Desktop",
-            "C:\\Users\\runneradmin\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
-        ]
-        .map(PathBuf::from)
-        .to_vec())
+    /// Disposición de un runner con carpetas que existen de verdad (canonicalizar lo exige):
+    /// un perfil con sus carpetas, un temporal fuera y un hermano de nombre parecido.
+    struct Tree(PathBuf);
+    impl Tree {
+        fn new() -> Self {
+            let parent = if std::env::var("CI").as_deref() == Ok("true") {
+                PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+            } else {
+                PathBuf::from("D:/VantareServer/qa/isa-2794")
+            };
+            let tree = Self(parent.join(disk::id().expect("ID")));
+            for directory in [
+                "Users/runneradmin/AppData/Local/Temp",
+                "Users/runneradmin/Desktop/qa",
+                "Users/runneradmin/Start Menu/Programs/Startup",
+                "Users/runneradmin2/_temp",
+                "a/_temp",
+            ] {
+                std::fs::create_dir_all(tree.0.join(directory)).expect("tree");
+            }
+            tree
+        }
+        fn at(&self, relative: &str) -> PathBuf {
+            self.0.join(relative)
+        }
+        fn folders(&self) -> Vec<PathBuf> {
+            [
+                "Users/runneradmin",
+                "Users/runneradmin/AppData/Local",
+                "Users/runneradmin/Start Menu/Programs",
+                "Users/runneradmin/Desktop",
+                "Users/runneradmin/Start Menu/Programs/Startup",
+            ]
+            .map(|relative| self.at(relative))
+            .to_vec()
+        }
+    }
+    impl Drop for Tree {
+        fn drop(&mut self) {
+            if !std::thread::panicking() {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
     }
 
     #[test]
     fn github_hosted_temporary_root_is_the_only_ci_prefix() {
-        assert_eq!(
-            ci_prefix(hosted(&[]), real),
-            Some(PathBuf::from(RUNNER_TEMP))
-        );
+        let tree = Tree::new();
+        let folders = || Ok(tree.folders());
+        for temp in ["a/_temp", "Users/runneradmin2/_temp"] {
+            let temp = tree.at(temp);
+            assert_eq!(
+                ci_prefix(hosted(&temp, &[]), folders),
+                Some(temp.clone()),
+                "{temp:?}"
+            );
+        }
+        let temp = tree.at("a/_temp");
         for missing in [
             ("CI", None),
             ("CI", Some("1")),
@@ -446,35 +508,85 @@ mod tests {
             ("RUNNER_ENVIRONMENT", Some("self-hosted")),
             ("RUNNER_TEMP", None),
         ] {
-            assert_eq!(ci_prefix(hosted(&[missing]), real), None, "{missing:?}");
+            assert_eq!(
+                ci_prefix(hosted(&temp, &[missing]), folders),
+                None,
+                "{missing:?}"
+            );
         }
     }
 
     #[test]
     fn ci_prefix_never_reaches_real_user_folders_or_a_drive_root() {
-        for temp in [
-            "a\\_temp",
-            "D:\\a\\..\\_temp",
-            "D:\\",
-            "C:\\",
-            "C:\\Users",
-            "C:\\Users\\runneradmin",
-            "c:\\users\\RUNNERADMIN\\",
-            "C:\\Users\\runneradmin\\AppData\\Local",
-            "C:\\Users\\runneradmin\\AppData\\Local\\Temp",
-            "C:\\Users\\runneradmin\\Desktop\\qa",
-        ] {
-            assert_eq!(
-                ci_prefix(hosted(&[("RUNNER_TEMP", Some(temp))]), real),
-                None,
-                "{temp}"
-            );
+        let tree = Tree::new();
+        let folders = || Ok(tree.folders());
+        let profile = tree.at("Users/runneradmin");
+        let mut rejected = vec![
+            PathBuf::from("a\\_temp"),
+            PathBuf::from(format!("{}\\..\\_temp", tree.at("a").display())),
+            PathBuf::from("D:\\"),
+            PathBuf::from("C:\\"),
+            tree.at("Users"),
+            PathBuf::from(format!(
+                "{}\\",
+                profile.display().to_string().to_uppercase()
+            )),
+            tree.at("Users/runneradmin/AppData/Local/Temp"),
+            tree.at("Users/runneradmin/Desktop/qa"),
+            // No existe: sin forma canónica no hay rama de CI.
+            tree.at("a/no-existe"),
+        ];
+        rejected.extend(tree.folders());
+        for temp in rejected {
+            assert_eq!(ci_prefix(hosted(&temp, &[]), folders), None, "{temp:?}");
         }
-        // Sin carpetas reales legibles no hay rama de CI.
+        // Fallo cerrado: sin API de carpetas o con una carpeta real que no se puede
+        // canonicalizar, se rechaza; un error nunca equivale a aceptar.
+        let temp = tree.at("a/_temp");
         assert_eq!(
-            ci_prefix(hosted(&[]), || Err(WriteError::new(1, "sin API"))),
+            ci_prefix(hosted(&temp, &[]), || Err(WriteError::new(1, "sin API"))),
             None
         );
+        let mut missing = tree.folders();
+        missing.push(tree.at("Users/runneradmin/no-existe"));
+        assert_eq!(ci_prefix(hosted(&temp, &[]), || Ok(missing)), None);
+    }
+
+    #[test]
+    fn short_names_cannot_hide_the_real_profile() {
+        // En windows-latest %TEMP% ya viene con nombre corto (C:\Users\RUNNER~1\...):
+        // comparado como texto no se solaparía con el perfil real.
+        let temp = std::env::temp_dir();
+        let profile = std::env::var_os("USERPROFILE")
+            .map(PathBuf::from)
+            .expect("USERPROFILE");
+        let (Some(inside), Some(home)) = (canonical(&temp), canonical(&profile)) else {
+            panic!("temporal y perfil reales canonicalizables");
+        };
+        if !inside.starts_with(&format!("{home}/")) {
+            eprintln!("omitido: el temporal de este proceso no está dentro del perfil ({temp:?})");
+            return;
+        }
+        assert_eq!(
+            ci_prefix(hosted(&temp, &[]), super::super::windows::real_user_folders),
+            None
+        );
+    }
+
+    #[test]
+    fn production_folder_list_covers_the_real_profile_and_local_app_data() {
+        let folders = super::super::windows::real_user_folders().expect("Windows known folders");
+        assert_eq!(folders.len(), 5, "{folders:?}");
+        let listed: Vec<_> = folders
+            .iter()
+            .map(|folder| canonical(folder).expect("canonical"))
+            .collect();
+        // El entorno solo hace de oráculo independiente; el guard no lo lee.
+        for variable in ["USERPROFILE", "LOCALAPPDATA"] {
+            let expected =
+                canonical(Path::new(&std::env::var_os(variable).expect(variable))).expect(variable);
+            assert!(listed.contains(&expected), "{variable}: {listed:?}");
+        }
     }
 
     #[test]

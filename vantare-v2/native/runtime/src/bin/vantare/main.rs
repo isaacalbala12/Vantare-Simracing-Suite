@@ -24,6 +24,13 @@
 
 #![cfg_attr(windows, windows_subsystem = "windows")]
 
+// La autoridad TEST de services solo entra con la feature de runtime, que arrastra
+// `installer-qa` y los guards de `--root`, `--session`, `stage` y `apply` (#2771).
+const _: () = assert!(
+    vantare_services::update_manifest::HUB_UPDATE_QA == cfg!(feature = "hub-update-qa"),
+    "vantare-services/hub-update-qa exige vantare-runtime/hub-update-qa"
+);
+
 mod background;
 mod engine;
 use engine::Engine;

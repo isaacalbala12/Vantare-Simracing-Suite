@@ -84,21 +84,34 @@ foreach($name in @('resources/app.asar','vk_swiftshader.dll','locales/es.pak','v
 Put (Join-Path $ui 'unlisted.dll') 'extra'
 Reject {Assert-HubPackage $ui $receiptPath '0.0.989' ('a'*40) $false}
 [IO.File]::Delete((Join-Path $ui 'unlisted.dll'))
-# QA bytes in web assets must fail even with no EXE in the tree/archive.
+# QA bytes in web assets must fail even with no EXE in the tree/archive. The Hub update
+# TEST authority (#2771) counts through its marker and every spelling of its public key.
 $qa=Join-Path $root 'qa/hub-ui/resources/app.asar'
-foreach($marker in @('VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','HUB_QA_DRIVER')){
-    Put $qa (('x'*65533)+$marker)
+$latin=[Text.Encoding]::GetEncoding(28591)
+$updateKey='GX9rI-FshTLGq8g4-s1ep4m-DHaykgM0A5v6iz02jWE'
+$updateBytes=Get-NativeLicensePublicKeyBytes $updateKey
+$qaMarkers=@('VANTARE_QA_E2E_NOT_FOR_DISTRIBUTION_1916','HUB_QA_DRIVER','VANTARE_QA_HUB_UPDATE_NOT_FOR_DISTRIBUTION',$updateKey,
+    [Convert]::ToBase64String($updateBytes),[BitConverter]::ToString($updateBytes).Replace('-','').ToLowerInvariant(),$latin.GetString($updateBytes))
+$portable=Join-Path $root 'portable/generations/fixture/hub-ui/resources/app.asar'
+[IO.Directory]::CreateDirectory((Split-Path $qa))|Out-Null;[IO.Directory]::CreateDirectory((Split-Path $portable))|Out-Null
+for($index=0;$index -lt $qaMarkers.Count;$index++){
+    # Latin-1 writes the raw key bytes unchanged; the name cannot carry them.
+    [IO.File]::WriteAllBytes($qa,$latin.GetBytes(('x'*65533)+$qaMarkers[$index]))
     Reject {Assert-NativeDistributionTree (Join-Path $root 'qa')}
-    $archive=Join-Path $root ($marker+'.zip')
+    $archive=Join-Path $root "qa-asar-$index.zip"
     New-BuildZip (Join-Path $root 'qa') $archive
     Reject {Assert-NativeDistributionArchive $archive}
-    $portable=Join-Path $root 'portable'
-    Put (Join-Path $portable 'generations/fixture/hub-ui/resources/app.asar') $marker
-    $portableZip=Join-Path $root ('portable-'+$marker+'.zip')
-    New-BuildZip $portable $portableZip
+    [IO.File]::WriteAllBytes($portable,$latin.GetBytes($qaMarkers[$index]))
+    $portableZip=Join-Path $root "portable-$index.zip"
+    New-BuildZip (Join-Path $root 'portable') $portableZip
     Reject {Assert-NativeDistributionArchive $portableZip}
 }
-'PASS public inventory: declared extra EXE/sidecar, sealed UI, tampering and QA ASAR'
+Put $qa 'normal fixture'
+Assert-NativeDistributionTree (Join-Path $root 'qa')
+$cleanArchive=Join-Path $root 'qa-asar-clean.zip'
+New-BuildZip (Join-Path $root 'qa') $cleanArchive
+Assert-NativeDistributionArchive $cleanArchive
+'PASS public inventory: declared extra EXE/sidecar, sealed UI, tampering, QA ASAR and Hub update TEST authority'
 
 $project=Join-Path $root 'notices'
 Put (Join-Path $project 'package.json') '{}'

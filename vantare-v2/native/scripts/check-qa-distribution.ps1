@@ -41,7 +41,7 @@ try {
         # Fixture trust is scoped to this QA compiler child, never the caller session.
         $env:VANTARE_LICENSE_PUBLIC_KEYS='qa-rfc8032:11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo'
         Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
-        & cargo build --release --locked --offline -p vantare-runtime -p vantare-services --features vantare-runtime/qa-e2e --bin vantare --bin vantare-core --bin vantare-services -j $jobs --target-dir $target --timings
+        & cargo build --release --locked --offline -p vantare-runtime -p vantare-services --features vantare-runtime/qa-e2e,vantare-runtime/hub-update-qa --bin vantare --bin vantare-core --bin vantare-services -j $jobs --target-dir $target --timings
         if($LASTEXITCODE){throw 'QA negative-control build failed.'}
         Save-DistributionPhase 'qa-control' $phase
     } finally {$env:VANTARE_LICENSE_PUBLIC_KEYS=$fixtureBefore;$env:CARGO_TARGET_DIR=$target}
@@ -69,6 +69,8 @@ try {
     # Rune is shipped as an ordinary product image; packaging does not select it.
     Assert-ExecutableSidecar (Join-Path $target 'release-package/payload/bin/vantare-overlays-rune.exe')
     & (Join-Path $native 'packaging/no-qa-tests.ps1') -EvidenceDirectory (Join-Path $target ('actual-exe-controls-'+[guid]::NewGuid().ToString('N'))) -CleanExecutable (Join-Path $target 'release-package/payload/bin/vantare.exe') -FixtureExecutable (Join-Path $target 'release/vantare-core.exe')
+    # #2771: the Release QA launcher must really carry the Hub update TEST authority bytes.
+    & (Join-Path $native 'packaging/hub-update-qa-exe-tests.ps1') -QaExecutable (Join-Path $target 'release/vantare.exe') -CleanExecutable (Join-Path $target 'release-package/payload/bin/vantare.exe') -EvidenceDirectory (Join-Path $target ('hub-update-qa-exe-'+[guid]::NewGuid().ToString('N')))
 
 
     # End-to-end configured authority control, without the QA feature: compile

@@ -82,6 +82,16 @@ fn schema_product_namespace_and_fields_are_closed() {
             .validate()
             .is_err()
     );
+    // Versión no canónica con su URL coherente: la rechaza la versión, no la URL.
+    let mut padded = value.clone();
+    padded["version"] = serde_json::json!("01.0.990");
+    padded["url"] = serde_json::json!(offer().url.replace("0.0.990", "01.0.990"));
+    assert!(
+        serde_json::from_value::<Offer>(padded)
+            .expect("valid test fixture")
+            .validate()
+            .is_err()
+    );
     for (field, bad) in [
         ("surprise", serde_json::json!(true)),
         ("compressed_bytes", serde_json::json!(-1)),
@@ -111,6 +121,29 @@ fn schema_product_namespace_and_fields_are_closed() {
 #[test]
 fn distribution_client_rejects_a_valid_qa_signed_hub_offer() {
     assert!(Offer::verify(&signed(&offer())).is_err());
+}
+#[cfg(not(feature = "hub-update-qa"))]
+#[test]
+fn distribution_feed_skips_a_qa_signed_offer_without_download_or_staging() {
+    let envelope = signed(&offer());
+    let root = qa_root();
+    let found = check_with(
+        "0.0.989",
+        &root,
+        &AtomicBool::new(false),
+        None,
+        |url, _| {
+            Ok(if url.contains("api.github.com") {
+                br#"[{"draft":false,"tag_name":"hub-beta-v0.0.990"}]"#.to_vec()
+            } else {
+                envelope.clone()
+            })
+        },
+        |_, _, _| panic!("a QA-signed offer reached the ZIP request"),
+    )
+    .expect("an unauthenticated offer is skipped, never fatal");
+    assert!(found.is_none());
+    assert!(!root.exists());
 }
 #[cfg(feature = "hub-update-qa")]
 #[test]

@@ -10,6 +10,25 @@ if ($LASTEXITCODE) { throw 'real services signer build failed' }
 if ($LASTEXITCODE) { throw 'real package verifier build failed' }
 & cargo test --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features hub-update-qa --locked --offline -j 4 --target-dir $target hub_update_feed::tests
 if ($LASTEXITCODE) { throw 'isolated Hub feed QA authority regression' }
+& cargo test --manifest-path native/Cargo.toml -p vantare-services --features hub-update-qa --lib --locked --offline -j 4 --target-dir $target update_manifest
+if ($LASTEXITCODE) { throw 'regresión de la autoridad TEST en update_manifest' }
+# #2771: activar solo la feature de services (p. ej. por unificación) no puede compilar
+# un vantare.exe con la clave TEST sin los guards ni el contexto aislado de runtime.
+$previousPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+$unified = @(& cargo check --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features vantare-services/hub-update-qa --locked --offline -j 4 --target-dir $target 2>&1 | ForEach-Object { "$_" })
+$unifiedExit = $LASTEXITCODE
+$ErrorActionPreference = $previousPreference
+if (-not $unifiedExit -or -not @($unified -match 'vantare-services/hub-update-qa exige vantare-runtime/hub-update-qa').Count) {
+  $unified | Select-Object -Last 20 | Write-Host
+  throw 'la clave TEST de services compiló en vantare.exe sin la feature QA de runtime'
+}
+'Solo vantare-services/hub-update-qa: vantare.exe no compila (assert de la feature de runtime) PASS'
+# #2771: the real TEST-authority launcher, before the matrix replaces it with installer-qa only.
+& cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features hub-update-qa --locked --offline -j 4 --target-dir $target
+if ($LASTEXITCODE) { throw 'isolated Hub update QA launcher build failed' }
+pwsh -NoProfile -File native/packaging/hub-update-qa-exe-tests.ps1 -QaExecutable "$target/debug/vantare.exe" -CleanExecutable "$target/debug/vantare-services.exe" -EvidenceDirectory "$env:RUNNER_TEMP/hub-update-qa-exe" -RefusalRoot "$env:RUNNER_TEMP/hub-update-qa-refusal"
+if ($LASTEXITCODE) { throw 'real Hub update QA launcher escaped the gate or ran without isolation' }
 foreach ($shell in @('powershell.exe', 'pwsh')) {
   $policy = if ($shell -eq 'powershell.exe') { @('-ExecutionPolicy', 'Bypass') } else { @() }
   & $shell -NoProfile @policy -File native/packaging/build-tooling-tests.ps1 -QaRoot "$env:RUNNER_TEMP/installation-tooling" -Verifier "$target/debug/examples/matrix-verifier.exe" -ServicesExecutable "$target/debug/vantare-services.exe" -PackageVerifier "$target/debug/examples/verify-package.exe"

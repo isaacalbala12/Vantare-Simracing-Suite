@@ -569,7 +569,13 @@ mod qa_transport {
             fs::write(root.join(QA_PORT_FILE), server.port.to_string()).expect("port");
             let staging = root.join("staging");
             let result = check_qa(&root, "0.0.989", &staging, &AtomicBool::new(false), None);
-            assert!(result.is_err(), "{package:?}: {result:?}");
+            assert!(
+                result.is_err(),
+                "{package:?}: {:?}",
+                result
+                    .as_ref()
+                    .map(|found| found.as_ref().map(|download| &download.offer))
+            );
             assert_eq!(server.finish().len(), 3);
             assert_eq!(fs::read_dir(&staging).expect("staging").count(), 0);
             fs::remove_dir_all(root).expect("cleanup");
@@ -594,7 +600,13 @@ mod qa_transport {
             &AtomicBool::new(false),
             None,
         );
-        assert!(result.is_err(), "{result:?}");
+        assert!(
+            result.is_err(),
+            "{:?}",
+            result
+                .as_ref()
+                .map(|found| found.as_ref().map(|download| &download.offer))
+        );
         assert_eq!(server.finish(), [RELEASES.to_owned()]);
         assert!(target.finish().is_empty(), "redirect followed");
         assert!(!root.join("staging").exists());

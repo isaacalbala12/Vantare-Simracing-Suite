@@ -1,4 +1,5 @@
 import type { HostToUi, UiToHost } from "../contract/generated/contract";
+import { sectorsElapsed } from "./analysis-sectors-scene";
 import type { MockContext } from "./context";
 /** QA adapter only: exercise the native mock's traces with the 14-lap fixture. */
 export function comparisonScene(
@@ -91,22 +92,30 @@ export function comparisonScene(
       112661,
       null,
     ];
+    // Las escenas de sectores toman los tiempos de sus propias vueltas, no de la tanda de 14.
+    const sectors = name.startsWith("sectors-")
+      ? sectorsElapsed(name.slice(8), request.a, request.b)
+      : undefined;
+    const elapsed = (side: "a" | "b", distance: number) =>
+      sectors
+        ? sectors(side, distance / 5000)
+        : ((distance / 5000) * (times[request[side]] ?? 112000)) / 1000;
     for (const signal of ["speed", "throttle", "brake"] as const)
       for (const side of ["a", "b"] as const)
         result[signal][side] = result[signal][side].map((p) => ({
           ...p,
           value: signal === "throttle" && p.distance === 5000 ? 100 : p.value,
-          elapsed:
-            ((p.distance / 5000) * (times[request[side]] ?? 112000)) / 1000,
+          elapsed: elapsed(side, p.distance),
         }));
     if (result.delta)
       result.delta = result.delta.map((p) => ({
         ...p,
-        elapsed: ((p.distance / 5000) * (times[request.a] ?? 112000)) / 1000,
-        value:
-          ((p.distance / 5000) *
-            ((times[request.a] ?? 112000) - (times[request.b] ?? 112000))) /
-          1000,
+        elapsed: elapsed("a", p.distance),
+        value: sectors
+          ? elapsed("a", p.distance) - elapsed("b", p.distance)
+          : ((p.distance / 5000) *
+              ((times[request.a] ?? 112000) - (times[request.b] ?? 112000))) /
+            1000,
       }));
     if (name === "compare-no-delta") {
       result.delta = null;

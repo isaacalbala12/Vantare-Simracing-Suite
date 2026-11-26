@@ -29,11 +29,18 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 describe("preload connection", () => {
+  it("reports the mounted content with a fixed channel and no data (ISA-2785)", async () => {
+    await import("../src/preload/index");
+    const api = mocks.expose.mock.calls[0][1] as { mounted: () => void };
+    api.mounted();
+    expect(mocks.send.mock.calls).toEqual([["vantare:mounted"]]);
+  });
   it("satisfies the same closed surface checked by the Windows smoke, regardless of insertion order", async () => {
     await import("../src/preload/index");
     const bridge = Object.keys(mocks.expose.mock.calls[0][1]);
     expect(bridge.sort()).toEqual([
       "connect",
+      "mounted",
       "platform",
       "reviewTrust",
       "viewport",

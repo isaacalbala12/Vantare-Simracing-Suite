@@ -1,3 +1,5 @@
+import { perMonth, perYear } from "./plan-price";
+
 export const accountText = {
   title: "Cuenta",
   navigationLabel: (letters: string) =>
@@ -76,8 +78,8 @@ export const accountText = {
   unknown: "—",
   demoDisabled: "Datos de demostración; acciones deshabilitadas",
   // Fuente: docs/vantare-program/product-contract.md:81,102,170 y native/hub/src/services/view/founders.rs:26,151-152.
-  monthly: "Pro · 5,99 €/mes",
-  annual: "Pro · 59,99 €/año",
+  monthly: `Pro · ${perMonth("5,99 €")}`,
+  annual: `Pro · ${perYear("59,99 €")}`,
 } as const;
 export const accountModules = {
   studio: {

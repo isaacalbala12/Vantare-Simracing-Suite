@@ -31,12 +31,12 @@ it("shows the launch offer up to the last second", () => {
   expect(screen.getByText("HASTA EL 26 NOV")).toBeTruthy();
   expect(screen.getAllByText("PRIMER MES")).toHaveLength(2);
   expect(texts(container, ".v-ob-plan-price strong")).toEqual([
-    "3,99 €",
-    "6,99 €",
+    "3,99 €/mes",
+    "6,99 €/mes",
   ]);
   expect(texts(container, ".v-ob-plan-price s")).toEqual([
-    "Precio normal: 5,99 €",
-    "Precio normal: 9,99 €",
+    "Precio normal: 5,99 €/mes",
+    "Precio normal: 9,99 €/mes",
   ]);
 });
 
@@ -50,8 +50,8 @@ it.each(["2026-11-26T18:00:00Z", "2026-11-27T12:00:00Z"])(
     );
     expect(container.querySelector(".v-ob-plans-heading, s")).toBeNull();
     expect(texts(container, ".v-ob-plan-price strong")).toEqual([
-      "5,99 €",
-      "9,99 €",
+      "5,99 €/mes",
+      "9,99 €/mes",
     ]);
     // Sin el título del banner, los planes suben un nivel: no se salta ninguno.
     expect(
@@ -59,6 +59,19 @@ it.each(["2026-11-26T18:00:00Z", "2026-11-27T12:00:00Z"])(
     ).toEqual(["PRO", "PRO PLUS"]);
   },
 );
+
+// Antes y después de la caducidad: ninguna cifra queda sin decir que es al mes.
+it.each([
+  "2026-11-26T17:59:59Z",
+  "2026-11-26T18:00:00Z",
+  "2026-11-27T12:00:00Z",
+])("states the billing period after every amount at %s", (instant) => {
+  const { container } = renderAt(instant);
+  const cards = texts(container, ".v-ob-plan-price");
+  expect(cards).toHaveLength(2);
+  for (const card of cards) expect(card).toContain("€/mes");
+  expect(container.textContent).not.toMatch(/€(?!\/mes)/);
+});
 
 it.each(["2026-11-26T17:59:59Z", "2026-11-26T18:00:00Z"])(
   "never offers the retired Launch Edition at %s",

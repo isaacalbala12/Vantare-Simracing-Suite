@@ -23,9 +23,6 @@ export const onboardingStepsText = {
   ] as const,
   choosePro: "Elegir Pro",
   choosePlus: "Elegir Pro Plus",
-  launchEdition: "LAUNCH EDITION",
-  launchHelp: "Pago único · Edición de lanzamiento",
-  launchCost: "30 €",
   freeForever: "Gratis para siempre: Standings, Relative, Delta y Pedals",
 
   palette: "Estilo del Hub",

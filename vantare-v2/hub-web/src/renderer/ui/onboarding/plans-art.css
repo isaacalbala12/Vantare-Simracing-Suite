@@ -102,52 +102,6 @@
 .v-ob-plans .v-ob-plan-select:is(:hover, :active):not(:disabled) {
   background: var(--ob-plan-button-bg);
 }
-.v-ob-plans .v-ob-launch-plan {
-  height: auto;
-  min-height: 0;
-  padding: calc(14 * var(--ob-unit));
-  border-radius: calc(14 * var(--ob-unit));
-  background: color-mix(in srgb, var(--ob-raw-000000) 50%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ob-raw-ffffff) 20%, transparent);
-  color: var(--ob-raw-ffffff);
-}
-.v-ob-launch-plan > .v-button-label {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  gap: calc(16 * var(--ob-unit));
-  text-align: left;
-}
-.v-ob-launch-plan img {
-  width: calc(48 * var(--ob-unit));
-  height: calc(48 * var(--ob-unit));
-  border-radius: calc(10 * var(--ob-unit));
-}
-.v-ob-launch-plan .v-button-label > span {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-.v-ob-launch-plan strong {
-  font-family: var(--font-display);
-  font-size: calc(22 * var(--ob-unit));
-  line-height: 0.9;
-  font-weight: 600;
-}
-.v-ob-launch-plan .v-button-label > span > span {
-  font-size: calc(13 * var(--ob-unit));
-  font-weight: 400;
-  color: var(--ob-raw-cfc6c7);
-}
-.v-ob-launch-plan b {
-  font-family: var(--font-display);
-  font-size: calc(40 * var(--ob-unit));
-  line-height: 0.9;
-  font-weight: 600;
-}
-.v-ob-plans .v-ob-launch-plan:is(:hover, :active):not(:disabled) {
-  background: color-mix(in srgb, var(--ob-raw-000000) 50%, transparent);
-}
 .v-ob-plan-free {
   margin: 0;
   font-size: calc(13 * var(--ob-unit));

@@ -391,7 +391,7 @@ it("serializes prices clicks, disables all plan actions and resets errors when l
   expect(
     fake.request.mock.calls.filter(([r]) => r.method === "onboarding.prices"),
   ).toHaveLength(1);
-  for (const name of ["Elegir Pro", "Elegir Pro Plus", /LAUNCH EDITION/])
+  for (const name of ["Elegir Pro", "Elegir Pro Plus"])
     expect(screen.getByRole("button", { name }).hasAttribute("disabled")).toBe(
       true,
     );

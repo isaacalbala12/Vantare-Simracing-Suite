@@ -288,6 +288,52 @@ $script:DestinoServidor=Join-Path $sandbox 'visual-copy'
 $null=New-Item -ItemType Directory -Path $script:DestinoServidor
 Invoke-TandaServer $root
 if(($script:transfer -join ',') -ne 'upload,register-worker,download,verified-ack,interactive-finish,unregister'){throw 'La tanda visual registró un sampler o no conservó el protocolo de apagado'}
+$script:SinApagado=$true
+$script:transfer.Clear()
+$script:DestinoServidor=Join-Path $sandbox 'visual-kept-on'
+$null=New-Item -ItemType Directory -Path $script:DestinoServidor
+$outcome=Invoke-TandaServer $root
+if($outcome -cne 'COMPLETADO_SIN_APAGADO' -or ($script:transfer -join ',') -ne 'upload,register-worker,download,unregister'){
+ throw 'SinApagado no respetó la copia, limpieza o ausencia de ACK y apagado'
+}
+$copied=Get-ChildItem -LiteralPath $script:DestinoServidor -Directory | Select-Object -First 1
+$copiedState=Read-TandaJson (Join-Path $copied.FullName 'estado.json')
+if($copiedState.status -cne 'complete' -or -not $copiedState.completed_without_error -or
+   (Test-Path -LiteralPath (Join-Path $copied.FullName 'apagado.json'))){throw 'Evidencia sin apagado incompleta o alterada'}
+$script:tamper=$true
+$script:transfer.Clear()
+$script:DestinoServidor=Join-Path $sandbox 'visual-kept-on-tampered'
+$null=New-Item -ItemType Directory -Path $script:DestinoServidor
+$rejected=$false
+try{Invoke-TandaServer $root}catch{$rejected=$_.Exception.Message -like 'Copia de evidencia no verificada*'}
+if(-not $rejected -or $script:transfer.Contains('verified-ack') -or $script:transfer.Contains('interactive-finish')){
+ throw 'SinApagado aceptó evidencia alterada o intentó apagar'
+}
+$abortedRoot=Join-Path $sandbox 'visual-worker'
+$visualState.status='aborted'
+$visualState.completed_without_error=$false
+Write-TandaJson $visualState (Join-Path $abortedRoot 'estado.json')
+Remove-Item -LiteralPath (Join-Path $abortedRoot 'evidence-hashes.json')
+Write-TandaEvidenceHashes $abortedRoot
+$script:fakeArchive=Join-Path $sandbox 'visual-aborted.tar'
+& tar -cf $script:fakeArchive -C $abortedRoot .
+if($LASTEXITCODE){throw 'Tar del aborto falso falló'}
+$script:fakeHash=(Get-FileHash -LiteralPath $script:fakeArchive).Hash
+$script:tamper=$false
+$script:transfer.Clear()
+$script:DestinoServidor=Join-Path $sandbox 'visual-kept-on-aborted'
+$null=New-Item -ItemType Directory -Path $script:DestinoServidor
+$rejected=$false
+try{Invoke-TandaServer $root}catch{$rejected=$_.Exception.Message -like 'Tanda abortada*'}
+if(-not $rejected -or ($script:transfer -join ',') -ne 'upload,register-worker,download,unregister'){
+ throw 'Un aborto con copia verificada modificó el protocolo sin apagado'
+}
+foreach($invalid in @(@{Modo='Apagar';SoloVisual=$true},@{Modo='Servidor';SoloVisual=$false},@{Modo='Ensayo';SoloVisual=$true})){
+ $rejected=$false
+ try{& "$PSScriptRoot/TANDA.ps1" @invalid -SinApagado -ValidarEnlace}catch{$rejected=$_.Exception.Message -like 'SinApagado requiere*'}
+ if(-not $rejected){throw 'SinApagado aceptó una combinación no permitida'}
+}
+$script:SinApagado=$false
 $script:SoloVisual=$false
 $script:transfer.Clear()
 $rejected=$false

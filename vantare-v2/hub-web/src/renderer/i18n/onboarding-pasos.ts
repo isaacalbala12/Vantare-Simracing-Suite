@@ -3,7 +3,7 @@ export const onboardingStepsText = {
   externalPage: "Abre una página externa en el navegador.",
   pricesFailed: "No se han podido abrir los precios. Vuelve a intentarlo.",
   launchPrice: "PRECIO DE LANZAMIENTO",
-  launchUntil: "HASTA EL 26 NOV",
+  launchUntil: (day: string) => `HASTA EL ${day}`,
   firstMonth: "PRIMER MES",
   pro: "PRO",
   plus: "PRO PLUS",

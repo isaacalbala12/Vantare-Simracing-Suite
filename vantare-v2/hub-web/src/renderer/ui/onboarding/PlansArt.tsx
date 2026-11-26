@@ -4,6 +4,7 @@ import pro from "../../assets/onboarding/pro.png?url";
 import { onboardingChoicesText } from "../../i18n/onboarding";
 import { onboardingStepsText as text } from "../../i18n/onboarding-pasos";
 import { Button } from "../Button";
+import { launchBannerDay, launchLastDay } from "./launch-offer";
 import "./plans-art.css";
 export function PlansArt({
   onPrices,
@@ -11,13 +12,20 @@ export function PlansArt({
   proDescription,
   proPending = false,
   pending = false,
+  now = () => new Date(),
+  lastDay = launchLastDay,
 }: {
   onPrices: () => void;
   onPro?: () => void;
   proDescription?: string;
   proPending?: boolean;
   pending?: boolean;
+  now?: () => Date;
+  lastDay?: string;
 }) {
+  const bannerDay = launchBannerDay(now(), lastDay);
+  // Sin el título del banner, cada plan sube a h2 para no saltar un nivel.
+  const PlanName = bannerDay ? "h3" : "h2";
   const cards = [
     {
       id: "pro",
@@ -40,17 +48,19 @@ export function PlansArt({
   ];
   return (
     <div className="v-ob-plans">
-      <div className="v-ob-plans-heading">
-        <h2>{text.launchPrice}</h2>
-        <span>{text.launchUntil}</span>
-      </div>
+      {bannerDay && (
+        <div className="v-ob-plans-heading">
+          <h2>{text.launchPrice}</h2>
+          <span>{text.launchUntil(bannerDay)}</span>
+        </div>
+      )}
       <div className="v-ob-plans-row">
         {cards.map((card) => (
           <div className="v-ob-plan" data-plan={card.id} key={card.id}>
             <div className="v-ob-plan-heading">
               <img src={card.image} alt={card.name} aria-hidden="true" />
               <div>
-                <h3>{card.name}</h3>
+                <PlanName>{card.name}</PlanName>
                 <small>{text.firstMonth}</small>
               </div>
             </div>

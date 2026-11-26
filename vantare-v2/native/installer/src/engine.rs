@@ -13,6 +13,7 @@ mod installation;
 pub mod operations;
 #[cfg(all(windows, feature = "write-engine"))]
 pub mod package;
+pub mod product;
 #[cfg(all(windows, feature = "write-engine"))]
 pub mod shell;
 pub mod validation;

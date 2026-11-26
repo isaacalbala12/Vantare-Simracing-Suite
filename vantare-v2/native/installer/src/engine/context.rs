@@ -1,6 +1,8 @@
 //! Explicit OS context. QA never falls back to real HKCU or shell folders.
 use super::{
-    Installation, Request, installation, validation,
+    Installation, Request, installation,
+    product::{self, Product},
+    validation,
     write_fs::{self as disk, Result, WriteError, ensure},
 };
 use crate::model::Info;
@@ -13,6 +15,10 @@ pub struct Context {
     pub local_app_data: PathBuf,
     pub registry_prefix: String,
     pub shell_root: Option<PathBuf>,
+    /// Producto cuyos nombres de Windows usa este contexto (#2812). Nunca hay
+    /// uno por defecto: quien lo crea lo ata al canal del paquete o de la instalación.
+    #[serde(skip)]
+    product: Option<&'static Product>,
 }
 impl Context {
     pub fn isolated(
@@ -24,6 +30,7 @@ impl Context {
             local_app_data,
             registry_prefix,
             shell_root: Some(shell_root),
+            product: None,
         };
         result.validate_isolation()?;
         Ok(result)
@@ -77,7 +84,24 @@ impl Context {
                 .into(),
             registry_prefix: String::new(),
             shell_root: None,
+            product: None,
         })
+    }
+    /// Ata el contexto al producto de un canal. Un contexto ya atado a otro
+    /// canal se rechaza: un producto nunca actúa con los nombres de otro.
+    pub fn for_channel(mut self, channel: &str) -> Result<Self> {
+        let product = product::for_channel(channel)
+            .ok_or_else(|| WriteError::new(1, "Canal sin producto de instalación"))?;
+        ensure(
+            self.product.is_none_or(|bound| bound == product),
+            "Canal de instalación incompatible",
+        )?;
+        self.product = Some(product);
+        Ok(self)
+    }
+    pub fn product(&self) -> Result<&'static Product> {
+        self.product
+            .ok_or_else(|| WriteError::new(1, "Contexto sin producto de instalación"))
     }
     pub fn is_isolated(&self) -> bool {
         !self.registry_prefix.is_empty()
@@ -113,13 +137,13 @@ impl Context {
         Ok(())
     }
     pub fn install_location(&self) -> Result<Option<String>> {
-        self.registry(UNINSTALL_KEY, "InstallLocation")
+        self.registry(self.product()?.uninstall_key, "InstallLocation")
     }
     pub fn has_registration(&self) -> Result<bool> {
         self.validate_context()?;
         Ok(super::windows::registry_exists(
             &self.registry_prefix,
-            UNINSTALL_KEY,
+            self.product()?.uninstall_key,
         ))
     }
     fn validate_context(&self) -> Result<()> {
@@ -165,12 +189,23 @@ impl Context {
                 "El desinstalador no pertenece a esta instalación",
             )?;
         }
+        let product = self.product()?;
         let mut root = registered
             .as_ref()
             .map(PathBuf::from)
             .or_else(|| explicit.cloned())
-            .unwrap_or_else(|| self.local_app_data.join("Programs/Vantare"));
-        if registered.is_none() && explicit.is_none() && !request.qa && !request.uninstall {
+            .unwrap_or_else(|| {
+                self.local_app_data
+                    .join("Programs")
+                    .join(product.root_folder)
+            });
+        // Solo beta existió antes del Setup GPUI: ningún otro producto adopta su raíz.
+        if product.legacy
+            && registered.is_none()
+            && explicit.is_none()
+            && !request.qa
+            && !request.uninstall
+        {
             let old = self.local_app_data.join("Programs/Vantare Native Beta");
             if old.join("state.json").try_exists()?
                 || old.join("retained-data.json").try_exists()?
@@ -205,10 +240,11 @@ impl Context {
             )
         } else {
             let view = Installation::read(&root)?;
+            let channel = self.product()?.channel;
             if view
                 .manifest
                 .as_ref()
-                .is_some_and(|manifest| manifest.channel != "beta")
+                .is_some_and(|manifest| manifest.channel != channel)
             {
                 return Err(super::ReadError::Rejected(super::Rejection::Manifest).into());
             }
@@ -329,8 +365,6 @@ fn canonical(path: &Path) -> Option<String> {
 fn below_prefix(path: &Path, prefix: &Path) -> bool {
     !prefix.as_os_str().is_empty() && path != prefix && path.starts_with(prefix)
 }
-pub(crate) const UNINSTALL_KEY: &str =
-    "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VantareNativeBeta";
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Options {

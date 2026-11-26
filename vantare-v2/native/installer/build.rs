@@ -11,6 +11,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-env-changed=VANTARE_VERSION");
     let version = env::var("VANTARE_VERSION").unwrap_or_else(|_| "0.0.0".into());
     println!("cargo:rustc-env=VANTARE_INSTALLER_VERSION={version}");
+    // Canal del paquete (#2812): el mismo que estampa sus binarios y su manifiesto.
+    // Vacío en builds de desarrollo, que no tienen producto que instalar.
+    println!("cargo:rerun-if-env-changed=VANTARE_BUILD_CHANNEL");
+    let channel = env::var("VANTARE_BUILD_CHANNEL").unwrap_or_default();
+    println!("cargo:rustc-env=VANTARE_INSTALLER_CHANNEL={channel}");
     println!("cargo:rerun-if-env-changed=VANTARE_INSTALLER_QA_OWNER_SID");
     let sid = env::var("VANTARE_INSTALLER_QA_OWNER_SID").unwrap_or_default();
     if !sid.is_empty()

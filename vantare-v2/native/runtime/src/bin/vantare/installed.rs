@@ -15,6 +15,17 @@ use vantare_installer::engine::{
     write_fs as disk,
 };
 
+/// Instancia del producto instalado (#2812): nombra el mutex del lanzador, sus
+/// eventos de parada y de abrir el Hub y el pipe del núcleo. Cada canal tiene la
+/// suya, así un arranque nightly nunca señala ni cierra el Vantare beta abierto.
+/// Beta conserva el nombre publicado, `native-beta`.
+pub(super) fn instance() -> String {
+    instance_for(vantare_ipc::product::CHANNEL)
+}
+fn instance_for(channel: &str) -> String {
+    format!("native-{channel}")
+}
+
 fn io_error(error: impl std::fmt::Display) -> io::Error {
     io::Error::other(error.to_string())
 }
@@ -56,7 +67,7 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
     let context = installed_context(&requested).map_err(io_error)?;
     let root = disk::open_root(&requested, false).map_err(io_error)?;
     let Ok(_bootstrap) = disk::lock(&root, ".bootstrap.lock") else {
-        let _ = Stop::signal(&object_name("launcher-open-hub", "native-beta"));
+        let _ = Stop::signal(&object_name("launcher-open-hub", &instance()));
         return Ok(ExitCode::SUCCESS);
     };
     for _ in 0..3 {
@@ -127,7 +138,7 @@ pub(super) fn root(args: &[String]) -> io::Result<ExitCode> {
                     .is_ok();
             if !confirmed {
                 let rejected = !opened && child.try_wait()?.is_some();
-                let _ = Stop::signal(&object_name("launcher-stop", "native-beta"));
+                let _ = Stop::signal(&object_name("launcher-stop", &instance()));
                 if !wait_for_exit(&mut child, Duration::from_secs(15)).unwrap_or(false) {
                     let _ = child.kill();
                     let _ = child.wait();
@@ -363,7 +374,7 @@ pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {
         .ok_or_else(|| io_error("Falta bin de la sesión"))?;
     let command = vec![
         "--instancia".into(),
-        "native-beta".into(),
+        instance(),
         "--launcher-file".into(),
         data.join("Vantare/native/launcher.json")
             .to_string_lossy()
@@ -489,6 +500,7 @@ pub(super) fn apply(root: &Path) -> io::Result<ExitCode> {
         archive: &archive,
         sha256: &offer.sha256,
         version: &offer.version,
+        channel: &offer.channel,
     };
     let cancel = AtomicBool::new(false);
     let mut control = operations::Control {
@@ -592,6 +604,13 @@ pub(super) fn stage_with(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn each_channel_has_its_own_instance_and_beta_keeps_the_published_one() {
+        assert_eq!(super::instance_for("beta"), "native-beta");
+        assert_eq!(super::instance_for("nightly"), "native-nightly");
+        assert_ne!(super::instance_for("nightly"), super::instance_for("beta"));
+    }
+
     use super::*;
     #[test]
     fn staging_989_then_setup_989_is_obsolete_at_next_start() {

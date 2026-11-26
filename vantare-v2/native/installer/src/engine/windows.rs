@@ -160,7 +160,7 @@ pub fn read_link(path: &Path) -> Result<Link> {
 pub fn write_link(
     path: &Path,
     value: &Link,
-    branded: bool,
+    app_id: Option<&str>,
     warning: &mut dyn FnMut(&str),
 ) -> Result<()> {
     super::reject_links(path).map_err(|cause| WriteError::new(1, cause))?;
@@ -187,14 +187,14 @@ pub fn write_link(
         persist
             .Save(PCWSTR(destination.as_ptr()), true)
             .map_err(|cause| error(&cause))?;
-        if branded {
+        if let Some(app_id) = app_id {
             let brand = || -> windows::core::Result<()> {
                 let store: IPropertyStore = link.cast()?;
                 let key = PROPERTYKEY {
                     fmtid: GUID::from_u128(0x9f4c2855_9f79_4b39_a8d0_e1d42de1d5f3),
                     pid: 5,
                 };
-                let value = PROPVARIANT::from("Vantare.SimracingSuite");
+                let value = PROPVARIANT::from(app_id);
                 store.SetValue(&raw const key, &raw const value)?;
                 store.Commit()?;
                 persist.Save(PCWSTR(destination.as_ptr()), true)
@@ -589,9 +589,14 @@ mod tests {
         }
         for _ in 0..2 {
             let mut warnings = Vec::new();
-            write_link(&path, &value, true, &mut |message| {
-                warnings.push(message.to_owned());
-            })
+            write_link(
+                &path,
+                &value,
+                Some("Vantare.SimracingSuite"),
+                &mut |message| {
+                    warnings.push(message.to_owned());
+                },
+            )
             .expect("save");
             assert!(warnings.is_empty(), "{warnings:?}");
             let actual = read_link(&path).expect("read");

@@ -3982,6 +3982,11 @@ fn another_channel_is_rejected_before_anything_changes() {
                 .is_err()
         );
     }
+    // Without the Setup probe in front, the engine itself refuses the other channel.
+    for mode in [Mode::Auto, Mode::Repair] {
+        let package = fixture.package_for("nightly", "1.0.0");
+        assert!(fixture.install(&package, mode, false, false).is_err());
+    }
     let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
     let update = fixture.package_for("nightly", "1.0.1");
     assert!(
@@ -4082,4 +4087,19 @@ fn a_context_without_product_never_falls_back_to_beta_names() {
     assert!(engine::shell::sync_running_with_context(&root, &beta, Some(false)).is_err());
     assert!(nightly.folders.join(NIGHTLY_LINKS[3]).is_file());
     assert_eq!(registered(&nightly, BETA_KEY, "InstallLocation"), None);
+}
+
+#[test]
+fn a_build_without_channel_has_no_product_and_never_installs_as_beta() {
+    if !vantare_installer::CHANNEL.is_empty() {
+        eprintln!("omitido: build con canal {}", vantare_installer::CHANNEL);
+        return;
+    }
+    assert_eq!(vantare_installer::channel_label(), "sin canal");
+    let error = engine::Session::new()
+        .err()
+        .expect("a build without channel has no product");
+    #[cfg(not(feature = "test-installer"))]
+    assert!(error.contains("Canal sin producto"), "{error}");
+    let _ = error;
 }

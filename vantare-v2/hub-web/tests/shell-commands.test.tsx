@@ -148,6 +148,18 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.history.replaceState(null, "", "/");
 });
+// ISA-2785: count every mount of the real-content signal, test by test.
+const { contentMounted } = vi.hoisted(() => ({ contentMounted: vi.fn() }));
+vi.mock("../src/renderer/app/HubMounted", async () => {
+  const { useEffect } = await import("react");
+  return {
+    HubMounted: () => {
+      useEffect(() => contentMounted(), []);
+      return null;
+    },
+  };
+});
+beforeEach(() => contentMounted.mockClear());
 async function mount() {
   render(
     <QueryClientProvider client={cache}>
@@ -966,3 +978,7 @@ it("returns the open Strategy screen to «Próximamente» when the beta is switc
   await waitFor(() => expect(upcoming(entry())).toBe(true));
   expect(document.querySelector(".strategy-screen")).toBeNull();
 }, 15_000);
+it("tells Main that real content mounted once the Shell is up (ISA-2785)", async () => {
+  await mount();
+  expect(contentMounted).toHaveBeenCalled();
+}, 30000);

@@ -43,6 +43,7 @@ import { currentZoomLimit, useWindowZoomLimit } from "../ui/window-zoom";
 import { useAccountSession } from "./AccountSession";
 import { useAccount } from "./AccountState";
 import { coreKey, offline, useHost } from "./Host";
+import { HubMounted } from "./HubMounted";
 import { launcherAccess, useLauncherLaunch } from "./LauncherLaunch";
 import {
   isSection,
@@ -62,6 +63,7 @@ export function Shell() {
   return (
     <NotificationsProvider>
       <ShellContent />
+      <HubMounted />
     </NotificationsProvider>
   );
 }

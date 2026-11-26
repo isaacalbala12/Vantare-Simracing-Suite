@@ -8,7 +8,7 @@ export function assertRendererIsolation(result: {
   assert.equal(result.node, "undefined", "Node leaked into the renderer");
   assert.deepEqual(
     [...result.bridge].sort(),
-    ["connect", "platform", "reviewTrust", "viewport"],
+    ["connect", "mounted", "platform", "reviewTrust", "viewport"],
     "Unexpected public preload surface",
   );
 }

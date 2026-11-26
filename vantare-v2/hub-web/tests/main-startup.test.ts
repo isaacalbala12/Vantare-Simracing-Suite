@@ -14,10 +14,19 @@ afterEach(() => {
   vi.doUnmock("../src/main/launcher-review");
 });
 
-async function boot(
+interface Startup {
+  /** Protocol version the host announces in its hello. */
+  version?: number;
+  /** The host bootstrap fails before any hello. */
+  helloFails?: boolean;
+  /** Another Hub already holds the single-instance lock. */
+  lockTaken?: boolean;
+}
+async function prepare(
   minimized: boolean,
-  secondBeforeReady = false,
-  testReviewGate = false,
+  secondBeforeReady: boolean,
+  testReviewGate: boolean,
+  startup: Startup,
 ) {
   vi.resetModules();
   vi.stubEnv("VANTARE_HUB_DATA_DIR", join(tmpdir(), "vantare-startup-double"));
@@ -96,7 +105,7 @@ async function boot(
   const app = Object.assign(new EventEmitter(), {
     isPackaged: false,
     setPath: vi.fn(),
-    requestSingleInstanceLock: () => true,
+    requestSingleInstanceLock: () => !startup.lockTaken,
     whenReady: async () => {
       if (secondBeforeReady) app.emit("second-instance");
     },
@@ -160,32 +169,88 @@ async function boot(
     shell: {},
     Notification: {},
   }));
+  const hosts = vi.fn();
   vi.doMock("../src/main/host", () => ({
-    createHost: () => ({
-      hello: Promise.resolve({
-        ...fixture,
-        version: HOST_PROTOCOL_VERSION,
-        window: { ...fixture.window, minimized },
-      }),
-      send,
-      listen: () => () => {},
-      close: vi.fn(),
-    }),
+    createHost: () => {
+      hosts();
+      return {
+        hello: startup.helloFails
+          ? Promise.reject(new Error("Host bootstrap timeout"))
+          : Promise.resolve({
+              ...fixture,
+              version: startup.version ?? HOST_PROTOCOL_VERSION,
+              window: { ...fixture.window, minimized },
+            }),
+        send,
+        listen: () => () => {},
+        close: vi.fn(),
+      };
+    },
   }));
   await import("../src/main/index");
+  return { windows, calls, send, app, ipc, openReview, hosts, exit, failure };
+}
+async function boot(
+  minimized: boolean,
+  secondBeforeReady = false,
+  testReviewGate = false,
+  startup: Startup = {},
+) {
+  const started = await prepare(
+    minimized,
+    secondBeforeReady,
+    testReviewGate,
+    startup,
+  );
+  const { windows, ipc, exit, failure } = started;
   await vi.waitFor(() => expect(windows[0]?.loadURL).toHaveBeenCalled(), {
     timeout: 5000,
   });
   expect(exit).not.toHaveBeenCalled();
   expect(failure).not.toHaveBeenCalled();
-  return { window: windows[0], calls, send, app, ipc, openReview };
+  const window = windows[0];
+  // The renderer reaches the host through the trusted main frame; React only
+  // asks for it once the whole tree has committed (HostProvider effect).
+  const connect = (senderFrame: unknown = window.webContents.mainFrame) =>
+    ipc.emit("vantare:connect", { sender: window.webContents, senderFrame });
+  // The real content (Shell or a gate that asks the user) has committed.
+  const mount = (senderFrame: unknown = window.webContents.mainFrame) =>
+    ipc.emit("vantare:mounted", { sender: window.webContents, senderFrame });
+  const usable = () => {
+    connect();
+    mount();
+  };
+  const navigate = () =>
+    window.webContents.emit(
+      "did-frame-navigate",
+      {},
+      "app://hub/",
+      200,
+      "OK",
+      true,
+    );
+  return { ...started, window, connect, mount, usable, navigate };
+}
+/** A start that must stop before any window: lost lock or no host hello. */
+async function refused(startup: Startup) {
+  const started = await prepare(false, false, false, startup);
+  const { app, exit } = started;
+  await vi.waitFor(
+    () =>
+      startup.lockTaken
+        ? expect(app.quit).toHaveBeenCalledOnce()
+        : expect(exit).toHaveBeenCalledExactlyOnceWith(1),
+    { timeout: 5000 },
+  );
+  return started;
 }
 
 it.each([false, true])(
   "reveals the actual main startup path with minimized=%s in the correct order",
   async (minimized) => {
-    const { window, calls } = await boot(minimized);
+    const { window, calls, usable } = await boot(minimized);
     expect(calls).toEqual(["create:hidden", "load"]);
+    usable();
     window.emit("ready-to-show");
     expect(calls).toEqual(
       minimized
@@ -231,8 +296,9 @@ it("recalculates only zoom on resize and removes the resize listener when conten
 it.each([false, true])(
   "remembers a second instance before first paint and shows once (minimized=%s)",
   async (minimized) => {
-    const { window, calls, app } = await boot(minimized);
+    const { window, calls, app, usable } = await boot(minimized);
     app.emit("second-instance");
+    usable();
     expect(calls).toEqual(["create:hidden", "load"]);
     expect(window.active).toBe(false);
     window.emit("ready-to-show");
@@ -258,7 +324,8 @@ it("restores and focuses on a second instance after minimized startup", async ()
 }, 15000);
 
 it("remembers activation even before BrowserWindow exists", async () => {
-  const { window, calls } = await boot(true, true);
+  const { window, calls, usable } = await boot(true, true);
+  usable();
   expect(calls).toEqual(["create:hidden", "load"]);
   window.emit("ready-to-show");
   expect(calls).toEqual(["create:hidden", "load", "show", "ready"]);
@@ -296,4 +363,110 @@ it("only opens the native review for the connected main frame and one ticket", a
   } finally {
     sender.emit("destroyed");
   }
+}, 15000);
+
+// VANTA-138 P6 (#2785): `ready` lets the launcher confirm an updated generation
+// and drop the previous one. A first paint alone is not a usable Hub, nor are
+// the providers that connect to the host: the real content must have mounted.
+const readies = (calls: string[]) => calls.filter((call) => call === "ready");
+it.each([false, true])(
+  "never confirms a painted window whose renderer did not connect (minimized=%s)",
+  async (minimized) => {
+    const { window, calls } = await boot(minimized);
+    window.emit("ready-to-show");
+    expect(calls).toContain(minimized ? "minimize" : "show");
+    expect(readies(calls)).toEqual([]);
+    window.webContents.emit("destroyed");
+  },
+  15000,
+);
+it("never confirms providers that connected while the content failed to mount", async () => {
+  const { window, calls, connect } = await boot(false);
+  window.emit("ready-to-show");
+  connect();
+  expect(readies(calls)).toEqual([]);
+  window.webContents.emit("destroyed");
+}, 15000);
+it.each([false, true])(
+  "confirms once when the content mounts after the first paint (minimized=%s)",
+  async (minimized) => {
+    const { window, calls, connect, mount, navigate } = await boot(minimized);
+    window.emit("ready-to-show");
+    connect();
+    mount();
+    expect(calls.at(-1)).toBe("ready");
+    expect(window.minimized).toBe(minimized);
+    // A reload starts another page in the same window: no second confirmation.
+    navigate();
+    connect();
+    mount();
+    expect(readies(calls)).toEqual(["ready"]);
+    window.webContents.emit("destroyed");
+  },
+  15000,
+);
+it("confirms at the first paint when the content mounted before it", async () => {
+  const { window, calls, usable } = await boot(true);
+  usable();
+  expect(readies(calls)).toEqual([]);
+  window.emit("ready-to-show");
+  expect(calls.at(-1)).toBe("ready");
+  expect(readies(calls)).toEqual(["ready"]);
+  window.webContents.emit("destroyed");
+}, 15000);
+it("a navigation forgets the previous page's connection and content", async () => {
+  const { window, calls, connect, mount, navigate } = await boot(false);
+  window.emit("ready-to-show");
+  connect();
+  navigate();
+  mount();
+  expect(readies(calls)).toEqual([]);
+  navigate();
+  mount();
+  connect();
+  expect(readies(calls)).toEqual(["ready"]);
+  window.webContents.emit("destroyed");
+}, 15000);
+it("does not count signals that are untrusted or whose port was lost", async () => {
+  const { window, calls, connect, mount, navigate } = await boot(false);
+  const frame = window.webContents.mainFrame;
+  connect({ ...frame });
+  frame.postMessage.mockImplementationOnce(() => {
+    throw new Error("frame gone");
+  });
+  connect();
+  mount();
+  window.emit("ready-to-show");
+  expect(readies(calls)).toEqual([]);
+  navigate();
+  connect();
+  mount({ ...frame });
+  expect(readies(calls)).toEqual([]);
+  window.webContents.emit("destroyed");
+}, 15000);
+it("never acknowledges an incompatible host, even painted and mounted", async () => {
+  const { window, calls, send, usable } = await boot(false, false, false, {
+    version: HOST_PROTOCOL_VERSION + 1,
+  });
+  window.emit("ready-to-show");
+  usable();
+  // The user sees the incompatibility screen; the launcher reverts.
+  expect(calls).toContain("show");
+  expect(readies(calls)).toEqual([]);
+  expect(send.mock.calls.map(([message]) => message.kind)).not.toContain(
+    "hello",
+  );
+  window.webContents.emit("destroyed");
+}, 15000);
+it("a host bootstrap failure explains it and exits without a window", async () => {
+  const { windows, send, failure } = await refused({ helloFails: true });
+  expect(failure).toHaveBeenCalledOnce();
+  expect(windows).toEqual([]);
+  expect(send).not.toHaveBeenCalled();
+}, 15000);
+it("a second Hub without the single-instance lock quits before the host", async () => {
+  const { windows, hosts, exit } = await refused({ lockTaken: true });
+  expect(hosts).not.toHaveBeenCalled();
+  expect(windows).toEqual([]);
+  expect(exit).not.toHaveBeenCalled();
 }, 15000);

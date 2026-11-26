@@ -21,6 +21,18 @@ import { privacyGateText as text } from "../src/renderer/i18n/privacy-gate.es";
 import { GateFrame } from "../src/renderer/ui/GateFrame";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 
+// ISA-2785: count every mount of the real-content signal, test by test.
+const { contentMounted } = vi.hoisted(() => ({ contentMounted: vi.fn() }));
+vi.mock("../src/renderer/app/HubMounted", async () => {
+  const { useEffect } = await import("react");
+  return {
+    HubMounted: () => {
+      useEffect(() => contentMounted(), []);
+      return null;
+    },
+  };
+});
+beforeEach(() => contentMounted.mockClear());
 const originalRequest = Client.prototype.request;
 type Intent = Exclude<Request, { method: "window.close" }>;
 function intercept(
@@ -428,3 +440,22 @@ it("does not swallow Tab when a gate has no enabled focus targets", () => {
   screen.getByTestId("empty-question").dispatchEvent(event);
   expect(event.defaultPrevented).toBe(false);
 });
+it("tells Main that real content mounted with the consent question (ISA-2785)", async () => {
+  mount();
+  await screen.findByRole(
+    "dialog",
+    { name: text.crashesLabel },
+    { timeout: 10000 },
+  );
+  expect(contentMounted).toHaveBeenCalled();
+}, 20000);
+it("never tells Main that real content mounted on the load error (ISA-2785)", async () => {
+  intercept((value) =>
+    value.method === "privacy.get"
+      ? Promise.reject(new HostFailure({ kind: "io" }))
+      : undefined,
+  );
+  mount();
+  await screen.findByRole("button", { name: text.skip }, { timeout: 10000 });
+  expect(contentMounted).not.toHaveBeenCalled();
+}, 20000);

@@ -135,6 +135,12 @@ El staging de cada variante se limpia antes de copiar, dentro de `release`.
 En el smoke del anfitrión, `VANTARE_HUB_QA_CRASH=1` provoca una caída deliberada
 del renderer y comprueba la salida de error del anfitrión. Sin esa variable,
 comprueba cierre por EOF con salida 0. El paquete de QA nunca se distribuye.
+Arranca desde la raíz QA (nunca desde el checkout) y, al terminar, exige que
+ningún proceso con imagen dentro de la generación siga vivo (consulta por ruta,
+sin matar nada). `VANTARE_HUB_BACKGROUND=1` simula el arranque con Windows con
+«iniciar minimizado»: la ventana queda oculta y aun así llega `hub-ready`.
+Estos smokes abren ventanas reales: solo en VM o máquina de pruebas, nunca en
+el servidor.
 
 ## Ajustes I y QA local
 

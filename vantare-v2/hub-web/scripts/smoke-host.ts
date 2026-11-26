@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { cp, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { basename, join, resolve } from "node:path";
+import { basename, join, resolve, sep } from "node:path";
 import { chromium } from "playwright-core";
 import {
   checkSettingsHost,
@@ -25,6 +26,24 @@ await mkdir(join(generation, "bin"), { recursive: true });
 await mkdir(hubData, { recursive: true });
 if (process.env.VANTARE_HUB_SETTINGS_PROTECTED === "1")
   await writeFile(join(hubData, "hub-settings.json"), '{"version":999}');
+// P6 (#2785): Windows start with "start minimized" saved, as the launcher does
+// with --background. Confirmation must still arrive from a minimized window.
+const background = process.env.VANTARE_HUB_BACKGROUND === "1";
+if (background) {
+  if (
+    process.env.VANTARE_HUB_SETTINGS_PROTECTED === "1" ||
+    process.env.VANTARE_HUB_SETTINGS_TEST === "1"
+  )
+    throw new Error("Background smoke uses its own settings");
+  const settings = JSON.parse(
+    await readFile(
+      resolve("../native/hub-host/fixtures/writer-bytes/hub-settings.json"),
+      "utf8",
+    ),
+  );
+  settings.general.minimized = true;
+  await writeFile(join(hubData, "hub-settings.json"), JSON.stringify(settings));
+}
 await cp(
   requiredPath("VANTARE_HUB_HOST_BINARY"),
   join(generation, "bin/vantare-hub.exe"),
@@ -86,6 +105,8 @@ Object.assign(env, {
   VANTARE_BOOT_TOKEN: boot,
   VANTARE_HUB_QA_SCALE: process.env.VANTARE_HUB_SCALE ?? "1",
 });
+if (background) env.VANTARE_BACKGROUND_STARTUP = "1";
+else env.VANTARE_INTERACTIVE_STARTUP = "1";
 if (process.env.VANTARE_HUB_STARTUP_TEST === "1") {
   env.VANTARE_BETA_ROOT = join(root, "installer-fixture");
   env.VANTARE_INSTALLER_QA_CONTEXT = join(
@@ -105,7 +126,8 @@ const host = spawn(
     "--layout",
     join(data, "layout.json"),
   ],
-  { env, windowsHide: true, stdio: ["pipe", "ignore", "pipe"] },
+  // Installed, nothing may depend on the checkout: start from the QA root.
+  { cwd: root, env, windowsHide: true, stdio: ["pipe", "ignore", "pipe"] },
 );
 const nativeLog: string[] = [];
 host.stderr.on("data", (chunk) => nativeLog.push(chunk.toString()));
@@ -166,7 +188,17 @@ try {
     "host publishes matching ready token",
   );
   await unlink(join(root, "boot-pending.json"));
-  await page.screenshot({ path: join(evidence, "host-local.png") });
+  // Minimized at startup: Chromium reports the document as hidden.
+  const visibility = await page.evaluate(() => document.visibilityState);
+  if (background !== (visibility === "hidden"))
+    throw new Error(`Unexpected window visibility: ${visibility}`);
+  // Positive control: the same query must see the live host of the generation,
+  // so an empty answer after the exit really means no survivors.
+  if (!generationProcesses(generation).includes(host.pid ?? -1))
+    throw new Error("Process query cannot see the running host");
+  // A minimized window has nothing to capture.
+  if (!background)
+    await page.screenshot({ path: join(evidence, "host-local.png") });
   const isolation = await page.evaluate(() => ({
     node: typeof (globalThis as Record<string, unknown>).require,
     bridge: Object.keys(window.vantare ?? {}),
@@ -190,6 +222,19 @@ try {
     crash ? "renderer crash propagates to host" : "host exits on stdin EOF",
   );
   assert.equal(host.exitCode, crash ? 1 : 0);
+  // Zero orphans: no process may keep running an image of this generation.
+  // Read-only query by executable path; this smoke never kills by name.
+  let survivors: number[] = [];
+  await until(
+    () => {
+      survivors = generationProcesses(generation);
+      return survivors.length === 0;
+    },
+    10000,
+    "no process of the generation survives the host",
+  ).catch((error: unknown) => {
+    throw new Error(`${String(error)}: PIDs ${survivors.join(", ")}`);
+  });
   await writeFile(
     join(evidence, crash ? "host-crash.json" : "host-smoke.json"),
     JSON.stringify(
@@ -198,6 +243,11 @@ try {
         initialBootMs,
         privateTransport: true,
         readyAfterVisible: true,
+        background,
+        windowVisibility: visibility,
+        cwd: "QA root, outside the checkout",
+        generationProcessesWhileRunning: "host seen (positive control)",
+        generationProcessesAfterExit: 0,
         controlEofExit: crash ? null : 0,
         rendererCrashExit: crash ? 1 : null,
         core: "unavailable (isolated pipe; no real services)",
@@ -211,4 +261,33 @@ try {
   await writeFile(join(evidence, "native-stderr.log"), nativeLog.join(""));
   await browser.close().catch(() => {});
   if (host.exitCode === null) host.kill();
+}
+
+function generationProcesses(generation: string): number[] {
+  const output = execFileSync(
+    "powershell",
+    [
+      "-NoProfile",
+      "-Command",
+      "Get-CimInstance Win32_Process | Where-Object ExecutablePath | Select-Object ProcessId,ExecutablePath | ConvertTo-Json -Compress",
+    ],
+    { encoding: "utf8", windowsHide: true },
+  );
+  const found: unknown = JSON.parse(output || "[]");
+  // Compare resolved paths: 8.3 names and junctions must not hide a survivor.
+  const real = (path: string) => {
+    try {
+      return realpathSync.native(path).toLowerCase();
+    } catch {
+      return path.toLowerCase();
+    }
+  };
+  const prefix = real(generation) + sep;
+  return (Array.isArray(found) ? found : [found])
+    .filter(
+      (item): item is { ProcessId: number; ExecutablePath: string } =>
+        typeof item?.ExecutablePath === "string" &&
+        real(item.ExecutablePath).startsWith(prefix),
+    )
+    .map((item) => item.ProcessId);
 }

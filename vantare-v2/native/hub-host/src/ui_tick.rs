@@ -23,7 +23,7 @@ impl Session {
         control_closed: impl FnOnce() -> bool,
     ) -> io::Result<bool> {
         if let Some(confirmation) = &self.confirmation {
-            confirmation.check_confirmation()?;
+            confirmation.check_confirmation_at(now)?;
         }
         if args.controlled
             && control_closed()

@@ -8,6 +8,7 @@ import { Callout, Skeleton } from "../ui/Data";
 import { GateFrame } from "../ui/GateFrame";
 import { PrivacyQuestion } from "../ui/PrivacyQuestion";
 import { useHost } from "./Host";
+import { HubMounted } from "./HubMounted";
 import { WindowControls } from "./WindowControls";
 
 const key = ["privacy"] as const;
@@ -120,16 +121,19 @@ export function PrivacyGate({ children }: { children: ReactNode }) {
           <Skeleton label={text.loading} />
         )
       ) : (
-        <PrivacyQuestion
-          key={usage ? "usage" : "crashes"}
-          usage={usage}
-          checked={checked}
-          onChecked={setChecked}
-          pending={pending}
-          error={error}
-          onDecide={decide}
-          onPolicy={() => void policy()}
-        />
+        <>
+          <PrivacyQuestion
+            key={usage ? "usage" : "crashes"}
+            usage={usage}
+            checked={checked}
+            onChecked={setChecked}
+            pending={pending}
+            error={error}
+            onDecide={decide}
+            onPolicy={() => void policy()}
+          />
+          <HubMounted />
+        </>
       )}
     </GateFrame>
   );

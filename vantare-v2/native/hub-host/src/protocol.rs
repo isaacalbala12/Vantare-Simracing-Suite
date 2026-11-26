@@ -121,6 +121,11 @@ pub enum UiToHost {
     Ready {},
     CloseAnswer { allow: bool },
 }
+/// "Start minimized" applies when Windows starts the Hub (`--background`), not
+/// when the user opens it. An older launcher that names neither keeps the setting.
+fn starts_minimized(saved: bool, interactive: bool, background: bool) -> bool {
+    saved && (!interactive || background)
+}
 pub fn hello(settings: &SettingsView) -> std::io::Result<HostToUi> {
     let tokens: serde_json::Value =
         serde_json::from_str(include_str!("../../../hub-web/design/tokens.json"))
@@ -155,7 +160,7 @@ pub fn hello(settings: &SettingsView) -> std::io::Result<HostToUi> {
             width: 1440,
             height: 900,
             zoom: settings.zoom,
-            minimized: settings.general.minimized && (!interactive || background),
+            minimized: starts_minimized(settings.general.minimized, interactive, background),
         },
         demo: false,
         demo_name: None,
@@ -164,6 +169,25 @@ pub fn hello(settings: &SettingsView) -> std::io::Result<HostToUi> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn only_a_windows_start_keeps_the_hub_minimized() {
+        for (saved, interactive, background, minimized) in [
+            (true, false, true, true),
+            (true, true, false, false),
+            (true, false, false, true),
+            (true, true, true, true),
+            (false, false, true, false),
+            (false, true, false, false),
+            (false, false, false, false),
+            (false, true, true, false),
+        ] {
+            assert_eq!(
+                starts_minimized(saved, interactive, background),
+                minimized,
+                "saved={saved} interactive={interactive} background={background}"
+            );
+        }
+    }
     #[test]
     fn scene_matches_strict_host_hello() {
         let scene = include_str!("../../../hub-web/fixtures/ajustes-base.json");

@@ -53,6 +53,44 @@ la intención pendiente y permite cerrar. En EOF el
 anfitrión aplica un límite de dos segundos para un renderer bloqueado. Una
 entrada en Live cierra el Hub. `hub-ready` solo se publica tras mostrar la ventana.
 
+## Arranque instalado y confirmación (P6, #2785)
+
+Electron envía `ready` una sola vez, cuando se cumplen tres cosas: la ventana
+ya se pintó (visible o minimizada), el renderer recibió el puerto con el `hello`
+y el contenido real se montó. Lo último lo avisa `vantare:mounted`, que el
+preload envía desde `HubMounted` y main solo acepta del marco principal de
+confianza; una navegación lo olvida. `HubMounted` está en el Shell, en la pregunta de
+privacidad, en la bienvenida y en la puerta de cuenta en cuanto tiene datos;
+no en la carga de ajustes ni en los errores de privacidad o bienvenida. Si ese
+contenido falla al montar, no hay confirmación y la raíz revierte al vencer su
+minuto.
+
+**Lo que no cubre.** La puerta de cuenta avisa en cualquier estado, también
+«comprobando», cierre de sesión o error: si el núcleo responde tarde
+(`Reply::Closed` no marca la sesión como comprobada) o con error, exigir otra
+pantalla revertiría una versión buena, incluso en bucle. Como el anfitrión
+empieza en «comprobando», en el caso habitual (usuario con sesión) la
+confirmación llega antes de montar el Shell: **un Shell que falle en su primer
+montaje no revierte la actualización**. Tampoco la revierte un fallo
+posterior al primer montaje. Con una
+versión de protocolo distinta no se envía nunca. El anfitrión rechaza `ready`
+antes de un `hello` compatible y solo escribe `hub-ready` con el token de este
+arranque (32 hex), una vez y de forma atómica. Si tras mostrarse la generación
+sigue pendiente más de un minuto, el anfitrión se detiene; antes de mostrarse,
+solo la raíz decide. No cambian el cable (v70), el minuto, el residente, los
+servicios ni los derechos.
+
+Un `vantare-hub.exe` instalado abierto a mano se redirige a
+`Vantare.exe --root -Root <raíz>` con la raíz como carpeta de trabajo, sin
+token, datos ni modo de arranque heredados; una segunda redirección se rechaza.
+«Iniciar minimizado» solo se aplica cuando arranca Windows (`--background`).
+Al terminar la sesión no queda ningún proceso de la interfaz: el Job Object
+termina también los auxiliares que sobreviven al proceso principal.
+
+Si la confirmación diera falsos rollbacks en máquinas lentas, se revierte el
+cambio de `hub-web/src/main/index.ts` (volver a enviar `ready` en
+`ready-to-show`) y sus tests; no hace falta tocar Rust ni el lanzador.
+
 ## Geometría de Studio (ADR 0109, v37)
 
 `studio.geometry` acepta mover, redimensionar, anclar, volver al tamaño automático

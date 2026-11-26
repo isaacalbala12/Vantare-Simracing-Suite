@@ -29,6 +29,9 @@ contextBridge.exposeInMainWorld("vantare", {
       height: (window.visualViewport?.height ?? window.innerHeight) * factor,
     };
   },
+  mounted() {
+    ipcRenderer.send("vantare:mounted");
+  },
   connect() {
     if (connecting) return Promise.reject(new Error("Already connected"));
     connecting = true;

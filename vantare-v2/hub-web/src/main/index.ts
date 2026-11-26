@@ -181,6 +181,22 @@ async function start() {
   });
   contents.setWindowOpenHandler(() => ({ action: "deny" }));
   let disconnect: (() => void) | undefined;
+  // `ready` lets the launcher confirm an updated generation and retire the
+  // previous one (#2785). A first paint, or providers connected to the host,
+  // may still be a bundle whose content fails to mount: wait for the trusted
+  // main frame to report its first real screen (see HubMounted for which, and
+  // for the Shell case it does not cover). Sent once; a navigation forgets the
+  // previous page's signals.
+  let painted = false,
+    connected = false,
+    mounted = false,
+    acknowledged = false;
+  const acknowledge = () => {
+    if (!compatible || !painted || !connected || !mounted || acknowledged)
+      return;
+    acknowledged = true;
+    host.send({ kind: "ready" });
+  };
   const removeReview = host.listen(review.receive);
   // The same closed QA bootstrap as createHost; captures never emit OS notices.
   const notices = notificationDelivery({
@@ -224,6 +240,7 @@ async function start() {
     nativeTheme.removeListener("updated", repaint);
     disconnect?.();
     ipcMain.removeListener("vantare:connect", connectRenderer);
+    ipcMain.removeListener("vantare:mounted", contentMounted);
     ipcMain.removeHandler(launcherReviewChannel);
     removeReview();
     removeHostFailure();
@@ -597,11 +614,19 @@ async function start() {
     try {
       frame.postMessage("vantare:port", null, [port2]);
       port1.postMessage(hello);
+      connected = true;
+      acknowledge();
     } catch {
       disconnect?.();
     }
   };
   ipcMain.on("vantare:connect", connectRenderer);
+  const contentMounted = (event: IpcMainEvent) => {
+    if (!trustedFrame(event)) return;
+    mounted = true;
+    acknowledge();
+  };
+  ipcMain.on("vantare:mounted", contentMounted);
   ipcMain.handle(launcherReviewChannel, (event, ...args: unknown[]) => {
     const ticket = reviewTicket(args);
     return compatible && disconnect && trustedFrame(event) && ticket
@@ -614,6 +639,8 @@ async function start() {
       if (mainFrame) {
         disconnect?.();
         disconnect = undefined;
+        connected = false;
+        mounted = false;
       }
     },
   );
@@ -631,7 +658,8 @@ async function start() {
         if (!currentWindow.isDestroyed()) currentWindow.setFocusable(true);
       }
     } else currentWindow.show();
-    if (compatible) host.send({ kind: "ready" });
+    painted = true;
+    acknowledge();
   });
   if (devUrl) await window.loadURL(devUrl);
   else await window.loadURL("app://hub/");

@@ -21,16 +21,22 @@ function Get-VantareObservedIdentity {param($RootProcessId)
 }
 '@ | Set-Content -LiteralPath (Join-Path $root 'tools/qa-overlays/OBSERVAR.ps1')
 $script:events=[Collections.Generic.List[string]]::new();$script:deny=$false;$script:mode='replay'
-$license=@{cli='fake-cli.exe';credential='fake.json';registry='fake-public';key_id='qa-aabbccdd'}
+$credential=Join-Path $base 'credential.json'
+Write-TandaJson @{key_id='qa-aabbccdd'} $credential
+$license=@{cli='fake-cli.exe';credential=$credential;registry=('qa-aabbccdd:'+('A'*43));key_id='qa-aabbccdd'}
 $script:qaProfiles=[Collections.Generic.List[string]]::new()
-$script:failInstall=$false
-function Install-TandaQaCredential {param($Image,$Credential,$Registry,$ApprovedKeyId,$Directory)
- if($Directory.StartsWith($output,[StringComparison]::OrdinalIgnoreCase) -or $ApprovedKeyId -ne 'qa-aabbccdd'){throw 'Binding dentro de la evidencia o sin clave aprobada'}
+$script:installBehavior='valid'
+function Invoke-TandaLicenseCli {param($Image,$Arguments,$Environment)
+ $directory=Split-Path $Arguments[4] -Parent
+ if($directory.StartsWith($output,[StringComparison]::OrdinalIgnoreCase) -or $Arguments[0] -cne 'install-credential' -or
+    $Arguments[2] -cne $credential -or $Environment.VANTARE_LICENSE_PUBLIC_KEYS -cne $license.registry -or
+    $Environment.ContainsKey('VANTARE_NATIVE_DATA_ROOT')){throw 'Instalación fuera de QA o sin la credencial aprobada'}
  $script:events.Add('install:qa')
- $script:qaProfiles.Add($Directory)
- $environment=New-TandaQaEnvironment $Directory
- if($script:failInstall){throw 'INSTALL_PARTIAL_FAKE'}
- $environment
+ $script:qaProfiles.Add($directory)
+ $rights=Join-Path $Arguments[4] 'Vantare/native/rights/nightly'
+ $null=New-Item -ItemType Directory -Path $rights -Force
+ if($script:installBehavior -eq 'rejected'){throw 'INSTALL_PARTIAL_FAKE'}
+ if($script:installBehavior -eq 'valid'){Set-Content -LiteralPath (Join-Path $rights 'binding.dpapi') 'QA FALSA'}
 }
 function Assert-TandaUnattended {}
 function Start-TandaOwned {param($Image,$Arguments,$Log,$Environment=@{})
@@ -94,11 +100,14 @@ $script:events.Clear();$missing=$false
 try{Invoke-TandaMeasurement $root $output @{id='no-transfer';state='waiting';motor='rune';layout='inputs/layout.json'}}
 catch{$missing=$_.Exception.Message -like 'QA_MEASUREMENT_LICENSE_MISSING*'}
 if(-not $missing -or $script:events.Count){throw 'Missing signed transfer started processes'}
-$script:failInstall=$true
-$partial=$false
-try{Invoke-TandaMeasurement $root $output @{id='partial';state='waiting';motor='rune';layout='inputs/layout.json'} $license}
-catch{$partial=$_.Exception.Message -ceq 'INSTALL_PARTIAL_FAKE'}
-if(-not $partial -or $script:events.Contains('start:core')){throw 'Fallo parcial activó el núcleo'}
+foreach($installBehavior in 'rejected','missing-binding'){
+ $script:installBehavior=$installBehavior
+ $expected=if($installBehavior -eq 'rejected'){'INSTALL_PARTIAL_FAKE'}else{'QA_BINDING_MISSING'}
+ $partial=$false
+ try{Invoke-TandaMeasurement $root $output @{id=$installBehavior;state='waiting';motor='rune';layout='inputs/layout.json'} $license}
+ catch{$partial=$_.Exception.Message -like "$expected*"}
+ if(-not $partial -or $script:events.Contains('start:core')){throw 'Fallo de instalación o binding ausente activó el núcleo'}
+}
 if(@($script:qaProfiles|Where-Object {Test-Path -LiteralPath $_}).Count){throw 'Quedó un perfil QA propio tras la ronda o el fallo'}
 if(@($script:qaProfiles|Where-Object {$_ -notmatch '[/\\]qa-core[/\\]round-[0-9a-f]{32}$'}).Count){throw 'Perfil QA sin ruta única'}
 "PASS: ETW ready before replay, deferred identity, cleanup and denial; no GPU; sandbox=$base"

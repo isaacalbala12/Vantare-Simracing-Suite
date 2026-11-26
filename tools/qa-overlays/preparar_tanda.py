@@ -148,6 +148,34 @@ def copy_tracked_tree(source, output):
         shutil.copyfile(original, destination)
 
 
+def select_measurement_preset(rounds):
+    configurations = [(kind, look)
+                      for kind in ("standings", "relative", "delta", "fuel-strategy", "pedals")
+                      for look in ("vantare", "eficiencia")]
+    configurations += [("radar", "funcional"), ("track-map", "funcional")]
+    selected = {}
+    for row in rounds:
+        key = (row["kind"], row["look"])
+        if key not in configurations:
+            continue
+        identity = (*key, row["state"], row["motor"])
+        if identity in selected:
+            raise ValueError(f"Ronda duplicada en el subconjunto: {identity}")
+        selected[identity] = row
+    ordered = []
+    for state in ("replay", "waiting"):
+        for key in configurations:
+            motors = ("gpui", "rune") if len(ordered) % 4 == 0 else ("rune", "gpui")
+            for motor in motors:
+                identity = (*key, state, motor)
+                if identity not in selected:
+                    raise ValueError(f"Falta una ronda del subconjunto: {identity}")
+                ordered.append(selected[identity])
+    if len(selected) != 48:
+        raise ValueError("El subconjunto debe contener exactamente 48 rondas")
+    return ordered
+
+
 def seal_measurement(output, destination):
     output, destination = Path(output).resolve(), Path(destination).resolve()
     if destination.is_relative_to(output):
@@ -194,7 +222,7 @@ def seal_measurement(output, destination):
 
 
 def prepare(repo, output, binary_directory, presentmon=None, corpus=None, inventory=None, *, visual_sha=None,
-            measurement_sha=None):
+            measurement_sha=None, measurement_preset=False):
     repo, output = Path(repo), Path(output)
     if visual_sha and measurement_sha:
         raise ValueError("Elegir un solo alcance para la tanda")
@@ -392,7 +420,15 @@ def prepare(repo, output, binary_directory, presentmon=None, corpus=None, invent
     for file in sorted(output.rglob("*")):
         if file.is_file():
             manifest["files"].append({"path": file.relative_to(output).as_posix(), "sha256": digest(file)})
-    manifest["estimated_seconds"] = 65 * len(manifest["measurements"]) + 10 * len(manifest["captures"]) + 1200
+    if measurement_preset:
+        if not measurement_sha:
+            raise ValueError("El subconjunto requiere un kit de medición CI")
+        manifest["measurements"] = select_measurement_preset(manifest["measurements"])
+        manifest["captures"] = []
+        manifest["measurement_preset"] = "cita-48"
+        manifest["estimated_seconds"] = 65 * len(manifest["measurements"]) + 180
+    else:
+        manifest["estimated_seconds"] = 65 * len(manifest["measurements"]) + 10 * len(manifest["captures"]) + 1200
     write_json(output / "manifiesto.json", manifest)
     return manifest
 
@@ -403,10 +439,11 @@ if __name__ == "__main__":
         p.add_argument("--" + arg, required=True)
     for arg in ("presentmon", "corpus", "inventory", "visual-sha", "measurement-sha", "zip"):
         p.add_argument("--" + arg)
+    p.add_argument("--measurement-preset", action="store_true")
     a = p.parse_args()
     if a.zip and not a.measurement_sha:
         p.error("--zip requiere --measurement-sha")
     prepare(a.repo, a.output, a.binary_directory, a.presentmon, a.corpus, a.inventory,
-            visual_sha=a.visual_sha, measurement_sha=a.measurement_sha)
+            visual_sha=a.visual_sha, measurement_sha=a.measurement_sha, measurement_preset=a.measurement_preset)
     if a.zip:
         print(seal_measurement(a.output, a.zip))

@@ -79,8 +79,13 @@ function New-TandaSignedCredential([string]$Image,[string]$Fingerprint,[string]$
  }
  $transfer=New-TandaCredentialTransferPath
  # The CLI also rejects Git directories, real roots and existing output files.
- $null=Invoke-TandaLicenseCli $Image @('sign','--key',$key,'--fingerprint',$Fingerprint,'--out',$transfer)
- Assert-TandaTransferKey $transfer $ApprovedKeyId
+ try{
+  $null=Invoke-TandaLicenseCli $Image @('sign','--key',$key,'--fingerprint',$Fingerprint,'--out',$transfer)
+  Assert-TandaTransferKey $transfer $ApprovedKeyId
+ }catch{
+  if(Test-Path -LiteralPath $transfer -PathType Leaf){Remove-Item -LiteralPath $transfer -Force}
+  throw
+ }
  $transfer
 }
 function Install-TandaQaCredential([string]$Image,[string]$Credential,[string]$Registry,[string]$ApprovedKeyId,[string]$Directory){

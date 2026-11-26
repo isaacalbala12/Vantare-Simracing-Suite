@@ -194,28 +194,24 @@ impl Context {
             .as_ref()
             .map(PathBuf::from)
             .or_else(|| explicit.cloned())
-            .unwrap_or_else(|| {
-                self.local_app_data
-                    .join("Programs")
-                    .join(product.root_folder)
-            });
-        // Solo beta existió antes del Setup GPUI: ningún otro producto adopta su raíz.
-        if product.legacy
-            && registered.is_none()
-            && explicit.is_none()
-            && !request.qa
-            && !request.uninstall
-        {
-            let old = self.local_app_data.join("Programs/Vantare Native Beta");
-            if old.join("state.json").try_exists()?
-                || old.join("retained-data.json").try_exists()?
-            {
-                root = old;
-            }
+            .unwrap_or_else(|| product::default_root(&self.local_app_data, product));
+        if registered.is_none() && explicit.is_none() && !request.qa && !request.uninstall {
+            root = self.legacy_root(product)?.unwrap_or(root);
         }
         root = disk::path(&root)?;
         self.validate_root(&root)?;
         Ok(root)
+    }
+    /// Raíz anterior al Setup GPUI con una instalación o datos dentro. Solo beta
+    /// existió entonces: ningún otro producto la adopta.
+    fn legacy_root(&self, product: &Product) -> Result<Option<PathBuf>> {
+        if !product.legacy {
+            return Ok(None);
+        }
+        let old = self.local_app_data.join("Programs/Vantare Native Beta");
+        let used =
+            old.join("state.json").try_exists()? || old.join("retained-data.json").try_exists()?;
+        Ok(used.then_some(old))
     }
     pub fn probe(&self, request: &Request) -> Result<Info> {
         let root = self.resolve_root(request)?;
@@ -679,5 +675,45 @@ mod tests {
             )
             .expect("different root")
         );
+    }
+}
+
+#[cfg(test)]
+mod legacy_root_tests {
+    use super::*;
+
+    #[test]
+    fn only_beta_adopts_the_root_of_the_old_beta_installer() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let id = disk::id().expect("ID");
+        let qa = parent.join("p2812-legacy-root").join(&id);
+        qa_path(&qa).expect("QA guard");
+        let old = qa.join("LocalAppData/Programs/Vantare Native Beta");
+        std::fs::create_dir_all(&old).expect("old root");
+        std::fs::write(old.join("state.json"), b"{}").expect("old installation");
+        let context = |channel| {
+            Context::isolated(
+                qa.join("LocalAppData"),
+                format!("Software\\VantareInstallerMatrix\\{id}"),
+                qa.join("shell"),
+            )
+            .and_then(|context| context.for_channel(channel))
+            .expect("isolated context")
+        };
+        let beta = context("beta");
+        assert_eq!(
+            beta.legacy_root(beta.product().unwrap()).unwrap(),
+            Some(old.clone())
+        );
+        let nightly = context("nightly");
+        assert_eq!(
+            nightly.legacy_root(nightly.product().unwrap()).unwrap(),
+            None
+        );
+        std::fs::remove_dir_all(qa).expect("owned QA tree");
     }
 }

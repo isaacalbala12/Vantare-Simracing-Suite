@@ -622,11 +622,14 @@ fn initial_info(args: &Args, capture: bool) -> Result<(Info, Option<String>), St
             Ok(info) => info,
             Err(error) => {
                 probe_error = Some(error);
-                let root = args.root.clone().unwrap_or_else(|| {
+                // La carpeta del producto de este Setup, nunca la de otro (#2812).
+                let root = crate::engine::product::fallback_root(
+                    args.root.clone(),
                     std::env::var_os("LOCALAPPDATA")
-                        .map_or_default(PathBuf::from)
-                        .join("Programs/Vantare")
-                });
+                        .map(PathBuf::from)
+                        .as_deref(),
+                    crate::CHANNEL,
+                );
                 Info {
                     data_path: root.join("generations"),
                     root,

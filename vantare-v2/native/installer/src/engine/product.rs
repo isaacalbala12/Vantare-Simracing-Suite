@@ -2,6 +2,7 @@
 //! instalable tiene sus propios nombres en Windows y nunca usa los de otro.
 //! Beta conserva exactamente los nombres publicados; testers y master no se
 //! instalan todavía.
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Product {
@@ -61,9 +62,56 @@ pub fn for_channel(channel: &str) -> Option<&'static Product> {
     }
 }
 
+/// Canal de los documentos escritos antes de #2812, que no lo declaran: solo
+/// beta existía entonces.
+pub const UNDECLARED_CHANNEL: &str = "beta";
+
+/// Raíz por defecto del producto: `%LOCALAPPDATA%\Programs\<carpeta>`.
+pub fn default_root(local_app_data: &Path, product: &Product) -> PathBuf {
+    local_app_data.join("Programs").join(product.root_folder)
+}
+
+/// Raíz que muestra el Setup cuando su sonda falla: la explícita o la del
+/// producto de su canal. Sin producto queda vacía y «Reintentar» falla cerrado;
+/// nunca se propone la carpeta de otro producto.
+pub fn fallback_root(
+    explicit: Option<PathBuf>,
+    local_app_data: Option<&Path>,
+    channel: &str,
+) -> PathBuf {
+    explicit
+        .or_else(|| Some(default_root(local_app_data?, for_channel(channel)?)))
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_fallback_root_belongs_to_the_setup_channel() {
+        let local = PathBuf::from("C:/Users/qa/AppData/Local");
+        assert_eq!(
+            fallback_root(None, Some(local.as_path()), "nightly"),
+            local.join("Programs/Vantare Nightly")
+        );
+        assert_eq!(
+            fallback_root(None, Some(local.as_path()), "beta"),
+            local.join("Programs/Vantare")
+        );
+        for channel in ["", "testers", "master"] {
+            assert_eq!(
+                fallback_root(None, Some(local.as_path()), channel),
+                PathBuf::new()
+            );
+        }
+        assert_eq!(fallback_root(None, None, "nightly"), PathBuf::new());
+        let explicit = PathBuf::from("D:/Juegos/Vantare");
+        assert_eq!(
+            fallback_root(Some(explicit.clone()), Some(&local), "nightly"),
+            explicit
+        );
+    }
 
     #[test]
     fn beta_keeps_every_published_name() {

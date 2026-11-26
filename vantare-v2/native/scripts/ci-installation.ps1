@@ -23,6 +23,7 @@ if (-not $unifiedExit -or -not @($unified -match 'vantare-services/hub-update-qa
   $unified | Select-Object -Last 20 | Write-Host
   throw 'la clave TEST de services compiló en vantare.exe sin la feature QA de runtime'
 }
+'Solo vantare-services/hub-update-qa: vantare.exe no compila (assert de la feature de runtime) PASS'
 # #2771: the real TEST-authority launcher, before the matrix replaces it with installer-qa only.
 & cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features hub-update-qa --locked --offline -j 4 --target-dir $target
 if ($LASTEXITCODE) { throw 'isolated Hub update QA launcher build failed' }

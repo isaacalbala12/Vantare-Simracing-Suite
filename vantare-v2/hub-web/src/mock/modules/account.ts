@@ -159,7 +159,7 @@ export function create(context: MockContext): MockHandler {
     context.core.access = coreAccess(context.core, policy);
   }
   const completes = context.sceneName === "cuenta-compra-completada";
-  const quick = completes || context.sceneName === "cuenta-compra-expira";
+  const expires = context.sceneName === "cuenta-compra-expira";
   let timers: Array<ReturnType<typeof setTimeout>> = [];
   let lastReset: number | undefined;
   let lastPortal: number | undefined;
@@ -195,7 +195,6 @@ export function create(context: MockContext): MockHandler {
       email: null,
       name,
       error: null,
-      notice: renewed.notice,
       copyLink: { available: false, copied: false },
     };
   };
@@ -345,7 +344,9 @@ export function create(context: MockContext): MockHandler {
           ...current,
           notice: renewed.notice,
           deviceLimit:
-            renewed.policy.state === "active" ? false : current.deviceLimit,
+            renewed.policy.state === "active"
+              ? false
+              : renewed.policy.limit === true,
         };
         break;
       }
@@ -365,16 +366,19 @@ export function create(context: MockContext): MockHandler {
         if (current.session !== "signedIn") return fail(id, "denied");
         const at = Date.now();
         if (lastReset !== undefined && at - lastReset < DAY_MS) {
+          // reset_active_device raises rate_limit: a generic error, and
+          // app.rs already ran revoke_local, so this device loses its rights.
+          setPolicy({ ...policy, state: "none" });
           current = {
             ...current,
-            deviceLimit: true,
-            notice: accountMessages.deviceLimit,
+            deviceLimit: false,
+            notice: accountMessages.resetFailed,
           };
           break;
         }
         lastReset = at;
         // revoke_local leaves NoCredential until the next renewal (app.rs:215).
-        setPolicy({ ...policy, state: "none" });
+        setPolicy({ ...policy, state: "none", limit: false });
         current = {
           ...current,
           deviceLimit: false,
@@ -451,27 +455,29 @@ export function create(context: MockContext): MockHandler {
         if (current.session !== "signedIn") return fail(id, "denied");
         if (current.purchase.waiting) return fail(id, "busy");
         stopTimers();
-        // The host waits up to purchaseWaitSeconds, then reports the expiry
-        // (observe_policy, account/mod.rs:343). Scenes shorten the wait.
+        // Like the host: the rights arrive through the policy while the wait
+        // stays open until purchaseWaitSeconds or a stop (observe_policy,
+        // account/mod.rs:343). Scenes shorten the times.
+        if (completes)
+          later(RESOLVE_MS, () => {
+            setPolicy({
+              ...policy,
+              state: "active",
+              grant: {
+                ...policy.grant,
+                founders: request.product === "founders",
+              },
+            });
+            publish();
+          });
         later(
-          quick ? RESOLVE_MS : accountLimits.purchaseWaitSeconds * 1000,
+          expires ? RESOLVE_MS : accountLimits.purchaseWaitSeconds * 1000,
           () => {
-            if (completes)
-              setPolicy({
-                ...policy,
-                state: "active",
-                grant: {
-                  ...policy.grant,
-                  founders: request.product === "founders",
-                },
-              });
             current = {
               ...current,
               purchase: {
                 waiting: false,
-                message: completes
-                  ? accountMessages.renewed
-                  : accountMessages.purchaseExpired,
+                message: accountMessages.purchaseExpired,
               },
             };
             publish();

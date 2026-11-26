@@ -33,7 +33,16 @@ function open(scene: string) {
     if (reply?.kind !== "response") throw new Error("core.get");
     return (reply.result as { value: CoreStatus }).value.access;
   };
-  return { send, view, failure, get, access, events };
+  // What the menu really receives: the last `core` event pushed by the host.
+  const pushed = () => {
+    const core = events.findLast(
+      (event) => event.kind === "event" && event.event.topic === "core",
+    );
+    return core?.kind === "event" && core.event.topic === "core"
+      ? (core.event.value as CoreStatus).access
+      : undefined;
+  };
+  return { send, view, failure, get, access, pushed, events };
 }
 const calendar = (value: AccountView) =>
   value.modules.find((module) => module.id === "calendar")?.status;
@@ -67,6 +76,11 @@ describe("unverified → verified → signed out", () => {
       "soon",
     ]);
     expect(flow.access()).toMatchObject({ verified: true, tester: true });
+    expect(flow.pushed()).toMatchObject({
+      verified: true,
+      tester: true,
+      calendar: true,
+    });
   });
 
   it("leaves the mock coherent after signing out", () => {
@@ -90,6 +104,7 @@ describe("unverified → verified → signed out", () => {
       "unverified",
     ]);
     expect(flow.access()).toMatchObject({ verified: false, tester: false });
+    expect(flow.pushed()).toMatchObject({ verified: false, tester: false });
     // A signed-out account can neither check nor act on the account.
     expect(flow.view({ method: "account.check" }).verified).toBe(false);
     expect(flow.failure({ method: "account.deviceReset" })).toBe("denied");
@@ -150,7 +165,7 @@ describe("blocked account causes (hub-host navigation.rs:29-38)", () => {
 });
 
 describe("device, photo and portal", () => {
-  it("frees the device, limits the next reset to once per 24 h and recovers on renewal", () => {
+  it("frees the device; a second reset within 24 h fails generically and leaves it without rights", () => {
     const flow = open("cuenta-tester");
     const freed = flow.view({ method: "account.deviceReset" });
     expect(freed).toMatchObject({
@@ -159,24 +174,42 @@ describe("device, photo and portal", () => {
       deviceLimit: false,
       notice: "Dispositivo liberado; solicite una credencial nueva",
     });
+    expect(flow.pushed()).toMatchObject({ verified: false, tester: false });
+    flow.view({ method: "account.check" });
     vi.advanceTimersByTime(23 * 3_600_000);
+    // reset_active_device raises rate_limit: generic error, not DeviceLimit.
     const limited = flow.view({ method: "account.deviceReset" });
     expect(limited).toMatchObject({
+      verified: false,
+      deviceLimit: false,
+      notice: "No se pudo completar el acceso. Inténtalo de nuevo.",
+    });
+    expect(flow.pushed()).toMatchObject({ verified: false });
+    vi.advanceTimersByTime(2 * 3_600_000);
+    expect(flow.view({ method: "account.deviceReset" }).notice).toBe(
+      "Dispositivo liberado; solicite una credencial nueva",
+    );
+    expect(flow.view({ method: "account.check" })).toMatchObject({
+      verified: true,
+      deviceLimit: false,
+    });
+  });
+  it("reports the device limit on renewal and a reset frees it", () => {
+    const flow = open("cuenta-limite-dispositivos");
+    expect(flow.get()).toMatchObject({ verified: false, deviceLimit: false });
+    expect(flow.view({ method: "account.check" })).toMatchObject({
+      verified: false,
       deviceLimit: true,
       notice: "límite de dispositivos",
     });
-    vi.advanceTimersByTime(2 * 3_600_000);
-    expect(flow.view({ method: "account.deviceReset" }).deviceLimit).toBe(
-      false,
-    );
-    const back = flow.view({ method: "account.check" });
-    expect(back).toMatchObject({ verified: true, deviceLimit: false });
-  });
-  it("clears the device limit once a renewal succeeds", () => {
-    const flow = open("cuenta-tester");
-    flow.view({ method: "account.deviceReset" });
-    expect(flow.view({ method: "account.deviceReset" }).deviceLimit).toBe(true);
-    expect(flow.view({ method: "account.check" }).deviceLimit).toBe(false);
+    expect(flow.view({ method: "account.deviceReset" })).toMatchObject({
+      deviceLimit: false,
+      notice: "Dispositivo liberado; solicite una credencial nueva",
+    });
+    expect(flow.view({ method: "account.check" })).toMatchObject({
+      verified: true,
+      deviceLimit: false,
+    });
   });
   it("opens the portal at most once per 5 s and only with a session", () => {
     const flow = open("cuenta-tester");
@@ -205,7 +238,7 @@ describe("device, photo and portal", () => {
 });
 
 describe("purchase wait", () => {
-  it("confirms the purchase into a verified account in the completing scene", () => {
+  it("confirms the rights through the policy while the wait stays open, as the host does", () => {
     const flow = open("cuenta-compra-completada");
     const waiting = flow.view({
       method: "account.purchase",
@@ -217,26 +250,31 @@ describe("purchase wait", () => {
       flow.failure({ method: "account.purchase", product: "proMonthly" }),
     ).toBe("busy");
     vi.advanceTimersByTime(1500);
-    const last = flow.events.at(-1);
-    const done =
-      last?.kind === "event" && last.event.topic === "account"
-        ? last.event.value
-        : undefined;
-    expect(done).toMatchObject({
+    expect(flow.get()).toMatchObject({
       verified: true,
       plan: { kind: "founders" },
       purchase: {
-        waiting: false,
-        message: "Derechos verificados y guardados por el núcleo",
+        waiting: true,
+        message: "Compra abierta. Los derechos se comprobarán automáticamente.",
       },
     });
-    expect(flow.access()).toMatchObject({ verified: true });
+    expect(flow.pushed()).toMatchObject({ verified: true });
+    vi.advanceTimersByTime(600_000);
+    expect(flow.get().purchase.waiting).toBe(false);
   });
-  it("gives a Pro product a plain verified plan", () => {
+  it("gives a Pro product a plain verified plan without Calendar", () => {
     const flow = open("cuenta-compra-completada");
     flow.view({ method: "account.purchase", product: "proAnnual" });
     vi.advanceTimersByTime(1500);
-    expect(flow.get().plan).toEqual({ kind: "verified" });
+    const value = flow.get();
+    expect(value.plan).toEqual({ kind: "verified" });
+    expect(calendar(value)).toBe("unverified");
+    expect(value.modules[0]?.status).toBe("included");
+    expect(flow.pushed()).toMatchObject({
+      verified: true,
+      tester: false,
+      calendar: false,
+    });
   });
   it("expires the wait with the host message and no rights in the expiring scene", () => {
     const flow = open("cuenta-compra-expira");

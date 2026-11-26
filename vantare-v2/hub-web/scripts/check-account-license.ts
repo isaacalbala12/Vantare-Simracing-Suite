@@ -33,6 +33,22 @@ export async function checkAccountLicense(
       .waitFor();
     await page.evaluate(() => document.fonts.ready);
   };
+  // The menu follows the `core` event: Calendar is hidden while blocked,
+  // locked while unverified and open only for a verified tester.
+  const calendar = async (
+    expected: "hidden" | "locked" | "open",
+    scheme: string,
+    name: string,
+  ) => {
+    const item = page.locator('.v-sidebar [data-nav="calendar"]');
+    const actual =
+      (await item.count()) === 0
+        ? "hidden"
+        : (await item.getAttribute("aria-disabled")) === "true"
+          ? "locked"
+          : "open";
+    assert.equal(actual, expected, `calendar menu ${scheme}/${name}`);
+  };
   const pill = (name: string) =>
     page
       .getByRole("region", { name: "Isaac Albalá" })
@@ -41,9 +57,11 @@ export async function checkAccountLicense(
   for (const scheme of ["dark", "light"]) {
     await open(scheme, "cuenta-transicion");
     await pill(text.unverified).waitFor();
+    await calendar("locked", scheme, "sin-verificar");
     await state(scheme, "1-sin-verificar");
     await page.getByRole("button", { name: text.check, exact: true }).click();
     await pill(text.active).waitFor();
+    await calendar("open", scheme, "verificado");
     await state(scheme, "2-verificado");
     await page.getByRole("button", { name: text.logout, exact: true }).click();
     await page
@@ -52,6 +70,7 @@ export async function checkAccountLicense(
     await state(scheme, "3-sesion-cerrada");
     await open(scheme, "cuenta-bloqueada-caducada");
     await pill("La credencial ha caducado; comprueba el acceso.").waitFor();
+    await calendar("hidden", scheme, "bloqueada");
     await state(scheme, "4-bloqueada");
     await page.getByRole("button", { name: text.check, exact: true }).click();
     await pill(text.active).waitFor();

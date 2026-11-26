@@ -28,9 +28,13 @@ export interface Policy {
   grant: Grant;
   /** False simulates a renewal that cannot reach a verified credential. */
   renews: boolean;
+  /** Another device holds the license: renewals answer with `Reply::DeviceLimit` (409 device_limit). */
+  limit?: boolean;
 }
 
 // AccessState::message (ipc/src/control.rs:141) and policy_message (services/src/outcome.rs:21).
+// Transient/permanent split is INFERRED (not a host rule): the host only reports
+// the state; whether a renewal recovers it depends on the server and the clock.
 const blockedText: Record<
   Exclude<PolicyState, "none" | "active">,
   { text: string; transient: boolean }
@@ -61,7 +65,8 @@ export const accountMessages = {
   renewed: "Derechos verificados y guardados por el núcleo", // services/src/app.rs:158
   unverified: "No se pudo verificar la política de acceso", // AccessState::Unavailable
   deviceFreed: "Dispositivo liberado; solicite una credencial nueva", // app.rs:229
-  deviceLimit: "límite de dispositivos", // services/src/error.rs:62
+  deviceLimit: "límite de dispositivos", // services/src/error.rs:62 (renovación, 409 device_limit)
+  resetFailed: "No se pudo completar el acceso. Inténtalo de nuevo.", // account/mod.rs failed(): rate_limit del reinicio
   loggedOut: "Sesión cerrada en este dispositivo", // app.rs:827
   purchaseExpired:
     "No se han confirmado los derechos. Usa Comprobar acceso para reintentarlo.", // account/mod.rs:343
@@ -85,6 +90,7 @@ export const liveAccountScenes = [
   "cuenta-transicion",
   "cuenta-compra-completada",
   "cuenta-compra-expira",
+  "cuenta-limite-dispositivos",
   "acceso-navegador-completa",
   "acceso-correo-verificado",
   ...Object.keys(blockedScenes),
@@ -112,6 +118,8 @@ export function initialPolicy(
       return { state: "none", grant: noGrant, renews: false };
     case "cuenta-transicion":
       return { state: "none", grant: tester, renews: true };
+    case "cuenta-limite-dispositivos":
+      return { state: "none", grant: pro, renews: true, limit: true };
     case "cuenta-compra-completada":
     case "cuenta-compra-expira":
     case "acceso-navegador-completa":
@@ -181,6 +189,7 @@ export function coreAccess(
 /** License renewal ("Comprobar acceso" = Operation::Check, account/mod.rs:196). */
 export function renew(policy: Policy): { policy: Policy; notice: string } {
   const held = policy.state;
+  if (policy.limit) return { policy, notice: accountMessages.deviceLimit };
   const denied =
     held === "none" || held === "active" ? null : blockedText[held];
   if (denied && !denied.transient) return { policy, notice: denied.text };

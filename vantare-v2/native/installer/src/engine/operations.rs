@@ -803,8 +803,9 @@ fn references_bound(document: &installation::StateDocument) -> bool {
 /// folder: the notes of the engine also reach the log of the installation.
 fn logged<'a>(root: &'a Path, note: &'a mut dyn FnMut(&str)) -> impl FnMut(&str) + 'a {
     move |text| {
-        disk::log(root, text);
-        note(text);
+        let text = disk::relative(root, text);
+        disk::log(root, &text);
+        note(&text);
     }
 }
 fn kept(path: &Path, reason: impl std::fmt::Display) -> String {
@@ -1269,12 +1270,13 @@ pub fn adopt_recordings(
         .filter(references_bound)
         .ok_or_else(|| WriteError::new(1, "Las referencias de state.json no son fiables"))?;
     let note = &mut |text: &str, once: bool| {
+        let text = disk::relative(&root, text);
         if once {
-            disk::log_once(&root, text);
+            disk::log_once(&root, &text);
         } else {
-            disk::log(&root, text);
+            disk::log(&root, &text);
         }
-        note(text);
+        note(&text);
     };
     adopt(
         &root,

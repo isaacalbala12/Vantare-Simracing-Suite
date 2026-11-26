@@ -369,8 +369,7 @@ fn append(root: &Path, note: &str, once: bool) {
             .duration_since(std::time::UNIX_EPOCH)
             .map_err(io::Error::other)?
             .as_secs();
-        let note: String = note
-            .replace(&root.display().to_string(), "<raíz>")
+        let note: String = relative(root, note)
             .chars()
             .take(1024)
             .map(|character| {
@@ -395,6 +394,11 @@ fn append(root: &Path, note: &str, once: bool) {
         file.write_all(format!("{} {note}\n", utc(seconds)).as_bytes())
     };
     let _ = write();
+}
+/// A note names paths from the root of its installation, never the machine:
+/// what callers show and what the log keeps are the same text.
+pub fn relative(root: &Path, note: &str) -> String {
+    note.replace(&root.display().to_string(), "<raíz>")
 }
 /// `YYYY-MM-DD hh:mm:ssZ` without a calendar dependency (days to civil date).
 fn utc(seconds: u64) -> String {

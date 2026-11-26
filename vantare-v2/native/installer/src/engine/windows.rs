@@ -23,8 +23,9 @@ use windows::{
             IPersistFile, STGM_READ, STGM_READWRITE, StructuredStorage::PROPVARIANT,
         },
         UI::Shell::{
-            FOLDERID_Desktop, FOLDERID_Programs, FOLDERID_Startup, IShellLinkW,
-            KF_FLAG_DONT_VERIFY, PropertiesSystem::IPropertyStore, SHGetKnownFolderPath, ShellLink,
+            FOLDERID_Desktop, FOLDERID_LocalAppData, FOLDERID_Profile, FOLDERID_Programs,
+            FOLDERID_Startup, IShellLinkW, KF_FLAG_DONT_VERIFY, PropertiesSystem::IPropertyStore,
+            SHGetKnownFolderPath, ShellLink,
         },
     },
     core::{GUID, Interface, PCWSTR},
@@ -79,6 +80,23 @@ pub fn folder(name: &str) -> Result<PathBuf> {
         "Startup" => FOLDERID_Startup,
         _ => return Err(WriteError::new(1, "Carpeta Windows desconocida")),
     };
+    known_folder(id)
+}
+/// Carpetas reales del usuario que el instalador puede tocar, leídas por API y no del
+/// entorno: el guard QA de CI nunca acepta una raíz que las contenga o caiga dentro.
+pub fn real_user_folders() -> Result<Vec<PathBuf>> {
+    [
+        FOLDERID_Profile,
+        FOLDERID_LocalAppData,
+        FOLDERID_Programs,
+        FOLDERID_Desktop,
+        FOLDERID_Startup,
+    ]
+    .into_iter()
+    .map(known_folder)
+    .collect()
+}
+fn known_folder(id: GUID) -> Result<PathBuf> {
     let value = unsafe { SHGetKnownFolderPath(&raw const id, KF_FLAG_DONT_VERIFY, None) }
         .map_err(|cause| error(&cause))?;
     let path = unsafe { value.to_string() }.map_err(|cause| WriteError::new(1, cause.to_string()));

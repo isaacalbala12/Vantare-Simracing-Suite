@@ -267,11 +267,46 @@ pub fn qa_path(path: &Path) -> Result<()> {
     )?;
     let path = disk::path(path)?;
     let prefix = Path::new("D:/VantareServer/qa");
-    let in_server = below_prefix(&path, prefix);
-    let in_ci = std::env::var("CI").as_deref() == Ok("true")
-        && std::env::var_os("RUNNER_TEMP")
-            .is_some_and(|prefix| below_prefix(&path, Path::new(&prefix)));
-    ensure(in_server || in_ci, "Guard QA rechazó la ruta")
+    let accepted = below_prefix(&path, prefix)
+        || ci_prefix(
+            |name| std::env::var_os(name),
+            super::windows::real_user_folders,
+        )
+        .is_some_and(|prefix| below_prefix(&path, &prefix));
+    ensure(accepted, "Guard QA rechazó la ruta")
+}
+/// Temporal de un runner alojado por GitHub (#2794). Una variable de entorno no es una
+/// frontera frente a quien lanza el proceso: esto evita accidentes, y la raíz de CI nunca
+/// puede contener ni caer dentro de las carpetas reales de Windows, leídas por API.
+fn ci_prefix(
+    env: impl Fn(&str) -> Option<std::ffi::OsString>,
+    real_folders: impl FnOnce() -> Result<Vec<PathBuf>>,
+) -> Option<PathBuf> {
+    let is =
+        |name: &str, value: &str| env(name).is_some_and(|actual| actual.to_str() == Some(value));
+    if !(is("CI", "true")
+        && is("GITHUB_ACTIONS", "true")
+        && is("RUNNER_ENVIRONMENT", "github-hosted"))
+    {
+        return None;
+    }
+    let prefix = PathBuf::from(env("RUNNER_TEMP")?);
+    let relative = prefix.components().any(|part| {
+        matches!(
+            part,
+            std::path::Component::ParentDir | std::path::Component::CurDir
+        )
+    });
+    if !prefix.is_absolute() || relative {
+        return None;
+    }
+    // Volumen local y nunca la raíz de una unidad.
+    let prefix = disk::path(&prefix).ok()?;
+    let folders = real_folders().ok()?;
+    folders
+        .iter()
+        .all(|real| overlap(&prefix, real).is_ok_and(|shared| !shared))
+        .then_some(prefix)
 }
 fn below_prefix(path: &Path, prefix: &Path) -> bool {
     !prefix.as_os_str().is_empty() && path != prefix && path.starts_with(prefix)
@@ -358,8 +393,89 @@ pub(crate) fn cleanup_marker(root: &Path, verified_image: Option<&str>) -> Resul
 
 #[cfg(all(test, windows))]
 mod tests {
-    use super::{below_prefix, same_path};
-    use std::path::Path;
+    use super::{WriteError, below_prefix, ci_prefix, same_path};
+    use std::path::{Path, PathBuf};
+
+    // Disposición real de windows-latest (logs de CI de #2786): perfil en C:, temporal en D:.
+    const RUNNER_TEMP: &str = "D:\\a\\_temp";
+    fn hosted(overrides: &[(&str, Option<&str>)]) -> impl Fn(&str) -> Option<std::ffi::OsString> {
+        let mut values: Vec<(String, Option<String>)> = [
+            ("CI", "true"),
+            ("GITHUB_ACTIONS", "true"),
+            ("RUNNER_ENVIRONMENT", "github-hosted"),
+            ("RUNNER_TEMP", RUNNER_TEMP),
+        ]
+        .iter()
+        .map(|(name, value)| (name.to_string(), Some(value.to_string())))
+        .collect();
+        for (name, value) in overrides {
+            values.retain(|(known, _)| known.as_str() != *name);
+            values.push((name.to_string(), value.map(str::to_string)));
+        }
+        move |name| {
+            values
+                .iter()
+                .find(|(known, _)| known.as_str() == name)
+                .and_then(|(_, value)| value.clone().map(Into::into))
+        }
+    }
+    fn real() -> Result<Vec<PathBuf>, WriteError> {
+        Ok([
+            "C:\\Users\\runneradmin",
+            "C:\\Users\\runneradmin\\AppData\\Local",
+            "C:\\Users\\runneradmin\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs",
+            "C:\\Users\\runneradmin\\Desktop",
+            "C:\\Users\\runneradmin\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
+        ]
+        .map(PathBuf::from)
+        .to_vec())
+    }
+
+    #[test]
+    fn github_hosted_temporary_root_is_the_only_ci_prefix() {
+        assert_eq!(
+            ci_prefix(hosted(&[]), real),
+            Some(PathBuf::from(RUNNER_TEMP))
+        );
+        for missing in [
+            ("CI", None),
+            ("CI", Some("1")),
+            ("GITHUB_ACTIONS", None),
+            ("GITHUB_ACTIONS", Some("false")),
+            ("RUNNER_ENVIRONMENT", None),
+            ("RUNNER_ENVIRONMENT", Some("self-hosted")),
+            ("RUNNER_TEMP", None),
+        ] {
+            assert_eq!(ci_prefix(hosted(&[missing]), real), None, "{missing:?}");
+        }
+    }
+
+    #[test]
+    fn ci_prefix_never_reaches_real_user_folders_or_a_drive_root() {
+        for temp in [
+            "a\\_temp",
+            "D:\\a\\..\\_temp",
+            "D:\\",
+            "C:\\",
+            "C:\\Users",
+            "C:\\Users\\runneradmin",
+            "c:\\users\\RUNNERADMIN\\",
+            "C:\\Users\\runneradmin\\AppData\\Local",
+            "C:\\Users\\runneradmin\\AppData\\Local\\Temp",
+            "C:\\Users\\runneradmin\\Desktop\\qa",
+        ] {
+            assert_eq!(
+                ci_prefix(hosted(&[("RUNNER_TEMP", Some(temp))]), real),
+                None,
+                "{temp}"
+            );
+        }
+        // Sin carpetas reales legibles no hay rama de CI.
+        assert_eq!(
+            ci_prefix(hosted(&[]), || Err(WriteError::new(1, "sin API"))),
+            None
+        );
+    }
 
     #[test]
     fn empty_qa_prefix_never_accepts_any_path() {

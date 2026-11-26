@@ -26,6 +26,18 @@ import { accessText as text } from "../src/renderer/i18n/access.es";
 import { windowText } from "../src/renderer/i18n/window.es";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 
+// ISA-2785: count every mount of the real-content signal, test by test.
+const { contentMounted } = vi.hoisted(() => ({ contentMounted: vi.fn() }));
+vi.mock("../src/renderer/app/HubMounted", async () => {
+  const { useEffect } = await import("react");
+  return {
+    HubMounted: () => {
+      useEffect(() => contentMounted(), []);
+      return null;
+    },
+  };
+});
+beforeEach(() => contentMounted.mockClear());
 const caches: QueryClient[] = [];
 const original = Client.prototype.request;
 type Intent = Exclude<Request, { method: "window.close" }>;
@@ -760,3 +772,9 @@ it("keeps typed secrets when an existing send blocks another form submission", a
   await screen.findByText(text.consent);
   expect(password.value).toBe("");
 });
+it("tells Main that real content mounted with the access gate (ISA-2785)", async () => {
+  intercept(() => undefined);
+  mount();
+  await screen.findByRole("button", { name: text.google }, { timeout: 10000 });
+  expect(contentMounted).toHaveBeenCalled();
+}, 20000);

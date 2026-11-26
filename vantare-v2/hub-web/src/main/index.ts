@@ -184,8 +184,9 @@ async function start() {
   // `ready` lets the launcher confirm an updated generation and retire the
   // previous one (#2785). A first paint, or providers connected to the host,
   // may still be a bundle whose content fails to mount: wait for the trusted
-  // main frame to report its real content (Shell or a gate that asks the user).
-  // Sent once; a navigation forgets the previous page's signals.
+  // main frame to report its first real screen (see HubMounted for which, and
+  // for the Shell case it does not cover). Sent once; a navigation forgets the
+  // previous page's signals.
   let painted = false,
     connected = false,
     mounted = false,

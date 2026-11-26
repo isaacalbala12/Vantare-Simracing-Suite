@@ -59,11 +59,20 @@ Electron envía `ready` una sola vez, cuando se cumplen tres cosas: la ventana
 ya se pintó (visible o minimizada), el renderer recibió el puerto con el `hello`
 y el contenido real se montó. Lo último lo avisa `vantare:mounted`, que el
 preload envía desde `HubMounted` y main solo acepta del marco principal de
-confianza; una navegación lo olvida. `HubMounted` está en el Shell y en las
-puertas que preguntan algo al usuario (cuenta, privacidad, bienvenida), nunca
-en una pantalla de carga o de error: si el contenido falla al montar, no hay
-confirmación y la raíz revierte al vencer su minuto. Cubre los fallos al montar;
-un fallo posterior a ese primer montaje ya no revierte la actualización. Con una
+confianza; una navegación lo olvida. `HubMounted` está en el Shell, en la pregunta de
+privacidad, en la bienvenida y en la puerta de cuenta en cuanto tiene datos;
+no en la carga de ajustes ni en los errores de privacidad o bienvenida. Si ese
+contenido falla al montar, no hay confirmación y la raíz revierte al vencer su
+minuto.
+
+**Lo que no cubre.** La puerta de cuenta avisa en cualquier estado, también
+«comprobando», cierre de sesión o error: si el núcleo responde tarde
+(`Reply::Closed` no marca la sesión como comprobada) o con error, exigir otra
+pantalla revertiría una versión buena, incluso en bucle. Como el anfitrión
+empieza en «comprobando», en el caso habitual (usuario con sesión) la
+confirmación llega antes de montar el Shell: **un Shell que falle en su primer
+montaje no revierte la actualización**. Tampoco la revierte un fallo
+posterior al primer montaje. Con una
 versión de protocolo distinta no se envía nunca. El anfitrión rechaza `ready`
 antes de un `hello` compatible y solo escribe `hub-ready` con el token de este
 arranque (32 hex), una vez y de forma atómica. Si tras mostrarse la generación

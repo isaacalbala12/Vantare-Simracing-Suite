@@ -1473,33 +1473,51 @@ fn remove_identical(path: &Path, target: &Path) -> std::result::Result<(), Strin
     windows::delete_open(&copy).map_err(|error| format!("no se pudo retirar la copia ({error})"))
 }
 /// A DuckDB file is a header block with its mark, two database headers and the
-/// blocks the newest header counts. A copy cut short, or one that never reached
-/// the disk, does not pass, and stays where it is (#2746, condition 6). Checked
-/// against two real files of the DuckDB in use: 12 288 bytes with no blocks,
-/// and five blocks of 16 384.
+/// blocks the newest header counts; each of them starts with the checksum of
+/// the rest. Every checksum is verified, so a copy cut short, or one whose
+/// blocks never reached the disk (zeros), does not pass and stays where it is
+/// (#2746, condition 6). The algorithm and the layout were checked against the
+/// two real files of the DuckDB in use (no blocks, and five of 16 384 bytes).
 fn intact(mut file: &fs::File) -> std::result::Result<(), String> {
-    const HEADERS: u64 = 3 * 4096;
+    const HEADER: usize = 4096;
     let broken = || "no es una grabación completa: puede ser una copia cortada".to_owned();
-    let mut head = [0_u8; 3 * 4096];
-    io::Read::read_exact(&mut file, &mut head).map_err(|_| broken())?;
-    let word = |at: usize| u64::from_le_bytes(head[at..at + 8].try_into().expect("eight bytes"));
-    // checksum, iteration, meta block, free list, block count, block size.
-    let newest = if word(8192 + 8) > word(4096 + 8) {
-        8192
-    } else {
-        4096
+    let mut read =
+        |buffer: &mut [u8]| io::Read::read_exact(&mut file, buffer).map_err(|_| broken());
+    let word = |bytes: &[u8], at: usize| -> u64 {
+        u64::from_le_bytes(bytes[at..at + 8].try_into().expect("eight bytes"))
     };
-    let (blocks, size) = (word(newest + 32), word(newest + 40));
-    let length = file.metadata().map_err(|_| broken())?.len();
-    let counted = blocks
-        .checked_mul(size)
-        .and_then(|bytes| bytes.checked_add(HEADERS))
-        .is_some_and(|expected| length >= expected);
-    if &head[8..12] == b"DUCK" && size >= 4096 && size.is_power_of_two() && counted {
-        Ok(())
-    } else {
-        Err(broken())
+    // DuckDB: 5381, then each further 8-byte word multiplied and xored in.
+    let sound = |block: &[u8]| -> bool {
+        word(block, 0)
+            == block[8..].chunks_exact(8).fold(5381_u64, |sum, chunk| {
+                sum ^ word(chunk, 0).wrapping_mul(0xbf58_476d_1ce4_e5b9)
+            })
+    };
+    let mut head = [0_u8; 3 * HEADER];
+    read(&mut head)?;
+    let headers: Vec<&[u8]> = head.chunks_exact(HEADER).collect();
+    if &head[8..12] != b"DUCK" || !headers.iter().copied().all(sound) {
+        return Err(broken());
     }
+    // iteration, meta block, free list, block count, block size.
+    let newest = if word(headers[2], 8) > word(headers[1], 8) {
+        headers[2]
+    } else {
+        headers[1]
+    };
+    let (blocks, size) = (word(newest, 32), word(newest, 40));
+    let size = usize::try_from(size)
+        .ok()
+        .filter(|size| (HEADER..=1 << 24).contains(size) && size.is_power_of_two())
+        .ok_or_else(broken)?;
+    let mut block = vec![0_u8; size];
+    for _ in 0..blocks {
+        read(&mut block)?;
+        if !sound(&block) {
+            return Err(broken());
+        }
+    }
+    Ok(())
 }
 /// Generations a sweep never gathers from: `None` when `boot-pending.json`
 /// cannot be read, so that nothing is gathered (ADR 0111 T3).

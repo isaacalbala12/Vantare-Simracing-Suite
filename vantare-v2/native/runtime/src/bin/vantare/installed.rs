@@ -609,6 +609,12 @@ mod tests {
         assert_eq!(super::instance_for("beta"), "native-beta");
         assert_eq!(super::instance_for("nightly"), "native-nightly");
         assert_ne!(super::instance_for("nightly"), super::instance_for("beta"));
+        // La instancia sale del canal de esta build, nunca de una constante.
+        let channel = vantare_ipc::product::CHANNEL;
+        assert_eq!(super::instance(), format!("native-{channel}"));
+        if channel != "beta" {
+            assert_ne!(super::instance(), "native-beta");
+        }
     }
 
     use super::*;

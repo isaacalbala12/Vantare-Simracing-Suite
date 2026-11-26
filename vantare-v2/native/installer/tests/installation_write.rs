@@ -4487,7 +4487,7 @@ fn confirm_moves_what_is_missing_keeps_its_dates_and_never_takes_from_previous()
         let got = (moved.created().unwrap(), moved.modified().unwrap());
         assert_eq!(got, (at, at), "moved, never copied: {name}");
     }
-    assert!(names(&recordings(&c)).is_empty());
+    assert_eq!(names(&recordings(&c)), [] as [String; 0]);
     assert_eq!(names(&recordings(&a)), [STATUS]);
     assert_eq!(
         index(&b),
@@ -4571,7 +4571,7 @@ fn a_reverted_orphan_gives_its_whole_recordings_and_keeps_the_broken_ones() {
     let whole = duck(3, 0xB);
     // What a cut `CopyFileW` leaves on NTFS: the final size, with zeros after
     // the part that was written.
-    let zeros_after_header = [&SESSION[..3 * 4096], &[0_u8; 5 * 16_384][..]].concat();
+    let zeros_after_header = [&SESSION[..3 * 4096], &vec![0_u8; 5 * 16_384][..]].concat();
     let last_block_zeros = [&SESSION[..SESSION.len() - 16_384], &[0_u8; 16_384][..]].concat();
     let mut flipped = whole.clone();
     flipped[3 * 4096 + 4096 + 100] ^= 1;
@@ -4686,7 +4686,7 @@ fn confirm_takes_the_active_first_then_the_newest_orphan() {
     for older in [&middle, &oldest] {
         assert_eq!(names(&recordings(older)), ["series-1-1.duckdb"]);
     }
-    assert!(names(&recordings(&active)).is_empty());
+    assert_eq!(names(&recordings(&active)), [] as [String; 0]);
 }
 
 #[test]
@@ -4807,7 +4807,7 @@ fn a_gathering_cut_short_loses_nothing_and_the_next_one_finishes() {
     assert_eq!(names(&source), [files[1].0, files[2].0, files[3].0]);
     let (result, _) = fixture.uninstall_cut(&mut |_| Ok(()));
     result.expect("resumed");
-    assert!(names(&source).is_empty());
+    assert_eq!(names(&source), [] as [String; 0]);
     assert_eq!(names(&single), files.each_ref().map(|(name, _)| *name));
     for (name, bytes) in &files {
         assert_eq!(&read(&single.join(name)), bytes, "{name}");
@@ -4907,7 +4907,9 @@ fn measure_the_cost_of_checking_a_recording_and_of_the_flush() {
         })
         .collect();
     let started = std::time::Instant::now();
-    small.iter().for_each(|path| disk::flush(path).unwrap());
+    for path in &small {
+        disk::flush(path).unwrap();
+    }
     let flushed_small = started.elapsed();
     let large = folder.join("grande.bin");
     fs::write(&large, &big).unwrap();

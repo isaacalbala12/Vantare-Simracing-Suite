@@ -213,7 +213,10 @@ class ScopeTests(unittest.TestCase):
     def test_hub_web_only_pr_keeps_the_web_workflow_and_skips_native(self):
         repo = Path(__file__).resolve().parents[3]
         workflow = (repo / '.github/workflows/hub-web.yml').read_text(encoding='utf-8')
-        self.assertIn("paths: ['vantare-v2/hub-web/**', '.github/workflows/hub-web.yml']", workflow)
+        # Las dos listas (push y pull_request); el JSON lo lee un test de hub-web.
+        paths = ("paths: ['vantare-v2/hub-web/**', '.github/workflows/hub-web.yml', "
+                 "'supabase/functions/scripts/polar-launch-prices.json']")
+        self.assertEqual(workflow.count(paths), 2)
         spec = importlib.util.spec_from_file_location(
             'native_gate_scope', repo / '.github/scripts/native_gate_scope.py')
         scope = importlib.util.module_from_spec(spec)

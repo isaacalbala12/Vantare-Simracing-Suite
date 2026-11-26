@@ -6,6 +6,7 @@ import { AccessBoundary } from "../ui/AccessBoundary";
 import { AccessCallout } from "../ui/AccessForm";
 import { Button } from "../ui/Button";
 import { useAccount } from "./AccountState";
+import { HubMounted } from "./HubMounted";
 import { WindowControls } from "./WindowControls";
 import "../screens/account/access.css";
 export function AccountGate({ children }: { children: ReactNode }) {
@@ -43,6 +44,7 @@ export function AccountGate({ children }: { children: ReactNode }) {
             <h1>{text.title}</h1>
             <p>{text.subtitle}</p>
           </header>
+          {value && <HubMounted />}
           <div className="v-access-body">
             {!value ? (
               <p className="v-access-status">{text.checking}</p>

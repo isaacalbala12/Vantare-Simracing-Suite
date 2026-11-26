@@ -213,7 +213,23 @@ async function boot(
   // asks for it once the whole tree has committed (HostProvider effect).
   const connect = (senderFrame: unknown = window.webContents.mainFrame) =>
     ipc.emit("vantare:connect", { sender: window.webContents, senderFrame });
-  return { ...started, window, connect };
+  // The real content (Shell or a gate that asks the user) has committed.
+  const mount = (senderFrame: unknown = window.webContents.mainFrame) =>
+    ipc.emit("vantare:mounted", { sender: window.webContents, senderFrame });
+  const usable = () => {
+    connect();
+    mount();
+  };
+  const navigate = () =>
+    window.webContents.emit(
+      "did-frame-navigate",
+      {},
+      "app://hub/",
+      200,
+      "OK",
+      true,
+    );
+  return { ...started, window, connect, mount, usable, navigate };
 }
 /** A start that must stop before any window: lost lock or no host hello. */
 async function refused(startup: Startup) {
@@ -232,9 +248,9 @@ async function refused(startup: Startup) {
 it.each([false, true])(
   "reveals the actual main startup path with minimized=%s in the correct order",
   async (minimized) => {
-    const { window, calls, connect } = await boot(minimized);
+    const { window, calls, usable } = await boot(minimized);
     expect(calls).toEqual(["create:hidden", "load"]);
-    connect();
+    usable();
     window.emit("ready-to-show");
     expect(calls).toEqual(
       minimized
@@ -280,9 +296,9 @@ it("recalculates only zoom on resize and removes the resize listener when conten
 it.each([false, true])(
   "remembers a second instance before first paint and shows once (minimized=%s)",
   async (minimized) => {
-    const { window, calls, app, connect } = await boot(minimized);
+    const { window, calls, app, usable } = await boot(minimized);
     app.emit("second-instance");
-    connect();
+    usable();
     expect(calls).toEqual(["create:hidden", "load"]);
     expect(window.active).toBe(false);
     window.emit("ready-to-show");
@@ -308,8 +324,8 @@ it("restores and focuses on a second instance after minimized startup", async ()
 }, 15000);
 
 it("remembers activation even before BrowserWindow exists", async () => {
-  const { window, calls, connect } = await boot(true, true);
-  connect();
+  const { window, calls, usable } = await boot(true, true);
+  usable();
   expect(calls).toEqual(["create:hidden", "load"]);
   window.emit("ready-to-show");
   expect(calls).toEqual(["create:hidden", "load", "show", "ready"]);
@@ -350,8 +366,8 @@ it("only opens the native review for the connected main frame and one ticket", a
 }, 15000);
 
 // VANTA-138 P6 (#2785): `ready` lets the launcher confirm an updated generation
-// and drop the previous one. A first paint alone is not a usable Hub: the
-// renderer must also have committed its tree and connected to the host.
+// and drop the previous one. A first paint alone is not a usable Hub, nor are
+// the providers that connect to the host: the real content must have mounted.
 const readies = (calls: string[]) => calls.filter((call) => call === "ready");
 it.each([false, true])(
   "never confirms a painted window whose renderer did not connect (minimized=%s)",
@@ -364,48 +380,76 @@ it.each([false, true])(
   },
   15000,
 );
+it("never confirms providers that connected while the content failed to mount", async () => {
+  const { window, calls, connect } = await boot(false);
+  window.emit("ready-to-show");
+  connect();
+  expect(readies(calls)).toEqual([]);
+  window.webContents.emit("destroyed");
+}, 15000);
 it.each([false, true])(
-  "confirms once when the renderer connects after the first paint (minimized=%s)",
+  "confirms once when the content mounts after the first paint (minimized=%s)",
   async (minimized) => {
-    const { window, calls, connect } = await boot(minimized);
+    const { window, calls, connect, mount, navigate } = await boot(minimized);
     window.emit("ready-to-show");
     connect();
+    mount();
     expect(calls.at(-1)).toBe("ready");
     expect(window.minimized).toBe(minimized);
-    // A reload reconnects the same window: it is not a second confirmation.
+    // A reload starts another page in the same window: no second confirmation.
+    navigate();
     connect();
+    mount();
     expect(readies(calls)).toEqual(["ready"]);
     window.webContents.emit("destroyed");
   },
   15000,
 );
-it("confirms at the first paint when the renderer connected before it", async () => {
-  const { window, calls, connect } = await boot(true);
-  connect();
+it("confirms at the first paint when the content mounted before it", async () => {
+  const { window, calls, usable } = await boot(true);
+  usable();
   expect(readies(calls)).toEqual([]);
   window.emit("ready-to-show");
   expect(calls.at(-1)).toBe("ready");
   expect(readies(calls)).toEqual(["ready"]);
   window.webContents.emit("destroyed");
 }, 15000);
-it("does not count a connection that is untrusted or whose port was lost", async () => {
-  const { window, calls, connect } = await boot(false);
+it("a navigation forgets the previous page's connection and content", async () => {
+  const { window, calls, connect, mount, navigate } = await boot(false);
+  window.emit("ready-to-show");
+  connect();
+  navigate();
+  mount();
+  expect(readies(calls)).toEqual([]);
+  navigate();
+  mount();
+  connect();
+  expect(readies(calls)).toEqual(["ready"]);
+  window.webContents.emit("destroyed");
+}, 15000);
+it("does not count signals that are untrusted or whose port was lost", async () => {
+  const { window, calls, connect, mount, navigate } = await boot(false);
   const frame = window.webContents.mainFrame;
   connect({ ...frame });
   frame.postMessage.mockImplementationOnce(() => {
     throw new Error("frame gone");
   });
   connect();
+  mount();
   window.emit("ready-to-show");
+  expect(readies(calls)).toEqual([]);
+  navigate();
+  connect();
+  mount({ ...frame });
   expect(readies(calls)).toEqual([]);
   window.webContents.emit("destroyed");
 }, 15000);
-it("never acknowledges an incompatible host, even painted and connected", async () => {
-  const { window, calls, send, connect } = await boot(false, false, false, {
+it("never acknowledges an incompatible host, even painted and mounted", async () => {
+  const { window, calls, send, usable } = await boot(false, false, false, {
     version: HOST_PROTOCOL_VERSION + 1,
   });
   window.emit("ready-to-show");
-  connect();
+  usable();
   // The user sees the incompatibility screen; the launcher reverts.
   expect(calls).toContain("show");
   expect(readies(calls)).toEqual([]);

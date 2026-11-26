@@ -182,14 +182,17 @@ async function start() {
   contents.setWindowOpenHandler(() => ({ action: "deny" }));
   let disconnect: (() => void) | undefined;
   // `ready` lets the launcher confirm an updated generation and retire the
-  // previous one. A first paint alone may be a bundle that failed to mount:
-  // wait also for the renderer, which connects only once React has committed
-  // its tree (#2785). Sent once; a reload does not confirm again.
+  // previous one (#2785). A first paint, or providers connected to the host,
+  // may still be a bundle whose content fails to mount: wait for the trusted
+  // main frame to report its real content (Shell or a gate that asks the user).
+  // Sent once; a navigation forgets the previous page's signals.
   let painted = false,
     connected = false,
+    mounted = false,
     acknowledged = false;
   const acknowledge = () => {
-    if (!compatible || !painted || !connected || acknowledged) return;
+    if (!compatible || !painted || !connected || !mounted || acknowledged)
+      return;
     acknowledged = true;
     host.send({ kind: "ready" });
   };
@@ -236,6 +239,7 @@ async function start() {
     nativeTheme.removeListener("updated", repaint);
     disconnect?.();
     ipcMain.removeListener("vantare:connect", connectRenderer);
+    ipcMain.removeListener("vantare:mounted", contentMounted);
     ipcMain.removeHandler(launcherReviewChannel);
     removeReview();
     removeHostFailure();
@@ -616,6 +620,12 @@ async function start() {
     }
   };
   ipcMain.on("vantare:connect", connectRenderer);
+  const contentMounted = (event: IpcMainEvent) => {
+    if (!trustedFrame(event)) return;
+    mounted = true;
+    acknowledge();
+  };
+  ipcMain.on("vantare:mounted", contentMounted);
   ipcMain.handle(launcherReviewChannel, (event, ...args: unknown[]) => {
     const ticket = reviewTicket(args);
     return compatible && disconnect && trustedFrame(event) && ticket
@@ -628,6 +638,8 @@ async function start() {
       if (mainFrame) {
         disconnect?.();
         disconnect = undefined;
+        connected = false;
+        mounted = false;
       }
     },
   );

@@ -2,6 +2,7 @@ import { skipToken, useQuery } from "@tanstack/react-query";
 import { lazy, type ReactNode, Suspense, useEffect, useState } from "react";
 import type { CoreStatus } from "../../../contract/generated/contract";
 import { coreKey, offline, useHost } from "../../app/Host";
+import { HubMounted } from "../../app/HubMounted";
 import { lock } from "../../app/navigation";
 import { useUi } from "../../app/UiState";
 import { WindowControls } from "../../app/WindowControls";
@@ -86,6 +87,7 @@ export function OnboardingGate({
           setPassed({ privateSession });
         }}
       />
+      <HubMounted />
     </Suspense>
   );
 }

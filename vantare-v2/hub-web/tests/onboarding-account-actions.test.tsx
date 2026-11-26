@@ -171,16 +171,14 @@ it("Pro with a session purchases the existing product once on a batched double c
     fake.request.mock.calls.some(([r]) => r.method === "onboarding.prices"),
   ).toBe(false);
 });
-it("Plus and Launch open prices instead of a purchase", async () => {
+it("Plus opens prices instead of a purchase", async () => {
   await mount(true);
-  for (const name of ["Elegir Pro Plus", /LAUNCH EDITION/]) {
-    const button = screen.getByRole("button", { name });
-    fireEvent.click(button);
-    await waitFor(() => expect(button.hasAttribute("disabled")).toBe(false));
-  }
+  const plus = screen.getByRole("button", { name: "Elegir Pro Plus" });
+  fireEvent.click(plus);
+  await waitFor(() => expect(plus.hasAttribute("disabled")).toBe(false));
   expect(
     fake.request.mock.calls.filter(([r]) => r.method === "onboarding.prices"),
-  ).toHaveLength(2);
+  ).toHaveLength(1);
   expect(
     fake.request.mock.calls.some(([r]) => r.method === "account.purchase"),
   ).toBe(false);

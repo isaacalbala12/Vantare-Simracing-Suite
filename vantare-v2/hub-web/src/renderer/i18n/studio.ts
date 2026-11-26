@@ -254,7 +254,8 @@ export const studioText = {
   plans: "Ver planes",
   planNames: {
     free: "Tu plan Gratis",
-    launch: "Tu acceso de lanzamiento",
+    // Valor del protocolo del host; no se nombra la edición retirada.
+    launch: "Tu plan actual",
     pro: "Tu plan Pro",
     founders: "Tu plan Founders",
   },

@@ -1,10 +1,9 @@
-import launch from "../../assets/onboarding/launch.png?url";
 import plus from "../../assets/onboarding/plus.png?url";
 import pro from "../../assets/onboarding/pro.png?url";
 import { onboardingChoicesText } from "../../i18n/onboarding";
 import { onboardingStepsText as text } from "../../i18n/onboarding-pasos";
 import { Button } from "../Button";
-import { launchBannerDay, launchLastDay } from "./launch-offer";
+import { launchBannerDay, launchEndsAt } from "./launch-offer";
 import "./plans-art.css";
 export function PlansArt({
   onPrices,
@@ -13,7 +12,7 @@ export function PlansArt({
   proPending = false,
   pending = false,
   now = () => new Date(),
-  lastDay = launchLastDay,
+  endsAt = launchEndsAt,
 }: {
   onPrices: () => void;
   onPro?: () => void;
@@ -21,9 +20,9 @@ export function PlansArt({
   proPending?: boolean;
   pending?: boolean;
   now?: () => Date;
-  lastDay?: string;
+  endsAt?: string;
 }) {
-  const bannerDay = launchBannerDay(now(), lastDay);
+  const bannerDay = launchBannerDay(now(), endsAt);
   // Sin el título del banner, cada plan sube a h2 para no saltar un nivel.
   const PlanName = bannerDay ? "h3" : "h2";
   const cards = [
@@ -61,15 +60,17 @@ export function PlansArt({
               <img src={card.image} alt={card.name} aria-hidden="true" />
               <div>
                 <PlanName>{card.name}</PlanName>
-                <small>{text.firstMonth}</small>
+                {bannerDay && <small>{text.firstMonth}</small>}
               </div>
             </div>
             <div className="v-ob-plan-price">
-              <strong>{card.price}</strong>
-              <s>
-                <span className="v-sr-only">{text.normalPrice}</span>
-                {card.normal}
-              </s>
+              <strong>{bannerDay ? card.price : card.normal}</strong>
+              {bannerDay && (
+                <s>
+                  <span className="v-sr-only">{text.normalPrice}</span>
+                  {card.normal}
+                </s>
+              )}
             </div>
             {card.features.map((feature) => (
               <p key={feature}>
@@ -92,19 +93,6 @@ export function PlansArt({
           </div>
         ))}
       </div>
-      <Button
-        className="v-ob-launch-plan"
-        aria-description={text.externalPage}
-        disabled={pending}
-        onClick={onPrices}
-      >
-        <img src={launch} alt={text.launchEdition} aria-hidden="true" />
-        <span>
-          <strong>{text.launchEdition}</strong>
-          <span>{text.launchHelp}</span>
-        </span>
-        <b>{text.launchCost}</b>
-      </Button>
       <p className="v-ob-plan-free">{text.freeForever}</p>
     </div>
   );

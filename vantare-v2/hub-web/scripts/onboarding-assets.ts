@@ -17,7 +17,6 @@ for (const name of [
   "track.svg",
   "pro.png",
   "plus.png",
-  "launch.png",
 ]) {
   await cp(new URL(name, source), new URL(name, destination));
 }

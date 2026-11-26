@@ -1,10 +1,10 @@
 name: Hub web
 on:
   push:
-    branches: [nightly]
+    branches: [nightly, 'tmp/isa-2801-base']
     paths: ['vantare-v2/hub-web/**', '.github/workflows/hub-web.yml', 'supabase/functions/scripts/polar-launch-prices.json']
   pull_request:
-    branches: [nightly]
+    branches: [nightly, 'tmp/isa-2801-base']
     paths: ['vantare-v2/hub-web/**', '.github/workflows/hub-web.yml', 'supabase/functions/scripts/polar-launch-prices.json']
   workflow_dispatch:
 concurrency:

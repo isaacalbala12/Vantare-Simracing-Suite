@@ -6,7 +6,7 @@ param(
     [ValidateSet('Debug','Release')][string]$BuildProfile = 'Release',
     [switch]$TestInstaller,
     [string]$ConfigFile,
-    [ValidateSet('nightly','testers','master','beta')][string]$Channel='beta',
+    [ValidateSet('nightly','testers','master','beta',IgnoreCase=$false)][string]$Channel='beta',
     [Parameter(ValueFromRemainingArguments)][string[]]$Defines = @()
 )
 Set-StrictMode -Version Latest

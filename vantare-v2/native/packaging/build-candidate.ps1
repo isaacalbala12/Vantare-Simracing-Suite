@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$Version,
-    [Parameter(Mandatory)][ValidateSet('nightly','testers','master','beta')][string]$Channel,
+    [Parameter(Mandatory)][ValidateSet('nightly','testers','master','beta',IgnoreCase=$false)][string]$Channel,
     [Parameter(Mandatory)][string]$OutputDirectory,
     [ValidateSet('Debug','Release')][string]$BuildProfile='Release',
     [string]$ConfigFile,

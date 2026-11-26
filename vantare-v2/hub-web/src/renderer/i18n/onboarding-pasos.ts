@@ -74,12 +74,13 @@ export const onboardingStepsText = {
   emailDescription: "Abre el acceso por email en el asistente.",
   nextArrow: "→",
   accountSay:
-    "Inicia sesión para conectar tu cuenta. Tu configuración se guarda en este PC.",
+    "Para usar Vantare necesitas una cuenta. Inicia sesión con Google, Discord o tu correo.",
   signedSay: "Sesión iniciada. Tu configuración se guarda en este PC.",
   accountChecking: "Comprobando cuenta…",
-  accountUnavailable: "Puedes continuar sin cuenta.",
+  accountUnavailable:
+    "Necesitas una cuenta. Te pediremos iniciar sesión al terminar.",
   accountLocal:
-    "Sin cuenta también funciona: la configuración se guarda solo en este PC.",
+    "Si no inicias sesión ahora, te lo pediremos al terminar. Tu configuración se guarda en este PC.",
   accountBlocked: "Acceso bloqueado",
   accountUnconfirmed: "Cuenta conectada · plan sin confirmar",
   accountPlan: (label: string) => `Tu plan: ${label}`,
@@ -89,7 +90,7 @@ export const onboardingStepsText = {
   usageHint: "Lo cambias cuando quieras en Ajustes.",
   mail: "Recibir novedades y ofertas por correo",
   mailHint: "Opcional. Requiere cuenta y correo principal verificado.",
-  mailOff: "Sin cuenta: no se activa el envío de correos.",
+  mailOff: "Sin sesión: los correos siguen apagados.",
   mailUnconfirmed:
     "El permiso se confirma en el servidor. Se cambia en Ajustes › Privacidad.",
   mailLoading: "Consultando permiso de correos…",

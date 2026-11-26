@@ -229,7 +229,7 @@ it("discards a late read after losing the session and clears a staged choice", a
   );
   expect(hook.result.current.mail.available).toBe(false);
   expect(hook.result.current.mail.consent).toBe(false);
-  expect(hook.result.current.mail.message).toContain("Sin cuenta");
+  expect(hook.result.current.mail.message).toContain("Sin sesión");
   await act(async () => {
     expect(await hook.result.current.commitMail()).toBe("ok");
   });

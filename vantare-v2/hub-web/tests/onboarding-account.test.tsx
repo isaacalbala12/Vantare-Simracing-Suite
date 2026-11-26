@@ -77,7 +77,9 @@ afterEach(cleanup);
 it("uses Access's initial read, follows its topic and releases it on leaving the wizard", async () => {
   fake.request.mockResolvedValue({ method: "account.get", value: account() });
   const view = mount();
-  await screen.findByText("Puedes continuar sin cuenta.");
+  await screen.findByText(
+    "Necesitas una cuenta. Te pediremos iniciar sesión al terminar.",
+  );
   expect(fake.request.mock.calls.map(([request]) => request)).toEqual([
     { method: "account.get" },
   ]);
@@ -123,7 +125,7 @@ it("shows checking until the initial response and never invents a signed-in acco
   );
   await act(async () => release({ method: "account.get", value: account() }));
   expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
-    "Puedes continuar sin cuenta.",
+    "Necesitas una cuenta. Te pediremos iniciar sesión al terminar.",
   );
 });
 it("explains a failed account read and recovers from the existing account topic", async () => {
@@ -184,9 +186,11 @@ it.each([
 it("distinguishes a pending or blocked account from no session in the mail explanation", async () => {
   fake.request.mockResolvedValue({ method: "account.get", value: account() });
   mount();
-  await screen.findByText("Puedes continuar sin cuenta.");
+  await screen.findByText(
+    "Necesitas una cuenta. Te pediremos iniciar sesión al terminar.",
+  );
   expect(screen.getByLabelText("Estado del correo").textContent).toContain(
-    "Sin cuenta",
+    "Sin sesión",
   );
   update({ ...account(), session: "signedIn", gate: "checking" });
   expect(screen.getByLabelText("Estado del correo").textContent).toContain(

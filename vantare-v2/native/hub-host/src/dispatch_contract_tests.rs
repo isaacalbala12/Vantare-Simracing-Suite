@@ -20,7 +20,7 @@ mod ready {
             clippy::unused_self,
             reason = "same signature as the real confirmation gate"
         )]
-        pub fn check_confirmation(&self) -> std::io::Result<()> {
+        pub fn check_confirmation_at(&self, _now: std::time::Instant) -> std::io::Result<()> {
             Ok(())
         }
     }

@@ -136,12 +136,9 @@ impl Ready {
         self.published = Some(Instant::now());
         Ok(())
     }
-    pub fn check_confirmation(&self) -> io::Result<()> {
-        self.check_confirmation_at(Instant::now())
-    }
     /// Until shown, the launcher alone decides how long to wait. Once shown,
     /// a generation still pending after the launcher's minute stops the host.
-    fn check_confirmation_at(&self, now: Instant) -> io::Result<()> {
+    pub fn check_confirmation_at(&self, now: Instant) -> io::Result<()> {
         if self
             .published
             .is_some_and(|time| now.saturating_duration_since(time) > CONFIRMATION)
@@ -232,7 +229,7 @@ mod tests {
         assert!(Ready::new(owned.path.clone(), Some(TOKEN.to_owned())).is_ok());
     }
     #[test]
-    fn ready_is_published_atomically_once_with_this_token() {
+    fn ready_is_published_once_with_this_token_and_no_temporary_left() {
         let owned = Root::new();
         let mut ready = Ready::new(owned.path.clone(), Some(TOKEN.to_owned())).expect("token");
         let marker = owned.path.join("hub-ready");
@@ -260,8 +257,11 @@ mod tests {
         assert!(ready.check_confirmation_at(much_later).is_ok());
         ready.publish().expect("publish");
         let shown = ready.published.expect("shown");
-        assert!(ready.check_confirmation_at(shown + CONFIRMATION).is_ok());
-        let late = shown + CONFIRMATION + Duration::from_millis(1);
+        // The launcher's minute, spelled out: the constant itself is under test.
+        let minute = Duration::from_secs(60);
+        assert_eq!(CONFIRMATION, minute);
+        assert!(ready.check_confirmation_at(shown + minute).is_ok());
+        let late = shown + minute + Duration::from_millis(1);
         let stopped = ready.check_confirmation_at(late);
         assert!(matches!(stopped, Err(error) if error.kind() == io::ErrorKind::TimedOut));
         // Confirmed (marker retired): the host keeps running.

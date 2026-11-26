@@ -280,8 +280,19 @@ pub(super) struct Retained {
     schema: u32,
     pub generation: String,
     pub version: String,
+    /// Producto dueño de los datos (#2812). Beta no lo escribe: así los Setup
+    /// beta publicados siguen leyendo su documento, y uno sin canal es de beta.
+    #[serde(default)]
+    channel: Option<String>,
     #[serde(skip)]
     pub version_parts: [u16; 3],
+}
+impl Retained {
+    pub fn channel(&self) -> &str {
+        self.channel
+            .as_deref()
+            .unwrap_or(super::product::UNDECLARED_CHANNEL)
+    }
 }
 #[derive(Debug, Default)]
 pub struct Installation {
@@ -441,7 +452,9 @@ impl Installation {
                 saved.version_parts = version(&saved.version)
                     .map_err(|_| ReadError::Invalid("Versión conservada inválida"))?;
                 require(
-                    saved.schema == 1 && hex(&saved.generation, 32),
+                    saved.schema == 1
+                        && hex(&saved.generation, 32)
+                        && saved.channel.as_deref().is_none_or(channel),
                     "Referencia de datos conservados inválida",
                 )?;
                 view.data_path = root

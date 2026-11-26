@@ -31,6 +31,20 @@ impl Package<'_> {
         Ok(manifest)
     }
 }
+/// Restos de una instalación sin `state.json` (desinstalación a medias): son de
+/// este canal si lo dicen sus datos conservados. Sin ellos solo beta, el único
+/// producto anterior a #2812, los reconoce; otro producto los rechaza.
+pub fn residue_owned(root: &Path, channel: &str) -> Result<()> {
+    let view = Installation::read(root)?;
+    let owner = view
+        .retained
+        .as_ref()
+        .map_or(product::UNDECLARED_CHANNEL, |saved| saved.channel());
+    ensure(
+        owner == channel,
+        "Los restos de esta carpeta son de otro canal; se conservan",
+    )
+}
 /// Solo los canales con identidad de producto propia se instalan (#2812).
 fn installable(channel: &str) -> Result<()> {
     ensure(
@@ -380,10 +394,18 @@ fn generations(root: &Path) -> Result<Vec<(String, PathBuf)>> {
 }
 fn retained_source(
     root: &Path,
-    incoming: [u16; 3],
+    incoming: &super::Manifest,
     view: &Installation,
 ) -> Result<Option<PathBuf>> {
+    let product = product::for_channel(&incoming.channel)
+        .ok_or_else(|| WriteError::new(1, "Canal sin producto de instalación"))?;
     if let Some(saved) = &view.retained {
+        // Los datos personales de otro producto no se leen, mueven ni borran (#2812).
+        ensure(
+            saved.channel() == product.channel,
+            "Los datos conservados en esta carpeta son de otro canal; se conservan",
+        )?;
+        let incoming = incoming.version_parts;
         if incoming < saved.version_parts {
             return Err(WriteError::new(
                 3,
@@ -412,6 +434,11 @@ fn retained_source(
             }
         }
     }
+    // Copias sin referencia de antes de #2812: solo pueden ser de beta.
+    ensure(
+        source.is_none() || product.legacy,
+        "Hay datos de otra instalación en esta carpeta; se conservan",
+    )?;
     Ok(source)
 }
 
@@ -490,7 +517,7 @@ pub fn install(
             )
             .map_err(|e| WriteError::new(4, e.to_string()))?;
         } else {
-            source = retained_source(&root, incoming.version_parts, &view)?;
+            source = retained_source(&root, &incoming, &view)?;
             previous = None;
         }
         let _handles = disk::binary_guard(&root)?;
@@ -1078,6 +1105,9 @@ pub fn uninstall(
     let _lock = disk::lock(&root, ".operation.lock")?;
     let state_path = root.join("state.json");
     let Some(document) = installation::read_state(&root)? else {
+        // Una desinstalación a medias ya no tiene state.json: solo se termina
+        // si sus datos conservados son de este canal (#2812).
+        residue_owned(&root, channel)?;
         return finalize(control);
     };
     ensure(
@@ -1123,10 +1153,11 @@ pub fn uninstall(
                     "No se puede autenticar la versión de los datos conservados",
                 )
             })?;
-        disk::write_json(
-            &retained,
-            &json!({"schema":1,"generation":state.active.generation,"version":version}),
-        )?;
+        let mut saved = json!({"schema":1,"generation":state.active.generation,"version":version});
+        if state.channel != product::UNDECLARED_CHANNEL {
+            saved["channel"] = state.channel.clone().into();
+        }
+        disk::write_json(&retained, &saved)?;
     }
     for (_, directory, manifest) in owned {
         installation::walk(&directory, false)?;

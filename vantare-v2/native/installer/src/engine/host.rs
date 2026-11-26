@@ -155,6 +155,8 @@ impl Session {
             !root.join("state.json").try_exists()? && !self.context.has_registration()?,
             "La instalación se ha renovado; se conserva el desinstalador",
         )?;
+        // Solo se limpian los restos de este canal (#2812).
+        operations::residue_owned(root, self.context.product()?.channel)?;
         if super::context::cleanup_marker(root, None)?.is_none() {
             return Ok(false); // A legacy image without ownership proof is retained.
         }
@@ -289,12 +291,7 @@ impl Session {
             .open(&request.log_file)?;
         let previous = super::context::options(&root, request.uninstall)?;
         let archive = payload_directory.join("package.zip");
-        let package = operations::Package {
-            archive: &archive,
-            sha256: &request.package_sha,
-            version: &request.version,
-            channel: self.context.product()?.channel,
-        };
+        let package = self.package(&archive, request)?;
         let mut warning = |message: &str| {
             let _ = writeln!(&log, "{message}");
         };
@@ -331,6 +328,19 @@ impl Session {
                 Ok(error.code)
             }
         }
+    }
+    /// El paquete embebido se autentica con el canal del producto de este Setup.
+    fn package<'a>(
+        &self,
+        archive: &'a Path,
+        request: &'a Request,
+    ) -> WriteResult<operations::Package<'a>> {
+        Ok(operations::Package {
+            archive,
+            sha256: &request.package_sha,
+            version: &request.version,
+            channel: self.context.product()?.channel,
+        })
     }
     fn execute(
         &self,
@@ -500,6 +510,35 @@ mod tests {
         },
     };
     use std::{fs, path::PathBuf};
+
+    #[test]
+    fn the_embedded_package_is_authenticated_with_the_setup_channel() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let id = disk::id().expect("ID");
+        let root = parent.join("p2812-package-channel").join(&id);
+        qa_path(&root).expect("QA guard");
+        let request = Request::new(&Args::default(), crate::engine::Operation::Install);
+        let archive = root.join("package.zip");
+        for channel in ["nightly", "beta"] {
+            let session = Session {
+                directory: root.join("transport"),
+                context: Context::isolated(
+                    root.join("LocalAppData"),
+                    format!("Software\\VantareInstallerMatrix\\{id}"),
+                    root.join("shell"),
+                )
+                .and_then(|context| context.for_channel(channel))
+                .expect("isolated context"),
+                transferred: false,
+            };
+            let package = session.package(&archive, &request).expect("package");
+            assert_eq!(package.channel, channel);
+        }
+    }
 
     #[test]
     fn cleanup_exit_status_is_authoritative_and_missing_marker_retains_legacy_residue() {

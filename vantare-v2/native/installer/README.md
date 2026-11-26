@@ -636,3 +636,15 @@ Qué no se puede comprobar aquí (P8, VM o PC): los accesos y el AppUserModelID
 en un Windows limpio, desinstalar desde «Aplicaciones instaladas», abrir beta y
 nightly a la vez con sesión real y SmartScreen. La raíz por defecto tampoco se
 puede ejercitar con carpetas QA inyectadas (cae dentro de su LocalAppData).
+
+**Datos conservados y restos de una desinstalación.** Desinstalar deja
+`retained-data.json` junto a los datos. Nightly escribe en él
+`"channel":"nightly"`; beta no escribe canal, así que su documento sigue siendo
+idéntico y los Setup beta publicados lo leen igual (un documento sin canal es
+de beta). Un producto nunca adopta, mueve ni borra los datos conservados de
+otro: instalar nightly con `/D=` sobre una carpeta beta desinstalada se rechaza,
+y al revés. Las copias antiguas de datos sin `retained-data.json` (anteriores a
+este cambio) solo las adopta beta. Terminar una desinstalación a medias o
+ejecutar la limpieza del desinstalador exige también que los restos sean del
+mismo canal (`operations::residue_owned`). Si la sonda del Setup falla, la
+carpeta que propone «Reintentar» es la de su producto, nunca la de beta.

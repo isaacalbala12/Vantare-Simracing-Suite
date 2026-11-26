@@ -3738,24 +3738,52 @@ fn files_below(directory: &Path, prefix: &str, into: &mut BTreeMap<String, Vec<u
         }
     }
 }
-/// Everything one product owns in the shared simulated user: its whole root
-/// (data included), its links and its registry values, byte for byte.
+/// What the other product may own in the shared shell folders.
+const BETA_PATHS: [&str; 4] = [
+    "Programs/Vantare/",
+    "Programs/Vantare Native Beta",
+    "DesktopDirectory/Vantare Simracing Suite.lnk",
+    "Startup/Vantare.lnk",
+];
+const NIGHTLY_PATHS: [&str; 3] = [
+    "Programs/Vantare Nightly",
+    "DesktopDirectory/Vantare Nightly.lnk",
+    "Startup/Vantare Nightly.lnk",
+];
+const RUN: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+/// Everything in the shared simulated user except what the other product owns:
+/// this product's whole root (data included), every file and folder in the
+/// shell folders (foreign ones too), its registry values and the Run values,
+/// byte for byte.
 fn product_snapshot(
     fixture: &Fixture,
     shell: &Shell,
     key: &str,
-    links: &[&str],
+    other: &[&str],
 ) -> BTreeMap<String, Vec<u8>> {
     let mut snapshot = BTreeMap::new();
     files_below(&fixture.root, "root", &mut snapshot);
-    for link in links {
-        if let Ok(bytes) = fs::read(shell.folders.join(link)) {
-            snapshot.insert(format!("link/{link}"), bytes);
-        }
-    }
+    let mut folders = BTreeMap::new();
+    files_below(&shell.folders, "link", &mut folders);
+    snapshot.extend(folders.into_iter().filter(|(name, _)| {
+        !other
+            .iter()
+            .any(|path| name.starts_with(&format!("link/{path}")))
+    }));
     for name in REGISTRATION {
         if let Some(value) = registered(shell, key, name) {
             snapshot.insert(format!("registry/{name}"), value.into_bytes());
+        }
+    }
+    let hive = windows_registry::CURRENT_USER.open(format!("{}\\{key}", shell.registry));
+    for name in ["NoModify", "NoRepair"] {
+        if let Some(value) = hive.as_ref().ok().and_then(|key| key.get_u32(name).ok()) {
+            snapshot.insert(format!("registry/{name}"), value.to_le_bytes().to_vec());
+        }
+    }
+    for name in ["VantareNative.Hub", "Ajeno"] {
+        if let Some(value) = registered(shell, RUN, name) {
+            snapshot.insert(format!("run/{name}"), value.into_bytes());
         }
     }
     snapshot
@@ -3868,9 +3896,8 @@ fn beta_and_nightly_share_one_user_and_never_touch_each_other() {
     let registry = hive();
     let beta = beta_fixture.shell_with("beta", folders.clone(), registry.clone());
     let nightly = nightly_fixture.shell_with("nightly", folders, registry);
-    let beta_state = || product_snapshot(&beta_fixture, &beta, BETA_KEY, &BETA_LINKS);
-    let nightly_state =
-        || product_snapshot(&nightly_fixture, &nightly, NIGHTLY_KEY, &NIGHTLY_LINKS);
+    let beta_state = || product_snapshot(&beta_fixture, &beta, BETA_KEY, &NIGHTLY_PATHS);
+    let nightly_state = || product_snapshot(&nightly_fixture, &nightly, NIGHTLY_KEY, &BETA_PATHS);
 
     beta_fixture
         .setup(
@@ -3881,9 +3908,26 @@ fn beta_and_nightly_share_one_user_and_never_touch_each_other() {
         )
         .unwrap();
     beta_fixture.write_data();
+    // Foreign files beside the links and a foreign Run value must survive too.
+    for name in ["Programs/Vantare/ajeno.txt", "DesktopDirectory/ajeno.txt"] {
+        fs::write(beta.folders.join(name), b"ajeno").unwrap();
+    }
+    windows_registry::CURRENT_USER
+        .create(format!("{}\\{RUN}", beta.registry))
+        .and_then(|key| key.set_string("Ajeno", "C:\\Ajeno\\ajeno.exe"))
+        .unwrap();
     let before = beta_state();
-    assert!(before.contains_key("registry/InstallLocation"));
-    assert!(before.contains_key("link/Startup/Vantare.lnk"));
+    for key in [
+        "registry/InstallLocation",
+        "registry/NoModify",
+        "registry/NoRepair",
+        "run/Ajeno",
+        "link/Startup/Vantare.lnk",
+        "link/Programs/Vantare/ajeno.txt",
+        "link/DesktopDirectory/ajeno.txt",
+    ] {
+        assert!(before.contains_key(key), "{key}");
+    }
 
     let package = |version| nightly_fixture.package_for("nightly", version);
     nightly_fixture
@@ -3969,7 +4013,7 @@ fn another_channel_is_rejected_before_anything_changes() {
         .setup(&beta, &fixture.package("1.0.0"), Mode::Auto, Some(true))
         .unwrap();
     fixture.write_data();
-    let before = product_snapshot(&fixture, &beta, BETA_KEY, &BETA_LINKS);
+    let before = product_snapshot(&fixture, &beta, BETA_KEY, &NIGHTLY_PATHS);
     for mode in [Mode::Auto, Mode::Repair] {
         assert!(
             fixture
@@ -4016,7 +4060,7 @@ fn another_channel_is_rejected_before_anything_changes() {
     assert!(error.to_string().contains("canal"), "{error}");
     assert!(nightly.context.install_location().unwrap().is_none());
     assert_eq!(
-        product_snapshot(&fixture, &beta, BETA_KEY, &BETA_LINKS),
+        product_snapshot(&fixture, &beta, BETA_KEY, &NIGHTLY_PATHS),
         before
     );
 }
@@ -4102,4 +4146,116 @@ fn a_build_without_channel_has_no_product_and_never_installs_as_beta() {
     #[cfg(not(feature = "test-installer"))]
     assert!(error.contains("Canal sin producto"), "{error}");
     let _ = error;
+}
+
+/// Installs, writes data and uninstalls one product, leaving its retained data.
+fn retained_residue(fixture: &Fixture, channel: &'static str) -> Shell {
+    let shell = fixture.shell_with(channel, fixture.path.join("shell"), hive());
+    fixture
+        .setup(
+            &shell,
+            &fixture.package_for(channel, "1.0.0"),
+            Mode::Auto,
+            None,
+        )
+        .expect("install");
+    fixture.write_data();
+    fixture.remove(&shell).expect("uninstall");
+    assert!(fixture.root.join("retained-data.json").is_file());
+    shell
+}
+fn root_tree(fixture: &Fixture) -> BTreeMap<String, Vec<u8>> {
+    let mut tree = BTreeMap::new();
+    files_below(&fixture.root, "root", &mut tree);
+    tree
+}
+
+#[test]
+fn retained_data_name_their_channel_and_beta_keeps_its_published_format() {
+    let beta = Fixture::new();
+    retained_residue(&beta, "beta");
+    let saved = disk::read_json(&beta.root.join("retained-data.json"), None).unwrap();
+    assert!(
+        saved.get("channel").is_none(),
+        "beta format unchanged: {saved}"
+    );
+    let nightly = Fixture::new();
+    retained_residue(&nightly, "nightly");
+    let saved = disk::read_json(&nightly.root.join("retained-data.json"), None).unwrap();
+    assert_eq!(saved["channel"], "nightly");
+    // Each product adopts its own data again.
+    for (fixture, channel) in [(&beta, "beta"), (&nightly, "nightly")] {
+        let shell = fixture.shell_with(channel, fixture.path.join("shell"), hive());
+        fixture
+            .setup(
+                &shell,
+                &fixture.package_for(channel, "1.0.0"),
+                Mode::Auto,
+                None,
+            )
+            .unwrap();
+        assert_eq!(
+            fs::read(fixture.data().join("opaque.bin")).unwrap(),
+            b"opaque\0user\xffbytes"
+        );
+        assert!(!fixture.root.join("retained-data.json").exists());
+    }
+}
+
+#[test]
+fn retained_data_of_another_channel_are_never_adopted_moved_or_removed() {
+    for (owner, intruder) in [("beta", "nightly"), ("nightly", "beta")] {
+        let fixture = Fixture::new();
+        let _owner = retained_residue(&fixture, owner);
+        let before = root_tree(&fixture);
+        let shell = fixture.shell_with(intruder, fixture.path.join("other-shell"), hive());
+        for mode in [Mode::Auto, Mode::Repair] {
+            assert!(
+                fixture
+                    .setup(&shell, &fixture.package_for(intruder, "1.0.0"), mode, None)
+                    .is_err(),
+                "{intruder} over {owner}"
+            );
+            let package = fixture.package_for(intruder, "1.0.0");
+            assert!(fixture.install(&package, mode, false, false).is_err());
+        }
+        // The residue of an interrupted uninstall belongs to its own channel too.
+        let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+        let error =
+            operations::uninstall(&fixture.root, intruder, &mut sink.control(&cancel), |_| {
+                panic!("another channel's residue must not reach Windows")
+            })
+            .unwrap_err();
+        assert!(error.to_string().contains("otro canal"), "{error}");
+        assert!(operations::residue_owned(&fixture.root, intruder).is_err());
+        operations::residue_owned(&fixture.root, owner).unwrap();
+        assert_eq!(root_tree(&fixture), before, "{intruder} over {owner}");
+        assert_eq!(registered(&shell, NIGHTLY_KEY, "InstallLocation"), None);
+        assert_eq!(registered(&shell, BETA_KEY, "InstallLocation"), None);
+    }
+}
+
+#[test]
+fn unreferenced_old_data_are_only_adopted_by_beta() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    fixture.write_data();
+    // A generation with data and neither state nor retained-data: pre-#2812 residue.
+    fs::remove_file(fixture.root.join("state.json")).unwrap();
+    let before = root_tree(&fixture);
+    let package = fixture.package_for("nightly", "1.0.0");
+    let error = fixture
+        .install(&package, Mode::Auto, false, false)
+        .unwrap_err();
+    assert!(error.to_string().contains("otra instalación"), "{error}");
+    assert_eq!(root_tree(&fixture), before);
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    assert_eq!(
+        fs::read(fixture.data().join("opaque.bin")).unwrap(),
+        b"opaque\0user\xffbytes"
+    );
 }

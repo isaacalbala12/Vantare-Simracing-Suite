@@ -518,8 +518,16 @@ fn pending_obsolete(version: &str, active: [u16; 3], boot_pending: bool) -> io::
     Ok(boot_pending
         || vantare_installer::engine::validation::version(version).map_err(io_error)? <= active)
 }
+#[cfg(not(feature = "hub-update-qa"))]
 pub(super) fn stage(root: &Path, cancelled: &AtomicBool) -> io::Result<()> {
     stage_with(root, cancelled, super::hub_update_feed::check)
+}
+/// Build QA: la misma cadena, con el transporte a 127.0.0.1 que guarda esta raíz.
+#[cfg(feature = "hub-update-qa")]
+pub(super) fn stage(root: &Path, cancelled: &AtomicBool) -> io::Result<()> {
+    stage_with(root, cancelled, |current, staging, cancelled, rejected| {
+        super::hub_update_feed::check_qa(root, current, staging, cancelled, rejected)
+    })
 }
 // Only the feed I/O is injected; extraction, validation and publication stay real.
 pub(super) fn stage_with(

@@ -271,3 +271,37 @@ fn adopted_recordings_are_pruned_as_they_would_have_been_in_their_generation() {
     let names: Vec<_> = pruned.iter().map(|item| item.0.as_str()).collect();
     assert_eq!(names, ["series-1-1.duckdb", "series-3-1.duckdb"]);
 }
+
+// ADR 0111 T2b: el instalador ya no mira dentro de `recordings`; solo la poda
+// impide que un enlace puesto ahí la saque fuera. Lo de detrás no se toca.
+#[test]
+fn pruning_never_deletes_or_follows_what_is_behind_a_link() {
+    use std::os::windows::fs::{symlink_dir, symlink_file};
+    let (dir, outside) = (Directory::new(), Directory::new());
+    let mine = outside.file("mio.txt", 7, 1);
+    let folder = outside.0.join("carpeta");
+    fs::create_dir(&folder).unwrap();
+    fs::write(folder.join("dentro.txt"), b"mine").unwrap();
+    // La grabación más antigua, con su WAL como enlace a un archivo de fuera.
+    let db = dir.file("series-1-1.duckdb", 1, 1);
+    let wal = dir.0.join("series-1-1.duckdb.wal");
+    symlink_file(&mine, &wal).unwrap();
+    // Un enlace con nombre de grabación y un temporal viejo con un enlace dentro.
+    symlink_file(&mine, dir.0.join("series-2-1.duckdb")).unwrap();
+    let creating = dir.0.join("series-3-1.duckdb.creating-10-3");
+    fs::create_dir(&creating).unwrap();
+    symlink_dir(&folder, creating.join("enlace")).unwrap();
+    let later = SystemTime::now() + Duration::from_secs(601);
+    let report = prune(&dir.0, later, 1, MAX_BYTES).unwrap();
+    // Nada de lo que hay detrás se toca; la grabación conserva su WAL y lo anota.
+    assert_eq!(fs::read(&mine).unwrap(), [0; 7]);
+    assert_eq!(fs::read(folder.join("dentro.txt")).unwrap(), b"mine");
+    assert!(db.exists() && fs::symlink_metadata(&wal).is_ok());
+    assert!(fs::symlink_metadata(creating.join("enlace")).is_ok());
+    let said: Vec<_> = report
+        .items
+        .iter()
+        .map(|item| (item.name.as_str(), item.result))
+        .collect();
+    assert_eq!(said, [("series-1-1.duckdb", "error")]);
+}

@@ -245,6 +245,43 @@ pub fn drive_core_recorded(
 mod tests {
     use super::*;
 
+    #[cfg(windows)]
+    #[test]
+    fn a_recordings_folder_that_is_not_one_is_never_used() {
+        let name = format!("series-not-a-folder-{}", std::process::id());
+        let base = std::env::temp_dir().join(name);
+        let (outside, recordings) = (base.join("fuera"), base.join("recordings"));
+        std::fs::create_dir_all(&outside).unwrap();
+        std::fs::write(outside.join("notas.txt"), b"mine").unwrap();
+        for kind in ["link", "file"] {
+            if kind == "link" {
+                std::os::windows::fs::symlink_dir(&outside, &recordings).unwrap();
+            } else {
+                std::fs::write(&recordings, b"not a folder").unwrap();
+            }
+            let mut core = Core::new(1);
+            let recording = SeriesRecording::start(&mut core, Some(&recordings), 1, || {
+                panic!("{kind}: nothing is recorded there, so no helper")
+            });
+            assert!(
+                recording.worker.is_none() && recording.status.is_none(),
+                "{kind}"
+            );
+            recording.finish(&mut core);
+            if kind == "link" {
+                std::fs::remove_dir(&recordings).unwrap();
+            }
+        }
+        // Nada escrito detrás del enlace ni en su lugar.
+        let names: Vec<_> = std::fs::read_dir(&outside)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(names, ["notas.txt"]);
+        assert_eq!(std::fs::read(&recordings).unwrap(), b"not a folder");
+        std::fs::remove_dir_all(base).unwrap();
+    }
+
     #[test]
     fn disabled_recording_never_resolves_the_helper() {
         let mut core = Core::new(1);

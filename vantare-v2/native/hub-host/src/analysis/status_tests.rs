@@ -163,6 +163,13 @@ fn maps_core_text_once_and_rejects_unsafe_fields() {
             Some(expected)
         );
     }
+    // El núcleo cierra como `stopped` con esa causa una grabación que no pudo
+    // empezar: un fallo pasajero, nunca el «no es una carpeta» del anfitrión.
+    let mut v = core();
+    v["state"] = json!("stopped");
+    v["cause"] = json!("directorio inválido");
+    let said = project(&v, Path::new("."), &BTreeMap::default()).unwrap();
+    assert_eq!(said.cause, Some(Unknown));
     for (reason, result) in [
         ("cuota de nº", "borrada"),
         ("cuota de bytes", "omitida en uso"),

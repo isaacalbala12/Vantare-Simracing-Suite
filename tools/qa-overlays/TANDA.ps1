@@ -92,7 +92,8 @@ function Get-TandaMeasurementContext([string]$Root){
  if((Get-FileHash -LiteralPath $public -Algorithm SHA256).Hash -ine $receipt.qa_license.registry_sha256){throw 'QA_KEY_NOT_APPROVED: registro distinto del aprobado en CI'}
  $scannerPython=if($PythonServidorQA){$PythonServidorQA}else{$PythonExe}
  Assert-TandaPython $scannerPython
- $scanner=Join-Path $PSScriptRoot 'preflight_privado.py'
+ # Se usa la copia del ZIP que el recibo acaba de cotejar con todo el staging.
+ $scanner=Join-Path $Root 'tools/qa-overlays/preflight_privado.py'
  $null=& $scannerPython -I -B $scanner --private-key $key --kit-zip $ZipQA --kit-zip-sha256 $receipt.zip_sha256 $Root $EnsayoMedicionQA $ReciboPaqueteQA
  if($LASTEXITCODE){throw 'QA_PRIVATE_PREFLIGHT_FAILED'}
  @{

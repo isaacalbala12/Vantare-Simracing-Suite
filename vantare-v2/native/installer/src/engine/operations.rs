@@ -1474,12 +1474,12 @@ fn remove_identical(path: &Path, target: &Path) -> std::result::Result<(), Strin
     }
     windows::delete_open(&copy).map_err(|error| format!("no se pudo retirar la copia ({error})"))
 }
-/// A DuckDB file is a header block with its mark, two database headers and the
+/// A `DuckDB` file is a header block with its mark, two database headers and the
 /// blocks the newest header counts; each of them starts with the checksum of
 /// the rest. Every checksum is verified, so a copy cut short, or one whose
 /// blocks never reached the disk (zeros), does not pass and stays where it is
 /// (#2746, condition 6). The algorithm and the layout were checked against the
-/// two real files of the DuckDB in use (no blocks, and five of 16 384 bytes).
+/// two real files of the `DuckDB` in use (no blocks, and five of 16 384 bytes).
 fn intact(mut file: &fs::File) -> std::result::Result<(), String> {
     const HEADER: usize = 4096;
     let broken = || "no es una grabación completa: puede ser una copia cortada".to_owned();
@@ -1491,14 +1491,23 @@ fn intact(mut file: &fs::File) -> std::result::Result<(), String> {
     // DuckDB: 5381, then each further 8-byte word multiplied and xored in.
     let sound = |block: &[u8]| -> bool {
         word(block, 0)
-            == block[8..].chunks_exact(8).fold(5381_u64, |sum, chunk| {
-                sum ^ word(chunk, 0).wrapping_mul(0xbf58_476d_1ce4_e5b9)
-            })
+            == block[8..]
+                .as_chunks::<8>()
+                .0
+                .iter()
+                .fold(5381_u64, |sum, chunk| {
+                    sum ^ u64::from_le_bytes(*chunk).wrapping_mul(0xbf58_476d_1ce4_e5b9)
+                })
     };
     let mut head = [0_u8; 3 * HEADER];
     read(&mut head)?;
-    let headers: Vec<&[u8]> = head.chunks_exact(HEADER).collect();
-    if &head[8..12] != b"DUCK" || !headers.iter().copied().all(sound) {
+    let headers: Vec<&[u8]> = head
+        .as_chunks::<HEADER>()
+        .0
+        .iter()
+        .map(<[u8; HEADER]>::as_slice)
+        .collect();
+    if &head[8..12] != b"DUCK" || !headers.iter().all(|&header| sound(header)) {
         return Err(broken());
     }
     // iteration, meta block, free list, block count, block size.
@@ -1521,16 +1530,18 @@ fn intact(mut file: &fs::File) -> std::result::Result<(), String> {
     }
     Ok(())
 }
-/// Generations a sweep never gathers from: `None` when `boot-pending.json`
-/// cannot be read, so that nothing is gathered (ADR 0111 T3).
-fn staged(root: &Path) -> Option<Option<String>> {
+/// The generation an unconfirmed update staged, which a sweep never gathers
+/// from. An error when `boot-pending.json` cannot be read or does not name a
+/// generation: then nothing is gathered (ADR 0111 T3).
+fn staged(root: &Path) -> std::result::Result<Option<String>, ()> {
     match disk::read_optional(&root.join("boot-pending.json"), Some(4096)) {
-        Ok(None) => Some(None),
+        Ok(None) => Ok(None),
         Ok(Some(marker)) => marker["stagedGeneration"]
             .as_str()
             .filter(|id| validation::hex(id, 32))
-            .map(|id| Some(id.to_owned())),
-        Err(_) => None,
+            .map(|id| Some(id.to_owned()))
+            .ok_or(()),
+        Err(_) => Err(()),
     }
 }
 /// ADR 0111 T3: after a confirmed boot and while uninstalling, the active
@@ -1548,7 +1559,7 @@ fn gather(
     let kept = |reason: &dyn std::fmt::Display| {
         format!("Grabaciones: no se recogen de las generaciones; motivo: {reason}")
     };
-    let Some(staged) = staged(root) else {
+    let Ok(staged) = staged(root) else {
         note(&kept(
             &"boot-pending.json no se puede leer o no nombra su generación",
         ));

@@ -72,6 +72,11 @@ mod qa_authority {
     ];
 }
 
+/// Si esta build lleva la autoridad TEST. El binario `vantare` exige en compilación que
+/// coincida con su propia `hub-update-qa`: activar solo la de services (unificación de
+/// features) dejaría la clave TEST sin los guards ni el contexto aislado de runtime.
+pub const HUB_UPDATE_QA: bool = cfg!(feature = "hub-update-qa");
+
 /// Hub feed uses the production authority unless the isolated QA build is selected.
 /// Legacy `verify()` never accepts the QA authority, even in that build.
 pub fn verify_hub_update(json: &[u8]) -> Result<Vec<u8>> {

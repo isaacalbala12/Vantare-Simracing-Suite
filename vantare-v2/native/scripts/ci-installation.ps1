@@ -10,6 +10,19 @@ if ($LASTEXITCODE) { throw 'real services signer build failed' }
 if ($LASTEXITCODE) { throw 'real package verifier build failed' }
 & cargo test --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features hub-update-qa --locked --offline -j 4 --target-dir $target hub_update_feed::tests
 if ($LASTEXITCODE) { throw 'isolated Hub feed QA authority regression' }
+& cargo test --manifest-path native/Cargo.toml -p vantare-services --features hub-update-qa --lib --locked --offline -j 4 --target-dir $target update_manifest
+if ($LASTEXITCODE) { throw 'regresión de la autoridad TEST en update_manifest' }
+# #2771: activar solo la feature de services (p. ej. por unificación) no puede compilar
+# un vantare.exe con la clave TEST sin los guards ni el contexto aislado de runtime.
+$previousPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+$unified = @(& cargo check --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features vantare-services/hub-update-qa --locked --offline -j 4 --target-dir $target 2>&1 | ForEach-Object { "$_" })
+$unifiedExit = $LASTEXITCODE
+$ErrorActionPreference = $previousPreference
+if (-not $unifiedExit -or -not @($unified -match 'vantare-services/hub-update-qa exige vantare-runtime/hub-update-qa').Count) {
+  $unified | Select-Object -Last 20 | Write-Host
+  throw 'la clave TEST de services compiló en vantare.exe sin la feature QA de runtime'
+}
 # #2771: the real TEST-authority launcher, before the matrix replaces it with installer-qa only.
 & cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features hub-update-qa --locked --offline -j 4 --target-dir $target
 if ($LASTEXITCODE) { throw 'isolated Hub update QA launcher build failed' }

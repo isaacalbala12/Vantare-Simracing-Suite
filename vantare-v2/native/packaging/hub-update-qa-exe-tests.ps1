@@ -43,14 +43,20 @@ foreach($mode in @('--root','--session')) {
     $info=[Diagnostics.ProcessStartInfo]::new()
     $info.FileName=$QaExecutable
     $info.Arguments="$mode -Root `"$root`""
-    $info.UseShellExecute=$false;$info.CreateNoWindow=$true
+    $info.UseShellExecute=$false;$info.CreateNoWindow=$true;$info.RedirectStandardError=$true
     foreach($name in @('VANTARE_QA_REGISTRY_PREFIX','VANTARE_QA_LOCAL_APP_DATA','VANTARE_QA_SHELL_ROOT','VANTARE_INSTALLER_QA_CONTEXT')) {
         $info.EnvironmentVariables.Remove($name)
     }
     $process=[Diagnostics.Process]::Start($info)
     try {
+        $stderr=$process.StandardError.ReadToEndAsync()
         if(-not $process.WaitForExit(30000)){throw "QA launcher $mode kept running without an isolated context."}
         if($process.ExitCode -eq 0){throw "QA launcher $mode succeeded without an isolated context."}
+        # La raíz está bajo el prefijo QA: la única causa válida es la falta de contexto,
+        # no otra (por ejemplo «Falta instalación activa» de una raíz vacía).
+        if(-not $stderr.Wait(30000) -or -not $stderr.Result.Contains('vantare: Falta contexto QA')){
+            throw "QA launcher $mode failed for another reason: $($stderr.Result)"
+        }
     } finally {
         if(-not $process.HasExited){$process.Kill();$process.WaitForExit()}
         $process.Dispose()

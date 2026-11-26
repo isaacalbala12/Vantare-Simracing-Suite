@@ -559,14 +559,8 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
         let mut hub_args = None;
         config.core.args = match (&config.installation, vantare_ipc::paths::Root::from_env()) {
             (Some(root), Ok(data)) => {
-                let (core, hub) = recording::installed(
-                    root,
-                    data.base(),
-                    &photo,
-                    config.core.args,
-                    &mut || installed::adopt_recordings(root),
-                    &mut |text| installed::note(root, text),
-                );
+                let (core, hub) =
+                    recording::installed_session(root, data.base(), &photo, config.core.args);
                 hub_args = Some(hub);
                 core
             }

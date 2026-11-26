@@ -63,6 +63,24 @@ pub(super) fn installed(
     adopt();
     (startup_args(core, Ok(hub), Some(installation)), host)
 }
+/// Lo que usa `run`: la adopción de verdad y el registro de la instalación,
+/// el único sitio que alguien va a leer.
+#[cfg(windows)]
+pub(super) fn installed_session(
+    installation: &Path,
+    data: &Path,
+    photo: &str,
+    core: Vec<String>,
+) -> (Vec<String>, Vec<String>) {
+    installed(
+        installation,
+        data,
+        photo,
+        core,
+        &mut || super::installed::adopt_recordings(installation),
+        &mut |text| super::installed::note(installation, text),
+    )
+}
 #[cfg(windows)]
 const UNUSABLE: &str = "Grabaciones: desactivadas. «recordings» es un enlace, una unión o un archivo y Vantare no la usa; para volver a grabar, déjala como una carpeta normal.";
 
@@ -331,6 +349,28 @@ mod tests {
             |_| panic!("successful read must not wait"),
         ));
         assert_eq!(calls, 1);
+    }
+
+    /// La sesión tal y como la arma `run`: por qué no se graba llega al
+    /// registro de la instalación, una sola vez aunque la sesión arranque más.
+    #[cfg(windows)]
+    #[test]
+    fn a_folder_that_is_not_one_is_written_once_in_the_log_of_the_installation() {
+        let base = TempDir::new();
+        let (installation, data) = (base.0.join("Vantare"), base.0.join("datos"));
+        for folder in [&installation, &data.join("hub")] {
+            fs::create_dir_all(folder).unwrap();
+        }
+        fs::write(installation.join("recordings"), b"not a folder").unwrap();
+        for _ in 0..2 {
+            let (core, _) = installed_session(&installation, &data, "foto", vec!["--live".into()]);
+            assert_eq!(core, ["--live"]);
+        }
+        let log = fs::read_to_string(installation.join("installer-log.txt")).unwrap();
+        let said = log
+            .lines()
+            .filter(|line| line.contains("Grabaciones: desactivadas"));
+        assert_eq!(said.count(), 1, "{log}");
     }
 
     /// ADR 0111 §6: if the core and the Hub saw different folders, the Hub

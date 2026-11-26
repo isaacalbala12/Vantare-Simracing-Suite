@@ -20,7 +20,7 @@ $scratch=Join-Path ([IO.Path]::GetTempPath()) ('vantare-autorizacion-'+[guid]::N
 $null=New-Item -ItemType Directory $scratch
 $script:trace=[Collections.Generic.List[string]]::new()
 $script:behavior='valid'
-$script:pcSimulado=Join-Path $scratch 'pc-simulado'
+$script:pcSimulado=Join-Path $scratch 'measurement-qa'
 $script:CorpusQA=Join-Path $scratch 'corpus.tar.gz'
 Set-Content -LiteralPath $CorpusQA 'Replay de prueba'
 $cli=Join-Path $scratch 'bin/vantare-qa-license.exe'
@@ -58,7 +58,11 @@ function scp {
   $script:trace.Add('corpus')
   if(Test-Path -LiteralPath $script:pcSimulado){Copy-Item -LiteralPath $script:CorpusQA -Destination (Join-Path $script:pcSimulado 'corpus.tar.gz')}
  }
- elseif($args[-2] -like '*evidence.tar'){$script:trace.Add('evidencia');Copy-Item -LiteralPath $script:fakeTar -Destination $args[-1]}
+ elseif($args[-2] -like '*evidence.tar'){
+  $script:trace.Add('evidencia')
+  if($script:behavior -eq 'bad-copy'){$global:LASTEXITCODE=1;return}
+  Copy-Item -LiteralPath $script:fakeTar -Destination $args[-1]
+ }
  else{throw 'Se intentó transferir un fichero fuera del contrato de medición'}
  $global:LASTEXITCODE=0
 }
@@ -96,11 +100,15 @@ function Invoke-TandaSsh {param($Target,$Code)
   return 'a'*64
  }
  if($Code -like '*QA_PROFILE_CLEANUP*'){
-  foreach($name in 'credential.json','registry.txt','corpus.tar.gz'){
-   $path=Join-Path $script:pcSimulado $name
-   if(Test-Path -LiteralPath $path){Remove-Item -LiteralPath $path}
+  $null=[scriptblock]::Create($Code)
+  if($Code -match 'evidence'){throw 'El descarte intenta borrar la evidencia original'}
+  if($script:behavior -eq 'cleanup-down'){$script:trace.Add('limpieza-fallida');throw 'SSH falló; nunca apagar sin evidencia verificada'}
+  if($script:behavior -in @('active-worker','worker-finishing') -and -not $script:trace.Contains('limpieza-aplazada')){
+   $script:trace.Add('limpieza-aplazada')
+   throw 'QA_PROFILE_CLEANUP: trabajador propio aún activo'
   }
-  if(Test-Path -LiteralPath $script:pcSimulado){Remove-Item -LiteralPath $script:pcSimulado}
+  Clear-TandaMeasurementFiles $scratch
+  if($script:behavior -eq 'active-worker'){$script:trace.Add('limpieza-trabajador')}
   $script:trace.Add('limpiar');return ''
  }
  if($Code -like '*registry.txt*'){
@@ -117,9 +125,12 @@ function Invoke-TandaSsh {param($Target,$Code)
    throw 'El trabajador no recibió la credencial QA transferida'
   }
   $script:trace.Add('trabajador')
-  $remoteEvidence=Join-Path $scratch ([guid]::NewGuid().ToString('N'))
+  $profile=Join-Path $scratch 'qa-core/round-test'
+  $null=New-Item -ItemType Directory -Path $profile -Force
+  Set-Content -LiteralPath (Join-Path $profile 'binding.dpapi') 'perfil QA simulado'
+  $script:remoteEvidence=Join-Path $scratch ([guid]::NewGuid().ToString('N'))
   $null=New-Item -ItemType Directory $remoteEvidence
-  $complete=$script:behavior -eq 'valid'
+  $complete=$script:behavior -in @('valid','bad-copy','active-worker','worker-finishing','cleanup-down')
   $state=@{scope='measurement-qa';source_sha=$manifest.source_sha;completed_without_error=$complete;
    status=if($complete){'complete'}else{'aborted'};captures=@();measurements=if($complete){@($manifest.measurements|ForEach-Object {@{id=$_.id;status='complete'}})}else{@()}}
   Write-TandaJson $state (Join-Path $remoteEvidence 'estado.json')
@@ -128,7 +139,10 @@ function Invoke-TandaSsh {param($Target,$Code)
   if($LASTEXITCODE){throw 'Falló el tar del PC simulado'}
   return ''
  }
- if($Code -like 'Test-Path*evidence-hashes.json*'){return 'True'}
+ if($Code -like 'Test-Path*evidence-hashes.json*'){
+  if($script:behavior -in @('active-worker','cleanup-down')){throw 'Fin de ventana simulado'}
+  return 'True'
+ }
  if($Code -like '*tar -cf*'){return (Get-FileHash -LiteralPath $script:fakeTar).Hash}
  if($Code -like '*Set-Content*copia-servidor.json*'){
   if(-not $script:trace.Contains('limpiar')){throw 'ACK antes de retirar la credencial'}
@@ -139,20 +153,56 @@ function Invoke-TandaSsh {param($Target,$Code)
  if($Code -like '*New-Item*VantareQA*'){return ''}
  throw 'Transporte inesperado en coordinador'
 }
-foreach($case in 'valid','bad-fingerprint','bad-sign','bad-install','missing-binding','changed-profile'){
+foreach($case in 'valid','bad-fingerprint','bad-sign','bad-install','missing-binding','changed-profile','bad-copy','active-worker','worker-finishing','cleanup-down'){
  $script:behavior=$case;$script:trace.Clear()
  $script:DestinoServidor=Join-Path $scratch $case
  $null=New-Item -ItemType Directory $DestinoServidor
  $failure=$null
  try{Invoke-TandaServer $scratch $context}catch{$failure=$_.Exception.Message}
- if($case -eq 'valid'){
+ if($case -eq 'cleanup-down'){
+  # SSH caído durante la limpieza: se conserva la causa original y se reintenta tras retirar las tareas.
+  if($failure -cne 'Fin de ventana simulado' -or ($script:trace -join ',') -cne 'kit,huella,firma,registro,credencial,corpus,trabajador,limpieza-fallida,retirar,limpieza-fallida'){
+   throw "La limpieza fallida ocultó la causa o no se reintentó: $($script:trace -join ',') / $failure"
+  }
+  Clear-TandaMeasurementFiles $scratch
+ }elseif($case -in @('valid','worker-finishing')){
   $expected='kit,huella,firma,registro,credencial,corpus,trabajador,evidencia,limpiar,ack,apagar,retirar'
+  if($case -eq 'worker-finishing'){$expected=$expected.Replace('evidencia,limpiar','evidencia,limpieza-aplazada,limpiar')}
   if($failure -or ($script:trace -join ',') -cne $expected){throw "Coordinación incompleta: $($script:trace -join ',') / $failure"}
   $audit=Get-ChildItem -LiteralPath $DestinoServidor -Recurse -Filter 'autorizacion-medicion.json'|Get-Content -Raw|ConvertFrom-Json
   if($audit.zip_sha256 -cne $context.authorization.zip_sha256 -or $audit.key_id -cne 'qa-d0143296'){throw 'Falta auditoría de autorización'}
  }elseif(-not $failure -or -not $script:trace.Contains('limpiar') -or $script:trace.Contains('ack') -or $script:trace.Contains('apagar')){
   throw "Aborto sin limpieza o con apagado para $case : $($script:trace -join ',') / $failure"
  }
- if((Test-Path -LiteralPath $script:pcSimulado) -or (Test-Path -LiteralPath $script:signed)){throw 'Quedó material de sesión tras terminar'}
+ if((Test-Path -LiteralPath $script:pcSimulado) -or (Test-Path -LiteralPath $script:signed) -or (Test-Path -LiteralPath (Join-Path $scratch 'qa-core'))){throw 'Quedó material de sesión tras terminar'}
+ if($case -in @('bad-copy','active-worker') -and (-not(Test-Path -LiteralPath (Join-Path $script:remoteEvidence 'estado.json')) -or -not(Test-Path -LiteralPath $script:fakeTar))){
+  throw 'Se perdió evidencia del PC tras abortar'
+ }
+ if($case -eq 'active-worker' -and ($failure -cne 'Fin de ventana simulado' -or ($script:trace -join ',') -cnotlike '*,limpieza-aplazada,retirar,limpieza-trabajador,limpiar')){
+  throw 'La limpieza ocultó el fallo original o no llegó a completarse'
+ }
 }
-'PASS: autorización UTC, ruta automática bloqueada, coordinación con PC simulado y abortos sin ACK ni apagado.'
+# El trabajador borra su propia sesión (credencial, registro, corpus y perfiles QA) y conserva la evidencia.
+function Read-TandaWorkerLicense {param($Root)
+ if($script:behavior -eq 'license-fail'){throw 'QA_KEY_NOT_APPROVED: registro simulado distinto'}
+ @{}
+}
+function Invoke-TandaWorker {param($Root,$Output,$License)
+ Set-Content -LiteralPath (Join-Path $Output 'estado.json') 'evidencia del trabajador'
+ if($script:behavior -eq 'worker-abort'){throw 'Fin de ventana del trabajador'}
+}
+foreach($case in 'worker-ok','worker-abort','license-fail'){
+ $script:behavior=$case
+ $session=Join-Path $scratch "trabajador-$case"
+ $evidence=Join-Path $session 'evidence'
+ $null=New-Item -ItemType Directory -Path (Join-Path $session 'measurement-qa'),(Join-Path $session 'qa-core/round-x'),$evidence -Force
+ foreach($name in 'credential.json','registry.txt','corpus.tar.gz'){Set-Content -LiteralPath (Join-Path $session "measurement-qa/$name") 'sesión'}
+ Set-Content -LiteralPath (Join-Path $session 'qa-core/round-x/binding.dpapi') 'perfil'
+ $failure=$null
+ try{Invoke-TandaMeasurementWorker (Join-Path $session 'kit') $evidence $session}catch{$failure=$_.Exception.Message}
+ $expected=@{'worker-ok'=$null;'worker-abort'='Fin de ventana del trabajador';'license-fail'='QA_KEY_NOT_APPROVED: registro simulado distinto'}[$case]
+ if($failure -cne $expected){throw "El trabajador ocultó la causa en $case : $failure"}
+ if((Test-Path -LiteralPath (Join-Path $session 'measurement-qa')) -or (Test-Path -LiteralPath (Join-Path $session 'qa-core'))){throw "El trabajador dejó material de sesión en $case"}
+ if(-not (Test-Path -LiteralPath $evidence)){throw "El trabajador borró la evidencia en $case"}
+}
+'PASS: autorización UTC, ruta automática bloqueada, coordinación con PC simulado, abortos sin ACK ni apagado y autolimpieza del trabajador.'

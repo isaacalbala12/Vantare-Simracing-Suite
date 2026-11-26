@@ -768,37 +768,49 @@ function Read-TandaMeasurementFiles([string]$Root,[string]$Session,$Manifest){
  if((Get-FileHash -LiteralPath $corpus -Algorithm SHA256).Hash -ine $manifest.external_corpus.sha256){throw 'QA_PACKAGE_RECEIPT: corpus remoto distinto'}
  @{cli=$cli;credential=$credential;registry=$registry;key_id=$qa.key_id;corpus=$corpus}
 }
-function Remove-TandaRemoteMeasurement([string]$Remote,[string]$Task,[switch]$Descartar){
- if($Remote -cnotmatch '\AC:/VantareQA/tanda-\d{8}T\d{6}Z\z'){throw 'QA_PROFILE_CLEANUP: ruta de sesión no autorizada'}
- if($Task -cne ('Vantare-'+[IO.Path]::GetFileName($Remote))){throw 'QA_PROFILE_CLEANUP: tarea fuera de la sesión'}
- $session="$Remote/measurement-qa"
- $discard=if($Descartar){'$true'}else{'$false'}
+function Clear-TandaMeasurementFiles {
+ param([string]$SessionRoot)
+ $root=[IO.Path]::GetFullPath($SessionRoot)
+ foreach($dir in @([IO.Path]::GetDirectoryName($root),$root,(Join-Path $root 'measurement-qa'),(Join-Path $root 'qa-core'))){
+  if((Test-Path -LiteralPath $dir) -and ((Get-Item -LiteralPath $dir -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'QA_PROFILE_CLEANUP: enlace en sesión QA'}
+ }
+ $session=Join-Path $root 'measurement-qa'
+ foreach($name in 'credential.json','registry.txt','corpus.tar.gz'){
+  $file=Join-Path $session $name
+  if(Test-Path -LiteralPath $file -PathType Leaf){Remove-Item -LiteralPath $file -Force}
+ }
+ if((Test-Path -LiteralPath $session -PathType Container) -and -not (Get-ChildItem -LiteralPath $session -Force)){Remove-Item -LiteralPath $session}
+ $profiles=Join-Path $root 'qa-core'
+ if(Test-Path -LiteralPath $profiles -PathType Container){
+  $item=Get-Item -LiteralPath $profiles -Force
+  if($item.FullName -ine $profiles -or (Get-ChildItem -LiteralPath $profiles -Force -Recurse -Attributes ReparsePoint)){throw 'QA_PROFILE_CLEANUP: raíz de perfiles no verificable'}
+  Remove-Item -LiteralPath $profiles -Recurse -Force
+ }
+}
+# El trabajador borra su propia sesión aunque el servidor haya abortado o perdido el SSH.
+function Invoke-TandaMeasurementWorker([string]$Root,[string]$Output,[string]$SessionRoot){
+ $workerFailed=$false
+ try{
+  $license=Read-TandaWorkerLicense $Root
+  Invoke-TandaWorker $Root $Output $license
+ }catch{$workerFailed=$true;throw}
+ finally{
+  try{Clear-TandaMeasurementFiles $SessionRoot}
+  catch{if(-not $workerFailed){throw};Write-Warning "Limpieza del trabajador: $($_.Exception.Message)"}
+ }
+}
+function Remove-TandaRemoteMeasurement([string]$Remote,[string]$Task){
+ if($Remote -cnotmatch '\AC:/VantareQA/tanda-\d{8}T\d{6}Z\z' -or $Task -cne ('Vantare-'+[IO.Path]::GetFileName($Remote))){throw 'QA_PROFILE_CLEANUP: sesión o tarea no autorizada'}
+ $cleanup=(Get-Command Clear-TandaMeasurementFiles -CommandType Function).ScriptBlock.ToString()
  $null=Invoke-TandaSsh $Pc (@'
 $ErrorActionPreference='Stop'
-$path='{0}'
-$discard={3}
-$deadline=[DateTime]::UtcNow.AddSeconds(10)
-while((Get-ScheduledTask -TaskName '{2}' -ErrorAction SilentlyContinue).State -eq 'Running'){{
+$deadline=[DateTime]::UtcNow.AddSeconds(25)
+while((Get-ScheduledTask -TaskName '{0}' -ErrorAction SilentlyContinue).State -eq 'Running'){{
  if([DateTime]::UtcNow -ge $deadline){{throw 'QA_PROFILE_CLEANUP: trabajador propio aún activo'}}
  Start-Sleep -Milliseconds 200
 }}
-foreach($directory in 'C:/VantareQA','{1}',$path){{
- if((Test-Path -LiteralPath $directory) -and ((Get-Item -LiteralPath $directory -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){{throw 'QA_PROFILE_CLEANUP: enlace'}}
-}}
-foreach($name in 'credential.json','registry.txt','corpus.tar.gz'){{
- $file=Join-Path $path $name
- if(Test-Path -LiteralPath $file -PathType Leaf){{Remove-Item -LiteralPath $file -Force}}
-}}
-if((Test-Path -LiteralPath $path -PathType Container) -and -not (Get-ChildItem -LiteralPath $path -Force)){{Remove-Item -LiteralPath $path}}
-if($discard -and (Test-Path -LiteralPath '{1}' -PathType Container)){{
- $expected=[IO.Path]::GetFullPath('{1}')
- $item=Get-Item -LiteralPath $expected -Force
- if($item.FullName -cne $expected -or (Get-ChildItem -LiteralPath $expected -Force -Recurse -Attributes ReparsePoint)){{
-  throw 'QA_PROFILE_CLEANUP: zona QA no verificable'
- }}
- Remove-Item -LiteralPath $expected -Recurse -Force
-}}
-'@ -f $session,$Remote,$Task,$discard)
+& {{ {1} }} '{2}'
+'@ -f $Task,$cleanup,$Remote)
 }
 function Invoke-TandaServer([string]$Root,[hashtable]$Measurement){
  Assert-TandaCitaContinues
@@ -821,6 +833,7 @@ function Invoke-TandaServer([string]$Root,[hashtable]$Measurement){
  if($SoloVisual){$action+=' -SoloVisual'}
  $registered=@()
  $licenseCleaned=$false
+ $failed=$false
  try {
   Assert-TandaCitaContinues
   & scp -q -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes -r $Root "${Pc}:$remote/kit"
@@ -872,7 +885,9 @@ function Invoke-TandaServer([string]$Root,[hashtable]$Measurement){
       @($state.measurements|Where-Object status -cne 'complete').Count){
     throw 'Evidencia de medición incompleta: no apagar'
    }
-   Remove-TandaRemoteMeasurement $remote $task
+   # El trabajador puede estar terminando su propia limpieza: un reintento evita un falso aborto.
+   try{Remove-TandaRemoteMeasurement $remote $task}
+   catch{Write-Warning "Limpieza de medición (reintento): $($_.Exception.Message)";Remove-TandaRemoteMeasurement $remote $task}
    $licenseCleaned=$true
   }
   # ACK solo tras verificar archivo y hashes de CADA fichero en servidor.
@@ -889,9 +904,23 @@ function Invoke-TandaServer([string]$Root,[hashtable]$Measurement){
   if(-not $ack){throw 'No hay confirmación interactiva de apagado; evidencia preservada'}
   $ack|Set-Content -LiteralPath (Join-Path $destination 'apagado.json') -Encoding utf8
   if(-not ($ack|ConvertFrom-Json -AsHashtable).accepted){throw 'Apagado rechazado por la comprobación interactiva'}
- } finally {
-  try{if($Measurement -and -not $licenseCleaned){Remove-TandaRemoteMeasurement $remote $task -Descartar}}
-  finally{foreach($name in $registered){$null=Invoke-TandaSsh $Pc "Unregister-ScheduledTask -TaskName '$name' -Confirm:`$false -ErrorAction SilentlyContinue"}}
+ }catch{
+  $failed=$true
+  throw
+ }finally{
+  # La limpieza nunca sustituye al error original; se reintenta al final, tras retirar las tareas.
+  if($Measurement -and -not $licenseCleaned){
+   try{Remove-TandaRemoteMeasurement $remote $task;$licenseCleaned=$true}
+   catch{Write-Warning "Limpieza de medición aplazada: $($_.Exception.Message)"}
+  }
+  foreach($name in $registered){
+   try{$null=Invoke-TandaSsh $Pc "Unregister-ScheduledTask -TaskName '$name' -Confirm:`$false -ErrorAction SilentlyContinue"}
+   catch{if(-not $failed){throw};Write-Warning "No se pudo retirar la tarea propia: $($_.Exception.Message)"}
+  }
+  if($Measurement -and -not $licenseCleaned){
+   try{Remove-TandaRemoteMeasurement $remote $task}
+   catch{Write-Warning "Limpieza de medición sin completar; el trabajador borra su sesión al terminar: $($_.Exception.Message)"}
+  }
  }
 }
 function Invoke-TandaShutdown([string]$Root,[string]$Output){
@@ -960,8 +989,10 @@ switch($Modo){
  }
  'Trabajador' {
   if(-not $Salida){throw 'Falta -Salida nueva'}
-  $license=if(-not $SoloVisual){Read-TandaWorkerLicense $Kit}
-  Invoke-TandaWorker $Kit $Salida $license
+  if($SoloVisual){Invoke-TandaWorker $Kit $Salida;break}
+  $absolute=[IO.Path]::GetFullPath($Kit).Replace('\','/')
+  if($absolute -cnotmatch '\AC:/VantareQA/tanda-\d{8}T\d{6}Z/kit\z'){throw 'QA_PROFILE_CLEANUP: raíz del trabajador fuera de QA'}
+  Invoke-TandaMeasurementWorker $Kit $Salida ([IO.Path]::GetDirectoryName($absolute))
  }
  'Servidor' {
   $measurement=if(-not $SoloVisual){Get-TandaMeasurementContext $Kit}

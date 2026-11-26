@@ -20,6 +20,29 @@ function Read-CitaUtc([string]$Value){
  [DateTimeOffset]::ParseExact($Value,"yyyy-MM-ddTHH:mm:ss'Z'",[Globalization.CultureInfo]::InvariantCulture,[Globalization.DateTimeStyles]::AssumeUniversal)
 }
 
+function Read-CitaConfig([byte[]]$Bytes){
+ $document=[Text.Json.JsonDocument]::Parse([Text.Encoding]::UTF8.GetString($Bytes))
+ try{
+  $config=@{}
+  foreach($property in $document.RootElement.EnumerateObject()){
+   if($property.Name -ceq 'apagar'){
+    if($property.Value.ValueKind -notin @([Text.Json.JsonValueKind]::True,[Text.Json.JsonValueKind]::False)){
+     throw 'La configuración exige apagar como booleano JSON'
+    }
+    $config.Add($property.Name,$property.Value.GetBoolean())
+   }else{
+    $config.Add($property.Name,$property.Value.GetString())
+   }
+  }
+  if($config['apagar'] -isnot [bool]){throw 'La configuración exige apagar como booleano JSON'}
+  $config
+ }finally{$document.Dispose()}
+}
+
+function Get-CitaShutdownArguments($Config){
+ if($Config.modo -ceq 'real' -and -not $Config.apagar){'-SinApagado'}
+}
+
 function Assert-CitaKit($Config){
  $hash=(Get-FileHash -LiteralPath $Config.zip -Algorithm SHA256).Hash.ToLowerInvariant()
  $result.zip_actual=$hash
@@ -75,13 +98,7 @@ $configBytes=[IO.File]::ReadAllBytes($Cita)
 $actualConfig=[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($configBytes))
 if($actualConfig -ine $CitaSha256){throw 'Configuración distinta de la fijada en la tarea'}
 try{
- $document=[Text.Json.JsonDocument]::Parse([Text.Encoding]::UTF8.GetString($configBytes))
- try{
-  $config=@{}
-  foreach($property in $document.RootElement.EnumerateObject()){
-   $config.Add($property.Name,$property.Value.GetString())
-  }
- }finally{$document.Dispose()}
+ $config=Read-CitaConfig $configBytes
  Assert-CitaPlainPath $config.output
  if(-not (Get-Item -LiteralPath $config.output).PSIsContainer){throw 'La ruta de resultados no es una carpeta'}
 }catch{
@@ -104,7 +121,7 @@ $dry=$config.modo -ceq 'ensayo'
 $pwsh=Join-Path $PSHOME 'pwsh.exe'
 $result=[ordered]@{
  status='ABORTADO'; reason=$null; utc=[DateTimeOffset]::UtcNow.ToString('o')
- preflight_utc=$config.preflight_utc; visual_utc=$config.visual_utc; limit_utc=$null; mode=$config.modo
+ preflight_utc=$config.preflight_utc; visual_utc=$config.visual_utc; limit_utc=$null; mode=$config.modo; apagar=$config.apagar
  preflight_exit=$null; tanda_exit=$null; python_version=$null
  source_sha=$config.source_sha; zip_expected=$config.zip_sha256; zip_actual=$null
  preflight_sha256=$config.preflight_sha256; manifest_sha256=$null; tanda_sha256=$null; config_sha256=$actualConfig.ToLowerInvariant()
@@ -137,7 +154,7 @@ try{
  $tanda=Join-Path $config.kit 'TANDA.ps1'
  if((Get-FileHash -LiteralPath $tanda -Algorithm SHA256).Hash -ine $result.tanda_sha256){throw 'SHA-256 de TANDA distinto'}
  if(-not $dry){
-  $null=& $tanda -Modo Servidor -SoloVisual -CitaProgramada -ValidarEnlace -Kit $config.kit -PythonExe 'C:/Python311/python.exe' -NoAntesUtc $config.visual_utc -LimiteUtc $end.ToString("yyyy-MM-ddTHH:mm:ss'Z'") -DestinoServidor $config.output
+  $null=& $tanda -Modo Servidor -SoloVisual -CitaProgramada -SinApagado:(-not $config.apagar) -ValidarEnlace -Kit $config.kit -PythonExe 'C:/Python311/python.exe' -NoAntesUtc $config.visual_utc -LimiteUtc $end.ToString("yyyy-MM-ddTHH:mm:ss'Z'") -DestinoServidor $config.output
  }
  Assert-CitaNotCancelled
  if([DateTimeOffset]::UtcNow -ge $start){throw 'Se agotó la ventana antes del preflight'}
@@ -166,13 +183,14 @@ try{
   $tandaArgs+=@('-Salida',(Join-Path $config.output 'ensayo'))
  }else{
   $tandaArgs+=@('-CitaProgramada','-NoAntesUtc',$config.visual_utc,'-LimiteUtc',$end.ToString("yyyy-MM-ddTHH:mm:ss'Z'"),'-DestinoServidor',$config.output)
+  $tandaArgs+=@(Get-CitaShutdownArguments $config)
  }
  Assert-CitaPlainPath $tanda
  if((Get-FileHash -LiteralPath $tanda -Algorithm SHA256).Hash -ine $result.tanda_sha256){throw 'SHA-256 de TANDA distinto antes de ejecutar'}
  & $pwsh -NoProfile -NonInteractive -File $tanda @tandaArgs 2>&1 | Add-Content -LiteralPath $result.log
  $result.tanda_exit=$LASTEXITCODE
  if($result.tanda_exit -ne 0){$result.status='TANDA_FALLO';throw 'TANDA terminó con error'}
- $result.status=if($dry){'ENSAYADO'}else{'COMPLETADO'}
+ $result.status=if($dry){'ENSAYADO'}elseif(-not $config.apagar){'COMPLETADO_SIN_APAGADO'}else{'COMPLETADO'}
  $exitCode=0
 }catch{
  $result.reason=$_.Exception.Message

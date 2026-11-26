@@ -456,6 +456,9 @@ de ciclo de vida. La medición tiene su propio protocolo.
    en minúsculas y rutas absolutas `zip`, `kit`, `preflight` y `output`.
    Fijar `modo` a `real`. `ensayo` requiere el guard sin gráficos y nunca
    selecciona TANDA en modo Servidor. Una variable Machine no elige el modo.
+   Fijar también el booleano JSON obligatorio `apagar`. Con `false` el
+   servidor copia y verifica la evidencia completa, deja el PC encendido
+   y registra `COMPLETADO_SIN_APAGADO`.
    El ZIP debe incluir un TANDA con `-CitaProgramada`. Si el kit anterior no
    lo admite, hay que preparar y aprobar un ZIP nuevo para la siguiente cita.
    Usar el hash del ZIP aprobado para la cita. La salida real es

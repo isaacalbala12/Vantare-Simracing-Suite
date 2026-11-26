@@ -22,6 +22,7 @@ param(
  [string]$CliSha256QA='',
  [string[]]$LogsQA=@(),
  [switch]$SoloVisual,
+ [switch]$SinApagado,
  [switch]$CitaProgramada,
  [switch]$ValidarEnlace,
  [switch]$SoloFunciones
@@ -710,8 +711,9 @@ function Invoke-TandaServer([string]$Root){
   if($SoloVisual -and ($state.scope -cne 'visual-lifecycle' -or $state.source_sha -cne $manifest.source_sha -or $state.measurements.Count -ne 0 -or $state.lifecycle -cne '4 passed; 0 failed' -or $state.captures.Count -ne (3*$manifest.captures.Count))){
    throw 'Evidencia visual/lifecycle incompleta o de otra tanda: no apagar'
   }
-  # ACK solo tras verificar archivo y hashes de CADA fichero en servidor.
   Assert-TandaCitaContinues
+  if($SinApagado){return 'COMPLETADO_SIN_APAGADO'}
+  # ACK solo tras verificar archivo y hashes de CADA fichero en servidor.
   $hash=(Get-FileHash -LiteralPath (Join-Path $destination 'evidence-hashes.json') -Algorithm SHA256).Hash
   $null=Invoke-TandaSsh $Pc "if(Test-Path '$remote/evidence/copia-servidor.json'){throw 'ACK ya existe'};@{verified=`$true;hash_manifest='$hash';destination='$destination'}|ConvertTo-Json|Set-Content '$remote/evidence/copia-servidor.json' -Encoding utf8"
   $finish=$action.Replace('-Modo Trabajador','-Modo Apagar')
@@ -756,6 +758,7 @@ function Assert-TandaCitaContinues {
  if(-not $directory.PSIsContainer -or ($directory.Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'No se puede comprobar CITA-CANCELAR'}
  if(@($directory.EnumerateFileSystemInfos('CITA-CANCELAR')).Count){throw 'CITA-CANCELAR activo: no lanzar ni apagar'}
 }
+if($SinApagado -and ($Modo -cne 'Servidor' -or -not $SoloVisual)){throw 'SinApagado requiere Modo Servidor y SoloVisual'}
 if($SoloFunciones -or $ValidarEnlace){return}
 if($CitaProgramada -and ($Modo -cne 'Servidor' -or -not $SoloVisual)){throw 'Cita programada requiere Servidor y SoloVisual'}
 if(-not $SoloVisual -and $Modo -in @('Servidor','Trabajador','Apagar')){

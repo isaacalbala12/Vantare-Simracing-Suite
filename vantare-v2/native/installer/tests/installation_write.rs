@@ -4371,7 +4371,8 @@ fn duck(blocks: u64, fill: u8) -> Vec<u8> {
     bytes
 }
 /// A real recording of the DuckDB in use: five blocks of 16 384 bytes.
-const SESSION: &[u8] = include_bytes!("../../hub-host/src/analysis/fixtures/session-v1.duckdb");
+/// A copy of `hub-host/src/analysis/fixtures/session-v1.duckdb` (same SHA-256).
+const SESSION: &[u8] = include_bytes!("fixtures/session-v1.duckdb");
 fn born(path: &Path, seconds: u64) -> std::time::SystemTime {
     use std::os::windows::fs::FileTimesExt;
     let at = std::time::UNIX_EPOCH + std::time::Duration::from_secs(seconds);

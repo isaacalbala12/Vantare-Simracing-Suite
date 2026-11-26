@@ -544,3 +544,26 @@ mod member_tests {
         }
     }
 }
+
+// ADR 0111 T2b: solo el recorrido de la instalación entera deja en paz a
+// `recordings`. Cualquier otro (una generación, sus datos, un árbol que se
+// borra) sigue rechazando un enlace con ese nombre en su primer nivel.
+#[cfg(all(test, windows))]
+mod walk_tests {
+    #[test]
+    fn only_the_installation_walk_leaves_recordings_alone() {
+        let name = format!("vantare-walk-{}", std::process::id());
+        let base = std::env::temp_dir().join(name);
+        let (tree, outside) = (base.join("arbol"), base.join("fuera"));
+        for folder in [&tree, &outside] {
+            std::fs::create_dir_all(folder).unwrap();
+        }
+        std::fs::write(outside.join("mio.txt"), b"mine").unwrap();
+        std::os::windows::fs::symlink_dir(&outside, tree.join("recordings")).unwrap();
+        assert!(super::walk(&tree, false).is_err());
+        assert!(super::walk(&tree, true).is_err());
+        assert!(super::walk_installation(&tree).unwrap().is_empty());
+        std::fs::remove_dir(tree.join("recordings")).unwrap();
+        std::fs::remove_dir_all(base).unwrap();
+    }
+}

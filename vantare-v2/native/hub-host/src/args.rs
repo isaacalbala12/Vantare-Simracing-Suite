@@ -167,11 +167,17 @@ mod tests {
         // Whatever the folder itself is never stops the Hub: a link or a file
         // in its place is taken, and Analysis says why there are no recordings.
         std::fs::remove_dir(&single).expect("fixture");
-        for kind in ["link", "file"] {
-            if kind == "link" {
-                symlink_dir(outside.join("recordings"), &single).expect("link");
-            } else {
-                std::fs::write(&single, b"not a folder").expect("file");
+        let gone = base.join("ya no existe");
+        for kind in ["link", "junction", "broken junction", "file"] {
+            match kind {
+                "link" => symlink_dir(outside.join("recordings"), &single).expect("link"),
+                "junction" => junction(&outside.join("recordings"), &single),
+                "broken junction" => {
+                    std::fs::create_dir(&gone).expect("fixture");
+                    junction(&gone, &single);
+                    std::fs::remove_dir(&gone).expect("fixture");
+                }
+                _ => std::fs::write(&single, b"not a folder").expect("file"),
             }
             let named = parse(&single, Some(&root)).expect("the Hub starts");
             let read_through = crate::analysis::recordings(&named.recordings());
@@ -184,10 +190,14 @@ mod tests {
             let status =
                 read(&named.recordings(), &std::collections::BTreeMap::new()).expect("a status");
             assert_eq!(status.cause, Some(InvalidDirectory), "{kind}");
-            if kind == "link" {
+            if kind != "file" {
                 std::fs::remove_dir(&single).expect("fixture");
             }
         }
+        // Otra vez una carpeta de verdad: lo que sigue se rechaza por lo que es,
+        // no porque no se encuentre su carpeta madre.
+        std::fs::remove_file(&single).expect("fixture");
+        std::fs::create_dir(&single).expect("fixture");
         // Anything else is not the argument of the session.
         let (link, back) = (root.join("enlace"), root.join("vuelta"));
         symlink_dir(&outside, &link).expect("link to the outside");
@@ -235,6 +245,18 @@ mod tests {
         let unnamed = Args::parse_in(data, Some(&root)).expect("as before");
         assert_eq!(unnamed.recordings(), outside.join("recordings"));
         std::fs::remove_dir_all(base).expect("cleanup");
+    }
+    /// Una unión de verdad, como la crea `mklink /J`.
+    #[cfg(windows)]
+    fn junction(target: &Path, link: &Path) {
+        use std::os::windows::process::CommandExt;
+        let made = std::process::Command::new(std::env::var_os("COMSPEC").expect("Windows shell"))
+            .args(["/D", "/C", "mklink", "/J"])
+            .args([link, target])
+            .creation_flags(0x0800_0000)
+            .output()
+            .expect("mklink");
+        assert!(made.status.success(), "{made:?}");
     }
     #[test]
     fn supervisor_arguments_and_absolute_paths_are_preserved() {

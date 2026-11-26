@@ -278,13 +278,23 @@ fn project(
             result,
         });
     }
+    let mut said = if dead {
+        None
+    } else {
+        text(v.get("cause")?).ok()?.map(cause)
+    };
+    // `stopped` + `invalidDirectory` solo lo dice el anfitrión, de una carpeta
+    // que no es una carpeta normal (read_with). El núcleo cierra como `stopped`
+    // con esa misma causa una grabación que no pudo empezar en su carpeta: es
+    // un fallo pasajero y se dice como tal, nunca como un enlace (ADR 0111, T2b).
+    if state == AnalysisRecordingState::Stopped
+        && said == Some(AnalysisRecordingCause::InvalidDirectory)
+    {
+        said = Some(AnalysisRecordingCause::Unknown);
+    }
     Some(AnalysisRecordingStatus {
         state,
-        cause: if dead {
-            None
-        } else {
-            text(v.get("cause")?).ok()?.map(cause)
-        },
+        cause: said,
         row_id,
         started_at_ms: safe(v.get("startedAtMs")?)?,
         durable_watermark: decimal(v.get("durableWatermark")?).ok()?,
@@ -329,9 +339,9 @@ fn read_with(
 ) -> Option<AnalysisRecordingStatus> {
     match super::regular_directory(root) {
         Ok(()) => {}
-        // A link, a junction or a file in its place: never read, and said, so
-        // that Analysis can tell why nothing is recorded (ADR 0111, T2b). The
-        // core never writes this pair: it reports its own trouble as degraded.
+        // Un enlace, una unión o un archivo en su lugar: no se lee y se dice,
+        // para que Análisis explique por qué no se graba (ADR 0111, T2b). La
+        // pareja es solo del anfitrión: `project` nunca la pasa desde el núcleo.
         Err(error) if error.code == super::ErrorCode::Unreadable => {
             return Some(AnalysisRecordingStatus {
                 state: AnalysisRecordingState::Stopped,

@@ -1871,6 +1871,15 @@ async function amountStates(
     });
   };
   const status = () => planStatus(page);
+  // The host answered: only then the screen announces what changed. While a request is
+  // on its way the screen takes no other one (what is pressed then is lost, #2784), so
+  // this goes before the next action whenever nothing else on screen tells it.
+  const announced = (text: RegExp) =>
+    until(
+      async () => text.test((await status()) ?? ""),
+      20000,
+      `announced ${text}`,
+    );
   const paradas = async (scene: string) => {
     await openAcceptedPlan(page, base, scene, "Plan calculado", zoomed);
     await press(button(page, "Ajustar paradas"));
@@ -1963,6 +1972,9 @@ async function amountStates(
   await manualEnergy.focus();
   await focused(manualEnergy);
   await page.keyboard.press("ArrowLeft");
+  // the tyres say «lo decide el cálculo» before the host answers, so that text alone
+  // does not tell that it did: the announcement does
+  await announced(/^Parada 2: energía en automático\.$/);
   // the energy and the tyres both say it: the first one is enough
   await visible(
     page.getByText("lo decide el cálculo", { exact: true }).first(),
@@ -1978,6 +1990,8 @@ async function amountStates(
   // «Volver todo a automático»: the way back, in one request
   await fuel.fill("71");
   await fuel.press("Enter");
+  // the button is already there and enabled while 71 is on its way
+  await announced(/^Parada 2: combustible fijado en 71 L\./);
   await visible(button(page, "Volver todo a automático"));
   await pressKey(button(page, "Volver todo a automático"), "Enter");
   await until(

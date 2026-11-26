@@ -3768,7 +3768,10 @@ fn channel_of(fixture: &Fixture) -> String {
         .channel
 }
 fn hive() -> String {
-    format!("Software\\VantareInstallerMatrix\\{}", disk::id().unwrap())
+    format!(
+        "Software\\VantareInstallerMatrix\\{}",
+        disk::id().expect("hive ID")
+    )
 }
 
 #[test]
@@ -3813,6 +3816,8 @@ fn nightly_installs_repairs_updates_and_uninstalls_with_its_own_names() {
             None,
         )
         .unwrap();
+    // Repair leaves a boot to check, as every Setup over an installation does.
+    operations::confirm(&fixture.root).unwrap();
     assert_eq!(
         fs::read(fixture.data().join("opaque.bin")).unwrap(),
         b"opaque\0user\xffbytes"
@@ -3890,6 +3895,8 @@ fn beta_and_nightly_share_one_user_and_never_touch_each_other() {
         .setup(&nightly, &package("1.0.0"), Mode::Repair, None)
         .unwrap();
     assert_eq!(beta_state(), before, "nightly repair");
+    operations::confirm(&nightly_fixture.root).unwrap();
+    assert_eq!(beta_state(), before, "nightly repair confirmation");
     nightly_fixture
         .setup(&nightly, &package("1.0.1"), Mode::Auto, None)
         .unwrap();
@@ -3917,6 +3924,12 @@ fn beta_and_nightly_share_one_user_and_never_touch_each_other() {
     beta_fixture
         .setup(&beta, &beta_fixture.package("1.0.0"), Mode::Repair, None)
         .unwrap();
+    operations::confirm(&beta_fixture.root).unwrap();
+    assert_eq!(
+        nightly_state(),
+        nightly_before,
+        "beta repair and confirmation"
+    );
     beta_fixture.remove(&beta).unwrap();
     assert_eq!(nightly_state(), nightly_before, "beta repair and uninstall");
     assert_eq!(registered(&beta, BETA_KEY, "InstallLocation"), None);

@@ -2345,11 +2345,21 @@ fn names(directory: &Path) -> Vec<String> {
     names.sort();
     names
 }
+/// The ways a note may name a path: the notes of Confirm, Uninstall and the
+/// adoption name it from the root of its installation (`<raíz>`).
+fn shown(path: &Path) -> [String; 2] {
+    let path = disk::path(path).expect("path");
+    let text = path.display().to_string();
+    let root = path
+        .ancestors()
+        .find(|ancestor| ancestor.join(".vantare-native").is_file());
+    let relative = root.map_or_else(|| text.clone(), |root| disk::relative(root, &text));
+    [text, relative]
+}
 fn noted(notes: &[String], path: &Path, reason: &str) -> bool {
-    let path = disk::path(path).expect("path").display().to_string();
-    notes
-        .iter()
-        .any(|note| note.contains(&path) && note.contains(reason))
+    notes.iter().any(|note| {
+        shown(path).iter().any(|path| note.contains(path.as_str())) && note.contains(reason)
+    })
 }
 
 #[test]
@@ -2842,23 +2852,25 @@ fn opened(path: &Path, write: bool, share: u32) -> fs::File {
 }
 /// The note that keeps exactly this path, with its reason.
 fn keeps(notes: &[String], path: &Path, reason: &str) -> bool {
-    let path = disk::path(path).expect("path").display().to_string();
-    let start = format!("se conserva {path}; motivo: ");
-    notes
-        .iter()
-        .any(|note| note.contains(&start) && note.contains(reason))
+    shown(path).iter().any(|path| {
+        let start = format!("se conserva {path}; motivo: ");
+        notes
+            .iter()
+            .any(|note| note.contains(&start) && note.contains(reason))
+    })
 }
 /// The single note of the session for all it keeps of a folder for one reason.
 fn summarized(notes: &[String], source: &Path, names: &[&str], reason: &str) -> bool {
-    let source = disk::path(source).expect("path").display().to_string();
-    let start = format!(
-        "Grabaciones de {source}: se conservan {} ({}",
-        names.len(),
-        names[..names.len().min(5)].join(", ")
-    );
-    notes
-        .iter()
-        .any(|note| note.starts_with(&start) && note.contains(reason))
+    shown(source).iter().any(|source| {
+        let start = format!(
+            "Grabaciones de {source}: se conservan {} ({}",
+            names.len(),
+            names[..names.len().min(5)].join(", ")
+        );
+        notes
+            .iter()
+            .any(|note| note.starts_with(&start) && note.contains(reason))
+    })
 }
 fn adopted(moved: usize, duplicates: usize, kept: usize) -> Adoption {
     Adoption {
@@ -4356,9 +4368,17 @@ fn foreign_data_are_refused_before_the_orphan_marker_or_any_staging() {
 // ADR 0111 T3: Confirm and Uninstall gather the recordings of every generation:
 // the active one first, then the orphans from the newest, never `previous` nor
 // the generation an unconfirmed update staged; a recording moves only if whole.
+/// DuckDB's checksum of what follows the first 8 bytes of a block: 5381, and
+/// each further 8-byte word multiplied by a constant and xored in.
+fn seal(block: &mut [u8]) {
+    let sum = block[8..].chunks_exact(8).fold(5381_u64, |sum, word| {
+        sum ^ u64::from_le_bytes(word.try_into().unwrap()).wrapping_mul(0xbf58_476d_1ce4_e5b9)
+    });
+    block[..8].copy_from_slice(&sum.to_le_bytes());
+}
 /// A recording as DuckDB leaves it: its mark, two database headers (the newest
 /// counts `blocks` of 4 096 bytes; the older one, more than the file has) and
-/// those blocks, filled with `fill`.
+/// those blocks, filled with `fill`; every one sealed with its checksum.
 fn duck(blocks: u64, fill: u8) -> Vec<u8> {
     let mut bytes = vec![0_u8; 3 * 4096];
     bytes[8..12].copy_from_slice(b"DUCK");
@@ -4367,7 +4387,12 @@ fn duck(blocks: u64, fill: u8) -> Vec<u8> {
             bytes[at + offset..at + offset + 8].copy_from_slice(&value.to_le_bytes());
         }
     }
-    bytes.resize(bytes.len() + usize::try_from(blocks * 4096).unwrap(), fill);
+    bytes.chunks_exact_mut(4096).for_each(seal);
+    for _ in 0..blocks {
+        let mut block = vec![fill; 4096];
+        seal(&mut block);
+        bytes.extend(block);
+    }
     bytes
 }
 /// A real recording of the DuckDB in use: five blocks of 16 384 bytes.
@@ -4538,7 +4563,15 @@ fn a_reverted_orphan_gives_its_whole_recordings_and_keeps_the_broken_ones() {
     let b = fixture.upgrade("1.0.1", Mode::Auto);
     // B recorded before its boot failed to confirm; a power cut left pieces.
     let whole = duck(3, 0xB);
-    let files: [(&str, Vec<u8>); 6] = [
+    // What a cut `CopyFileW` leaves on NTFS: the final size, with zeros after
+    // the part that was written.
+    let zeros_after_header = [&SESSION[..3 * 4096], &[0_u8; 5 * 16_384][..]].concat();
+    let last_block_zeros = [&SESSION[..SESSION.len() - 16_384], &[0_u8; 16_384][..]].concat();
+    let mut flipped = whole.clone();
+    flipped[3 * 4096 + 4096 + 100] ^= 1;
+    let mut older_header_flipped = whole.clone();
+    older_header_flipped[4096 + 200] ^= 1;
+    let files: [(&str, Vec<u8>); 10] = [
         ("series-1-1.duckdb", whole.clone()),
         ("series-2-2.duckdb", SESSION.to_vec()),
         ("series-3-3.duckdb", whole[..whole.len() - 1].to_vec()),
@@ -4548,6 +4581,10 @@ fn a_reverted_orphan_gives_its_whole_recordings_and_keeps_the_broken_ones() {
         ),
         ("series-5-5.duckdb", vec![0; whole.len()]),
         ("series-6-6.duckdb", whole[..3 * 4096 - 1].to_vec()),
+        ("series-7-8.duckdb", zeros_after_header),
+        ("series-7-9.duckdb", last_block_zeros),
+        ("series-8-8.duckdb", flipped),
+        ("series-8-9.duckdb", older_header_flipped),
     ];
     let listed = files
         .each_ref()
@@ -4572,12 +4609,7 @@ fn a_reverted_orphan_gives_its_whole_recordings_and_keeps_the_broken_ones() {
     assert_eq!(read(&single.join(moved[0])), whole);
     assert_eq!(read(&single.join(moved[1])), SESSION);
     assert_eq!(read(&single.join(moved[2])), whole);
-    let broken = [
-        "series-3-3.duckdb",
-        "series-4-4.duckdb",
-        "series-5-5.duckdb",
-        "series-6-6.duckdb",
-    ];
+    let broken = files[2..].each_ref().map(|(name, _)| *name);
     assert_eq!(names(&recordings(&b)), broken);
     for (name, bytes) in &files[2..] {
         assert_eq!(&read(&recordings(&b).join(name)), bytes, "{name}");
@@ -4593,23 +4625,47 @@ fn a_reverted_orphan_gives_its_whole_recordings_and_keeps_the_broken_ones() {
 
 #[test]
 fn confirm_takes_the_active_first_then_the_newest_orphan() {
+    use std::os::windows::fs::FileTimesExt;
     let fixture = Fixture::new();
-    let [older, newer] = fixture.two_generations();
-    fixture.upgrade("1.0.2", Mode::Auto);
-    fixture.confirm();
-    let active = fixture.upgrade("1.0.3", Mode::Auto);
-    // Both are orphans now: their folders say which one is newer, not their names.
-    born(&older, 1_600_000_000);
-    born(&newer, 1_700_000_000);
-    let (both, all) = ("series-1-1.duckdb", "series-2-2.duckdb");
-    record(
-        &recordings(&older),
-        &[(both, &duck(1, 0xA)), (all, &duck(1, 0xA))],
-    );
-    record(
-        &recordings(&newer),
-        &[(both, &duck(1, 0xB)), (all, &duck(1, 0xB))],
-    );
+    fixture.two_generations();
+    for version in ["1.0.2", "1.0.3"] {
+        fixture.upgrade(version, Mode::Auto);
+        fixture.confirm();
+    }
+    let active = fixture.upgrade("1.0.4", Mode::Auto);
+    let view = verified(&fixture.root).unwrap().state.unwrap();
+    let referenced = [view.active.generation, view.previous.unwrap().generation];
+    let generations = fixture.root.join("generations");
+    let mut orphans: Vec<_> = names(&generations)
+        .into_iter()
+        .filter(|id| !referenced.contains(id))
+        .collect();
+    assert_eq!(orphans.len(), 3);
+    // Neither the name nor the date of modification says which one is newer:
+    // only the date the folder was created does.
+    let at = |seconds: u64| std::time::UNIX_EPOCH + std::time::Duration::from_secs(seconds);
+    let [newest, middle, oldest] =
+        [("8", 3_u8, 2), ("0", 2, 3), ("f", 1, 1)].map(|(id, born_at, touched)| {
+            let path = generations.join(id.repeat(32));
+            fs::rename(generations.join(orphans.pop().unwrap()), &path).unwrap();
+            record(
+                &recordings(&path),
+                &[("series-1-1.duckdb", &duck(1, born_at))],
+            );
+            let times = fs::FileTimes::new()
+                .set_created(at(1_600_000_000 + u64::from(born_at)))
+                .set_modified(at(1_700_000_000 + touched));
+            fs::OpenOptions::new()
+                .access_mode(0x100)
+                .custom_flags(0x0200_0000)
+                .open(&path)
+                .unwrap()
+                .set_times(times)
+                .unwrap();
+            path
+        });
+    let all = "series-2-2.duckdb";
+    record(&recordings(&newest), &[(all, &duck(1, 0xB))]);
     record(&recordings(&active), &[(all, &duck(1, 0xC))]);
     fixture.confirm();
     let single = fixture.root.join("recordings");
@@ -4618,13 +4674,12 @@ fn confirm_takes_the_active_first_then_the_newest_orphan() {
         duck(1, 0xC),
         "the active one first"
     );
-    assert_eq!(
-        read(&single.join(both)),
-        duck(1, 0xB),
-        "then the newest orphan"
-    );
-    assert_eq!(names(&recordings(&older)), [both, all]);
-    assert_eq!(names(&recordings(&newer)), [all]);
+    let first = read(&single.join("series-1-1.duckdb"));
+    assert_eq!(first, duck(1, 3), "then the newest orphan");
+    assert_eq!(names(&recordings(&newest)), [all]);
+    for older in [&middle, &oldest] {
+        assert_eq!(names(&recordings(older)), ["series-1-1.duckdb"]);
+    }
     assert!(names(&recordings(&active)).is_empty());
 }
 
@@ -4690,7 +4745,11 @@ fn uninstall_never_gathers_from_a_staged_generation_nor_with_a_doubtful_marker()
     });
     assert_eq!(moved, ["series-3-3.duckdb"]);
     // A marker nobody can read, or one without its generation: nothing at all.
-    for broken in [b"{roto".as_slice(), b"{\"schema\":1}".as_slice()] {
+    for broken in [
+        b"{roto".as_slice(),
+        b"{\"schema\":1}".as_slice(),
+        b"{\"schema\":1,\"stagedGeneration\":\"no es hexadecimal\"}".as_slice(),
+    ] {
         let (moved, notes) = gathered(&|path, _| fs::write(path, broken).unwrap());
         assert!(moved.is_empty(), "{moved:?}");
         let said = notes.iter().any(|note| note.contains("boot-pending.json"));
@@ -4814,4 +4873,44 @@ fn an_update_flushes_its_copy_of_the_data_and_keeps_read_only_files_read_only() 
     assert!(disk::flush(&copy).is_err());
     drop(held);
     disk::flush(&copy).expect("flushed");
+}
+
+/// Cost of what T3 adds, measured by hand: `--run-ignored only`.
+#[test]
+#[ignore = "medición: coste de comprobar una grabación y de forzar copias a disco"]
+fn measure_the_cost_of_checking_a_recording_and_of_the_flush() {
+    let fixture = Fixture::new();
+    let [a, _, _] = fixture.three_generations();
+    // 64 MiB: about three hours of track.
+    let big = duck(16_384, 0x5A);
+    record(&recordings(&a), &[("series-1-1.duckdb", &big)]);
+    let started = std::time::Instant::now();
+    fixture.confirm();
+    let checked = started.elapsed();
+    assert_eq!(
+        names(&fixture.root.join("recordings")),
+        ["series-1-1.duckdb"]
+    );
+    let folder = fixture.path.join("flush");
+    fs::create_dir_all(&folder).unwrap();
+    let small: Vec<_> = (0..500)
+        .map(|n| {
+            let path = folder.join(format!("{n}.bin"));
+            fs::write(&path, [7_u8; 4096]).unwrap();
+            path
+        })
+        .collect();
+    let started = std::time::Instant::now();
+    small.iter().for_each(|path| disk::flush(path).unwrap());
+    let flushed_small = started.elapsed();
+    let large = folder.join("grande.bin");
+    fs::write(&large, &big).unwrap();
+    let started = std::time::Instant::now();
+    disk::flush(&large).unwrap();
+    let flushed_large = started.elapsed();
+    println!(
+        "MEDIDA: Confirm con una grabación de 64 MiB comprobada y movida: {checked:?}; \
+         flush de 500 archivos de 4 KiB: {flushed_small:?}; \
+         flush de 64 MiB recién escritos: {flushed_large:?}"
+    );
 }

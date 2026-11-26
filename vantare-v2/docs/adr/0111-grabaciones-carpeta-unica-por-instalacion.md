@@ -578,8 +578,13 @@ decisión; precisa seis puntos del texto de arriba.
    primer nivel de la raíz, que ni se mira ni se sigue. Si esa entrada es un
    enlace, una unión o un archivo, Vantare no la usa: la sesión no le dice al
    núcleo que grabe, no adopta nada y lo anota una vez; el Hub arranca y
-   Análisis lo explica con un aviso propio. No se graba ni se lee al otro lado
-   del enlace. Las versiones ya publicadas siguen rechazándolo: tras una
+   Análisis lo explica con un aviso propio. El núcleo también lo comprueba al
+   arrancar, y su poda nunca sigue un enlace puesto dentro de una carpeta
+   normal: el motor ya no mira dentro, así que solo eso impide borrar fuera.
+   «Detenida, carpeta no válida» es solo del anfitrión: cuando el núcleo
+   cierra así una grabación que no pudo empezar, Análisis lo muestra como un
+   fallo pasajero. No se graba ni se lee al otro lado del enlace. Las
+   versiones ya publicadas siguen rechazándolo: tras una
    vuelta atrás a una de ellas, quien tenga el enlace puesto no podrá abrir
    Vantare hasta quitarlo.
 

@@ -788,5 +788,8 @@ o un archivo. En esos tres casos Vantare no la usa: Análisis no lee nada
 («Directorio no regular») y `analysis.status` responde «detenida, carpeta no
 válida» (`stopped` + `invalidDirectory`, valores que ya estaban en el
 contrato). La interfaz lo muestra con un texto propio que explica cómo
-arreglarlo. El núcleo nunca escribe esa pareja, así que no se confunde con un
-fallo suyo. La interfaz sigue sin ver rutas y el protocolo no cambia.
+arreglarlo. La pareja es solo del anfitrión: el núcleo cierra como `stopped`
+con la causa «directorio inválido» una grabación que no pudo empezar en una
+carpeta normal (un fallo pasajero), y el anfitrión lo traduce a «causa
+desconocida» para que el aviso de la carpeta no salga sin motivo. La interfaz
+sigue sin ver rutas y el protocolo no cambia.

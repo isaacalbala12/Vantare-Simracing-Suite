@@ -547,6 +547,12 @@ disco (`mklink /J`), un enlace o, por error, un archivo.
   (sin él no graba en ningún sitio), no llama a la adopción y deja una línea,
   una sola vez, en `installer-log.txt`. El Hub arranca y Análisis explica por
   qué no hay grabaciones (ver el README del anfitrión).
+- **El núcleo lo comprueba también**: si le llega una carpeta que no es una
+  carpeta normal, no escribe, no poda y no lee nada en ella.
+- **La poda no sigue enlaces**: como el motor ya no mira dentro de la carpeta
+  única, un enlace puesto ahí (con nombre de grabación, como WAL de una
+  grabación o dentro de un temporal) no se sigue ni se borra; la grabación se
+  queda con él y la poda lo anota, sin la ruta.
 - `packaging/installer-cleanup.ps1` solo comprueba las carpetas **por encima**
   de las rutas que toca (la raíz, su temporal y su petición), no el contenido
   de la raíz: no le afecta.

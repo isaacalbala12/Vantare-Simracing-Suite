@@ -4371,9 +4371,13 @@ fn foreign_data_are_refused_before_the_orphan_marker_or_any_staging() {
 /// DuckDB's checksum of what follows the first 8 bytes of a block: 5381, and
 /// each further 8-byte word multiplied by a constant and xored in.
 fn seal(block: &mut [u8]) {
-    let sum = block[8..].chunks_exact(8).fold(5381_u64, |sum, word| {
-        sum ^ u64::from_le_bytes(word.try_into().unwrap()).wrapping_mul(0xbf58_476d_1ce4_e5b9)
-    });
+    let sum = block[8..]
+        .as_chunks::<8>()
+        .0
+        .iter()
+        .fold(5381_u64, |sum, word| {
+            sum ^ u64::from_le_bytes(*word).wrapping_mul(0xbf58_476d_1ce4_e5b9)
+        });
     block[..8].copy_from_slice(&sum.to_le_bytes());
 }
 /// A recording as DuckDB leaves it: its mark, two database headers (the newest
@@ -4387,7 +4391,9 @@ fn duck(blocks: u64, fill: u8) -> Vec<u8> {
             bytes[at + offset..at + offset + 8].copy_from_slice(&value.to_le_bytes());
         }
     }
-    bytes.chunks_exact_mut(4096).for_each(seal);
+    for header in bytes.as_chunks_mut::<4096>().0 {
+        seal(header);
+    }
     for _ in 0..blocks {
         let mut block = vec![fill; 4096];
         seal(&mut block);
@@ -4609,7 +4615,7 @@ fn a_reverted_orphan_gives_its_whole_recordings_and_keeps_the_broken_ones() {
     assert_eq!(read(&single.join(moved[0])), whole);
     assert_eq!(read(&single.join(moved[1])), SESSION);
     assert_eq!(read(&single.join(moved[2])), whole);
-    let broken = files[2..].each_ref().map(|(name, _)| *name);
+    let broken: Vec<&str> = files[2..].iter().map(|(name, _)| *name).collect();
     assert_eq!(names(&recordings(&b)), broken);
     for (name, bytes) in &files[2..] {
         assert_eq!(&read(&recordings(&b).join(name)), bytes, "{name}");

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { cp, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { basename, join, resolve, sep } from "node:path";
 import { chromium } from "playwright-core";
@@ -191,6 +192,10 @@ try {
   const visibility = await page.evaluate(() => document.visibilityState);
   if (background !== (visibility === "hidden"))
     throw new Error(`Unexpected window visibility: ${visibility}`);
+  // Positive control: the same query must see the live host of the generation,
+  // so an empty answer after the exit really means no survivors.
+  if (!generationProcesses(generation).includes(host.pid ?? -1))
+    throw new Error("Process query cannot see the running host");
   // A minimized window has nothing to capture.
   if (!background)
     await page.screenshot({ path: join(evidence, "host-local.png") });
@@ -241,6 +246,7 @@ try {
         background,
         windowVisibility: visibility,
         cwd: "QA root, outside the checkout",
+        generationProcessesWhileRunning: "host seen (positive control)",
         generationProcessesAfterExit: 0,
         controlEofExit: crash ? null : 0,
         rendererCrashExit: crash ? 1 : null,
@@ -268,12 +274,20 @@ function generationProcesses(generation: string): number[] {
     { encoding: "utf8", windowsHide: true },
   );
   const found: unknown = JSON.parse(output || "[]");
-  const prefix = (generation + sep).toLowerCase();
+  // Compare resolved paths: 8.3 names and junctions must not hide a survivor.
+  const real = (path: string) => {
+    try {
+      return realpathSync.native(path).toLowerCase();
+    } catch {
+      return path.toLowerCase();
+    }
+  };
+  const prefix = real(generation) + sep;
   return (Array.isArray(found) ? found : [found])
     .filter(
       (item): item is { ProcessId: number; ExecutablePath: string } =>
         typeof item?.ExecutablePath === "string" &&
-        item.ExecutablePath.toLowerCase().startsWith(prefix),
+        real(item.ExecutablePath).startsWith(prefix),
     )
     .map((item) => item.ProcessId);
 }

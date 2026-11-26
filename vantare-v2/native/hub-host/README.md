@@ -55,10 +55,15 @@ entrada en Live cierra el Hub. `hub-ready` solo se publica tras mostrar la venta
 
 ## Arranque instalado y confirmación (P6, #2785)
 
-Electron envía `ready` una sola vez, cuando la ventana ya se pintó (visible o
-minimizada) **y** el renderer se conectó desde el marco principal de confianza.
-El renderer solo se conecta cuando React ha montado el árbol: un bundle que
-falla al montar no confirma y la raíz revierte al vencer su minuto. Con una
+Electron envía `ready` una sola vez, cuando se cumplen tres cosas: la ventana
+ya se pintó (visible o minimizada), el renderer recibió el puerto con el `hello`
+y el contenido real se montó. Lo último lo avisa `vantare:mounted`, que el
+preload envía desde `HubMounted` y main solo acepta del marco principal de
+confianza; una navegación lo olvida. `HubMounted` está en el Shell y en las
+puertas que preguntan algo al usuario (cuenta, privacidad, bienvenida), nunca
+en una pantalla de carga o de error: si el contenido falla al montar, no hay
+confirmación y la raíz revierte al vencer su minuto. Cubre los fallos al montar;
+un fallo posterior a ese primer montaje ya no revierte la actualización. Con una
 versión de protocolo distinta no se envía nunca. El anfitrión rechaza `ready`
 antes de un `hello` compatible y solo escribe `hub-ready` con el token de este
 arranque (32 hex), una vez y de forma atómica. Si tras mostrarse la generación

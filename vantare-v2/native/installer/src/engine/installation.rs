@@ -562,7 +562,8 @@ mod walk_tests {
         std::os::windows::fs::symlink_dir(&outside, tree.join("recordings")).unwrap();
         assert!(super::walk(&tree, false).is_err());
         assert!(super::walk(&tree, true).is_err());
-        assert!(super::walk_installation(&tree).unwrap().is_empty());
+        let nothing: Vec<(std::path::PathBuf, bool)> = Vec::new();
+        assert_eq!(super::walk_installation(&tree).unwrap(), nothing);
         std::fs::remove_dir(tree.join("recordings")).unwrap();
         std::fs::remove_dir_all(base).unwrap();
     }

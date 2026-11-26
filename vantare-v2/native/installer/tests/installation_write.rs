@@ -4368,7 +4368,7 @@ fn foreign_data_are_refused_before_the_orphan_marker_or_any_staging() {
 // ADR 0111 T3: Confirm and Uninstall gather the recordings of every generation:
 // the active one first, then the orphans from the newest, never `previous` nor
 // the generation an unconfirmed update staged; a recording moves only if whole.
-/// DuckDB's checksum of what follows the first 8 bytes of a block: 5381, and
+/// `DuckDB` checksum of what follows the first 8 bytes of a block: 5381, and
 /// each further 8-byte word multiplied by a constant and xored in.
 fn seal(block: &mut [u8]) {
     let sum = block[8..]
@@ -4380,7 +4380,7 @@ fn seal(block: &mut [u8]) {
         });
     block[..8].copy_from_slice(&sum.to_le_bytes());
 }
-/// A recording as DuckDB leaves it: its mark, two database headers (the newest
+/// A recording as `DuckDB` leaves it: its mark, two database headers (the newest
 /// counts `blocks` of 4 096 bytes; the older one, more than the file has) and
 /// those blocks, filled with `fill`; every one sealed with its checksum.
 fn duck(blocks: u64, fill: u8) -> Vec<u8> {
@@ -4401,7 +4401,7 @@ fn duck(blocks: u64, fill: u8) -> Vec<u8> {
     }
     bytes
 }
-/// A real recording of the DuckDB in use: five blocks of 16 384 bytes.
+/// A real recording of the `DuckDB` in use: five blocks of 16 384 bytes.
 /// A copy of `hub-host/src/analysis/fixtures/session-v1.duckdb` (same SHA-256).
 const SESSION: &[u8] = include_bytes!("fixtures/session-v1.duckdb");
 fn born(path: &Path, seconds: u64) -> std::time::SystemTime {

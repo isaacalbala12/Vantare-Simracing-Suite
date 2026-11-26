@@ -50,6 +50,14 @@ impl SeriesRecording {
             pending_status: None,
         };
         if let Some(directory) = directory {
+            // ADR 0111 T2b: el supervisor reinicia el núcleo con los mismos
+            // argumentos, así que el propio núcleo nunca usa una carpeta que sea
+            // un enlace, una unión o un archivo: ni escribe, ni poda, ni lee.
+            if std::fs::symlink_metadata(directory).is_ok_and(|found| !prune::folder(&found)) {
+                eprintln!("grabación de series desactivada: la carpeta no es una carpeta normal");
+                recording.failed = true;
+                return recording;
+            }
             let mut status = Status::new(directory, epoch, prune::PruneReport::default());
             let mut cause = "directorio inválido";
             let result = (|| {

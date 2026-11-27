@@ -576,7 +576,13 @@ mod tests {
         assert_eq!(r.claim(&p, first, failed + MINUTE), Ok(()));
         r.completed(RenewalOutcome::Transient, failed + MINUTE);
         assert_eq!(
-            r.claim(&p, first, failed + MINUTE * 3 - Duration::from_millis(1)),
+            r.claim(
+                &p,
+                first,
+                (failed + MINUTE * 3)
+                    .checked_sub(Duration::from_millis(1))
+                    .expect("injected boundary")
+            ),
             Err(Skip::Backoff)
         );
         assert_eq!(r.claim(&p, first, failed + MINUTE * 3), Ok(()));

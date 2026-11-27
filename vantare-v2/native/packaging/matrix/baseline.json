@@ -335,9 +335,9 @@
                            "exit":  0
                        },
     "retained-install":  {
-                             "sha256":  "e3b2821d17736a1da5d9211e4fda218381e9ecbbcd1dfbafe85dd2369185292f",
+                             "sha256":  "d230d5b7cb7a7970e3eaa9af80928894fbdae0ad48dad4ab91c8870e7e452027",
                              "existing_data_files":  1,
-                             "exit":  2
+                             "exit":  0
                          },
     "retained-update":  {
                             "sha256":  "e3b2821d17736a1da5d9211e4fda218381e9ecbbcd1dfbafe85dd2369185292f",

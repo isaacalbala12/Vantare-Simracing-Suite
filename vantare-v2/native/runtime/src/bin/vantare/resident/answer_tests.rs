@@ -430,18 +430,9 @@ fn run_import_review_fixture(root: &std::path::Path) {
         )
         .unwrap(),
     );
-    let question = loop {
-        let progress = owner
-            .chain
-            .as_ref()
-            .unwrap()
-            .progress
-            .recv_timeout(Duration::from_secs(5))
-            .unwrap();
-        if let Some(question) = progress.decision {
-            break question;
-        }
-    };
+    let question = super::super::tests::first_question(&owner.chain.as_ref().unwrap().progress)
+        .1
+        .expect("pregunta de confianza");
     assert_eq!(question.actions, [Action::Trust, Action::Cancel]);
     let pages_digest =
         vantare_services::content_hash(&frame_pages(&review_pages(&question.message).unwrap()));

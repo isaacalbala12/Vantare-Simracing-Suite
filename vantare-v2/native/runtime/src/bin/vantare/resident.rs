@@ -780,6 +780,54 @@ mod tests {
         assert!(imported);
     }
 
+    /// Pasos fallidos y primera pregunta de una cadena. Sin plazo de reloj: si el
+    /// worker acaba o entra en pánico suelta el emisor y la pregunta es `None`.
+    pub(super) fn first_question(
+        progress: &mpsc::Receiver<launcher::chain::Progress>,
+    ) -> (Vec<String>, Option<launcher::chain::Decision>) {
+        let mut failures = Vec::new();
+        let question = progress.iter().find_map(|event| {
+            if event.status == launcher::chain::Status::Failed {
+                failures.push(event.message);
+            }
+            event.decision
+        });
+        (failures, question)
+    }
+
+    #[test]
+    fn question_wait_ends_without_a_clock_when_the_chain_never_asks() {
+        for panics in [false, true] {
+            let root = std::env::temp_dir().join(format!(
+                "resident-silent-{}",
+                vantare_services::random_id().expect("id QA")
+            ));
+            fs::create_dir(&root).expect("raíz QA");
+            let mut profile = launcher::Profile::new("qa".into(), "QA".into());
+            // Un solo paso fallido no tiene siguiente: la cadena acaba sin preguntar.
+            profile.steps.push(launcher::Step {
+                app_id: "obs".into(),
+                delay_seconds: 0,
+                args_override: None,
+            });
+            let mut chain = Chain::start(
+                Document::default(),
+                profile,
+                move |_| {
+                    assert!(!panics, "QA: el worker muere antes de preguntar");
+                    Discovery::default()
+                },
+                launcher::processes::Shared::default(),
+                None,
+                &root.join("launcher.json"),
+            )
+            .expect("cadena QA");
+            assert!(first_question(&chain.progress).1.is_none());
+            assert_eq!(chain.shutdown().is_err(), panics);
+            fs::remove_dir_all(root).expect("limpiar QA");
+        }
+    }
+
     pub(super) fn failure_decision_owner(root: &std::path::Path) -> Owner {
         let mut owner = Owner::new(root.join("launcher.json"), false);
         let mut profile = launcher::Profile::new("qa".into(), "QA".into());
@@ -800,30 +848,23 @@ mod tests {
                 args_override: None,
             });
         }
-        let found = Discovery::scan(&owner.document.apps, Sources::default());
+        // Sin descubrimiento cada paso falla antes de recorrer los procesos del
+        // equipo o de arrancar nada: la pregunta no depende de la carga (#2841).
+        // El arranque real fallido lo cubre `vantare-launcher`.
         owner.chain = Some(
             Chain::start(
                 owner.document.clone(),
                 profile,
-                move |_| found,
+                |_| Discovery::default(),
                 owner.processes.clone(),
                 None,
                 &owner.path,
             )
             .expect("cadena QA"),
         );
-        let decision = loop {
-            let progress = owner
-                .chain
-                .as_ref()
-                .expect("cadena")
-                .progress
-                .recv_timeout(Duration::from_secs(5))
-                .expect("decisión tras fallo de spawn");
-            if let Some(decision) = progress.decision {
-                break decision;
-            }
-        };
+        let (failures, decision) = first_question(&owner.chain.as_ref().expect("cadena").progress);
+        assert_eq!(failures, ["app sin descubrimiento"]);
+        let decision = decision.expect("pregunta tras el paso fallido");
         assert_eq!(
             decision.actions,
             [

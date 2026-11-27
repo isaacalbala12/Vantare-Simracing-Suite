@@ -19,31 +19,35 @@ const entries: readonly {
   { id: "engineer", icon: "v-engineer", label: "shell.engineer" },
   { id: "settings", icon: "v-sliders", label: "settings.title" },
 ];
+// «Funciones en pruebas» (Ajustes › Privacidad): testers on any channel who
+// switched the preference on, and only with the signed right of that module.
+// This only decides what the Hub shows; it grants nothing.
+function betaOpen(
+  access: AccessView,
+  right: "analysis" | "strategy",
+  analisisBeta?: boolean,
+) {
+  return analisisBeta === true && access.tester && access[right];
+}
 export function visible(
   section: Section,
   access: AccessView,
-  channel?: string,
   analisisBeta?: boolean,
 ) {
-  if (section === "analysis")
-    return analisisBeta === true && channel === "nightly";
+  if (section === "analysis") return betaOpen(access, "analysis", analisisBeta);
   if (section === "testing") return access.verified && !access.blocked;
   if (section === "calendar")
     return access.verified && !access.blocked && access.tester;
   return true;
 }
-// Strategy opens under the same rule as Analysis: the «Funciones en pruebas»
-// preference on the nightly channel. Everyone else keeps «Próximamente».
-export function strategyOpen(channel?: string, analisisBeta?: boolean) {
-  return analisisBeta === true && channel === "nightly";
+// Strategy opens under the same rule as Analysis; otherwise «Próximamente».
+export function strategyOpen(access: AccessView, analisisBeta?: boolean) {
+  return betaOpen(access, "strategy", analisisBeta);
 }
 export function lock(
   section: Section,
   access: AccessView,
-  channel?: string,
   analisisBeta?: boolean,
-  // the channel Strategy goes by when it is not the one above (see Shell)
-  strategyChannel = channel,
 ): string | undefined {
   if (
     section === "analysis" ||
@@ -52,7 +56,7 @@ export function lock(
     section === "account"
   )
     return undefined;
-  if (section === "strategy" && strategyOpen(strategyChannel, analisisBeta))
+  if (section === "strategy" && strategyOpen(access, analisisBeta))
     return undefined;
   if (section === "strategy" || section === "engineer") return t("shell.soon");
   if (access.blocked) return t("shell.blocked");
@@ -60,14 +64,9 @@ export function lock(
   if (section === "calendar" && !access.calendar) return t("shell.soon");
   return undefined;
 }
-export function navigation(
-  access: AccessView,
-  channel?: string,
-  analisisBeta?: boolean,
-  strategyChannel = channel,
-) {
+export function navigation(access: AccessView, analisisBeta?: boolean) {
   return entries
-    .filter((entry) => visible(entry.id, access, channel, analisisBeta))
+    .filter((entry) => visible(entry.id, access, analisisBeta))
     .map((entry) => ({
       ...entry,
       label: t(
@@ -75,7 +74,7 @@ export function navigation(
           ? "shell.reports"
           : entry.label,
       ),
-      locked: lock(entry.id, access, channel, analisisBeta, strategyChannel),
+      locked: lock(entry.id, access, analisisBeta),
     }));
 }
 export { isSection } from "./sections";

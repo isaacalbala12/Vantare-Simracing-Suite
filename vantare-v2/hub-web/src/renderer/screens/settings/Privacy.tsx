@@ -13,7 +13,6 @@ import type {
 import { useAccountSession } from "../../app/AccountSession";
 import { coreKey, offline, useHost } from "../../app/Host";
 import { useSettings } from "../../app/SettingsState";
-import { useUpdatesChannel } from "../../app/UpdatesState";
 import { HostFailure } from "../../bridge/client";
 import { t } from "../../i18n/es";
 import { privacyText as text } from "../../i18n/privacy.es";
@@ -32,7 +31,6 @@ const key = ["privacy"] as const;
 export function Privacy() {
   const { client } = useHost();
   const settings = useSettings();
-  const channel = useUpdatesChannel();
   const session = useAccountSession();
   const { generation, confirmed } = useSyncExternalStore(
     session.subscribe,
@@ -328,7 +326,7 @@ export function Privacy() {
         <Callout tone="err" title={t("privacy.policyFailed")} />
       )}
       <RecordingSettings />
-      {channel === "nightly" && (
+      {core.access.tester && (
         <SettingGroup number={3} title={t("privacy.betaFeatures")}>
           <SettingRow
             label={t("privacy.analysisBeta")}

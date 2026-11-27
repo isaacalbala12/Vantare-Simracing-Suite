@@ -127,7 +127,7 @@ async function open(page: Page, base: string, scene: string, conflict = false) {
     );
   }
 }
-// «Funciones en pruebas» on nightly opens the real screen from the menu; without
+// «Funciones en pruebas» opens the real screen from a tester's menu; without
 // it the entry stays «Próximamente». The scene is the person: it is not a door.
 async function checkMenuEntry(
   page: Page,

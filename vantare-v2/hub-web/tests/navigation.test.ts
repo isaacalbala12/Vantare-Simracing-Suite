@@ -49,59 +49,78 @@ describe("navigation from core access", () => {
   });
 });
 
-it.each(["nightly", "testers", "master", undefined])(
-  "gates Analysis on both the beta preference and channel %s",
-  (channel) => {
-    for (const analysis of [true, false]) {
-      const access = { ...anonymous, analysis };
-      for (const enabled of [true, false, undefined]) {
-        const expected = channel === "nightly" && enabled === true;
-        expect(visible("analysis", access, channel, enabled)).toBe(expected);
-        expect(
-          navigation(access, channel, enabled).some(
-            ({ id }) => id === "analysis",
-          ),
-        ).toBe(expected);
-      }
-      expect(lock("analysis", access)).toBeUndefined();
-    }
+// «Funciones en pruebas»: tester right, the module's own signed right and the
+// preference. The update channel plays no part.
+const tester: AccessView = {
+  verified: true,
+  blocked: false,
+  tester: true,
+  calendar: true,
+  engineer: true,
+  strategy: true,
+  analysis: true,
+};
+it.each([
+  ["a tester with both rights", tester, true, true],
+  [
+    "a tester without either right",
+    { ...tester, analysis: false, strategy: false },
+    false,
+    false,
+  ],
+  [
+    "a tester with the Analysis right only",
+    { ...tester, strategy: false },
+    true,
+    false,
+  ],
+  [
+    "a tester with the Strategy right only",
+    { ...tester, analysis: false },
+    false,
+    true,
+  ],
+  [
+    "a verified non-tester with both rights",
+    { ...tester, tester: false },
+    false,
+    false,
+  ],
+  ["a blocked account", { ...anonymous, blocked: true }, false, false],
+  ["an anonymous account", anonymous, false, false],
+])(
+  "with the beta on, opens for %s exactly what it holds",
+  (_, access, analysis, strategy) => {
+    expect(visible("analysis", access, true)).toBe(analysis);
+    expect(navigation(access, true).some(({ id }) => id === "analysis")).toBe(
+      analysis,
+    );
+    expect(lock("analysis", access)).toBeUndefined();
+    expect(strategyOpen(access, true)).toBe(strategy);
+    // the Strategy entry stays visible in every case; only the lock changes
+    expect(visible("strategy", access, true)).toBe(true);
+    expect(
+      navigation(access, true).find(({ id }) => id === "strategy")?.locked,
+    ).toBe(strategy ? undefined : "Próximamente");
   },
 );
-
-it.each(["nightly", "testers", "master", undefined])(
-  "opens Strategy only with the beta preference on channel %s, like Analysis",
-  (channel) => {
-    for (const enabled of [true, false, undefined]) {
-      const open = channel === "nightly" && enabled === true;
-      expect(strategyOpen(channel, enabled)).toBe(open);
-      // the menu entry stays visible in every case; only the lock changes
-      expect(visible("strategy", anonymous, channel, enabled)).toBe(true);
-      expect(lock("strategy", anonymous, channel, enabled)).toBe(
-        open ? undefined : "Próximamente",
-      );
-      expect(
-        navigation(anonymous, channel, enabled).some(
-          ({ id }) => id === "strategy",
-        ),
-      ).toBe(true);
-    }
+it.each([false, undefined])(
+  "keeps Strategy «Próximamente» and Analysis out of a tester's menu with the beta %s",
+  (enabled) => {
+    expect(strategyOpen(tester, enabled)).toBe(false);
+    expect(lock("strategy", tester, enabled)).toBe("Próximamente");
+    expect(visible("analysis", tester, enabled)).toBe(false);
+    expect(
+      navigation(tester, enabled).some(({ id }) => id === "analysis"),
+    ).toBe(false);
   },
 );
-it("never opens Engineer, whatever the beta preference or channel", () => {
-  expect(lock("engineer", anonymous, "nightly", true)).toBe("Próximamente");
+it("never opens Engineer, even for a tester with the beta on", () => {
+  expect(lock("engineer", tester, true)).toBe("Próximamente");
 });
-
-it.each(["dev", "nightly ", "Nightly", "", "nightly\n"])(
-  "does not open Strategy or Analysis on the unknown channel %j",
-  (channel) => {
-    expect(strategyOpen(channel, true)).toBe(false);
-    expect(lock("strategy", anonymous, channel, true)).toBe("Próximamente");
-    expect(visible("analysis", anonymous, channel, true)).toBe(false);
-  },
-);
 it("names the future modules in Spanish", () => {
   const names = Object.fromEntries(
-    navigation(anonymous, "nightly", true).map(({ id, label }) => [id, label]),
+    navigation(anonymous, true).map(({ id, label }) => [id, label]),
   );
   expect(names.strategy).toBe("Estrategia");
   expect(names.engineer).toBe("Ingeniero");

@@ -12,6 +12,8 @@ export function analysisScene(context: MockContext, clock = Date.now) {
     ...context.core.access,
     verified: name !== "signin",
     blocked: false,
+    // Analysis is a «Funciones en pruebas» section: only testers reach it.
+    tester: name !== "signin",
     analysis: name !== "denied",
   };
   context.core.rights = "connected";

@@ -175,6 +175,10 @@ export function coreAccess(
         blocked: false,
         tester: policy.grant.tester,
         calendar: policy.grant.calendar,
+        // The real host grants these from the signed tester rights.
+        ...(policy.grant.tester
+          ? { engineer: true, strategy: true, analysis: true }
+          : {}),
       }
     : {
         verified: false,

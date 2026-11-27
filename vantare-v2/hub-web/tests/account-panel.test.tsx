@@ -13,7 +13,13 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { Reply, Request } from "../src/contract/generated/contract";
 import { AccountProvider, useAccount } from "../src/renderer/app/AccountState";
-import { HostProvider, settingsKey, useHost } from "../src/renderer/app/Host";
+import {
+  coreKey,
+  HostProvider,
+  offline,
+  settingsKey,
+  useHost,
+} from "../src/renderer/app/Host";
 import { SectionChromeProvider } from "../src/renderer/app/SectionChrome";
 import { Client, HostFailure } from "../src/renderer/bridge/client";
 import { accessText } from "../src/renderer/i18n/access.es";
@@ -482,38 +488,53 @@ it("drops the reset confirmation when the account changes before confirmation", 
   ).toHaveLength(0);
 });
 
-// «Estrategia» se abre con «Funciones en pruebas» en nightly: la ficha de Cuenta no
-// puede seguir diciendo «Próximamente» (#2741). El host no lo sabe: lo decide el Hub.
+// «Estrategia» se abre con «Funciones en pruebas» a los testers: la ficha de Cuenta
+// no puede seguir diciendo «Próximamente» (#2741). El host no lo sabe: lo decide el Hub.
 const pill = (title: string) =>
   screen
     .getByText(title, { selector: "strong" })
     .closest(".v-account-module")
     ?.querySelector(".v-account-pill")?.textContent;
+const testerHelp =
+  "Gratis durante la beta. Análisis y Estrategia están en pruebas: actívalos en Ajustes › Privacidad › Funciones en pruebas. Ingeniero llegará más adelante.";
+const tester = { verified: true, tester: true, strategy: true };
 it.each([
-  ["nightly", true, text.inTesting],
-  ["nightly", false, text.soon],
-  ["nightly", undefined, text.soon],
-  ["testers", true, text.soon],
-  ["master", true, text.soon],
-  ["dev", true, text.soon],
-  [undefined, true, text.soon],
+  ["a tester with the beta on", tester, true, text.inTesting, testerHelp],
+  ["a tester with the beta off", tester, false, text.soon, testerHelp],
+  [
+    "a tester without the Strategy right",
+    { ...tester, strategy: false },
+    true,
+    text.soon,
+    testerHelp,
+  ],
+  [
+    "a non-tester with the beta on",
+    { ...tester, tester: false },
+    true,
+    text.soon,
+    text.modulesHelp,
+  ],
+  ["a blocked account", { blocked: true }, true, text.soon, text.modulesHelp],
 ])(
-  "the Strategy card on %s with the beta %s says %s, and Engineer stays «Próximamente»",
-  async (channel, beta, expected) => {
+  "the Modules card for %s agrees between Strategy and the help line",
+  async (_, access, beta, expected, help) => {
     mount("cuenta-sesion", true);
     await screen.findByText("Estrategia", { selector: "strong" });
     const cache = caches.at(-1);
     act(() => {
-      if (channel) cache?.setQueryData(["updates"], { channel });
+      cache?.setQueryData(coreKey, {
+        ...offline,
+        access: { ...offline.access, ...access },
+      });
       cache?.setQueryData(settingsKey, { general: { analisisBeta: beta } });
     });
-    await waitFor(() => expect(pill("Estrategia")).toBe(expected));
-    expect(pill("Ingeniero")).toBe(text.soon);
-    // the help line under «Módulos» agrees with the card
-    const help = document.querySelector(".v-account-modules > p")?.textContent;
-    expect(help).toBe(
-      expected === text.inTesting ? text.modulesHelpTesting : text.modulesHelp,
+    await waitFor(() =>
+      expect(
+        document.querySelector(".v-account-modules > p")?.textContent,
+      ).toBe(help),
     );
-    expect(text.modulesHelpTesting).not.toBe(text.modulesHelp);
+    expect(pill("Estrategia")).toBe(expected);
+    expect(pill("Ingeniero")).toBe(text.soon);
   },
 );

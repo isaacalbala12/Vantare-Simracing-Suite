@@ -45,7 +45,6 @@ const scenes = {
   timeout: "05c-error",
   settings: "06-ajustes-grabacion",
   "settings-off": "06-ajustes-grabacion",
-  "settings-denied": "06-ajustes-grabacion",
 } as const;
 try {
   const context = await browser.newContext({
@@ -75,12 +74,7 @@ try {
                 : 1355
               : 900,
         });
-        const mock =
-          scene === "cancelled"
-            ? "opening"
-            : scene === "settings-denied"
-              ? "denied"
-              : scene;
+        const mock = scene === "cancelled" ? "opening" : scene;
         await page.goto(`${base}?escena=analysis-qa-${mock}`);
         const recordings = page.getByRole("tab", {
           name: t.recordings,

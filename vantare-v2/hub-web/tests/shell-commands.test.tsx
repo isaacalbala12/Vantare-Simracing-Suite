@@ -721,6 +721,24 @@ it("Ctrl L uses the first favorite supplied by the host and preserves the select
   );
 });
 
+// A verified account as the host publishes it: a tester holds both module rights.
+function setAccess(patch: Partial<CoreStatus["access"]> = {}) {
+  const core = cache.getQueryData<CoreStatus>(coreKey);
+  if (!core) throw new Error("Missing core state");
+  cache.setQueryData(coreKey, {
+    ...core,
+    access: {
+      ...core.access,
+      verified: true,
+      blocked: false,
+      tester: true,
+      analysis: true,
+      strategy: true,
+      ...patch,
+    },
+  });
+}
+
 it("takes an open Analysis route back to Home when the beta is disabled", async () => {
   await mount();
   fireEvent.keyDown(document.body, { key: "Escape" });
@@ -731,7 +749,7 @@ it("takes an open Analysis route back to Home when the beta is disabled", async 
     general: { ...settings.general, analisisBeta },
   });
   act(() => {
-    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    setAccess();
     cache.setQueryData(settingsKey, preference(true));
   });
   const analysis = await screen.findByRole("button", { name: "Análisis" });
@@ -750,23 +768,34 @@ it("takes an open Analysis route back to Home when the beta is disabled", async 
   });
 });
 
-it("offers the Analysis beta switch in Settings only on the nightly channel", async () => {
-  await mount();
-  fireEvent.keyDown(document.body, { key: "Escape" });
-  act(() =>
-    cache.setQueryData(["updates"], { ...updates, channel: "testers" }),
-  );
-  fireEvent.click(screen.getByRole("tab", { name: "Privacidad" }));
-  await screen.findByRole("switch", { name: "Enviar informes de fallos" });
-  expect(screen.queryByText("Funciones en pruebas")).toBeNull();
-  act(() =>
-    cache.setQueryData(["updates"], { ...updates, channel: "nightly" }),
-  );
-  await screen.findByText("Funciones en pruebas");
-  expect(
-    screen.getByRole("switch", { name: "Análisis y Estrategia (beta)" }),
-  ).toBeTruthy();
-});
+it.each(["nightly", "testers", "master"])(
+  "offers «Funciones en pruebas» in Settings to testers only, on %s",
+  async (channel) => {
+    await mount();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    act(() => {
+      cache.setQueryData(["updates"], { ...updates, channel });
+      setAccess({ tester: false });
+    });
+    fireEvent.click(screen.getByRole("tab", { name: "Privacidad" }));
+    await screen.findByRole("switch", { name: "Enviar informes de fallos" });
+    expect(screen.queryByText("Funciones en pruebas")).toBeNull();
+    act(() => setAccess());
+    await screen.findByText("Funciones en pruebas");
+    expect(
+      screen.getByRole("switch", { name: "Análisis y Estrategia (beta)" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Activa Análisis y Estrategia en el menú. Son funciones en pruebas para testers: pueden cambiar o fallar.",
+      ),
+    ).toBeTruthy();
+    act(() => setAccess({ tester: false }));
+    await waitFor(() =>
+      expect(screen.queryByText("Funciones en pruebas")).toBeNull(),
+    );
+  },
+);
 
 function betaSettings(settings: SettingsView) {
   return {
@@ -775,27 +804,37 @@ function betaSettings(settings: SettingsView) {
   };
 }
 
-it("hides Analysis on testers and master even with the beta enabled", async () => {
-  await mount();
-  fireEvent.keyDown(document.body, { key: "Escape" });
-  const settings = cache.getQueryData<SettingsView>(settingsKey);
-  if (!settings) throw new Error("Missing settings");
-  act(() => cache.setQueryData(settingsKey, betaSettings(settings)));
-  for (const channel of ["testers", "master"]) {
-    act(() => cache.setQueryData(["updates"], { ...updates, channel }));
-    await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "Análisis" })).toBeNull(),
-    );
-  }
-});
+it.each(["nightly", "testers", "master"])(
+  "shows Analysis on %s to a tester with the beta, never to anyone else",
+  async (channel) => {
+    await mount();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    const settings = cache.getQueryData<SettingsView>(settingsKey);
+    if (!settings) throw new Error("Missing settings");
+    act(() => {
+      cache.setQueryData(["updates"], { ...updates, channel });
+      cache.setQueryData(settingsKey, betaSettings(settings));
+      setAccess();
+    });
+    await screen.findByRole("button", { name: "Análisis" });
+    for (const missing of [{ tester: false }, { analysis: false }]) {
+      act(() => setAccess(missing));
+      await waitFor(() =>
+        expect(screen.queryByRole("button", { name: "Análisis" })).toBeNull(),
+      );
+      act(() => setAccess());
+      await screen.findByRole("button", { name: "Análisis" });
+    }
+  },
+);
 
-it("returns from Analysis to Home when the channel leaves nightly", async () => {
+it("returns from Analysis to Home when the account stops being a tester", async () => {
   await mount();
   fireEvent.keyDown(document.body, { key: "Escape" });
   const settings = cache.getQueryData<SettingsView>(settingsKey);
   if (!settings) throw new Error("Missing settings");
   act(() => {
-    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
+    setAccess();
     cache.setQueryData(settingsKey, betaSettings(settings));
   });
   const analysis = await screen.findByRole("button", { name: "Análisis" });
@@ -803,9 +842,7 @@ it("returns from Analysis to Home when the channel leaves nightly", async () => 
   await waitFor(() =>
     expect(analysis.getAttribute("aria-current")).toBe("page"),
   );
-  act(() =>
-    cache.setQueryData(["updates"], { ...updates, channel: "testers" }),
-  );
+  act(() => setAccess({ tester: false }));
   await waitFor(() => {
     expect(screen.queryByRole("button", { name: "Análisis" })).toBeNull();
     expect(
@@ -816,62 +853,11 @@ it("returns from Analysis to Home when the channel leaves nightly", async () => 
   });
 });
 
-it("keeps the Shell alive and Analysis hidden when updates.get fails", async () => {
-  await mount();
-  fireEvent.keyDown(document.body, { key: "Escape" });
-  const settings = cache.getQueryData<SettingsView>(settingsKey);
-  if (!settings) throw new Error("Missing settings");
-  act(() => {
-    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
-    cache.setQueryData(settingsKey, betaSettings(settings));
-  });
-  await screen.findByRole("button", { name: "Análisis" });
-  const query = cache.getQueryCache().find({ queryKey: ["updates"] });
-  if (!query) throw new Error("Missing updates query");
-  act(() =>
-    query.setState({
-      status: "error",
-      error: new Error("HostFailure"),
-      fetchStatus: "idle",
-    }),
-  );
-  await waitFor(() =>
-    expect(screen.queryByRole("button", { name: "Análisis" })).toBeNull(),
-  );
-  expect(screen.getByRole("button", { name: "Inicio" })).toBeTruthy();
-}, 15_000);
-
-it("shows the no-access screen with the beta on and no Analysis permission", async () => {
-  await mount();
-  fireEvent.keyDown(document.body, { key: "Escape" });
-  const core = cache.getQueryData<CoreStatus>(coreKey);
-  const settings = cache.getQueryData<SettingsView>(settingsKey);
-  if (!core || !settings) throw new Error("Missing host state");
-  act(() => {
-    cache.setQueryData(coreKey, {
-      ...core,
-      access: {
-        ...core.access,
-        verified: true,
-        blocked: false,
-        analysis: false,
-      },
-    });
-    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
-    cache.setQueryData(settingsKey, betaSettings(settings));
-  });
-  const analysis = await screen.findByRole("button", { name: "Análisis" });
-  fireEvent.click(analysis);
-  expect(
-    await screen.findByText("Análisis no está incluido en tu acceso"),
-  ).toBeTruthy();
-});
-
 // collapsed in jsdom, so the upcoming mark is the lock beside the icon
 const upcoming = (item: HTMLElement | null) =>
   Boolean(item?.querySelector(".v-nav-lock"));
 
-it("opens the real Strategy screen only with the beta on nightly", async () => {
+it("opens the real Strategy screen only for a tester with the beta", async () => {
   await mount();
   fireEvent.keyDown(document.body, { key: "Escape" });
   const settings = cache.getQueryData<SettingsView>(settingsKey);
@@ -881,14 +867,19 @@ it("opens the real Strategy screen only with the beta on nightly", async () => {
     requests.mock.calls.filter(([r]) => r.method.startsWith("strategy."));
   const entry = () =>
     document.querySelector<HTMLElement>('.v-sidebar [data-nav="strategy"]');
-  // today's behaviour: upcoming badge, no calls to the host
-  fireEvent.click(entry() as HTMLElement);
-  await waitFor(() => expect(upcoming(entry())).toBe(true));
-  expect(upcoming(entry())).toBe(true);
-  expect(strategyCalls()).toHaveLength(0);
+  // nightly with the beta on is no longer enough: upcoming badge, no calls
   act(() => {
     cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
     cache.setQueryData(settingsKey, betaSettings(settings));
+    setAccess({ tester: false });
+  });
+  fireEvent.click(entry() as HTMLElement);
+  await waitFor(() => expect(upcoming(entry())).toBe(true));
+  await screen.findByText("Plan de paradas");
+  expect(strategyCalls()).toHaveLength(0);
+  act(() => {
+    cache.setQueryData(["updates"], { ...updates, channel: "testers" });
+    setAccess();
   });
   await waitFor(() => expect(upcoming(entry())).toBe(false));
   fireEvent.click(entry() as HTMLElement);
@@ -896,88 +887,40 @@ it("opens the real Strategy screen only with the beta on nightly", async () => {
   expect(entry()?.getAttribute("aria-current")).toBe("page");
 });
 
-it("returns Strategy to the upcoming page when the channel leaves nightly", async () => {
-  await mount();
-  fireEvent.keyDown(document.body, { key: "Escape" });
-  const settings = cache.getQueryData<SettingsView>(settingsKey);
-  if (!settings) throw new Error("Missing settings");
-  act(() => {
-    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
-    cache.setQueryData(settingsKey, betaSettings(settings));
-  });
-  const entry = () =>
-    document.querySelector<HTMLElement>('.v-sidebar [data-nav="strategy"]');
-  await waitFor(() => expect(upcoming(entry())).toBe(false));
-  fireEvent.click(entry() as HTMLElement);
-  const requests = vi.spyOn(Client.prototype, "request");
-  act(() =>
-    cache.setQueryData(["updates"], { ...updates, channel: "testers" }),
-  );
-  await waitFor(() => expect(upcoming(entry())).toBe(true));
-  requests.mockClear();
-  // the section shows the upcoming page, not the real screen, and asks nothing
-  await screen.findByText("Plan de paradas");
-  expect(screen.getAllByText("Próximamente").length).toBeGreaterThan(0);
-  await waitFor(() =>
-    expect(document.querySelector(".strategy-screen")).toBeNull(),
-  );
-  expect(
-    requests.mock.calls.filter(([x]) => x.method.startsWith("strategy.")),
-  ).toHaveLength(0);
-});
-
-it("keeps the open Strategy screen when reading the channel fails", async () => {
-  await mount();
-  fireEvent.keyDown(document.body, { key: "Escape" });
-  const settings = cache.getQueryData<SettingsView>(settingsKey);
-  if (!settings) throw new Error("Missing settings");
-  act(() => {
-    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
-    cache.setQueryData(settingsKey, betaSettings(settings));
-  });
-  const entry = () =>
-    document.querySelector<HTMLElement>('.v-sidebar [data-nav="strategy"]');
-  await waitFor(() => expect(upcoming(entry())).toBe(false));
-  fireEvent.click(entry() as HTMLElement);
-  await waitFor(() =>
-    expect(document.querySelector(".strategy-screen")).not.toBeNull(),
-  );
-  const query = cache.getQueryCache().find({ queryKey: ["updates"] });
-  if (!query) throw new Error("Missing updates query");
-  act(() =>
-    query.setState({
-      status: "error",
-      error: new Error("HostFailure"),
-      fetchStatus: "idle",
-    }),
-  );
-  await waitFor(() => expect(query.state.status).toBe("error"));
-  expect(upcoming(entry())).toBe(false);
-  expect(document.querySelector(".strategy-screen")).not.toBeNull();
-  expect(entry()?.getAttribute("aria-current")).toBe("page");
-}, 15_000);
-
-it("returns the open Strategy screen to «Próximamente» when the beta is switched off", async () => {
-  await mount();
-  fireEvent.keyDown(document.body, { key: "Escape" });
-  const settings = cache.getQueryData<SettingsView>(settingsKey);
-  if (!settings) throw new Error("Missing settings");
-  act(() => {
-    cache.setQueryData(["updates"], { ...updates, channel: "nightly" });
-    cache.setQueryData(settingsKey, betaSettings(settings));
-  });
-  const entry = () =>
-    document.querySelector<HTMLElement>('.v-sidebar [data-nav="strategy"]');
-  await waitFor(() => expect(upcoming(entry())).toBe(false));
-  fireEvent.click(entry() as HTMLElement);
-  await waitFor(() =>
-    expect(document.querySelector(".strategy-screen")).not.toBeNull(),
-  );
-  act(() => cache.setQueryData(settingsKey, settings));
-  await screen.findByText("Plan de paradas");
-  await waitFor(() => expect(upcoming(entry())).toBe(true));
-  expect(document.querySelector(".strategy-screen")).toBeNull();
-}, 15_000);
+it.each(["beta", "tester", "strategy"])(
+  "returns the open Strategy screen to «Próximamente» without the %s",
+  async (lost) => {
+    await mount();
+    fireEvent.keyDown(document.body, { key: "Escape" });
+    const settings = cache.getQueryData<SettingsView>(settingsKey);
+    if (!settings) throw new Error("Missing settings");
+    act(() => {
+      setAccess();
+      cache.setQueryData(settingsKey, betaSettings(settings));
+    });
+    const entry = () =>
+      document.querySelector<HTMLElement>('.v-sidebar [data-nav="strategy"]');
+    await waitFor(() => expect(upcoming(entry())).toBe(false));
+    fireEvent.click(entry() as HTMLElement);
+    await waitFor(() =>
+      expect(document.querySelector(".strategy-screen")).not.toBeNull(),
+    );
+    act(() => {
+      if (lost === "beta") cache.setQueryData(settingsKey, settings);
+      else setAccess({ [lost]: false });
+    });
+    await screen.findByText("Plan de paradas");
+    await waitFor(() => expect(upcoming(entry())).toBe(true));
+    expect(document.querySelector(".strategy-screen")).toBeNull();
+    // the closed section asks the host nothing else
+    const requests = vi.spyOn(Client.prototype, "request");
+    await act(async () => {});
+    expect(
+      requests.mock.calls.filter(([r]) => r.method.startsWith("strategy.")),
+    ).toHaveLength(0);
+  },
+  15_000,
+);
 it("tells Main that real content mounted once the Shell is up (ISA-2785)", async () => {
   await mount();
   expect(contentMounted).toHaveBeenCalled();

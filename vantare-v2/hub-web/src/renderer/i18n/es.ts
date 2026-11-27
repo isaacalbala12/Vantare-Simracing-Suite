@@ -171,7 +171,7 @@ export const settingsText = {
   "privacy.betaFeatures": "Funciones en pruebas",
   "privacy.analysisBeta": "Análisis y Estrategia (beta)",
   "privacy.analysisBetaHelp":
-    "Activa las secciones Análisis y Estrategia en el menú. Solo están en la versión nightly y pueden cambiar o fallar.",
+    "Activa Análisis y Estrategia en el menú. Son funciones en pruebas para testers: pueden cambiar o fallar.",
   "privacy.crashes": "Enviar informes de fallos",
   "privacy.crashesHelp":
     "Versión, sistema operativo, código de fallo y direcciones numéricas de la pila. Sin mensajes, rutas ni identificador personal.",

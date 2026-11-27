@@ -825,11 +825,12 @@ fn both_renewal_paths_use_the_ack_clock_and_accept_verified_short_runway() {
         ..control::Policy::default()
     };
     // The wall clock moved backwards by three seconds during HTTP. The ACK
-    // is still fresh at the core's effective clock and grants a full new day.
+    // is still fresh at the core's effective clock and grants a new 72 h
+    // lease, beyond the 36 h automatic renewal window.
     let good = control::Policy {
         state: vantare_ipc::control::AccessState::Active,
         checked_at_ms: wall - 3000,
-        signed_until_ms: Some(wall + 24 * 60 * 60_000),
+        signed_until_ms: Some(wall + 72 * 60 * 60_000),
         ..initial.clone()
     };
     let mut state = State::default();
@@ -866,7 +867,7 @@ fn both_renewal_paths_use_the_ack_clock_and_accept_verified_short_runway() {
     );
     let healthy = control::Policy {
         state: vantare_ipc::control::AccessState::Active,
-        signed_until_ms: Some(wall + 24 * 60 * 60_000),
+        signed_until_ms: Some(wall + 72 * 60 * 60_000),
         ..initial
     };
     assert_eq!(

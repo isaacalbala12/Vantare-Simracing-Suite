@@ -7,10 +7,11 @@ use vantare_ipc::{
 
 const MINUTE: Duration = Duration::from_mins(1);
 const DAY: Duration = Duration::from_hours(24);
-// Three retries even at the 15-minute cap, plus 15 minutes for polling/I/O.
-// Never extends the signed credential or the two-second policy freshness TTL.
-#[cfg(test)]
-const RENEW_AHEAD_MS: u64 = 60 * 60_000;
+// Respuesta correcta sin fecha nueva: consulta cada hora mientras quede más
+// de una hora firmada; en la última hora, cada 15 min (tres intentos y margen).
+// Nunca amplía la credencial firmada ni la vigencia de dos segundos.
+const UNCHANGED_GRANT_POLL: Duration = Duration::from_hours(1);
+const UNCHANGED_GRANT_POLL_URGENT: Duration = Duration::from_mins(15);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Origin {
@@ -22,8 +23,10 @@ pub(super) fn live_allowed(policy: &Policy, wall: u64, origin: Origin) -> bool {
     !policy.state.permits_access() || urgent(policy, wall) || origin == Origin::Purchase
 }
 
-use vantare_services::outcome::renewal_deadline;
 pub(super) use vantare_services::outcome::renewal_urgent as urgent;
+#[cfg(test)]
+use vantare_services::outcome::{RENEW_AHEAD_AUTO_MS, RENEW_AHEAD_URGENT_MS};
+use vantare_services::outcome::{renewal_deadline, renewal_due};
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Skip {
     NoSession,
@@ -180,7 +183,8 @@ impl Renewal {
                 && self.verified_at.is_none_or(|last| now.saturating_duration_since(last) >= DAY))
             // Preserve discovery for Free grants that do have a signed deadline.
             || (self.last_attempt.is_none() && policy.catalog == control::CatalogAccess::Free)
-            || urgent(policy, wall);
+            // Fuera de carrera se adelanta a 36 h; en carrera manda `live_allowed`.
+            || renewal_due(policy, wall);
         if !due {
             return Err(Skip::NotDue);
         }
@@ -197,11 +201,15 @@ impl Renewal {
         } else if origin != Origin::Purchase
             && self.last_verified
             && policy.state.permits_access()
-            && urgent(policy, wall)
+            && renewal_due(policy, wall)
         {
             // A valid 200 without new runway is not a transport failure. Poll
-            // calmly at the existing cap; near expiry the one-minute floor wins.
-            MINUTE * 15
+            // calmly; near expiry the one-minute floor wins.
+            if urgent(policy, wall) {
+                UNCHANGED_GRANT_POLL_URGENT
+            } else {
+                UNCHANGED_GRANT_POLL
+            }
         } else {
             self.delay()
         }
@@ -477,6 +485,109 @@ mod tests {
         );
         assert_eq!(renewal.claim(&policy(), 1000, now + MINUTE), Ok(()));
     }
+    #[test]
+    fn automatic_renewal_starts_at_thirty_six_hours_but_a_race_waits_for_the_last_hour() {
+        let now = Instant::now();
+        let at = |left: u64, live: bool| Policy {
+            state: control::AccessState::Active,
+            catalog: control::CatalogAccess::Pro,
+            live,
+            signed_until_ms: Some(1000 + left),
+            ..policy()
+        };
+        let mut r = Renewal::default();
+        r.observe(&account(false));
+        assert_eq!(
+            r.claim(&at(RENEW_AHEAD_AUTO_MS + 1, false), 1000, now),
+            Err(Skip::NotDue)
+        );
+        for left in [RENEW_AHEAD_AUTO_MS, RENEW_AHEAD_URGENT_MS + 1] {
+            assert_eq!(
+                r.claim(&at(left, true), 1000, now),
+                Err(Skip::Live),
+                "{left}"
+            );
+        }
+        assert!(r.last_attempt.is_none(), "sin red en carrera a 36 h");
+        assert_eq!(r.claim(&at(RENEW_AHEAD_AUTO_MS, false), 1000, now), Ok(()));
+        let mut race = Renewal::default();
+        race.observe(&account(false));
+        assert_eq!(
+            race.claim(&at(RENEW_AHEAD_URGENT_MS, true), 1000, now),
+            Ok(())
+        );
+        // Sin fecha firmada no hay adelanto: solo la comprobación diaria.
+        let unsigned = Policy {
+            signed_until_ms: None,
+            ..at(0, false)
+        };
+        let mut daily = Renewal::default();
+        daily.observe(&account(false));
+        daily.attempted(now);
+        daily.completed(RenewalOutcome::Verified, now);
+        assert_eq!(
+            daily.claim(&unsigned, 1000, now + Duration::from_hours(23)),
+            Err(Skip::NotDue)
+        );
+    }
+
+    #[test]
+    fn unchanged_grant_polls_hourly_then_every_fifteen_minutes_and_failures_keep_backoff() {
+        let start = Instant::now();
+        let first = 10_000_000;
+        let end = first + RENEW_AHEAD_AUTO_MS;
+        let mut r = Renewal::default();
+        r.observe(&account(false));
+        let mut p = Policy {
+            state: control::AccessState::Active,
+            catalog: control::CatalogAccess::Pro,
+            signed_until_ms: Some(end),
+            ..policy()
+        };
+        let mut attempts = Vec::new();
+        for minute in 0..=2145_u32 {
+            let wall = first + u64::from(minute) * 60_000;
+            p.checked_at_ms = wall;
+            let now = start + MINUTE * minute;
+            if r.claim(&p, wall, now).is_ok() {
+                attempts.push(minute);
+                // Respuesta correcta, pero el servidor no da fecha nueva.
+                r.completed(RenewalOutcome::Verified, now);
+            }
+        }
+        let hourly: Vec<u32> = (0..35).map(|hour| hour * 60).collect();
+        assert_eq!(attempts[..35], hourly[..], "cada hora con más de 1 h");
+        assert_eq!(attempts[35..], [2100, 2115, 2130, 2145], "última hora");
+        assert_eq!(attempts.len(), 39);
+
+        // Un fallo dentro de la ventana sigue el reintento existente (1, 2 min).
+        let mut r = Renewal::default();
+        r.observe(&account(false));
+        p.checked_at_ms = first;
+        assert_eq!(r.claim(&p, first, start), Ok(()));
+        r.completed(RenewalOutcome::Verified, start);
+        let failed = start + MINUTE * 60;
+        assert_eq!(r.claim(&p, first, failed), Ok(()));
+        r.completed(RenewalOutcome::Transient, failed);
+        assert_eq!(
+            r.claim(&p, first, failed + Duration::from_secs(59)),
+            Err(Skip::Backoff)
+        );
+        assert_eq!(r.claim(&p, first, failed + MINUTE), Ok(()));
+        r.completed(RenewalOutcome::Transient, failed + MINUTE);
+        assert_eq!(
+            r.claim(
+                &p,
+                first,
+                (failed + MINUTE * 3)
+                    .checked_sub(Duration::from_millis(1))
+                    .expect("injected boundary")
+            ),
+            Err(Skip::Backoff)
+        );
+        assert_eq!(r.claim(&p, first, failed + MINUTE * 3), Ok(()));
+    }
+
     fn account(pending: bool) -> Reply {
         Reply::Account {
             session: if pending {
@@ -615,7 +726,7 @@ mod tests {
         let mut p = Policy {
             state: vantare_ipc::control::AccessState::Active,
             catalog: control::CatalogAccess::Founders,
-            signed_until_ms: Some(1000 + RENEW_AHEAD_MS + 1),
+            signed_until_ms: Some(1000 + RENEW_AHEAD_AUTO_MS + 1),
             ..policy()
         };
         assert_eq!(
@@ -630,12 +741,12 @@ mod tests {
             r.claim(&p, 1000, now + Duration::from_hours(24)),
             Err(Skip::NotDue)
         );
-        p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
+        p.signed_until_ms = Some(1000 + RENEW_AHEAD_AUTO_MS + 1);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Err(Skip::NotDue));
-        p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS);
+        p.signed_until_ms = Some(1000 + RENEW_AHEAD_AUTO_MS);
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Ok(()));
         p.live = true;
-        p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS * 2 + 1);
+        p.signed_until_ms = Some(1000 + RENEW_AHEAD_AUTO_MS * 2 + 1);
         assert_eq!(r.claim(&p, 1000, now + MINUTE * 2), Err(Skip::Live));
         p.live = false;
         p.checked_at_ms = 1001;
@@ -669,7 +780,7 @@ mod tests {
         r.attempted(now);
         r.completed(RenewalOutcome::Verified, now);
         let end = 10_000_000;
-        let wall = end - RENEW_AHEAD_MS;
+        let wall = end - RENEW_AHEAD_URGENT_MS;
         let mut p = Policy {
             state: vantare_ipc::control::AccessState::Active,
             signed_until_ms: Some(end),
@@ -739,7 +850,7 @@ mod tests {
         );
         assert_eq!(r.claim(&p, 1000, now + MINUTE), Ok(()));
         r.completed(RenewalOutcome::Verified, now);
-        p.signed_until_ms = Some(1000 + RENEW_AHEAD_MS + 1);
+        p.signed_until_ms = Some(1000 + RENEW_AHEAD_AUTO_MS + 1);
         assert_eq!(r.claim(&p, 1000, now + MINUTE * 2), Err(Skip::NotDue));
         assert!(!r.blocked);
     }

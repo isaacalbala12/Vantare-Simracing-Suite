@@ -188,3 +188,58 @@ it("lets a known mock session return only from its manual chooser", () => {
     },
   });
 });
+describe("license view (v71)", () => {
+  const licensed = corpus.host.find(
+    (v) => v.kind === "response" && v.result?.method === "account.check",
+  )?.result?.value;
+  if (!licensed?.license) throw new Error("Missing licensed account corpus");
+  const withLicense = (license: unknown, extra: object = {}) => ({
+    ...licensed,
+    ...extra,
+    license,
+  });
+  it("accepts the host sample and every allowed shape", () => {
+    expect(isAccount(licensed)).toBe(true);
+    expect(isAccount(withLicense(null))).toBe(true);
+    expect(isAccount(withLicense(null, { verified: false }))).toBe(true);
+    for (const license of [
+      { tester: false, status: "active", untilMs: null },
+      { tester: true, status: "active", untilMs: 0 },
+      { tester: true, status: "expiring", untilMs: Number.MAX_SAFE_INTEGER },
+      { tester: true, status: "grace", untilMs: 1_796_896_800_000 },
+    ])
+      expect(isAccount(withLicense(license))).toBe(true);
+  });
+  it("rejects a missing or extra key, an unknown status and a bad date", () => {
+    const { license: _drop, ...missing } = licensed;
+    expect(isAccount(missing)).toBe(false);
+    expect(isAccount({ ...licensed, licence: null })).toBe(false);
+    const good = { tester: true, status: "active", untilMs: 1 };
+    for (const license of [
+      { tester: true, status: "active" },
+      { ...good, role: "owner" },
+      { ...good, tester: "yes" },
+      { ...good, status: "expired" },
+      { ...good, status: "Active" },
+      { ...good, untilMs: -1 },
+      { ...good, untilMs: 1.5 },
+      { ...good, untilMs: Number.MAX_SAFE_INTEGER + 1 },
+      { ...good, untilMs: "1" },
+      { tester: true, status: "expiring", untilMs: null },
+      { tester: true, status: "grace", untilMs: null },
+      "active",
+      [],
+    ])
+      expect(isAccount(withLicense(license)), JSON.stringify(license)).toBe(
+        false,
+      );
+  });
+  it("rejects a license on an unverified or blocked account", () => {
+    expect(isAccount(withLicense(licensed.license, { verified: false }))).toBe(
+      false,
+    );
+    expect(isAccount(withLicense(licensed.license, { blocked: true }))).toBe(
+      false,
+    );
+  });
+});

@@ -12,6 +12,8 @@ pub(crate) fn typescript() -> String {
     declare::<Product>(&mut text);
     declare::<EmailIntent>(&mut text);
     declare::<PlanView>(&mut text);
+    declare::<LicenseStatus>(&mut text);
+    declare::<LicenseView>(&mut text);
     declare::<ModuleView>(&mut text);
     declare::<EmailView>(&mut text);
     declare::<CopyLinkView>(&mut text);
@@ -33,7 +35,8 @@ pub(crate) fn typescript() -> String {
             "stages":[EmailStage::Form,EmailStage::Code,EmailStage::NewPassword,EmailStage::Consent,EmailStage::Authorizing,EmailStage::HostedRequired],
             "modules":[ModuleKind::Studio,ModuleKind::Launcher,ModuleKind::Calendar,ModuleKind::Strategy,ModuleKind::Engineer],
             "statuses":[ModuleStatus::Included,ModuleStatus::Unverified,ModuleStatus::Soon],
-            "products":[Product::ProMonthly,Product::ProAnnual,Product::Founders]
+            "products":[Product::ProMonthly,Product::ProAnnual,Product::Founders],
+            "licenseStatuses":[LicenseStatus::Active,LicenseStatus::Expiring,LicenseStatus::Grace]
         })
     );
     text
@@ -47,6 +50,7 @@ pub(crate) fn sample() -> AccountView {
         name: String::new(),
         photo: None,
         plan: PlanView::Unverified,
+        license: None,
         verified: false,
         blocked: false,
         modules: [
@@ -82,6 +86,20 @@ pub(crate) fn sample() -> AccountView {
         channel: "nightly".into(),
     }
 }
+/// Tester verificado con fecha firmada: el corpus también cubre `license` no nulo.
+fn licensed_sample() -> AccountView {
+    let mut value = sample();
+    value.gate = Gate::None;
+    value.session = SessionView::SignedIn;
+    value.plan = PlanView::Verified;
+    value.verified = true;
+    value.license = Some(LicenseView {
+        tester: true,
+        status: LicenseStatus::Active,
+        until_ms: Some(1_796_896_800_000),
+    });
+    value
+}
 pub(crate) fn corpus() -> serde_json::Value {
     let value = sample();
     let requests = request_samples();
@@ -115,7 +133,7 @@ pub(crate) fn corpus() -> serde_json::Value {
             value: value.clone(),
         },
         Reply::AccountCheck {
-            value: value.clone(),
+            value: licensed_sample(),
         },
         Reply::AccountPhotoRefresh {
             value: value.clone(),

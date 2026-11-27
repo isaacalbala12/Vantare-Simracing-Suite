@@ -18,6 +18,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -76,6 +77,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -134,6 +136,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -192,6 +195,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -250,6 +254,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -308,6 +313,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -365,7 +371,12 @@
           "deviceLimit": false,
           "email": null,
           "error": null,
-          "gate": "choose",
+          "gate": "none",
+          "license": {
+            "status": "active",
+            "tester": true,
+            "untilMs": 1796896800000
+          },
           "modules": [
             {
               "id": "studio",
@@ -392,16 +403,16 @@
           "notice": null,
           "photo": null,
           "plan": {
-            "kind": "unverified"
+            "kind": "verified"
           },
           "portal": false,
           "purchase": {
             "message": null,
             "waiting": false
           },
-          "session": "signedOut",
+          "session": "signedIn",
           "sessionNotice": false,
-          "verified": false,
+          "verified": true,
           "working": false
         }
       }
@@ -424,6 +435,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -482,6 +494,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -540,6 +553,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -598,6 +612,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -656,6 +671,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -714,6 +730,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -772,6 +789,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -830,6 +848,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -886,6 +905,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",
@@ -945,6 +965,7 @@
           "email": null,
           "error": null,
           "gate": "choose",
+          "license": null,
           "modules": [
             {
               "id": "studio",

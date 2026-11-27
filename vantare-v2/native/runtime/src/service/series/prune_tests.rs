@@ -305,3 +305,25 @@ fn pruning_never_deletes_or_follows_what_is_behind_a_link() {
         .collect();
     assert_eq!(said, [("series-1-1.duckdb", "error")]);
 }
+
+// Defensa contra el cambio por un enlace entre comprobar y borrar (revisión de
+// datos de #2781, R13): borrar abre el propio enlace, así que se va el enlace y
+// lo que hay detrás queda intacto.
+#[test]
+fn deleting_through_exclusive_removes_the_link_and_never_its_target() {
+    let (dir, outside) = (Directory::new(), Directory::new());
+    let mine = outside.file("mio.txt", 7, 1);
+    let link = dir.0.join("series-1-1.duckdb.wal");
+    match std::os::windows::fs::symlink_file(&mine, &link) {
+        Ok(()) => {}
+        // Sin privilegio para crear enlaces se omite diciéndolo; en la CI, nunca.
+        Err(error) if error.raw_os_error() == Some(1314) && std::env::var_os("CI").is_none() => {
+            eprintln!("OMITIDO: crear un enlace a archivo requiere privilegios ({error})");
+            return;
+        }
+        Err(error) => panic!("crear el enlace: {error}"),
+    }
+    drop(exclusive(&link, true).unwrap());
+    assert!(fs::symlink_metadata(&link).is_err(), "el enlace se borra");
+    assert_eq!(fs::read(&mine).unwrap(), [0; 7]);
+}

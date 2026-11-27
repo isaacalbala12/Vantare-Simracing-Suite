@@ -311,6 +311,16 @@ fn rejects_a_link_at_recordings_or_between_data_dir_and_recordings() {
     directory_link(&physical, &intermediate);
     rejects_recording_directory(&intermediate.join("recordings"));
 }
+// Una instalación recién hecha aún no tiene `recordings`: eso no es «carpeta
+// no válida» y Análisis no da ningún aviso (revisión de datos de #2781, R7).
+#[test]
+fn a_recordings_folder_that_does_not_exist_yet_has_no_status() {
+    let owned = Directory::new();
+    assert!(read(&owned.0.join("recordings"), &BTreeMap::new()).is_none());
+    // Tampoco si falta su carpeta madre.
+    let deeper = owned.0.join("sin-crear").join("recordings");
+    assert!(read(&deeper, &BTreeMap::new()).is_none());
+}
 #[test]
 fn rejects_file_links_including_a_swap_at_open_without_reading_the_target() {
     let owned = Directory::new();

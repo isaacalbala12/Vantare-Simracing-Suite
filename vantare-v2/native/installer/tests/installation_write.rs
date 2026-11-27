@@ -1151,13 +1151,18 @@ fn zip_links_duplicates_traversal_and_uncompressed_limits_are_rejected_before_ac
     }
 }
 
-#[test]
-fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
-    let fixture = Fixture::new();
-    let package = fixture.package("1.0.0");
+/// Repacks `package` with Deflate and makes both headers of its first member
+/// declare `size` bytes. The external SHA is recomputed, so `expand` reaches
+/// the size checks; no payload of that size is ever created.
+fn declared_first_member(
+    fixture: &Fixture,
+    package: &Package,
+    tag: &str,
+    size: u32,
+) -> (PathBuf, String) {
     let mut source = zip::ZipArchive::new(fs::File::open(&package.path).expect("source ZIP"))
         .expect("source directory");
-    let path = fixture.path.join("understated-deflate.zip");
+    let path = fixture.path.join(format!("{tag}.zip"));
     let mut writer = zip::ZipWriter::new(fs::File::create(&path).expect("deflated ZIP"));
     for index in 0..source.len() {
         let mut member = source.by_index(index).expect("source member");
@@ -1183,12 +1188,20 @@ fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
     ))
     .expect("directory position");
     assert_eq!(&bytes[..4], b"PK\x03\x04");
-    // Both headers agree on one byte; the real Deflate stream contains an inert
-    // PE fixture. The external SHA is valid, so this tests the extraction bound.
-    bytes[22..26].copy_from_slice(&1_u32.to_le_bytes());
-    bytes[directory + 24..directory + 28].copy_from_slice(&1_u32.to_le_bytes());
+    bytes[22..26].copy_from_slice(&size.to_le_bytes());
+    bytes[directory + 24..directory + 28].copy_from_slice(&size.to_le_bytes());
     fs::write(&path, &bytes).expect("isolated malformed ZIP");
     let sha = format!("{:x}", Sha256::digest(&bytes));
+    (path, sha)
+}
+
+#[test]
+fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
+    let fixture = Fixture::new();
+    let package = fixture.package("1.0.0");
+    // Both headers agree on one byte; the real Deflate stream contains an inert
+    // PE fixture. The external SHA is valid, so this tests the extraction bound.
+    let (path, sha) = declared_first_member(&fixture, &package, "understated-deflate", 1);
     let destination = fixture.path.join("partial");
     assert!(engine::package::expand(&path, &sha, &destination, "beta").is_err());
     let written = fs::metadata(destination.join(&test_members()[0])).expect("streaming started");
@@ -1196,6 +1209,38 @@ fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
         written.len() <= 2,
         "declared one byte, wrote {} bytes",
         written.len()
+    );
+}
+
+#[test]
+fn member_limit_is_inclusive_on_the_declared_size_and_a_lying_size_still_fails() {
+    let fixture = Fixture::new();
+    let package = fixture.package("1.0.0");
+    let limit = engine::package::MEMBER_LIMIT;
+    let first = &test_members()[0];
+    // Exactly at the limit: accepted before extraction, so the member starts
+    // streaming and only the overstated size (a forged ZIP-bomb header) fails.
+    let at = u32::try_from(limit).expect("limit without ZIP64");
+    let (path, sha) = declared_first_member(&fixture, &package, "member-at-limit", at);
+    let capacity = engine::package::Capacity::read(&path).expect("declared sizes");
+    assert_eq!(capacity.largest, limit);
+    assert!(capacity.check().is_ok());
+    let destination = fixture.path.join("at-limit");
+    assert!(engine::package::expand(&path, &sha, &destination, "beta").is_err());
+    let written = fs::metadata(destination.join(first))
+        .expect("the declared limit admitted extraction")
+        .len();
+    assert!(written < limit, "declared {limit}, wrote {written} bytes");
+    // One byte more: rejected from the declared size alone, before any write.
+    let (path, sha) = declared_first_member(&fixture, &package, "member-over-limit", at + 1);
+    let capacity = engine::package::Capacity::read(&path).expect("declared sizes");
+    assert_eq!(capacity.largest, limit + 1);
+    assert!(capacity.check().is_err());
+    let destination = fixture.path.join("over-limit");
+    assert!(engine::package::expand(&path, &sha, &destination, "beta").is_err());
+    assert!(
+        !destination.exists(),
+        "an oversized member reached extraction"
     );
 }
 

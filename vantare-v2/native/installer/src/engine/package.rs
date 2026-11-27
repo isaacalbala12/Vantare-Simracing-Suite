@@ -8,18 +8,71 @@ use std::{
     path::Path,
 };
 
+const MIB: u64 = 1024 * 1024;
+// Topes de `expand`, que comparten Setup y `stage` del feed Hub (#2863). Se
+// comprueban con los tamaños declarados del directorio central antes de crear
+// nada en disco; la extracción además corta cada miembro en su tamaño declarado
+// y rechaza si el real difiere, así que un tamaño mentiroso (ZIP-bomb) no puede
+// escribir más de lo que estos topes ya autorizaron.
+/// Descarga y lectura completa para el SHA-256: acota red, tiempo y disco del ZIP.
+pub const COMPRESSED_LIMIT: u64 = 256 * MIB;
+/// Un solo archivo extraído. El EXE de Electron (bajo `hub-ui/`) ya pesa
+/// 238 MiB y crece con cada versión; con 256 MiB quedaba un 7 % de margen y una
+/// subida normal habría bloqueado las actualizaciones beta. 384 MiB sigue siendo
+/// seguro: la extracción va en streaming (no se carga en memoria), el disco total
+/// lo acota `EXPANDED_LIMIT`, que no cambia, y el ratio de una bomba lo acota el
+/// corte por tamaño declarado. El gate de empaquetado avisa al 90 % de cada tope.
+pub const MEMBER_LIMIT: u64 = 384 * MIB;
+/// Suma de todos los miembros: acota el disco de staging y el tiempo de hash.
+pub const EXPANDED_LIMIT: u64 = 768 * MIB;
+
 fn compressed_capacity(bytes: u64) -> Result<()> {
-    ensure(
-        bytes <= 256 * 1024 * 1024,
-        "ZIP comprimido supera el límite",
-    )
+    ensure(bytes <= COMPRESSED_LIMIT, "ZIP comprimido supera el límite")
 }
 
 fn expanded_capacity(member: u64, total: u64) -> Result<()> {
     ensure(
-        member <= 256 * 1024 * 1024 && total <= 768 * 1024 * 1024,
+        member <= MEMBER_LIMIT && total <= EXPANDED_LIMIT,
         "ZIP supera el límite de extracción",
     )
+}
+
+/// Medidas que `expand` compara con sus topes, leídas igual que allí (longitud
+/// del archivo y tamaños declarados del directorio central), sin autenticar ni
+/// extraer. Solo informa: la verificación completa sigue siendo `expand`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Capacity {
+    pub compressed: u64,
+    pub expanded: u64,
+    pub largest: u64,
+}
+
+impl Capacity {
+    pub fn read(zip_path: &Path) -> Result<Self> {
+        write_fs::path(zip_path)?;
+        let input = fs::File::open(zip_path)?;
+        let compressed = input.metadata()?.len();
+        let mut archive = zip::ZipArchive::new(input)?;
+        let (mut expanded, mut largest) = (0_u64, 0_u64);
+        for index in 0..archive.len() {
+            let size = archive.by_index_raw(index)?.size();
+            expanded = expanded
+                .checked_add(size)
+                .ok_or_else(|| super::WriteError::new(1, "Tamaño ZIP fuera de rango"))?;
+            largest = largest.max(size);
+        }
+        Ok(Self {
+            compressed,
+            expanded,
+            largest,
+        })
+    }
+
+    /// El mismo veredicto que `expand` antes de extraer.
+    pub fn check(&self) -> Result<()> {
+        compressed_capacity(self.compressed)?;
+        expanded_capacity(self.largest, self.expanded)
+    }
 }
 
 pub fn expand(
@@ -223,16 +276,45 @@ mod central_tests {
 
 #[cfg(all(test, windows, feature = "write-engine"))]
 mod capacity_tests {
+    const MIB: u64 = 1024 * 1024;
+
+    // Literal policy on purpose: changing a limit must also change this test,
+    // the README and the review note of #2863.
+    #[test]
+    fn published_limits_are_256_384_768_mib() {
+        assert_eq!(super::COMPRESSED_LIMIT, 256 * MIB);
+        assert_eq!(super::MEMBER_LIMIT, 384 * MIB);
+        assert_eq!(super::EXPANDED_LIMIT, 768 * MIB);
+    }
+
     #[test]
     fn compressed_limit_accepts_256_mib_and_rejects_one_more_byte() {
-        assert!(super::compressed_capacity(256 * 1024 * 1024).is_ok());
-        assert!(super::compressed_capacity(256 * 1024 * 1024 + 1).is_err());
+        assert!(super::compressed_capacity(256 * MIB).is_ok());
+        assert!(super::compressed_capacity(256 * MIB + 1).is_err());
+    }
+
+    #[test]
+    fn member_limit_accepts_384_mib_and_rejects_one_more_byte() {
+        assert!(super::expanded_capacity(384 * MIB, 768 * MIB).is_ok());
+        assert!(super::expanded_capacity(384 * MIB + 1, 768 * MIB).is_err());
     }
 
     #[test]
     fn expanded_limit_accepts_768_mib_and_rejects_one_more_byte() {
-        assert!(super::expanded_capacity(256 * 1024 * 1024, 768 * 1024 * 1024).is_ok());
-        assert!(super::expanded_capacity(1, 768 * 1024 * 1024 + 1).is_err());
-        assert!(super::expanded_capacity(256 * 1024 * 1024 + 1, 768 * 1024 * 1024).is_err());
+        assert!(super::expanded_capacity(1, 768 * MIB).is_ok());
+        assert!(super::expanded_capacity(1, 768 * MIB + 1).is_err());
+    }
+
+    #[test]
+    fn capacity_verdict_is_the_extraction_verdict() {
+        let at = |compressed, expanded, largest| super::Capacity {
+            compressed,
+            expanded,
+            largest,
+        };
+        assert!(at(256 * MIB, 768 * MIB, 384 * MIB).check().is_ok());
+        assert!(at(256 * MIB + 1, 1, 1).check().is_err());
+        assert!(at(1, 768 * MIB + 1, 1).check().is_err());
+        assert!(at(1, 384 * MIB + 1, 384 * MIB + 1).check().is_err());
     }
 }

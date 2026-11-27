@@ -115,7 +115,14 @@ un candidato real ya construido, sin compilar ni cambiar el guard gráfico:
 
 La primera ejecución real de esta comprobación se registra en el PR del
 seguimiento M4; los tests de fixtures y del lock no sustituyen esa evidencia.
-Los límites nuevos son ZIP <=256 MiB, miembro <=256 MiB y total <=768 MiB.
+Los límites nuevos son ZIP <=256 MiB, miembro <=384 MiB y total <=768 MiB
+(`installer/src/engine/package.rs`; el miembro subió de 256 a 384 MiB en #2863
+porque el EXE de Electron ya pesa 238 MiB). `check-qa-distribution.ps1` mide el
+candidato Release real con `verify-package --capacity`, que imprime los topes
+compilados: escribe una línea `[capacidad]` con las tres medidas y su porcentaje,
+avisa (`::warning::`) al 90 % de cada tope y falla por encima. Medida del 27-nov
+(beta 0.0.2002): ZIP 193,0 MiB (75 %), expandido 443,4 MiB (58 %), miembro más
+grande 238,3 MiB (62 % del tope nuevo).
 El primer relevo requiere Setup nuevo: el actualizador antiguo conserva 128 MiB.
 
 Este candidato no autoriza publicación. El feed nuevo queda fuera de P3: usará

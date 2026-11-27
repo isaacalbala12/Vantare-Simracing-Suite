@@ -65,6 +65,12 @@ try {
     $phase=[Diagnostics.Stopwatch]::StartNew()
     $null=& (Join-Path $native 'packaging/build-candidate.ps1') -Version '0.0.0' -Channel nightly -OutputDirectory (Join-Path $target 'release-package') -BuildProfile Release -AllowDirty
     Save-DistributionPhase 'clean-candidate' $phase
+    # #2863: margen del paquete real (con Electron) frente a los topes de stage.
+    $realPackage=Join-Path $target 'release-package/vantare-native-amd64-package.zip'
+    $packageVerifier=Join-Path $target 'x86_64-pc-windows-msvc/debug/examples/verify-package.exe'
+    if((Test-Path -LiteralPath $realPackage -PathType Leaf) -and (Test-Path -LiteralPath $packageVerifier -PathType Leaf)){
+        Assert-PackageCapacity $packageVerifier $realPackage
+    }else{'::warning::Gate de capacidad (#2863) sin paquete o verificador real: no se midió'}
     Assert-NativeDistributionTree (Join-Path $target 'release-package/payload')
     # Rune is shipped as an ordinary product image; packaging does not select it.
     Assert-ExecutableSidecar (Join-Path $target 'release-package/payload/bin/vantare-overlays-rune.exe')

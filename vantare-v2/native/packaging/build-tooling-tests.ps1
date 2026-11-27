@@ -214,4 +214,36 @@ $short=New-FixturePackage declared-short
 Set-ZipHeader $short 'bin/fixture.txt' 22 ([BitConverter]::GetBytes([uint32]1)) -Local
 Set-ZipHeader $short 'bin/fixture.txt' 24 ([BitConverter]::GetBytes([uint32]1))
 Assert-PackageRejected declared-short $short 'Tamaño ZIP extraído incorrecto'
+# #2863: el gate de capacidad lee los topes de package.rs a través del verificador.
+if($PackageVerifier){
+    $capacity=(Invoke-BuildProcess $PackageVerifier @('--capacity',$zipPath) $null 120000)|ConvertFrom-Json
+    # New-BuildZip conserva su comprobación previa: debe coincidir con stage.
+    if($capacity.compressed_limit -ne $script:BuildPackageZipLimitBytes -or $capacity.expanded_limit -ne $script:BuildPackageExpandedLimitBytes){throw 'Topes de New-BuildZip distintos de package.rs'}
+    if($capacity.compressed -ne (Get-Item -LiteralPath $zipPath).Length -or $capacity.largest -le 0 -or $capacity.largest -gt $capacity.expanded){throw 'Medidas de capacidad incoherentes'}
+    $lines=@(Assert-PackageCapacity $PackageVerifier $zipPath)
+    if($lines.Count -ne 1 -or $lines[0] -cnotlike '`[capacidad] *: ZIP *; expandido *; miembro más grande *'){throw "Línea de capacidad inesperada: $lines"}
+    foreach($field in @('compressed','expanded','largest')){
+        $limit=[uint64]$capacity.($field+'_limit')
+        $warn=[uint64][Math]::Ceiling($limit*0.9)
+        foreach($case in @(@(($warn-1),0,0),@($warn,1,0),@($limit,1,0),@(($limit+1),0,1))){
+            $measured=[pscustomobject]@{compressed=0;compressed_limit=$capacity.compressed_limit;expanded=0;expanded_limit=$capacity.expanded_limit;largest=0;largest_limit=$capacity.largest_limit}
+            $measured.$field=[long]$case[0]
+            $report=Get-PackageCapacityReport $measured 'sintético'
+            if(@($report.Warnings).Count -ne $case[1] -or @($report.Failures).Count -ne $case[2]){throw "Umbral de capacidad incorrecto: $field=$($case[0])"}
+        }
+    }
+    # El miembro declarado justo en el tope pasa con aviso; un byte más falla el gate.
+    foreach($case in @(@('member-limit',[uint64]$capacity.largest_limit,$false),@('member-over',([uint64]$capacity.largest_limit+1),$true))){
+        $declared=New-FixturePackage $case[0]
+        Set-ZipHeader $declared 'bin/fixture.txt' 22 ([BitConverter]::GetBytes([uint32]$case[1])) -Local
+        Set-ZipHeader $declared 'bin/fixture.txt' 24 ([BitConverter]::GetBytes([uint32]$case[1]))
+        $failed=$false;$output=@()
+        try{$output=@(Assert-PackageCapacity $PackageVerifier $declared)}catch{
+            if(-not $_.Exception.Message.StartsWith('Paquete por encima del tope de stage: miembro más grande')){throw}
+            $failed=$true
+        }
+        if($failed -ne $case[2]){throw "Gate de capacidad incorrecto: $($case[0])"}
+        if(-not $failed -and -not @($output|Where-Object {$_.StartsWith('::warning::')}).Count){throw 'Tope exacto sin aviso'}
+    }
+}
 "PASS build-tooling: stdin=$stdinBytes; inventario, sidecars, manifiesto y firma QA"

@@ -427,6 +427,12 @@ mod qa_transport {
             self.seen.lock().expect("log").clone()
         }
     }
+    impl Drop for Server {
+        // Si un test entra en pánico antes de `finish`, el hilo deja de escuchar ya.
+        fn drop(&mut self) {
+            self.stop.store(true, Ordering::Release);
+        }
+    }
     pub(super) fn reply(status: &str, body: &[u8]) -> Vec<u8> {
         let mut bytes = format!(
             "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
@@ -518,6 +524,7 @@ mod qa_transport {
             (" 80", None),
             ("80\n", None),
             ("-80", None),
+            ("000080", None),
         ] {
             fs::write(root.join(QA_PORT_FILE), text).expect("port file");
             assert_eq!(qa_port(&root).ok(), expected, "{text:?}");
@@ -580,6 +587,69 @@ mod qa_transport {
             assert_eq!(fs::read_dir(&staging).expect("staging").count(), 0);
             fs::remove_dir_all(root).expect("cleanup");
         }
+    }
+
+    const PROXY_PROBE: &str =
+        "hub_update_feed::tests::qa_transport::qa_check_probe_behind_a_dead_proxy";
+
+    /// Hijo de `qa_check_ignores_the_proxy_environment`: solo corre con un proxy muerto en
+    /// el entorno. Si el agente QA usara ese proxy, la consulta no llegaría al servidor.
+    #[test]
+    #[ignore = "lo lanza qa_check_ignores_the_proxy_environment con un proxy muerto inyectado"]
+    fn qa_check_probe_behind_a_dead_proxy() {
+        let server = Server::start(feed(b"hello"));
+        let root = qa_root();
+        fs::create_dir_all(&root).expect("root");
+        fs::write(root.join(QA_PORT_FILE), server.port.to_string()).expect("port");
+        let found = check_qa(
+            &root,
+            "0.0.989",
+            &root.join("staging"),
+            &AtomicBool::new(false),
+            None,
+        );
+        assert!(
+            matches!(found, Ok(Some(_))),
+            "{:?}",
+            found
+                .as_ref()
+                .map(|found| found.as_ref().map(|download| &download.offer))
+        );
+        assert_eq!(server.finish().len(), 3);
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[test]
+    fn qa_check_ignores_the_proxy_environment() {
+        // Un proceso hijo con el proxy en su entorno: este proceso no se toca (`set_var`
+        // es `unsafe` y `cargo test` comparte proceso entre tests).
+        let dead = TcpListener::bind("127.0.0.1:0")
+            .and_then(|listener| listener.local_addr())
+            .expect("dead port")
+            .port();
+        let proxy = format!("http://127.0.0.1:{dead}");
+        let mut child = std::process::Command::new(std::env::current_exe().expect("test binary"));
+        child.args(["--exact", PROXY_PROBE, "--ignored", "--nocapture"]);
+        for name in ["NO_PROXY", "no_proxy"] {
+            child.env_remove(name);
+        }
+        for name in [
+            "HTTP_PROXY",
+            "http_proxy",
+            "HTTPS_PROXY",
+            "https_proxy",
+            "ALL_PROXY",
+            "all_proxy",
+        ] {
+            child.env(name, &proxy);
+        }
+        let output = child.output().expect("child test process");
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(
+            output.status.success() && stdout.contains("1 passed"),
+            "{stdout}\n{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
     }
 
     #[test]

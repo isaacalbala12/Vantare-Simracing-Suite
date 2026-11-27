@@ -23,13 +23,14 @@ function New-CleanupCase([string]$Name){
     $contract=@{operation='Cleanup';root=$install;parentId=2147483647;qa=$true}
     @{case=$case;install=$install;temporary=$temporary;exe=$exe;marker=$marker;request=$request;contract=$contract}
 }
-function Start-CleanupCase($Case){
+function Start-CleanupCase($Case,[string]$ModulePath){
     $env:TEMP=$Case.case;$env:TMP=$Case.case
     [IO.File]::WriteAllText($Case.request,($Case.contract|ConvertTo-Json))
     $info=[Diagnostics.ProcessStartInfo]::new()
     $info.FileName="$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe"
     $info.Arguments='-NoProfile -ExecutionPolicy Bypass -File "'+(Join-Path $Case.temporary 'installer-cleanup.ps1')+'" -RequestFile "'+$Case.request+'"'
     $info.UseShellExecute=$false;$info.CreateNoWindow=$true
+    if($ModulePath){$info.EnvironmentVariables['PSModulePath']=$ModulePath}
     $info.RedirectStandardOutput=$true;$info.RedirectStandardError=$true
     $process=[Diagnostics.Process]::Start($info)
     @{process=$process;stdout=$process.StandardOutput.ReadToEndAsync();stderr=$process.StandardError.ReadToEndAsync()}
@@ -60,6 +61,39 @@ foreach($mode in @('operation','temporary-content','schema','hash','missing-mark
     $code=Finish-CleanupCase $case $run
     Assert-Cleanup ($code -ne 0 -and (Get-FileHash -LiteralPath $case.exe -Algorithm SHA256).Hash -ceq $before) ("Cleanup rejects $mode without deleting the uninstaller")
 }
+# #2824: Uninstall.exe abierto desde PowerShell 7 hereda su PSModulePath; Windows
+# PowerShell 5.1 encuentra antes los módulos de la 7 y pierde funciones de los suyos.
+$pwshModules=(Join-Path (Split-Path (Get-Command pwsh.exe).Source) 'Modules')+';'+(Join-Path $PSHOME 'Modules')
+$info=[Diagnostics.ProcessStartInfo]::new("$env:WINDIR/System32/WindowsPowerShell/v1.0/powershell.exe",'-NoProfile -Command "if(Get-Command Get-FileHash -ErrorAction SilentlyContinue){exit 3};exit 0"')
+$info.UseShellExecute=$false;$info.CreateNoWindow=$true;$info.EnvironmentVariables['PSModulePath']=$pwshModules
+$probe=[Diagnostics.Process]::Start($info)
+try{
+    if(-not $probe.WaitForExit(30000)){$probe.Kill();throw 'CLEANUP_TEST_TIMEOUT'}
+    Assert-Cleanup ($probe.ExitCode -eq 0) 'The inherited PowerShell 7 module path really hides Get-FileHash'
+}finally{$probe.Dispose()}
+foreach($replaced in @($false,$true)){
+    $case=New-CleanupCase ('pwsh7-'+$replaced)
+    # Same bytes outside the root: only the uninstaller inside it may disappear.
+    $outside=Join-Path $case.case 'Uninstall.exe';Copy-Item -LiteralPath $case.exe -Destination $outside
+    if($replaced){[IO.File]::WriteAllText($case.exe,'replaced after the marker')}
+    $code=Finish-CleanupCase $case (Start-CleanupCase $case $pwshModules)
+    $errors=[IO.File]::ReadAllText((Join-Path $case.case 'stderr.log'))
+    if($replaced){Assert-Cleanup ($code -ne 0 -and (Test-Path -LiteralPath $case.exe) -and (Test-Path -LiteralPath $case.marker) -and $errors -cmatch '(?m)^CLEANUP_HASH_CHANGED\r?$') 'PowerShell 7 module path still rejects a replaced uninstaller by its hash'}
+    else{
+        # Without marker or uninstaller the next Setup has nothing to wait for.
+        Assert-Cleanup ($code -eq 0 -and -not(Test-Path -LiteralPath $case.exe) -and -not(Test-Path -LiteralPath $case.marker) -and -not(Test-Path -LiteralPath $case.temporary)) ('Cleanup finishes with the PowerShell 7 module path inherited '+$errors)
+        Assert-Cleanup (Test-Path -LiteralPath $outside) 'Cleanup deletes nothing outside the root'
+    }
+}
+# qa=false exercises the product guard alone; the QA guard would hide its removal.
+$case=New-CleanupCase 'linked-root'
+$link=Join-Path $case.case 'link'
+$null=New-Item -ItemType Junction -Path $link -Target $case.install
+try{
+    $case.contract.root=$link;$case.contract.qa=$false
+    $code=Finish-CleanupCase $case (Start-CleanupCase $case)
+    Assert-Cleanup ($code -ne 0 -and (Test-Path -LiteralPath $case.exe) -and (Test-Path -LiteralPath $case.marker)) 'Cleanup never deletes through a linked root'
+}finally{[IO.Directory]::Delete($link)}
 foreach($renewed in @($false,$true)){
     $case=New-CleanupCase ('parent-'+$renewed)
     $id=[guid]::NewGuid().ToString('N')

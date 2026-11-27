@@ -35,15 +35,11 @@ impl Feed {
         let thread = std::thread::Builder::new()
             .name("vantare-beta-feed".into())
             .spawn(move || {
-                loop {
-                    if token.load(std::sync::atomic::Ordering::Acquire) {
-                        break;
-                    }
-                    if let Err(error) = super::installed::stage(&root, &token) {
-                        super::log(format_args!("feed beta: {error}"));
-                    }
-                    std::thread::park_timeout(std::time::Duration::from_hours(6));
-                }
+                super::installed::follow_feed(
+                    &token,
+                    || super::installed::stage(&root, &token),
+                    std::thread::park_timeout,
+                );
             })?;
         Ok(Self { cancel, thread })
     }

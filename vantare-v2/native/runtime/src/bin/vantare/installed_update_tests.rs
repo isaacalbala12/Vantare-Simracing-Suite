@@ -1,7 +1,7 @@
 //! CPU-only installed-update regression fixtures; no product executable is launched.
 use super::*;
-use crate::installed::{ADOPTION_WAITS, adopt_recordings_with, apply, stage_with};
-use std::{os::windows::process::CommandExt, path::Path, process::Command};
+use crate::installed::{ADOPTION_WAITS, adopt_recordings_with, apply, follow_feed, stage_with};
+use std::{os::windows::process::CommandExt, path::Path, process::Command, time::Duration};
 
 fn manifest(version: &str) -> Vec<u8> {
     serde_json::to_vec(&serde_json::json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","version":version,"channel":"beta","data_schema":"opaque-v1","source_sha":"a".repeat(40),"source_dirty":false,"build_profile":"Debug","engine":2,"files":[{"path":"fixture.txt","size":5,"sha256":format!("{:x}", sha2::Sha256::digest(b"hello"))}]})).expect("manifest")
@@ -259,6 +259,71 @@ fn the_session_brings_its_recordings_waits_its_turn_and_never_fails() {
         adopt_recordings_with(&root, &source, &mut |_| panic!("a refusal is not busy"));
         assert!(source.join(later).exists() && lines() == 4);
     }
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
+/// Corre el hilo del feed con un reloj falso hasta la espera número `until` y devuelve
+/// las esperas pedidas; `during` actúa antes de dar cada una por cumplida.
+fn feed_waits(
+    until: usize,
+    mut check: impl FnMut(&AtomicBool) -> std::io::Result<()>,
+    mut during: impl FnMut(usize),
+) -> Vec<Duration> {
+    let cancelled = AtomicBool::new(false);
+    let mut waits = Vec::new();
+    follow_feed(
+        &cancelled,
+        || check(&cancelled),
+        |pause| {
+            waits.push(pause);
+            during(waits.len());
+            assert!(waits.len() <= until, "no atiende la cancelación");
+            cancelled.store(waits.len() == until, Ordering::Release);
+        },
+    );
+    waits
+}
+
+#[test]
+fn the_first_feed_check_retries_soon_only_while_the_installation_lock_is_busy() {
+    use vantare_installer::engine::write_fs::lock;
+    let root = qa_root();
+    fs::create_dir_all(&root).expect("root");
+    installed(&root);
+    let status = root.join("update-status.json");
+    let check = |cancelled: &AtomicBool| stage_with(&root, cancelled, |_, _, _, _| Ok(None));
+    let [first, second, third, period] = [30, 60, 120, 6 * 60 * 60].map(Duration::from_secs);
+    // La raíz lo suelta tras dos esperas y se publica sin aguardar 6 h. Una consulta
+    // posterior que lo encuentre ocupado ya no es la primera: no reintenta.
+    let mut held = Some(lock(&root, ".operation.lock").expect("registration"));
+    let waits = feed_waits(4, check, |count| match count {
+        1 => assert!(!status.exists()),
+        2 => drop(held.take()),
+        3 => {
+            assert!(status.exists());
+            held = Some(lock(&root, ".operation.lock").expect("another operation"));
+        }
+        _ => {}
+    });
+    assert_eq!(waits, [first, second, period, period]);
+    // Nunca lo suelta: tres reintentos y después el periodo normal.
+    assert_eq!(
+        feed_waits(5, check, |_| {}),
+        [first, second, third, period, period]
+    );
+    drop(held);
+    // Un «archivo en uso» que no es del cerrojo no reintenta.
+    let foreign = |cancelled: &AtomicBool| {
+        stage_with(&root, cancelled, |_, _, _, _| {
+            Err(std::io::Error::from_raw_os_error(32))
+        })
+    };
+    assert_eq!(feed_waits(2, foreign, |_| {}), [period, period]);
+    // Tampoco un cerrojo que falla por otra causa.
+    fs::remove_file(root.join(".operation.lock")).expect("lock file");
+    fs::create_dir(root.join(".operation.lock")).expect("a folder in its place");
+    assert!(check(&AtomicBool::new(false)).is_err());
+    assert_eq!(feed_waits(2, check, |_| {}), [period, period]);
     fs::remove_dir_all(root).expect("cleanup");
 }
 

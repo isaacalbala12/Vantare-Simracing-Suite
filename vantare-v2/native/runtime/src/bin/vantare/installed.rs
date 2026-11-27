@@ -562,7 +562,7 @@ pub(super) fn stage_with(
     if cancelled.load(Ordering::Acquire) {
         return Ok(());
     }
-    let _operation = disk::lock(root, ".operation.lock").map_err(io_error)?;
+    let _operation = operation_lock(root)?;
     let refreshed = Installation::read(root).map_err(io_error)?;
     if refreshed
         .state
@@ -608,6 +608,62 @@ pub(super) fn stage_with(
             "rejectedVersion":rejected}),
     )
     .map_err(io_error)
+}
+
+/// Otro tiene el cerrojo de la instalación: el único fallo que el feed reintenta pronto.
+#[derive(Debug)]
+struct OperationBusy(io::Error);
+impl std::fmt::Display for OperationBusy {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(formatter)
+    }
+}
+impl std::error::Error for OperationBusy {}
+
+fn operation_lock(root: &Path) -> io::Result<fs::File> {
+    disk::try_lock(root, ".operation.lock").map_err(|error| match error.raw_os_error() {
+        // ERROR_SHARING_VIOLATION: solo así se sabe que alguien lo tiene.
+        Some(32) => io::Error::other(OperationBusy(error)),
+        _ => error,
+    })
+}
+
+/// Al arrancar, la raíz tiene el cerrojo mientras registra o confirma (#2833).
+const BUSY_RETRIES: [Duration; 3] = [
+    Duration::from_secs(30),
+    Duration::from_mins(1),
+    Duration::from_mins(2),
+];
+const FEED_PERIOD: Duration = Duration::from_hours(6);
+
+/// Hilo del feed hasta que se cancela. Solo la primera consulta reintenta pronto, y
+/// solo si el cerrojo está ocupado; resuelta o agotada, vuelve al periodo normal.
+pub(super) fn follow_feed(
+    cancelled: &AtomicBool,
+    mut check: impl FnMut() -> io::Result<()>,
+    mut wait: impl FnMut(Duration),
+) {
+    let mut retries: &[Duration] = &BUSY_RETRIES;
+    while !cancelled.load(Ordering::Acquire) {
+        let mut busy = false;
+        if let Err(error) = check() {
+            log(format_args!("feed beta: {error}"));
+            busy = error
+                .get_ref()
+                .is_some_and(<dyn std::error::Error + Send + Sync>::is::<OperationBusy>);
+        }
+        let pause = match retries.split_first() {
+            Some((&pause, rest)) if busy => {
+                retries = rest;
+                pause
+            }
+            _ => {
+                retries = &[];
+                FEED_PERIOD
+            }
+        };
+        wait(pause);
+    }
 }
 
 #[cfg(test)]

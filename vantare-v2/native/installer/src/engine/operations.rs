@@ -392,20 +392,33 @@ fn generations(root: &Path) -> Result<Vec<(String, PathBuf)>> {
     }
     Ok(result)
 }
+/// Una raíz sin estado con datos de otro producto no se toca (#2812): ni sus
+/// datos conservados ni las copias antiguas sin referencia, que solo pueden ser
+/// de beta, el único producto anterior a que los datos declararan su canal.
+fn foreign_data(root: &Path, view: &Installation, channel: &str) -> Result<()> {
+    if let Some(saved) = &view.retained {
+        return ensure(
+            saved.channel() == channel,
+            "Los datos conservados en esta carpeta son de otro canal; se conservan",
+        );
+    }
+    if product::for_channel(channel).is_some_and(|product| product.legacy) {
+        return Ok(());
+    }
+    for (id, directory) in generations(root)? {
+        ensure(
+            !(validation::hex(&id, 32) && directory.join("data").is_dir()),
+            "Hay datos de otra instalación en esta carpeta; se conservan",
+        )?;
+    }
+    Ok(())
+}
 fn retained_source(
     root: &Path,
-    incoming: &super::Manifest,
+    incoming: [u16; 3],
     view: &Installation,
 ) -> Result<Option<PathBuf>> {
-    let product = product::for_channel(&incoming.channel)
-        .ok_or_else(|| WriteError::new(1, "Canal sin producto de instalación"))?;
     if let Some(saved) = &view.retained {
-        // Los datos personales de otro producto no se leen, mueven ni borran (#2812).
-        ensure(
-            saved.channel() == product.channel,
-            "Los datos conservados en esta carpeta son de otro canal; se conservan",
-        )?;
-        let incoming = incoming.version_parts;
         if incoming < saved.version_parts {
             return Err(WriteError::new(
                 3,
@@ -434,11 +447,6 @@ fn retained_source(
             }
         }
     }
-    // Copias sin referencia de antes de #2812: solo pueden ser de beta.
-    ensure(
-        source.is_none() || product.legacy,
-        "Hay datos de otra instalación en esta carpeta; se conservan",
-    )?;
     Ok(source)
 }
 
@@ -478,6 +486,11 @@ pub fn install(
             .is_none_or(|state| state.channel == package.channel),
         "Canal de instalación incompatible",
     )?;
+    // Y sin estado, sus datos conservados: se rechaza antes de retirar un
+    // marcador huérfano o de escribir el temporal en la raíz.
+    if view.state.is_none() {
+        foreign_data(&root, &view, package.channel)?;
+    }
     if mode == Mode::Repair && view.state.is_none() {
         return Err(WriteError::new(
             3,
@@ -517,7 +530,7 @@ pub fn install(
             )
             .map_err(|e| WriteError::new(4, e.to_string()))?;
         } else {
-            source = retained_source(&root, &incoming, &view)?;
+            source = retained_source(&root, incoming.version_parts, &view)?;
             previous = None;
         }
         let _handles = disk::binary_guard(&root)?;

@@ -4277,3 +4277,78 @@ fn unreferenced_old_data_are_only_adopted_by_beta() {
         b"opaque\0user\xffbytes"
     );
 }
+
+#[test]
+fn update_never_turns_a_nightly_root_into_beta() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell_with("nightly", fixture.path.join("shell"), hive());
+    fixture
+        .setup(
+            &shell,
+            &fixture.package_for("nightly", "1.0.0"),
+            Mode::Auto,
+            None,
+        )
+        .unwrap();
+    fixture.write_data();
+    let before = product_snapshot(&fixture, &shell, NIGHTLY_KEY, &BETA_PATHS);
+    // A beta ZIP announced as nightly: only the authenticated manifest stops it,
+    // because update copies the incoming channel into state.json.
+    let mut forged = fixture.package("1.0.1");
+    forged.channel = "nightly";
+    // A beta package announced as beta: the state of the root stops it.
+    let beta = fixture.package("1.0.1");
+    for package in [&forged, &beta] {
+        let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+        assert!(
+            operations::update(
+                &fixture.root,
+                &package.borrowed(),
+                false,
+                &mut sink.control(&cancel)
+            )
+            .is_err()
+        );
+        assert_eq!(channel_of(&fixture), "nightly");
+        assert_eq!(
+            product_snapshot(&fixture, &shell, NIGHTLY_KEY, &BETA_PATHS),
+            before
+        );
+    }
+    // The running Hub still projects nightly names only.
+    let root = disk::path(&fixture.root).unwrap();
+    engine::shell::sync_running_with_context(&root, &shell.context, None).unwrap();
+    assert_eq!(registered(&shell, BETA_KEY, "InstallLocation"), None);
+    assert!(registered(&shell, NIGHTLY_KEY, "InstallLocation").is_some());
+}
+
+#[test]
+fn foreign_data_are_refused_before_the_orphan_marker_or_any_staging() {
+    for (owner, intruder) in [("beta", "nightly"), ("nightly", "beta")] {
+        let fixture = Fixture::new();
+        let _owner = retained_residue(&fixture, owner);
+        // Cleanup already removed Uninstall.exe and left its marker: an orphan
+        // that the owner's next Setup would retire.
+        fs::remove_file(fixture.root.join("Uninstall.exe")).unwrap();
+        assert!(fixture.root.join("installer-cleanup.json").is_file());
+        let before = root_tree(&fixture);
+        let package = fixture.package_for(intruder, "1.0.0");
+        let prepared = std::cell::Cell::new(false);
+        let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+        let error = operations::install(
+            &fixture.root,
+            &package.borrowed(),
+            Mode::Auto,
+            &mut sink.control(&cancel),
+            |_, _, _| panic!("another channel's data must not reach Windows"),
+            || {
+                prepared.set(true);
+                Ok(())
+            },
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("otro canal"), "{error}");
+        assert!(!prepared.get(), "{intruder} over {owner}: orphan untouched");
+        assert_eq!(root_tree(&fixture), before, "{intruder} over {owner}");
+    }
+}

@@ -2,6 +2,7 @@
 pub mod clipboard;
 mod email;
 mod identity;
+mod license;
 mod navigation;
 pub mod platform;
 mod reducer;
@@ -155,6 +156,12 @@ impl State {
             name: self.name.clone(),
             photo: self.photo.clone(),
             plan,
+            license: license::view(
+                access,
+                self.reducer.session.current(),
+                self.reducer.policy.as_ref(),
+                wall,
+            ),
             verified,
             blocked: access.blocked,
             modules,

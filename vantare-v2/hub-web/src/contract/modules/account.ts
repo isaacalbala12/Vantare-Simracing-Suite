@@ -24,6 +24,24 @@ const bytes = (v: unknown, max: number): v is string =>
   new TextEncoder().encode(v).length <= max &&
   !v.includes("\0");
 const bool = (v: unknown) => typeof v === "boolean";
+// Ms Unix del host; la pantalla solo los formatea.
+const instant = (v: unknown) =>
+  typeof v === "number" &&
+  Number.isInteger(v) &&
+  v >= 0 &&
+  v <= Number.MAX_SAFE_INTEGER;
+// La licencia solo se cuenta con acceso verificado y no bloqueado.
+function license(v: unknown, verified: boolean): boolean {
+  if (v === null) return true;
+  return (
+    verified &&
+    record(v) &&
+    exact(v, ["tester", "status", "untilMs"]) &&
+    bool(v.tester) &&
+    oneOf(v.status, accountOptions.licenseStatuses) &&
+    (v.untilMs === null ? v.status === "active" : instant(v.untilMs))
+  );
+}
 function emailIntent(v: unknown): boolean {
   if (!record(v)) return false;
   switch (v.action) {
@@ -78,6 +96,7 @@ export function isAccount(v: unknown): v is AccountView {
       "name",
       "photo",
       "plan",
+      "license",
       "verified",
       "blocked",
       "modules",
@@ -110,7 +129,8 @@ export function isAccount(v: unknown): v is AccountView {
     !text(v.name, accountLimits.name) ||
     !nullableText(v.error) ||
     !nullableText(v.notice) ||
-    !text(v.channel)
+    !text(v.channel) ||
+    !license(v.license, v.verified === true && v.blocked === false)
   )
     return false;
   if (

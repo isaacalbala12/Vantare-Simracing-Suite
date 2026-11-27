@@ -110,6 +110,26 @@ pub enum PlanView {
     Denied { text: String },
 }
 #[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LicenseStatus {
+    Active,
+    Expiring,
+    Grace,
+}
+// Lo que la pantalla puede contar de la licencia firmada. No concede nada.
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct LicenseView {
+    // Solo `policy.tester`: derecho operativo firmado y vigente.
+    pub tester: bool,
+    pub status: LicenseStatus,
+    // Milisegundos Unix del reloj local ya corregido por el núcleo; `None` sin caducidad.
+    #[cfg_attr(any(test, feature = "bindings"), ts(type = "number | null"))]
+    pub until_ms: Option<u64>,
+}
+#[cfg_attr(any(test, feature = "bindings"), derive(TS))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ModuleView {
@@ -155,6 +175,7 @@ pub struct AccountView {
     pub name: String,
     pub photo: Option<String>,
     pub plan: PlanView,
+    pub license: Option<LicenseView>,
     pub verified: bool,
     pub blocked: bool,
     pub modules: [ModuleView; 5],

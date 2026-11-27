@@ -6,6 +6,18 @@ La matriz vigente compara **invariantes** del motor Rust. No exige los mismos by
 
 `launcher-tests.ps1` usa el `vantare.exe --session` real compilado con la feature `installer-qa`. Arranca el Hub QA desde el `bin/` de la generación activa mediante el supervisor Rust, comprueba Run, confirmación y Register/SetStartup, y fuerza un token Hub distinto para demostrar que no confirma y hace rollback. La sincronización se basa en archivos de barrera explícitos, sin ventana de 200 ms. Rust rechaza Rollback sin `boot-pending`; la matriz exige ese rechazo y que `state.json` permanezca igual en `rc-options` y `pending`, donde el script retirado devolvía éxito sin operar.
 
+`signed-feed-tests.ps1` (#2771, P5 PR C) recorre la actualización del Hub **por el feed firmado**, sin atajos. Usa el `vantare.exe` QA (`hub-update-qa`) como raíz y como sesión. La sesión QA llama a `stage()` real contra `services/examples/qa-feed-server.rs`, que solo escucha en `127.0.0.1` con un puerto efímero y solo sirve la lista de releases y `download/<etiqueta>/<archivo>` de una carpeta QA guardada. Al salir, la sesión aplica el pendiente y devuelve 10, como `main.rs`; la raíz arranca la generación nueva y el Hub de pega confirma o publica otro token. La oferta se firma con la semilla TEST pública de la matriz (`matrix-verifier --matrix-sign`).
+
+Casos, cada uno con raíz y HKCU inyectado propios:
+
+1. Oferta válida: se confirma 0.0.990.
+2. Token ajeno: vuelve 0.0.989 con `rejectedVersion` y la oferta no se vuelve a pedir.
+3. Firma alterada: nunca se pide el ZIP.
+4. Solo versiones iguales o menores: solo se pide la lista.
+5. Sin `qa-feed-port`: la sesión sigue.
+
+El servidor se para con su archivo de parada o por su propio proceso, nunca por nombre. El token ajeno usa `VANTARE_QA_WRONG_PENDING_BOOT_TOKEN`, que solo actúa con `boot-pending.json` porque la raíz hereda el entorno a todas sus sesiones. `VANTARE_QA_WRONG_BOOT_TOKEN` sigue actuando en toda sesión, como espera `launcher-tests.ps1`. La clave TEST es pública: el riesgo y su contención están en `../README.md`. De momento el paso no bloquea el job de CI: un fallo deja un aviso.
+
 El workflow `branch-channel-gates.yml` construye los cinco fixtures con `native/scripts/compilar.ps1`, descarga el ZIP histórico, ejecuta el guard y después la matriz. Una ejecución local usa las mismas rutas de binarios y una raíz nueva bajo `D:/VantareServer/qa`; no debe usar la instalación ni el registro reales.
 
 La evidencia anterior se conserva en `evidence-1840-p3.md`, `evidence-1840-p4.md`, `evidence-1840-p5.md` y `evidence-1840-p5b.md`. Los arneses que solo ejercitaban el PowerShell instalado se retiraron en el paso 7.

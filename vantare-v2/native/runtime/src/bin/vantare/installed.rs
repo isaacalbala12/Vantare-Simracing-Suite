@@ -404,6 +404,15 @@ fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
     }
     let token =
         std::env::var("VANTARE_BOOT_TOKEN").map_err(|_| io_error("Falta token de arranque QA"))?;
+    // `VANTARE_QA_WRONG_BOOT_TOKEN`: token ajeno en toda sesión; `launcher-tests` espera que
+    // la raíz acabe en error. `VANTARE_QA_WRONG_PENDING_BOOT_TOKEN`: solo en el arranque
+    // pendiente de confirmar, porque la raíz hereda el entorno a todas sus sesiones y la
+    // que prepara la actualización firmada (y la de después de revertir) deben ir bien.
+    let wrong_token = std::env::var_os("VANTARE_QA_WRONG_BOOT_TOKEN").is_some()
+        || (std::env::var_os("VANTARE_QA_WRONG_PENDING_BOOT_TOKEN").is_some()
+            && root.join("boot-pending.json").try_exists()?);
+    #[cfg(feature = "hub-update-qa")]
+    qa_session_feed(root)?;
     let mut hub = Service::new(
         "Hub QA",
         Program {
@@ -412,17 +421,15 @@ fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
         },
         0,
     );
-    hub.boot_token = Some(
-        if std::env::var_os("VANTARE_QA_WRONG_BOOT_TOKEN").is_some() {
-            format!(
-                "{}{}",
-                if token.starts_with('0') { '1' } else { '0' },
-                &token[1..]
-            )
-        } else {
-            token
-        },
-    );
+    hub.boot_token = Some(if wrong_token {
+        format!(
+            "{}{}",
+            if token.starts_with('0') { '1' } else { '0' },
+            &token[1..]
+        )
+    } else {
+        token
+    });
     hub.spawn()?;
     let deadline = Instant::now() + Duration::from_mins(1);
     while !root.join("app-open").exists() {
@@ -438,7 +445,7 @@ fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
         }
         std::thread::sleep(Duration::from_millis(10));
     }
-    if std::env::var_os("VANTARE_QA_WRONG_BOOT_TOKEN").is_some() {
+    if wrong_token {
         return Err(io_error("Hub QA publicó otro token"));
     }
     while !root.join("confirmation-complete").exists() {
@@ -462,11 +469,36 @@ fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
     }
     drop(hub.child.as_mut().expect("spawned Hub").stdin.take());
     let status = hub.child.as_mut().expect("spawned Hub").wait()?;
+    // Como `main.rs` al cerrar la sesión real: con una actualización lista, se aplica y
+    // la raíz reinicia con la generación nueva (salida 10).
+    #[cfg(feature = "hub-update-qa")]
+    if status.success() && root.join("staging/pending.json").try_exists()? {
+        return apply(root);
+    }
     Ok(if status.success() {
         ExitCode::SUCCESS
     } else {
         ExitCode::FAILURE
     })
+}
+
+/// Sesión QA con autoridad TEST (#2771, P5 PR C): prepara la actualización como el hilo del
+/// feed de la sesión real, antes de abrir el Hub de pega.
+#[cfg(feature = "hub-update-qa")]
+fn qa_session_feed(root: &Path) -> io::Result<()> {
+    // Barreras del Hub de pega de una sesión anterior: no cuentan para esta.
+    for stale in ["app-open", "confirmation-complete"] {
+        if let Err(error) = fs::remove_file(root.join(stale))
+            && error.kind() != io::ErrorKind::NotFound
+        {
+            return Err(error);
+        }
+    }
+    // Como en la sesión real: un fallo del feed se registra y la sesión sigue.
+    if let Err(error) = stage(root, &AtomicBool::new(false)) {
+        log(format_args!("feed beta QA: {error}"));
+    }
+    Ok(())
 }
 
 /// La autoridad TEST (`hub-update-qa`) solo opera bajo el guard QA, antes de leer nada.

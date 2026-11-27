@@ -2345,11 +2345,21 @@ fn names(directory: &Path) -> Vec<String> {
     names.sort();
     names
 }
+/// The ways a note may name a path: the notes of Confirm, Uninstall and the
+/// adoption name it from the root of its installation (`<raíz>`).
+fn shown(path: &Path) -> [String; 2] {
+    let path = disk::path(path).expect("path");
+    let text = path.display().to_string();
+    let root = path
+        .ancestors()
+        .find(|ancestor| ancestor.join(".vantare-native").is_file());
+    let relative = root.map_or_else(|| text.clone(), |root| disk::relative(root, &text));
+    [text, relative]
+}
 fn noted(notes: &[String], path: &Path, reason: &str) -> bool {
-    let path = disk::path(path).expect("path").display().to_string();
-    notes
-        .iter()
-        .any(|note| note.contains(&path) && note.contains(reason))
+    notes.iter().any(|note| {
+        shown(path).iter().any(|path| note.contains(path.as_str())) && note.contains(reason)
+    })
 }
 
 #[test]
@@ -2842,23 +2852,25 @@ fn opened(path: &Path, write: bool, share: u32) -> fs::File {
 }
 /// The note that keeps exactly this path, with its reason.
 fn keeps(notes: &[String], path: &Path, reason: &str) -> bool {
-    let path = disk::path(path).expect("path").display().to_string();
-    let start = format!("se conserva {path}; motivo: ");
-    notes
-        .iter()
-        .any(|note| note.contains(&start) && note.contains(reason))
+    shown(path).iter().any(|path| {
+        let start = format!("se conserva {path}; motivo: ");
+        notes
+            .iter()
+            .any(|note| note.contains(&start) && note.contains(reason))
+    })
 }
 /// The single note of the session for all it keeps of a folder for one reason.
 fn summarized(notes: &[String], source: &Path, names: &[&str], reason: &str) -> bool {
-    let source = disk::path(source).expect("path").display().to_string();
-    let start = format!(
-        "Grabaciones de {source}: se conservan {} ({}",
-        names.len(),
-        names[..names.len().min(5)].join(", ")
-    );
-    notes
-        .iter()
-        .any(|note| note.starts_with(&start) && note.contains(reason))
+    shown(source).iter().any(|source| {
+        let start = format!(
+            "Grabaciones de {source}: se conservan {} ({}",
+            names.len(),
+            names[..names.len().min(5)].join(", ")
+        );
+        notes
+            .iter()
+            .any(|note| note.starts_with(&start) && note.contains(reason))
+    })
 }
 fn adopted(moved: usize, duplicates: usize, kept: usize) -> Adoption {
     Adoption {
@@ -4351,4 +4363,632 @@ fn foreign_data_are_refused_before_the_orphan_marker_or_any_staging() {
         assert!(!prepared.get(), "{intruder} over {owner}: orphan untouched");
         assert_eq!(root_tree(&fixture), before, "{intruder} over {owner}");
     }
+}
+
+// ADR 0111 T3: Confirm and Uninstall gather the recordings of every generation:
+// the active one first, then the orphans from the newest, never `previous` nor
+// the generation an unconfirmed update staged; a recording moves only if whole.
+/// `DuckDB` checksum of what follows the first 8 bytes of a block: 5381, and
+/// each further 8-byte word multiplied by a constant and xored in.
+fn seal(block: &mut [u8]) {
+    let sum = block[8..]
+        .as_chunks::<8>()
+        .0
+        .iter()
+        .fold(5381_u64, |sum, word| {
+            sum ^ u64::from_le_bytes(*word).wrapping_mul(0xbf58_476d_1ce4_e5b9)
+        });
+    block[..8].copy_from_slice(&sum.to_le_bytes());
+}
+/// A recording as `DuckDB` leaves it: its mark, two database headers (the newest
+/// counts `blocks` of 4 096 bytes; the older one, more than the file has) and
+/// those blocks, filled with `fill`; every one sealed with its checksum.
+fn duck(blocks: u64, fill: u8) -> Vec<u8> {
+    let mut bytes = vec![0_u8; 3 * 4096];
+    bytes[8..12].copy_from_slice(b"DUCK");
+    for (at, iteration, count) in [(4096, 1_u64, blocks + 7), (8192, 2, blocks)] {
+        for (offset, value) in [(8, iteration), (32, count), (40, 4096)] {
+            bytes[at + offset..at + offset + 8].copy_from_slice(&value.to_le_bytes());
+        }
+    }
+    for header in bytes.as_chunks_mut::<4096>().0 {
+        seal(header);
+    }
+    for _ in 0..blocks {
+        let mut block = vec![fill; 4096];
+        seal(&mut block);
+        bytes.extend(block);
+    }
+    bytes
+}
+/// A real recording of the `DuckDB` in use: five blocks of 16 384 bytes.
+/// A copy of `hub-host/src/analysis/fixtures/session-v1.duckdb` (same SHA-256).
+const SESSION: &[u8] = include_bytes!("fixtures/session-v1.duckdb");
+fn born(path: &Path, seconds: u64) -> std::time::SystemTime {
+    use std::os::windows::fs::FileTimesExt;
+    let at = std::time::UNIX_EPOCH + std::time::Duration::from_secs(seconds);
+    // FILE_WRITE_ATTRIBUTES, and FILE_FLAG_BACKUP_SEMANTICS for a folder.
+    fs::OpenOptions::new()
+        .access_mode(0x100)
+        .custom_flags(0x0200_0000)
+        .open(path)
+        .expect("dates")
+        .set_times(fs::FileTimes::new().set_created(at).set_modified(at))
+        .expect("dates");
+    at
+}
+impl Fixture {
+    /// A (1.0.0) without a reference, B (1.0.1) `previous` and C (1.0.2)
+    /// active, with its boot still to confirm.
+    fn three_generations(&self) -> [PathBuf; 3] {
+        let [a, b] = self.two_generations();
+        [a, b, self.upgrade("1.0.2", Mode::Auto)]
+    }
+    fn uninstall_cut(
+        &self,
+        cut: &mut dyn FnMut(&str) -> disk::Result<()>,
+    ) -> (disk::Result<()>, Vec<String>) {
+        self.uninstall_as("beta", cut)
+    }
+    fn uninstall_as(
+        &self,
+        channel: &str,
+        cut: &mut dyn FnMut(&str) -> disk::Result<()>,
+    ) -> (disk::Result<()>, Vec<String>) {
+        let cancel = AtomicBool::new(false);
+        let mut notes = Vec::new();
+        let mut warning = |note: &str| notes.push(note.to_owned());
+        let mut control = Control {
+            cancel: &cancel,
+            progress: &mut |_| {},
+            checkpoint: cut,
+            warning: &mut warning,
+        };
+        let result = operations::uninstall(&self.root, channel, &mut control, |_| Ok(()));
+        (result, notes)
+    }
+}
+fn read(path: &Path) -> Vec<u8> {
+    fs::read(path).unwrap_or_else(|error| panic!("{}: {error}", path.display()))
+}
+fn read_only(path: &Path, value: bool) {
+    let mut permissions = fs::metadata(path).expect("file").permissions();
+    permissions.set_readonly(value);
+    fs::set_permissions(path, permissions).expect("attribute");
+}
+fn root_text(fixture: &Fixture) -> String {
+    disk::path(&fixture.root)
+        .expect("root")
+        .display()
+        .to_string()
+}
+
+#[test]
+fn confirm_moves_what_is_missing_keeps_its_dates_and_never_takes_from_previous() {
+    let fixture = Fixture::new();
+    let [a, b, c] = fixture.three_generations();
+    let single = fixture.root.join("recordings");
+    let (from_c, from_a, in_b) = (
+        ("series-3-3.duckdb", duck(2, 3)),
+        ("series-1-1.duckdb", SESSION.to_vec()),
+        ("series-2-2.duckdb", duck(1, 2)),
+    );
+    record(&recordings(&c), &[(from_c.0, &from_c.1)]);
+    record(&recordings(&a), &[(from_a.0, &from_a.1), (STATUS, b"{}")]);
+    record(&recordings(&b), &[(in_b.0, &in_b.1), (from_a.0, &from_a.1)]);
+    let dates = [
+        born(&recordings(&c).join(from_c.0), 1_700_000_000),
+        born(&recordings(&a).join(from_a.0), 1_700_000_100),
+    ];
+    let previous = index(&b);
+    let notes = fixture.confirm();
+    assert_eq!(names(&single), [from_a.0, from_c.0]);
+    assert_eq!(read(&single.join(from_c.0)), from_c.1);
+    assert_eq!(
+        read(&single.join(from_a.0)),
+        from_a.1,
+        "a real recording is whole"
+    );
+    for (name, at) in [from_c.0, from_a.0].into_iter().zip(dates) {
+        let moved = fs::metadata(single.join(name)).unwrap();
+        let got = (moved.created().unwrap(), moved.modified().unwrap());
+        assert_eq!(got, (at, at), "moved, never copied: {name}");
+    }
+    assert_eq!(names(&recordings(&c)), [] as [String; 0]);
+    assert_eq!(names(&recordings(&a)), [STATUS]);
+    assert_eq!(
+        index(&b),
+        previous,
+        "previous keeps its copy for the way back"
+    );
+    assert!(noted(&notes, &recordings(&a), "adoptadas 1"), "{notes:?}");
+    let log = logged(&fixture.root);
+    assert!(
+        log.iter().any(|line| line.contains("adoptadas 1")),
+        "{log:?}"
+    );
+    assert!(log.iter().all(|line| !line.contains(&root_text(&fixture))));
+}
+
+#[test]
+fn confirm_removes_a_copy_only_when_its_hash_matches_the_single_folder() {
+    let fixture = Fixture::new();
+    let [a, _, _] = fixture.three_generations();
+    let (source, single) = (recordings(&a), fixture.root.join("recordings"));
+    let same = ("series-1-1.duckdb", duck(1, 1));
+    let other = ("series-2-2.duckdb", duck(1, 2)); // the same size, other bytes
+    let longer = ("series-3-3.duckdb", duck(2, 3));
+    let linked = ("series-4-4.duckdb", duck(1, 4));
+    let busy = ("series-5-5.duckdb", duck(1, 5));
+    record(
+        &single,
+        &[
+            (same.0, &same.1),
+            (other.0, &duck(1, 0x20)),
+            (longer.0, &duck(1, 3)),
+            (linked.0, &linked.1),
+            (busy.0, &busy.1),
+        ],
+    );
+    record(
+        &source,
+        &[
+            (same.0, &same.1),
+            (other.0, &other.1),
+            (longer.0, &longer.1),
+            (busy.0, &busy.1),
+        ],
+    );
+    // Two names of one file: it cannot be held alone, so it stays.
+    fs::hard_link(single.join(linked.0), source.join(linked.0)).unwrap();
+    let twins = index(&single);
+    let writer = opened(&single.join(busy.0), true, 1);
+    let notes = fixture.confirm();
+    drop(writer);
+    assert_eq!(index(&single), twins, "the single folder is never written");
+    assert_eq!(names(&source), [other.0, longer.0, linked.0, busy.0]);
+    for (name, bytes) in [&other, &longer, &linked, &busy] {
+        assert_eq!(&read(&source.join(name)), bytes, "{name}");
+    }
+    let differs = "su contenido es distinto";
+    assert!(
+        summarized(&notes, &source, &[other.0, longer.0], differs),
+        "{notes:?}"
+    );
+    assert!(summarized(
+        &notes,
+        &source,
+        &[linked.0],
+        "la copia está en uso"
+    ));
+    let unread = "la de la carpeta única está en uso";
+    assert!(summarized(&notes, &source, &[busy.0], unread), "{notes:?}");
+}
+
+#[test]
+fn a_reverted_orphan_gives_its_whole_recordings_and_keeps_the_broken_ones() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    fixture.write_documents();
+    let a = fixture.active();
+    let b = fixture.upgrade("1.0.1", Mode::Auto);
+    // B recorded before its boot failed to confirm; a power cut left pieces.
+    let whole = duck(3, 0xB);
+    // What a cut `CopyFileW` leaves on NTFS: the final size, with zeros after
+    // the part that was written.
+    let zeros_after_header = [&SESSION[..3 * 4096], &vec![0_u8; 5 * 16_384][..]].concat();
+    let last_block_zeros = [&SESSION[..SESSION.len() - 16_384], &[0_u8; 16_384][..]].concat();
+    let mut flipped = whole.clone();
+    flipped[3 * 4096 + 4096 + 100] ^= 1;
+    let mut older_header_flipped = whole.clone();
+    older_header_flipped[4096 + 200] ^= 1;
+    let files: [(&str, Vec<u8>); 10] = [
+        ("series-1-1.duckdb", whole.clone()),
+        ("series-2-2.duckdb", SESSION.to_vec()),
+        ("series-3-3.duckdb", whole[..whole.len() - 1].to_vec()),
+        (
+            "series-4-4.duckdb",
+            SESSION[..SESSION.len() - 16_384].to_vec(),
+        ),
+        ("series-5-5.duckdb", vec![0; whole.len()]),
+        ("series-6-6.duckdb", whole[..3 * 4096 - 1].to_vec()),
+        ("series-7-8.duckdb", zeros_after_header),
+        ("series-7-9.duckdb", last_block_zeros),
+        ("series-8-8.duckdb", flipped),
+        ("series-8-9.duckdb", older_header_flipped),
+    ];
+    let listed = files
+        .each_ref()
+        .map(|(name, bytes)| (*name, bytes.as_slice()));
+    record(&recordings(&b), &listed);
+    let restored = operations::rollback(&fixture.root).unwrap();
+    assert_eq!(restored, operations::BootRecovery::Restored);
+    assert_eq!(fixture.active(), a);
+    let c = fixture.upgrade("1.0.2", Mode::Auto);
+    // The active copy of one name is the broken one; the orphan has it whole.
+    let half = &whole[..whole.len() / 2];
+    record(&recordings(&c), &[("series-7-7.duckdb", half)]);
+    record(&recordings(&b), &[("series-7-7.duckdb", &whole)]);
+    let notes = fixture.confirm();
+    let single = fixture.root.join("recordings");
+    let moved = [
+        "series-1-1.duckdb",
+        "series-2-2.duckdb",
+        "series-7-7.duckdb",
+    ];
+    assert_eq!(names(&single), moved);
+    assert_eq!(read(&single.join(moved[0])), whole);
+    assert_eq!(read(&single.join(moved[1])), SESSION);
+    assert_eq!(read(&single.join(moved[2])), whole);
+    let broken: Vec<&str> = files[2..].iter().map(|(name, _)| *name).collect();
+    assert_eq!(names(&recordings(&b)), broken);
+    for (name, bytes) in &files[2..] {
+        assert_eq!(&read(&recordings(&b).join(name)), bytes, "{name}");
+    }
+    assert_eq!(read(&recordings(&c).join(moved[2])), half);
+    let reason = "no es una grabación completa";
+    assert!(
+        summarized(&notes, &recordings(&b), &broken, reason),
+        "{notes:?}"
+    );
+    assert!(summarized(&notes, &recordings(&c), &[moved[2]], reason));
+}
+
+#[test]
+fn confirm_takes_the_active_first_then_the_newest_orphan() {
+    use std::os::windows::fs::FileTimesExt;
+    let fixture = Fixture::new();
+    fixture.two_generations();
+    for version in ["1.0.2", "1.0.3"] {
+        fixture.upgrade(version, Mode::Auto);
+        fixture.confirm();
+    }
+    let active = fixture.upgrade("1.0.4", Mode::Auto);
+    let view = verified(&fixture.root).unwrap().state.unwrap();
+    let referenced = [view.active.generation, view.previous.unwrap().generation];
+    let generations = fixture.root.join("generations");
+    let mut orphans: Vec<_> = names(&generations)
+        .into_iter()
+        .filter(|id| !referenced.contains(id))
+        .collect();
+    assert_eq!(orphans.len(), 3);
+    // Neither the name nor the date of modification says which one is newer:
+    // only the date the folder was created does.
+    let at = |seconds: u64| std::time::UNIX_EPOCH + std::time::Duration::from_secs(seconds);
+    let [newest, middle, oldest] =
+        [("8", 3_u8, 2), ("0", 2, 3), ("f", 1, 1)].map(|(id, born_at, touched)| {
+            let path = generations.join(id.repeat(32));
+            fs::rename(generations.join(orphans.pop().unwrap()), &path).unwrap();
+            record(
+                &recordings(&path),
+                &[("series-1-1.duckdb", &duck(1, born_at))],
+            );
+            let times = fs::FileTimes::new()
+                .set_created(at(1_600_000_000 + u64::from(born_at)))
+                .set_modified(at(1_700_000_000 + touched));
+            fs::OpenOptions::new()
+                .access_mode(0x100)
+                .custom_flags(0x0200_0000)
+                .open(&path)
+                .unwrap()
+                .set_times(times)
+                .unwrap();
+            path
+        });
+    let all = "series-2-2.duckdb";
+    record(&recordings(&newest), &[(all, &duck(1, 0xB))]);
+    record(&recordings(&active), &[(all, &duck(1, 0xC))]);
+    fixture.confirm();
+    let single = fixture.root.join("recordings");
+    assert_eq!(
+        read(&single.join(all)),
+        duck(1, 0xC),
+        "the active one first"
+    );
+    let first = read(&single.join("series-1-1.duckdb"));
+    assert_eq!(first, duck(1, 3), "then the newest orphan");
+    assert_eq!(names(&recordings(&newest)), [all]);
+    for older in [&middle, &oldest] {
+        assert_eq!(names(&recordings(older)), ["series-1-1.duckdb"]);
+    }
+    assert_eq!(names(&recordings(&active)), [] as [String; 0]);
+}
+
+#[test]
+fn confirm_keeps_recordings_with_a_wal_together_where_they_are() {
+    let fixture = Fixture::new();
+    let [a, _, _] = fixture.three_generations();
+    let (source, single) = (recordings(&a), fixture.root.join("recordings"));
+    let (pair, beside) = ("series-1-1.duckdb", "series-3-3.duckdb");
+    let (pair_wal, beside_wal) = (format!("{pair}.wal"), format!("{beside}.wal"));
+    record(
+        &source,
+        &[
+            (pair, &duck(1, 1)),
+            (&pair_wal, b"last changes"),
+            ("series-2-2.duckdb.wal", b"a wal without its recording"),
+            (beside, &duck(1, 3)),
+        ],
+    );
+    record(&single, &[(&beside_wal, b"written by the core")]);
+    let (before, twins) = (index(&source), index(&single));
+    let notes = fixture.confirm();
+    assert_eq!(index(&source), before, "nothing leaves the generation");
+    assert_eq!(index(&single), twins);
+    assert!(
+        summarized(&notes, &source, &[pair], "tiene al lado un .wal"),
+        "{notes:?}"
+    );
+    let wal_there = "en la carpeta única hay un .wal";
+    assert!(
+        summarized(&notes, &source, &[beside], wal_there),
+        "{notes:?}"
+    );
+}
+
+#[test]
+fn uninstall_never_gathers_from_a_staged_generation_nor_with_a_doubtful_marker() {
+    let gathered = |marker: &dyn Fn(&Path, &str)| {
+        let fixture = Fixture::new();
+        let [a, _, c] = fixture.three_generations();
+        record(&recordings(&a), &[("series-1-1.duckdb", &duck(1, 1))]);
+        record(&recordings(&c), &[("series-3-3.duckdb", &duck(1, 3))]);
+        let id = a.file_name().unwrap().to_string_lossy().into_owned();
+        marker(&fixture.root.join("boot-pending.json"), &id);
+        let (result, notes) = fixture.uninstall_cut(&mut |_| Ok(()));
+        result.expect("uninstalled");
+        let single = fixture.root.join("recordings");
+        let moved = if single.exists() {
+            names(&single)
+        } else {
+            Vec::new()
+        };
+        (moved, notes)
+    };
+    // The update to C was never confirmed: C is the staged generation.
+    let (moved, _) = gathered(&|_, _| {});
+    assert_eq!(moved, ["series-1-1.duckdb"]);
+    // A marker that stages another generation keeps that one instead.
+    let (moved, _) = gathered(&|path, id| {
+        let mut marker = disk::read_json(path, None).unwrap();
+        marker["stagedGeneration"] = id.into();
+        fs::write(path, marker.to_string()).unwrap();
+    });
+    assert_eq!(moved, ["series-3-3.duckdb"]);
+    // A marker nobody can read, or one without its generation: nothing at all.
+    for broken in [
+        b"{roto".as_slice(),
+        b"{\"schema\":1}".as_slice(),
+        b"{\"schema\":1,\"stagedGeneration\":\"no es hexadecimal\"}".as_slice(),
+    ] {
+        let (moved, notes) = gathered(&|path, _| fs::write(path, broken).unwrap());
+        assert!(moved.is_empty(), "{moved:?}");
+        let said = notes.iter().any(|note| note.contains("boot-pending.json"));
+        assert!(said, "{notes:?}");
+    }
+}
+
+#[test]
+fn a_gathering_cut_short_loses_nothing_and_the_next_one_finishes() {
+    let fixture = Fixture::new();
+    let [a, _, _] = fixture.three_generations();
+    let (source, single) = (recordings(&a), fixture.root.join("recordings"));
+    let files = [
+        ("series-1-1.duckdb", duck(1, 1)),
+        ("series-2-2.duckdb", duck(1, 2)),
+        ("series-3-3.duckdb", duck(1, 3)),
+        ("series-4-4.duckdb", duck(1, 4)),
+    ];
+    let listed = files
+        .each_ref()
+        .map(|(name, bytes)| (*name, bytes.as_slice()));
+    record(&source, &listed);
+    record(&single, &[listed[3]]);
+    let before = index(&source);
+    // No time left: Confirm still confirms, and touches nothing.
+    let mut notes = Vec::new();
+    let mut note = |text: &str| notes.push(text.to_owned());
+    operations::confirm_within(&fixture.root, std::time::Duration::ZERO, &mut note)
+        .expect("confirmed");
+    assert!(!fixture.root.join("boot-pending.json").exists());
+    assert_eq!(index(&source), before);
+    assert_eq!(names(&single), [files[3].0]);
+    let later = notes
+        .iter()
+        .any(|note| note.contains("se sigue en la siguiente"));
+    assert!(later, "{notes:?}");
+    // Uninstall is cut before its second move, and then resumed.
+    let mut moves = 0;
+    let (result, _) = fixture.uninstall_cut(&mut |point| {
+        moves += usize::from(point == "adopt-move");
+        disk::ensure(moves < 2, "corte inyectado")
+    });
+    assert!(result.is_err());
+    assert!(
+        fixture.root.join("state.json").exists(),
+        "nothing else was done"
+    );
+    assert_eq!(names(&single), [files[0].0, files[3].0]);
+    assert_eq!(names(&source), [files[1].0, files[2].0, files[3].0]);
+    let (result, _) = fixture.uninstall_cut(&mut |_| Ok(()));
+    result.expect("resumed");
+    assert_eq!(names(&source), [] as [String; 0]);
+    assert_eq!(names(&single), files.each_ref().map(|(name, _)| *name));
+    for (name, bytes) in &files {
+        assert_eq!(&read(&single.join(name)), bytes, "{name}");
+    }
+}
+
+#[test]
+fn confirm_notes_what_stays_once_per_reason_and_never_fails_for_it() {
+    let fixture = Fixture::new();
+    let [a, _, _] = fixture.three_generations();
+    let source = recordings(&a);
+    let broken: Vec<String> = (1..=7).map(|n| format!("series-{n}-{n}.duckdb")).collect();
+    for name in &broken {
+        record(&source, &[(name, b"no es DuckDB")]);
+    }
+    let (short, denied) = ("SERIES~1.DUC", "series-9-9.duckdb");
+    record(&source, &[(short, &duck(1, 8)), (denied, &duck(1, 9))]);
+    let guard = Denied::new(&source.join(denied));
+    let notes = fixture.confirm();
+    drop(guard);
+    let shown: Vec<&str> = broken.iter().map(String::as_str).collect();
+    let reason = "no es una grabación completa";
+    assert!(summarized(&notes, &source, &shown, reason), "{notes:?}");
+    assert!(notes.iter().any(|note| note.contains(" y 2 más")));
+    let foreign = "el nombre no es de una grabación";
+    assert!(summarized(&notes, &source, &[short], foreign), "{notes:?}");
+    assert!(summarized(&notes, &source, &[denied], "no se puede leer"));
+    let kept = notes
+        .iter()
+        .filter(|note| note.starts_with("Grabaciones de") && note.contains("se conservan"))
+        .count();
+    assert_eq!(kept, 3, "one note per reason: {notes:?}");
+    let log = logged(&fixture.root);
+    assert!(
+        log.iter().any(|line| line.contains("se conservan 7")),
+        "{log:?}"
+    );
+    assert!(log.iter().all(|line| !line.contains(&root_text(&fixture))));
+    // A file where the single folder should be: said once, and Confirm confirms.
+    fixture.upgrade("1.0.3", Mode::Auto);
+    let single = fixture.root.join("recordings");
+    fs::write(&single, b"not a folder").unwrap();
+    let before = index(&source);
+    let notes = fixture.confirm();
+    assert_eq!(index(&source), before);
+    assert_eq!(read(&single), b"not a folder");
+    let said = notes
+        .iter()
+        .filter(|note| note.contains("no es una carpeta"));
+    assert_eq!(said.count(), 1, "{notes:?}");
+}
+
+#[test]
+fn an_update_flushes_its_copy_of_the_data_and_keeps_read_only_files_read_only() {
+    let fixture = Fixture::new();
+    let first = fixture.upgrade("1.0.0", Mode::Auto);
+    let file = first.join("data/solo lectura.bin");
+    fs::write(&file, b"kept read-only").unwrap();
+    read_only(&file, true);
+    let second = fixture.upgrade("1.0.1", Mode::Auto);
+    let copy = second.join("data/solo lectura.bin");
+    assert_eq!(read(&copy), b"kept read-only");
+    let locked = |path: &Path| fs::metadata(path).unwrap().permissions().readonly();
+    assert!(locked(&copy) && locked(&file));
+    read_only(&file, false);
+    read_only(&copy, false);
+    // The flush writes through its own handle: a copy nobody may write fails.
+    let held = opened(&copy, false, 1);
+    assert!(disk::flush(&copy).is_err());
+    drop(held);
+    disk::flush(&copy).expect("flushed");
+}
+
+#[test]
+fn the_gathering_stays_inside_the_product_of_its_root() {
+    // Beta, as before: an uninstall in the name of nightly is refused before it
+    // brings or removes anything.
+    let beta = Fixture::new();
+    let [a, b, c] = beta.three_generations();
+    record(&recordings(&a), &[("series-1-1.duckdb", &duck(1, 1))]);
+    record(&recordings(&c), &[("series-3-3.duckdb", &duck(1, 3))]);
+    let before = index(&beta.root);
+    let (result, notes) = beta.uninstall_as("nightly", &mut |_| Ok(()));
+    assert!(result.is_err(), "{notes:?}");
+    assert_eq!(index(&beta.root), before, "nothing of beta was touched");
+    // As beta it gathers as before: the orphan's recording comes; the active
+    // one is still the generation an unconfirmed update staged, so it stays.
+    let (result, _) = beta.uninstall_cut(&mut |_| Ok(()));
+    result.expect("uninstalled as beta");
+    assert_eq!(names(&beta.root.join("recordings")), ["series-1-1.duckdb"]);
+    assert_eq!(names(&recordings(&c)), ["series-3-3.duckdb"]);
+    assert!(fs::read_dir(recordings(&b)).is_err(), "previous had none");
+    // Nightly, with its own root: the same rules, bound to its own state.
+    let nightly = Fixture::new();
+    let install = |version: &str| {
+        nightly
+            .install(
+                &nightly.package_for("nightly", version),
+                Mode::Auto,
+                false,
+                false,
+            )
+            .expect(version);
+        nightly.active()
+    };
+    let orphan = install("1.0.0");
+    install("1.0.1");
+    nightly.confirm();
+    let active = install("1.0.2");
+    assert_eq!(channel_of(&nightly), "nightly");
+    let previous = nightly.root.join("generations").join(
+        verified(&nightly.root)
+            .unwrap()
+            .state
+            .unwrap()
+            .previous
+            .unwrap()
+            .generation,
+    );
+    record(&recordings(&orphan), &[("series-1-1.duckdb", &duck(1, 1))]);
+    record(
+        &recordings(&previous),
+        &[("series-2-2.duckdb", &duck(1, 2))],
+    );
+    record(&recordings(&active), &[("series-3-3.duckdb", &duck(1, 3))]);
+    nightly.confirm();
+    let single = nightly.root.join("recordings");
+    assert_eq!(names(&single), ["series-1-1.duckdb", "series-3-3.duckdb"]);
+    assert_eq!(names(&recordings(&previous)), ["series-2-2.duckdb"]);
+    // And a beta uninstall never reaches the recordings of nightly.
+    let before = index(&nightly.root);
+    let (result, _) = nightly.uninstall_as("beta", &mut |_| Ok(()));
+    assert!(result.is_err());
+    assert_eq!(index(&nightly.root), before);
+}
+
+/// Cost of what T3 adds, measured by hand: `--run-ignored only`.
+#[test]
+#[ignore = "medición: coste de comprobar una grabación y de forzar copias a disco"]
+fn measure_the_cost_of_checking_a_recording_and_of_the_flush() {
+    let fixture = Fixture::new();
+    let [a, _, _] = fixture.three_generations();
+    // 64 MiB: about three hours of track.
+    let big = duck(16_384, 0x5A);
+    record(&recordings(&a), &[("series-1-1.duckdb", &big)]);
+    let started = std::time::Instant::now();
+    fixture.confirm();
+    let checked = started.elapsed();
+    assert_eq!(
+        names(&fixture.root.join("recordings")),
+        ["series-1-1.duckdb"]
+    );
+    let folder = fixture.path.join("flush");
+    fs::create_dir_all(&folder).unwrap();
+    let small: Vec<_> = (0..500)
+        .map(|n| {
+            let path = folder.join(format!("{n}.bin"));
+            fs::write(&path, [7_u8; 4096]).unwrap();
+            path
+        })
+        .collect();
+    let started = std::time::Instant::now();
+    for path in &small {
+        disk::flush(path).unwrap();
+    }
+    let flushed_small = started.elapsed();
+    let large = folder.join("grande.bin");
+    fs::write(&large, &big).unwrap();
+    let started = std::time::Instant::now();
+    disk::flush(&large).unwrap();
+    let flushed_large = started.elapsed();
+    println!(
+        "MEDIDA: Confirm con una grabación de 64 MiB comprobada y movida: {checked:?}; \
+         flush de 500 archivos de 4 KiB: {flushed_small:?}; \
+         flush de 64 MiB recién escritos: {flushed_large:?}"
+    );
 }

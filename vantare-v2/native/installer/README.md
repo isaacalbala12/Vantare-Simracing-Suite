@@ -395,7 +395,7 @@ Tests en el último bloque de `tests/installation_write.rs`: A → B → C, Repa
 archivo alterado o no enumerado, archivo ocupado, permiso de lectura denegado,
 imagen en uso, barrido cortado y desinstalación.
 
-## Adoptar grabaciones — ADR 0111, T1 y T2 (#2755, #2758)
+## Adoptar grabaciones — ADR 0111, T1, T2 y T3 (#2755, #2758, #2740)
 
 [ADR 0111](../../docs/adr/0111-grabaciones-carpeta-unica-por-instalacion.md)
 saca las grabaciones de Análisis de cada generación y las reúne en una sola
@@ -403,7 +403,8 @@ carpeta, `<raíz>/recordings/`. `operations::adopt_recordings` es la operación
 que las trae desde `generations/<id>/data/hub/recordings/`. La llama la
 **sesión** de la versión instalada en cada arranque, sobre su propia generación
 y en modo «solo mover» (T2; ver «Al arrancar la sesión»). Confirm y Desinstalar
-todavía no la llaman (T3).
+recogen desde todas las generaciones comparando huellas (T3; ver «Recoger en
+Confirm y al desinstalar»).
 
 Una grabación es un archivo `series-<época>-<pid>.duckdb`, el único nombre que
 le da el grabador. Para cada una:
@@ -428,8 +429,12 @@ Se conserva en el origen, con su ruta y el motivo en las notas (y en el
 
 Cómo se anota lo que se conserva depende de quién llama:
 
-- Con `Duplicates::RemoveIdentical` (Confirm y Desinstalar), una nota por
-  archivo, con su ruta y su motivo, cada vez que se ejecuta.
+- Con `Duplicates::RemoveIdentical` llamada directamente, una nota por archivo,
+  con su ruta y su motivo, cada vez que se ejecuta.
+- En todos los casos, las notas que recibe quien llama nombran las rutas desde
+  la raíz (`<raíz>\…`), igual que el registro: nunca la ruta del equipo.
+- En la recogida de Confirm y Desinstalar (T3), una nota por motivo y por
+  generación, con los cinco primeros nombres, cada vez que se ejecuta.
 - Con `Duplicates::Keep` (la sesión, en cada arranque), una nota por motivo con
   cuántos archivos son y los cinco primeros nombres. Esa nota no se vuelve a
   escribir en el registro mientras siga en él (`write_fs::log_once`): si no,
@@ -565,6 +570,66 @@ Límite que no se puede quitar: **las versiones ya publicadas** rechazan el
 enlace al arrancar. Si una versión con este cambio falla y se vuelve a una de
 ellas, un usuario con la unión puesta no podrá abrir Vantare hasta que la quite
 o llegue una versión corregida.
+
+### Recoger en Confirm y al desinstalar (T3, #2740)
+
+Tras un arranque confirmado (ya sin `boot-pending.json`) y al desinstalar
+(antes de retirar nada y con `state.json` aún legible), el motor recoge las
+grabaciones de las generaciones con `Duplicates::RemoveIdentical`:
+
+- **Orden fijo:** primero la **activa**; después las generaciones sin
+  referencia, de la más reciente a la más antigua según la fecha de creación de
+  su carpeta. La primera copia íntegra de un nombre es la que llega a la
+  carpeta única; las demás se comparan con ella.
+- **Nunca** desde la **anterior** ni desde la generación que nombra
+  `stagedGeneration` en `boot-pending.json` (una actualización sin confirmar,
+  por ejemplo al desinstalar a mitad). Si ese archivo existe y no se puede leer
+  o no nombra su generación, no se recoge nada. Una versión que falló, se
+  revirtió y después quedó sin referencia **sí** se recoge (ADR 0111 §5).
+- **Solo se mueve una grabación íntegra.** Se comprueban la marca `DUCK` y la
+  suma de control de **todos** sus bloques: la cabecera, las dos cabeceras de
+  base de datos y cada bloque que cuenta la más reciente (cada bloque de DuckDB
+  empieza con la suma de control del resto). Una copia cortada, a ceros (lo que
+  deja `CopyFileW` cortado por un apagón: el tamaño final con ceros detrás) o
+  con un byte cambiado se queda donde está y se anota. El cálculo se comprobó
+  con los dos archivos DuckDB reales de `hub-host/src/analysis/fixtures/`.
+  Coste: leer la grabación entera una vez, solo al moverla (medido en la PR).
+  Un bloque libre que DuckDB no hubiera escrito nunca haría que una grabación
+  buena se quedara en su generación: nada se pierde.
+- Una copia repetida se retira **solo** si tamaño y SHA-256 coinciden con la de
+  la carpeta única (lo de T1). Un archivo con dos nombres (enlace duro) cuyo
+  otro nombre ya está en la carpeta única no se puede comparar, porque no se
+  puede abrir en exclusiva: se queda. Si su nombre no está en la carpeta única,
+  se mueve como cualquier otra. En ningún caso se pierde nada.
+- Las parejas con `.wal` y los `.wal` sueltos se quedan, como en T1 y T2.
+- **Confirm nunca falla por esto** (un error ahí haría volver atrás) y compara
+  como mucho `GATHER_BUDGET` (30 s): tiene el Hub abierto y los candados del
+  lanzador. Lo que no cabe se queda intacto para la siguiente Confirm o para
+  Desinstalar. En Desinstalar, el `checkpoint` de su pantalla puede cortarla;
+  repetir continúa donde se quedó.
+- Si `<raíz>\recordings` no es una carpeta normal (T2b), no se recoge nada y se
+  anota una vez.
+- **Frontera de producto (#2812):** la recogida solo trabaja dentro de la raíz
+  que se confirma o se desinstala, con su propio `state.json`; cada raíz es de
+  un solo canal (beta o nightly), así que nunca toca grabaciones de otro
+  producto. Desinstalar en nombre de otro canal se rechaza antes de recoger
+  nada, y una raíz sin estado (restos) no se recoge. La regla «las copias
+  antiguas sin referencia solo las adopta beta» es de la adopción de datos al
+  reinstalar, no de esta recogida.
+- La primera Confirm con T3 es la de la **siguiente** actualización tras
+  recibirlo: Confirm la ejecuta el lanzador que ya estaba en marcha.
+
+**Copia de datos forzada a disco.** `write_fs::copy_data` llama a
+`write_fs::flush` (`FlushFileBuffers`) en cada archivo copiado antes de
+recalcular las huellas que dan la copia por buena: tras un corte de luz, una
+generación activada no puede tener una grabación a ceros con nombre real. Un
+archivo de solo lectura se fuerza quitando y devolviendo el atributo. Que el
+dato llegue de verdad al disco no se puede comprobar en un test sin cortar la
+corriente.
+
+Fuera de T3: retirar el resto del `data/` de las generaciones sin referencia
+(T3b) y avisar en el Hub de lo conservado por contenido distinto (necesita
+protocolo); hoy queda en el registro.
 
 Tests en el último bloque de `tests/installation_write.rs` (el hueco entre
 comprobar y mover, lo que aparece después de tomar la lista, el resumen del

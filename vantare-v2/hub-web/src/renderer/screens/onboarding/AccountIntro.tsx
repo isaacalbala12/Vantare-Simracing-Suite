@@ -15,6 +15,7 @@ function ConnectedIntro(props: Props) {
   const blocked = !!value?.blocked;
   const signedIn = value?.session === "signedIn";
   const verified = signedIn && value.verified && !blocked;
+  const tester = verified && value.license?.tester === true;
   const stagedMail = useOnboardingMail(
     signedIn && !blocked && value?.gate === "none",
     !!props.full,
@@ -65,11 +66,15 @@ function ConnectedIntro(props: Props) {
             pending ||
             value.session === "pending" ||
             value.gate === "checking"),
-        accessLabel:
-          verified &&
-          (value.plan.kind === "verified" || value.plan.kind === "founders")
+        tester,
+        accessLabel: tester
+          ? accountText.testerAccess
+          : verified &&
+              (value.plan.kind === "verified" || value.plan.kind === "founders")
             ? accountText.verified
             : undefined,
+        // The summary's plan row: only the tester has a known plan here.
+        planLabel: tester ? accountText.testerAccess : undefined,
       }}
     />
   );

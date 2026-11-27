@@ -385,3 +385,61 @@ describe("sign-in completes coherently", () => {
     expect(flow.view({ method: "account.check" }).verified).toBe(true);
   });
 });
+
+describe("license (host LicenseView, B2) on a fixed scene clock", () => {
+  const now = Date.UTC(2026, 10, 26, 9, 0);
+  const hour = 3_600_000;
+  it.each([
+    ["cuenta-tester", true, "active", now + 14 * 24 * hour],
+    ["cuenta-tester-nightly", true, "active", now + 72 * hour],
+    ["cuenta-tester-caduca", true, "expiring", now + 20 * hour],
+    ["cuenta-tester-gracia", true, "grace", now + 40 * 60_000],
+    ["cuenta-pro-fecha", false, "active", now + 30 * 24 * hour],
+    ["cuenta-sesion", false, "active", null],
+    ["cuenta-founders", false, "active", null],
+  ] as const)(
+    "%s carries its signed term",
+    (scene, tester, status, untilMs) => {
+      const flow = open(scene);
+      expect(flow.get()).toMatchObject({
+        verified: true,
+        license: { tester, status, untilMs },
+      });
+      // The same scene over the visual bank keeps it: it does not follow the clock.
+      vi.setSystemTime(new Date("2027-03-01T10:00:00Z"));
+      expect(open(`visual-dark:${scene}`).get().license).toEqual({
+        tester,
+        status,
+        untilMs,
+      });
+    },
+  );
+  it.each([
+    "cuenta-sin-verificar",
+    "cuenta-transicion",
+    "cuenta-limite-dispositivos",
+    "cuenta-bloqueada-caducada",
+    "cuenta-bloqueada-reloj",
+    "cuenta-bloqueada-revocada",
+    "acceso-base",
+  ])("%s has no license without verified access", (scene) => {
+    expect(open(scene).get().license).toBeNull();
+  });
+  it("a renewal signs a new date and clears the warning; signing out drops it", () => {
+    for (const scene of ["cuenta-tester-caduca", "cuenta-tester-gracia"]) {
+      const flow = open(scene);
+      expect(flow.view({ method: "account.check" }).license).toEqual({
+        tester: true,
+        status: "active",
+        untilMs: now + 14 * 24 * hour,
+      });
+      expect(flow.view({ method: "account.logout" }).license).toBeNull();
+    }
+    const promoted = open("cuenta-transicion").view({
+      method: "account.check",
+    });
+    expect(promoted.license).toMatchObject({ tester: true, status: "active" });
+    const reset = open("cuenta-tester").view({ method: "account.deviceReset" });
+    expect(reset.license).toBeNull();
+  });
+});

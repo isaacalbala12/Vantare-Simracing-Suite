@@ -37,6 +37,7 @@ vi.mock("../src/renderer/screens/onboarding/IntroPreview", async () => {
       <>
         <AccountStep value={account} />
         <output aria-label="Estado del correo">{mail?.message}</output>
+        <output aria-label="Plan del resumen">{account?.planLabel}</output>
       </>
     ),
   };
@@ -93,6 +94,21 @@ it("uses Access's initial read, follows its topic and releases it on leaving the
     "Acceso verificado",
   );
   expect(screen.queryByText(/Tu plan: Pro/)).toBeNull();
+  expect(screen.getByLabelText("Plan del resumen").textContent).toBe("");
+  // The host's signed tester role names the access on the step and the summary.
+  update({
+    ...account(),
+    session: "signedIn",
+    verified: true,
+    plan: { kind: "verified" },
+    license: { tester: true, status: "active", untilMs: null },
+  });
+  expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
+    "Tester · acceso gratuito durante la beta",
+  );
+  expect(screen.getByLabelText("Plan del resumen").textContent).toBe(
+    "Tester · acceso gratuito durante la beta",
+  );
   update({ ...account(), session: "signedIn", verified: false });
   expect(document.querySelector(".v-ob-account > p")?.textContent).toBe(
     "Cuenta conectada · plan sin confirmar",

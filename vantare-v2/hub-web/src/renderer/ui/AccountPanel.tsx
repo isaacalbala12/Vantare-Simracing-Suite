@@ -12,6 +12,8 @@ import {
   type FoundersLanguage,
   foundersCopy,
   foundersLanguages,
+  licenseDate,
+  licenseTime,
   accountText as text,
 } from "../i18n/account.es";
 import { Button } from "./Button";
@@ -64,6 +66,9 @@ export function AccountPanel({
   const signedIn = value.session === "signedIn";
   const known = signedIn || value.session === "needsSignIn";
   const verified = value.verified && !value.blocked;
+  // The host signs the tester role and computes the status; nothing is compared here.
+  const license = value.license;
+  const testerAccess = license?.tester === true;
   const plan =
     value.plan.kind === "founders"
       ? copy.owned
@@ -109,6 +114,13 @@ export function AccountPanel({
       {value.notice && value.notice !== value.error && (
         <AccountNotice>{value.notice}</AccountNotice>
       )}
+      {license?.untilMs != null && license.status !== "active" && (
+        <AccountNotice>
+          {license.status === "grace"
+            ? text.grace(licenseTime(license.untilMs))
+            : text.expiring(licenseDate(license.untilMs))}
+        </AccountNotice>
+      )}
       <section className="v-account-hero" aria-label={label}>
         <div className="v-account-avatar">
           <Avatar
@@ -121,7 +133,7 @@ export function AccountPanel({
           <h1>{label}</h1>
           <p>{demo ? text.privateEmail : text.sessionHelp}</p>
           <span className={`v-account-pill${verified ? " is-success" : ""}`}>
-            {verified ? text.active : plan}
+            {verified ? (testerAccess ? text.testerAccess : text.active) : plan}
           </span>
           <div className="v-account-photo-actions">
             {!demo && signedIn && (
@@ -163,7 +175,9 @@ export function AccountPanel({
               ? text.checking
               : text.check}
           </Button>
+          {/* A tester never sees a purchase: the buttons are removed, not disabled. */}
           {!demo &&
+            !testerAccess &&
             accountOptions.products.map((product) => (
               <Button
                 key={product}
@@ -175,7 +189,7 @@ export function AccountPanel({
                 {purchases[product]}
               </Button>
             ))}
-          {!demo && (
+          {!demo && !testerAccess && (
             <div className="v-account-checkout-note" id={purchaseDescription}>
               <p>{text.checkoutNotice}</p>
               {purchaseReason && <p>{purchaseReason}</p>}
@@ -226,29 +240,33 @@ export function AccountPanel({
       <div className="v-account-overview">
         <section className="v-account-card">
           <h2>{text.beta}</h2>
-          <p>{text.betaHelp}</p>
+          <p>{testerAccess ? text.betaHelpTester : text.betaHelp}</p>
           <span className="v-account-pill">{plan}</span>
-          <div
-            className="v-account-founders"
-            lang={foundersLanguages[language]}
-          >
-            <strong>{copy.button}</strong>
-            <p>{copy.included}</p>
-            <p>{copy.subscription}</p>
-            <div>
-              {(Object.keys(foundersCopy) as FoundersLanguage[]).map((lang) => (
-                <Button
-                  key={lang}
-                  size="sm"
-                  lang={foundersLanguages[lang]}
-                  aria-pressed={language === lang}
-                  onClick={() => setLanguage(lang)}
-                >
-                  {lang}
-                </Button>
-              ))}
+          {!testerAccess && (
+            <div
+              className="v-account-founders"
+              lang={foundersLanguages[language]}
+            >
+              <strong>{copy.button}</strong>
+              <p>{copy.included}</p>
+              <p>{copy.subscription}</p>
+              <div>
+                {(Object.keys(foundersCopy) as FoundersLanguage[]).map(
+                  (lang) => (
+                    <Button
+                      key={lang}
+                      size="sm"
+                      lang={foundersLanguages[lang]}
+                      aria-pressed={language === lang}
+                      onClick={() => setLanguage(lang)}
+                    >
+                      {lang}
+                    </Button>
+                  ),
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </section>
         <section className="v-account-card v-account-contribution">
           <h2>{text.contribution}</h2>

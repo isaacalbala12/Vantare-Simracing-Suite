@@ -9,6 +9,8 @@ export interface OnboardingAccountStatus {
   blocked: boolean;
   planLabel?: string;
   accessLabel?: string;
+  /** The host's signed tester role: no plans are offered to this account. */
+  tester?: boolean;
   failed?: boolean;
 }
 export const signedOutAccount: OnboardingAccountStatus = {

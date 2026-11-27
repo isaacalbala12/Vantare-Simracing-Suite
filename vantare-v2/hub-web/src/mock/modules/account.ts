@@ -57,6 +57,7 @@ export function create(context: MockContext): MockHandler {
     current = { ...current, session: "pending", gate: "checking" };
   if (
     context.sceneName === "onboarding-cuenta-sesion" ||
+    context.sceneName === "onboarding-cuenta-tester" ||
     context.sceneName.startsWith("onboarding-correo-")
   )
     current = {
@@ -65,6 +66,11 @@ export function create(context: MockContext): MockHandler {
       verified: true,
       name: demoIdentity.name,
       plan: { kind: "verified" },
+      license: {
+        tester: context.sceneName === "onboarding-cuenta-tester",
+        status: "active",
+        untilMs: null,
+      },
     };
   // First-run exit checks must still meet Access's existing modal boundary.
   if (
@@ -93,6 +99,8 @@ export function create(context: MockContext): MockHandler {
         context.sceneName === "cuenta-founders"
           ? { kind: "founders" }
           : { kind: "verified" },
+      // A verified account always carries its license (host, B2).
+      license: { tester: false, status: "active", untilMs: null },
       channel: "development",
       modules: current.modules.map((module) => ({
         ...module,

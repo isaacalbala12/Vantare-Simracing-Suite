@@ -9,6 +9,7 @@ export const accountText = {
   privateEmail: "Correo oculto por privacidad",
   sessionHelp: "Tu sesión de Vantare",
   active: "Acceso verificado · activo",
+  testerAccess: "Tester · acceso gratuito durante la beta",
   verified: "Acceso verificado",
   unverified: "Acceso sin verificar",
   photo: "Cambiar foto",
@@ -26,8 +27,9 @@ export const accountText = {
   buySignedOut: "Inicia sesión para comprar",
   busy: "Operación en curso",
   beta: "Acceso beta",
-  betaHelp:
-    "Acceso gratuito durante la beta para testers. La sesión valida tu acceso; no muestra ni copia claves privadas.",
+  betaHelp: "La sesión valida tu acceso; no muestra ni copia claves privadas.",
+  betaHelpTester:
+    "Como tester, usas Vantare gratis durante la beta. No tienes que comprar nada.",
   contribution: "Tu aporte a la beta",
   contributionHelp: "Los informes y cuestionarios viven en Testing Center.",
   contributionSoon: "Totales de tu cuenta · Próximamente",
@@ -50,9 +52,15 @@ export const accountText = {
   state: "Estado",
   reauthenticate: "Vuelve a iniciar sesión",
   sessionConnected: "Conectada",
-  lastAccess: "Último acceso",
-  duringBeta: "Durante la beta",
-  freeBeta: "Acceso gratuito para testers",
+  accessKind: "Tipo de acceso",
+  testerKind: "Tester, gratis durante la beta",
+  validUntil: "Válido hasta",
+  renewsOnline: "Se renueva solo cuando el Hub tiene conexión.",
+  // El host ya eligió `status`; la pantalla solo escribe la fecha.
+  expiring: (date: string) =>
+    `Tu acceso caduca el ${date}. Conéctate a internet y se renovará solo, o pulsa Comprobar acceso.`,
+  grace: (time: string) =>
+    `Estás en carrera: el acceso sigue hasta que acabe la sesión, como mucho hasta las ${time}.`,
   channel: "Canal",
   devices: "Dispositivos",
   thisComputer: "Este equipo",
@@ -74,12 +82,20 @@ export const accountText = {
     "Perfiles y ajustes locales. Exportación y borrado de cuenta · Próximamente",
   stopPurchase: "Dejar de comprobar",
   pc: "PC",
-  unknown: "—",
   demoDisabled: "Datos de demostración; acciones deshabilitadas",
   // Fuente: docs/vantare-program/product-contract.md:81,102,170 y native/hub/src/services/view/founders.rs:26,151-152.
   monthly: `Pro · ${perMonth("5,99 €")}`,
   annual: `Pro · ${perYear("59,99 €")}`,
 } as const;
+// Ms Unix del host, en la zona del equipo; `timeZone` solo lo fijan los tests.
+export const licenseDate = (ms: number, timeZone?: string) =>
+  new Intl.DateTimeFormat("es-ES", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone,
+  }).format(ms);
+export const licenseTime = (ms: number, timeZone?: string) =>
+  new Intl.DateTimeFormat("es-ES", { timeStyle: "short", timeZone }).format(ms);
 export const accountModules = {
   studio: {
     title: "Editor de overlays",

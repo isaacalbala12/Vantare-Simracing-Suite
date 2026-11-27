@@ -1,4 +1,7 @@
-import type { AccountView } from "../../contract/generated/account";
+import type {
+  AccountView,
+  LicenseStatus,
+} from "../../contract/generated/account";
 import type { CoreStatus } from "../../contract/generated/contract";
 
 /**
@@ -22,10 +25,17 @@ export interface Grant {
   calendar: boolean;
   founders: boolean;
 }
+/** The signed date and the status the host derives from it (B2, account/mod.rs). */
+export interface Term {
+  status: LicenseStatus;
+  untilMs: number | null;
+}
 export interface Policy {
   state: PolicyState;
   /** What a successful renewal grants (the real source is the signed credential). */
   grant: Grant;
+  /** Fixed by the scene: the mock stands in for the host and its clock. */
+  term: Term;
   /** False simulates a renewal that cannot reach a verified credential. */
   renews: boolean;
   /** Another device holds the license: renewals answer with `Reply::DeviceLimit` (409 device_limit). */
@@ -80,12 +90,27 @@ const blockedScenes: Record<string, PolicyState> = {
   "cuenta-bloqueada-revocada": "revoked",
   "cuenta-bloqueada-actualizar": "updateRequired",
 };
+// Fixed scene clock (26-11-2026 10:00, Madrid) so captures and tests repeat.
+export const SCENE_NOW_MS = Date.UTC(2026, 10, 26, 9, 0);
+const HOUR_MS = 3_600_000;
+const DAY_MS = 24 * HOUR_MS;
+const term = (status: LicenseStatus, ms: number | null): Term => ({
+  status,
+  untilMs: ms === null ? null : SCENE_NOW_MS + ms,
+});
+// Server terms: tester 14 d, nightly_tester 72 h (license-credential.ts).
+const testerTerm = term("active", 14 * DAY_MS);
+const noTerm = term("active", null);
 const noGrant: Grant = { tester: false, calendar: false, founders: false };
 const tester: Grant = { tester: true, calendar: true, founders: false };
 const pro: Grant = { tester: false, calendar: false, founders: false };
 /** Account scenes that must run against a non-demo Hub so every action is live. */
 export const liveAccountScenes = [
   "cuenta-tester",
+  "cuenta-tester-caduca",
+  "cuenta-tester-gracia",
+  "cuenta-tester-nightly",
+  "cuenta-pro-fecha",
   "cuenta-sin-verificar",
   "cuenta-transicion",
   "cuenta-compra-completada",
@@ -105,30 +130,68 @@ export function initialPolicy(
     (m) => m.id === "calendar" && m.status === "included",
   );
   const base: Grant = {
-    tester: core.access.tester,
+    tester: view.license?.tester ?? core.access.tester,
     calendar: calendar || core.access.calendar,
     founders: view.plan.kind === "founders",
   };
   const blocked = blockedScenes[scene];
-  if (blocked) return { state: blocked, grant: pro, renews: true };
+  if (blocked)
+    return { state: blocked, grant: pro, term: noTerm, renews: true };
   switch (scene) {
     case "cuenta-tester":
-      return { state: "active", grant: tester, renews: true };
+      return { state: "active", grant: tester, term: testerTerm, renews: true };
+    case "cuenta-tester-caduca":
+      // Under 24 h left and the renewal could not run (no connection).
+      return {
+        state: "active",
+        grant: tester,
+        term: term("expiring", 20 * HOUR_MS),
+        renews: true,
+      };
+    case "cuenta-tester-gracia":
+      // Past the signed date during a race: grace_until_ms.
+      return {
+        state: "active",
+        grant: tester,
+        term: term("grace", 40 * 60_000),
+        renews: true,
+      };
+    case "cuenta-tester-nightly":
+      return {
+        state: "active",
+        grant: tester,
+        term: term("active", 72 * HOUR_MS),
+        renews: true,
+      };
+    case "cuenta-pro-fecha":
+      return {
+        state: "active",
+        grant: pro,
+        term: term("active", 30 * DAY_MS),
+        renews: true,
+      };
     case "cuenta-sin-verificar":
-      return { state: "none", grant: noGrant, renews: false };
+      return { state: "none", grant: noGrant, term: noTerm, renews: false };
     case "cuenta-transicion":
-      return { state: "none", grant: tester, renews: true };
+      return { state: "none", grant: tester, term: testerTerm, renews: true };
     case "cuenta-limite-dispositivos":
-      return { state: "none", grant: pro, renews: true, limit: true };
+      return {
+        state: "none",
+        grant: pro,
+        term: noTerm,
+        renews: true,
+        limit: true,
+      };
     case "cuenta-compra-completada":
     case "cuenta-compra-expira":
     case "acceso-navegador-completa":
     case "acceso-correo-verificado":
-      return { state: "none", grant: pro, renews: true };
+      return { state: "none", grant: pro, term: noTerm, renews: true };
   }
   return {
     state: view.verified ? "active" : view.blocked ? "unavailable" : "none",
     grant: base,
+    term: base.tester ? testerTerm : noTerm,
     renews: true,
   };
 }
@@ -160,6 +223,8 @@ export function applyPolicy(view: AccountView, policy: Policy): AccountView {
         ? { kind: "denied", text: denied.text }
         : { kind: "unverified" },
     modules,
+    // Like the host: null whenever access is not verified.
+    license: verified ? { tester: policy.grant.tester, ...policy.term } : null,
   };
 }
 export function coreAccess(
@@ -199,7 +264,14 @@ export function renew(policy: Policy): { policy: Policy; notice: string } {
   if (denied && !denied.transient) return { policy, notice: denied.text };
   return policy.renews
     ? {
-        policy: { ...policy, state: "active" },
+        // A renewal signs a new date: the warning or the grace goes away.
+        policy: {
+          ...policy,
+          state: "active",
+          term: policy.grant.tester
+            ? testerTerm
+            : { ...policy.term, status: "active" },
+        },
         notice: accountMessages.renewed,
       }
     : { policy, notice: accountMessages.unverified };

@@ -345,13 +345,16 @@ export function OnboardingIntroPreview({
               reducedMotion={reducedMotion}
             />
           ) : step === 3 ? (
-            <PlansArt
-              onPrices={() => void prices()}
-              onPro={onPro}
-              proDescription={proDescription}
-              pending={pricesPending}
-              proPending={accountPending}
-            />
+            // A tester is never offered a plan (PlansArt) during the beta.
+            account.tester ? null : (
+              <PlansArt
+                onPrices={() => void prices()}
+                onPro={onPro}
+                proDescription={proDescription}
+                pending={pricesPending}
+                proPending={accountPending}
+              />
+            )
           ) : step === 4 ? (
             <PerformanceArt automatic={automatic} level={level} />
           ) : step === 6 ? (

@@ -609,18 +609,19 @@ exit EXIT_CODE
                 .append(true)
                 .open(&request.log_file)
                 .unwrap();
-            let result = session.start_cleanup(root, &request, &log_file, true);
-            assert_eq!(result.is_ok(), code == 0);
-            let log = fs::read_to_string(&request.log_file).expect("diagnostics");
-            assert!(log.contains("injected cosmetic warning"));
-            assert!(log.contains("\"percent\":255"));
             // El resto sin canal declarado es de beta: nightly no lo limpia (#2812).
+            // Antes de la limpieza de beta: con shell.json ya escrito fallaría igual.
             let foreign = Session {
                 directory: session.directory.clone(),
                 context: isolated("nightly"),
                 transferred: true,
             };
             assert!(foreign.cleanup_contract(root, &request).is_err());
+            let result = session.start_cleanup(root, &request, &log_file, true);
+            assert_eq!(result.is_ok(), code == 0);
+            let log = fs::read_to_string(&request.log_file).expect("diagnostics");
+            assert!(log.contains("injected cosmetic warning"));
+            assert!(log.contains("\"percent\":255"));
             fs::remove_file(root.join("installer-cleanup.json")).expect("legacy marker absent");
             fs::write(&request.log_file, []).expect("clear log");
             assert!(

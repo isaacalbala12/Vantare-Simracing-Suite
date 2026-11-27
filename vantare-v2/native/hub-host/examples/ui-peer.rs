@@ -211,7 +211,9 @@ mod peer {
                 }
                 HostToUi::CloseRequested { reason } => {
                     frame::write(&mut pipe, &UiToHost::CloseAnswer { allow: true })?;
-                    trace.line(&format!("close-answered {reason:?}"));
+                    // Con la sesión correcta el EOF de control llega después del Confirm.
+                    let pending = root.join("boot-pending.json").is_file();
+                    trace.line(&format!("close-answered {reason:?} pending={pending}"));
                 }
                 HostToUi::Failure { error, .. } => trace.line(&format!("host-failure {error:?}")),
                 _ => {}

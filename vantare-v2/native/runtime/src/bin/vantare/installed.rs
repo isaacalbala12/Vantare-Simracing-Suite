@@ -500,6 +500,20 @@ static ELECTRON_SESSION_MARKER: [u8; 48] = *b"VANTARE_QA_ELECTRON_SESSION_NOT_FO
 fn qa_session_host(root: &Path, data: &Path, image: &Path, token: &str) -> io::Result<ExitCode> {
     use super::{Program, Service};
     std::hint::black_box(&ELECTRON_SESSION_MARKER);
+    // El anfitrión borra el entorno de la UI: lo que la raíz pasó se anota aquí, en la
+    // sesión, cuyo entorno hereda el anfitrión sin filtrar.
+    let flag = |name| std::env::var_os(name).is_some();
+    let traces = root.join("qa-ui-peer");
+    fs::create_dir_all(&traces)?;
+    fs::write(
+        traces.join(format!("session-{}.log", std::process::id())),
+        format!(
+            "session background={} interactive={}
+",
+            flag("VANTARE_BACKGROUND_STARTUP"),
+            flag("VANTARE_INTERACTIVE_STARTUP")
+        ),
+    )?;
     let photo = format!("vantare-qa-{}", disk::id().map_err(io_error)?);
     let (_, args) = super::recording::installed_session(root, data, &photo, Vec::new());
     let program = Program {

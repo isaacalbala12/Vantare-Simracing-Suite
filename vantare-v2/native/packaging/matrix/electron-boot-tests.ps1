@@ -147,7 +147,13 @@ function Get-Rejected($Case){
     if(Test-Path -LiteralPath $path){(Get-Content -LiteralPath $path -Raw|ConvertFrom-Json).rejectedVersion}else{$null}
 }
 function Test-Pending($Case){Test-Path -LiteralPath (Join-Path $Case.Install 'boot-pending.json')}
-function Test-Good([string]$Trace){$Trace.Contains('ready-sent') -and $Trace.Contains('close-answered ControlEof') -and $Trace.Contains('exit 0')}
+# `pending=false`: la sesión solo cierra el stdin de control después del Confirm.
+function Test-Good([string]$Trace){$Trace.Contains('ready-sent') -and $Trace.Contains('close-answered ControlEof pending=false') -and $Trace.Contains('exit 0')}
+# Lo que la raíz pasó a la sesión (y el anfitrión hereda): la UI no lo ve, el anfitrión le borra el entorno.
+function Get-SessionFlags($Case){
+    $directory=Join-Path $Case.Install 'qa-ui-peer'
+    ,@(Get-ChildItem -LiteralPath $directory -Filter 'session-*.log'|Sort-Object CreationTimeUtc|ForEach-Object {[IO.File]::ReadAllText($_.FullName).Trim()})
+}
 # Rollback a A rechazando C: lo comparten los casos que fallan antes de confirmar.
 function Assert-Rejected($Case,$Run){
     $n=$Case.Name
@@ -175,13 +181,17 @@ try{
     $c=Get-Traces $case '0.0.990'
     Assert-Electron ($c.Count -eq 1 -and (Get-Traces $case '0.0.989').Count -eq 0) 'bien: the UI of 0.0.990 starts once and 0.0.989 never'
     Assert-Electron ($c[0] -cmatch 'host-hello v=\d+ minimized=true zoom=125') 'bien: background hello is minimized with the zoom copied from 0.0.989'
-    Assert-Electron (Test-Good $c[0]) 'bien: the UI sends ready and answers the control EOF'
+    Assert-Electron (Test-Good $c[0]) 'bien: the UI sends ready and answers the control EOF after the Confirm'
+    $flags=Get-SessionFlags $case
+    Assert-Electron ($flags.Count -eq 1 -and $flags[0] -ceq 'session background=true interactive=false') "bien: background root passes background and not interactive ($($flags -join ' | '))"
     Assert-Electron $run.Clean 'bien: root finished and every own process ended'
     # 1b. La misma raíz sin --background: interactivo, nada pendiente.
     $run=Invoke-Root $case -Interactive
     $c=Get-Traces $case '0.0.990'
     Assert-Electron ($run.ExitCode -eq 0 -and (Get-ActiveVersion $case) -ceq '0.0.990' -and -not(Test-Pending $case)) "bien: interactive run keeps 0.0.990 ($($run.ExitCode))"
     Assert-Electron ($c.Count -eq 2 -and $c[1] -cmatch 'host-hello v=\d+ minimized=false zoom=125' -and (Test-Good $c[1])) 'bien: interactive hello is not minimized'
+    $flags=Get-SessionFlags $case
+    Assert-Electron ($flags.Count -eq 2 -and $flags[1] -ceq 'session background=false interactive=true') "bien: interactive root passes interactive and not background ($($flags -join ' | '))"
     Assert-Electron $run.Clean 'bien: interactive root finished and every own process ended'
 
     # 2. Nunca ready: el minuto de la raíz vence y vuelve A sin rechazar C (reintentable).

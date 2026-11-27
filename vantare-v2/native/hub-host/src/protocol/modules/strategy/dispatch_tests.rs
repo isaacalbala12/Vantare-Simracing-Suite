@@ -13,7 +13,7 @@ fn request(session: &mut Session, request: &Request) -> HostToUi {
     }
 }
 #[test]
-fn strategy_requires_verified_access_but_neither_live_nor_strategy_entitlement() {
+fn strategy_requires_verified_access_and_the_strategy_right_but_not_live() {
     let fixture = Fixture::new();
     let mut session = fixture.session();
     let data = fixture.0.join("hub");
@@ -27,6 +27,7 @@ fn strategy_requires_verified_access_but_neither_live_nor_strategy_entitlement()
     assert_eq!(request(&mut session, &Request::StrategyOpen {}), denied);
     assert!(!data.join("strategy-v2.json.invalid").exists());
     session.current.access.verified = true;
+    session.current.access.strategy = true;
     session.current.access.blocked = true;
     assert_eq!(request(&mut session, &Request::StrategyOpen {}), denied);
     session.current.access.blocked = false;
@@ -50,6 +51,7 @@ fn a_late_selection_for_a_previous_account_cannot_write_or_reply_with_cached_dat
         .unwrap();
     std::fs::write(&path, doc.bytes()).unwrap();
     session.current.access.verified = true;
+    session.current.access.strategy = true;
     session.current.account_generation = Some("a".repeat(64));
     let HostToUi::Response {
         result: Reply::StrategyOpen { value },
@@ -130,6 +132,7 @@ fn strategy_bounds_event_and_variant_projections_before_opening() {
     std::fs::create_dir_all(&data).unwrap();
     let path = data.join("strategy-v2.json");
     session.current.access.verified = true;
+    session.current.access.strategy = true;
     let maximum = large_strategy_document(32, 16);
     std::fs::write(&path, &maximum).unwrap();
     let response = request(&mut session, &Request::StrategyOpen {});
@@ -182,6 +185,7 @@ fn strategy_form_at_its_limits_still_fits_the_frame_with_the_largest_collection(
     std::fs::create_dir_all(&data).unwrap();
     let path = data.join("strategy-v2.json");
     session.current.access.verified = true;
+    session.current.access.strategy = true;
     // every text of the form at the limit, made of the characters JSON escapes
     let name = "\"".repeat(TEXT_LIMIT);
     let mut value: serde_json::Value =
@@ -244,6 +248,7 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
     let data = fixture.0.join("hub");
     std::fs::create_dir_all(&data).unwrap();
     session.current.access.verified = true;
+    session.current.access.strategy = true;
     std::fs::write(
         data.join("strategy-v2.json"),
         large_strategy_document(32, 16),
@@ -447,6 +452,7 @@ fn the_largest_view_possible_fits_the_frame_with_a_stated_margin() {
 
 fn open_strategy(session: &mut Session) -> crate::strategy::StrategyView {
     session.current.access.verified = true;
+    session.current.access.strategy = true;
     let HostToUi::Response {
         result: Reply::StrategyOpen { value },
         ..
@@ -1149,6 +1155,7 @@ fn a_licence_refresh_on_the_same_account_keeps_the_dirty_draft_and_the_calculati
     session.current.access.verified = false;
     assert_eq!(request(&mut session, &Request::StrategyView {}), denied);
     session.current.access.verified = true;
+    session.current.access.strategy = true;
     session.current.account_generation = Some("a".repeat(64));
 
     let back = view_strategy(&mut session);
@@ -1946,6 +1953,7 @@ fn strategy_session(fixture: &Fixture) -> (Session, std::path::PathBuf) {
         .unwrap();
     std::fs::write(data.join("carreras-2026.json"), other.bytes()).unwrap();
     session.current.access.verified = true;
+    session.current.access.strategy = true;
     session.current.account_generation = Some("a".repeat(64));
     assert!(matches!(
         request(&mut session, &Request::StrategyOpen {}),
@@ -2193,6 +2201,7 @@ fn losing_verification_consumes_the_ticket() {
         denied
     );
     session.current.access.verified = true;
+    session.current.access.strategy = true;
     assert_eq!(
         picked(
             &mut session,
@@ -2715,6 +2724,7 @@ fn fixing_amounts_needs_the_same_access_as_every_strategy_request() {
         assert_eq!(failure(&mut session, &sent), HostError::Denied);
     }
     session.current.access.verified = true;
+    session.current.access.strategy = true;
     session.current.access.blocked = true;
     assert_eq!(
         failure(&mut session, &fix_stop(&view, 0, Some(7.0), None)),
@@ -2780,4 +2790,187 @@ fn fixing_during_a_recalculation_is_busy_and_recalculating_carries_what_was_fixe
     ));
     held.release.send(()).unwrap();
     session.strategy.test_join_calculation();
+}
+
+// ---- The signed `access.strategy` right (B4b) ----
+
+/// One request of each Strategy method, built from a planned view. The test
+/// below checks the list against `wire.rs`, so a new method cannot be missed.
+fn every_strategy_request(view: &StrategyView) -> Vec<Request> {
+    use crate::strategy::{StrategyExportTarget, StrategyFileMode};
+    let (event_id, strategy_id) = (
+        view.active_event_id.clone().unwrap(),
+        view.active_strategy_id.clone().unwrap(),
+    );
+    let (revision, compute_id) = (view.revision.clone(), view.plan.compute_id.unwrap());
+    let target = StrategyExportTarget::Proposal { compute_id };
+    vec![
+        Request::StrategyOpen {},
+        Request::StrategyView {},
+        Request::StrategySelect {
+            event_id: event_id.clone(),
+            strategy_id: strategy_id.clone(),
+            revision: revision.clone(),
+        },
+        Request::StrategyCreate {
+            revision: revision.clone(),
+            fields: Box::new(confirm_fields("Otra")),
+            base_pace_seconds: None,
+            fuel_per_lap_liters: None,
+            inputs: None,
+        },
+        Request::StrategyConfirm {
+            event_id,
+            strategy_id,
+            revision: revision.clone(),
+            fields: Box::new(confirm_fields("Otra")),
+            inputs: None,
+        },
+        Request::StrategySave {
+            revision: revision.clone(),
+        },
+        Request::StrategyDiscard {
+            revision: revision.clone(),
+        },
+        edit_compute(view),
+        Request::StrategyCancel { compute_id },
+        boundary(view, 0, 3),
+        stop(view, 0, 1),
+        Request::StrategySetStopService {
+            revision: revision.clone(),
+            compute_id,
+            index: 0,
+            fuel_liters: None,
+            ve_percent: None,
+            change_tyres: Some(true),
+        },
+        Request::StrategyClearStopServices {
+            revision: revision.clone(),
+            compute_id,
+        },
+        recalculate(view),
+        reset_edit(view),
+        Request::StrategyPickFile {
+            mode: StrategyFileMode::SaveAs,
+            revision: revision.clone(),
+        },
+        Request::StrategyAccept {
+            revision: revision.clone(),
+            compute_id,
+        },
+        Request::StrategyUnaccept {
+            revision: revision.clone(),
+        },
+        Request::StrategyShowAccepted {
+            revision: revision.clone(),
+        },
+        Request::StrategyExport {
+            revision: revision.clone(),
+            target: target.clone(),
+        },
+        Request::StrategyExportFile { revision, target },
+    ]
+}
+
+/// The `strategy.*` methods `wire.rs` declares for `Request`.
+fn declared_strategy_methods() -> Vec<String> {
+    let wire = include_str!("wire.rs");
+    let start = wire.find("pub enum Request {").unwrap();
+    let end = wire[start..].find("pub enum Reply {").unwrap() + start;
+    wire[start..end]
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("#[serde(rename = \""))
+        .filter_map(|rest| rest.strip_suffix("\")]"))
+        .filter(|method| method.starts_with("strategy."))
+        .map(str::to_owned)
+        .collect()
+}
+
+#[test]
+fn without_the_strategy_right_every_request_is_denied_even_for_a_tester_with_analysis() {
+    let fixture = Fixture::new();
+    let mut session = fixture.session();
+    // What the host projects for a tester: the operational right grants the modules.
+    session.current.access.tester = true;
+    session.current.access.analysis = true;
+    let planned = planned_strategy(&mut session);
+    let requests = every_strategy_request(&planned);
+    let mut sent: Vec<String> = requests
+        .iter()
+        .map(|request| {
+            serde_json::to_value(request).unwrap()["method"]
+                .as_str()
+                .unwrap()
+                .to_owned()
+        })
+        .collect();
+    let mut declared = declared_strategy_methods();
+    sent.sort();
+    declared.sort();
+    assert_eq!(sent, declared, "one request per Strategy method");
+    assert_eq!(declared.len(), 21);
+
+    let path = fixture.0.join("hub").join("strategy-v2.json");
+    let saved = std::fs::read(&path).unwrap();
+    session.current.access.strategy = false;
+    let denied = HostToUi::Failure {
+        id: 9,
+        error: HostError::Denied,
+    };
+    for request_without_right in &requests {
+        assert_eq!(
+            request(&mut session, request_without_right),
+            denied,
+            "{request_without_right:?}"
+        );
+    }
+    assert_eq!(std::fs::read(&path).unwrap(), saved, "nothing written");
+    assert_eq!(session.core.requests, 0);
+    // The same account gets its right back: the work was only paused.
+    session.current.access.strategy = true;
+    assert_eq!(view_strategy(&mut session), planned);
+}
+
+#[test]
+fn a_tick_without_the_strategy_right_drops_the_dialog_ticket_and_writes_nothing() {
+    use crate::strategy::StrategyFileMode;
+    let fixture = Fixture::new();
+    let (mut session, data) = strategy_session(&fixture);
+    session.current.access.tester = true;
+    let args = Args {
+        controlled: false,
+        pipe: String::new(),
+        data: data.clone(),
+        layout: fixture.0.join("layout.json"),
+        launcher: fixture.0.join("launcher.json"),
+        engineer: fixture.0.join("engineer.json"),
+        recordings: None,
+    };
+    assert!(matches!(
+        pick_request(&mut session, INTERNAL, StrategyFileMode::SaveAs),
+        HostToUi::Response { .. }
+    ));
+    let mut pipe = Pipe::new(Vec::new());
+    session.core.status = session.current.clone();
+    session.core.status.access.strategy = false;
+    assert!(
+        session
+            .tick(&args, &mut pipe, Instant::now(), || false)
+            .unwrap()
+    );
+    session.core.status.access.strategy = true;
+    assert!(
+        session
+            .tick(&args, &mut pipe, Instant::now(), || false)
+            .unwrap()
+    );
+    let target = data.join("copia.json");
+    assert_eq!(
+        picked(&mut session, INTERNAL, Some(&target)),
+        HostToUi::Failure {
+            id: INTERNAL,
+            error: HostError::Denied
+        }
+    );
+    assert!(!target.exists());
 }

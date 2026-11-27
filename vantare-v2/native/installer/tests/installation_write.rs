@@ -5233,13 +5233,11 @@ fn once_c_is_confirmed_neither_setup_nor_feed_nor_rollback_goes_back_to_b() {
     assert_eq!(children(&fixture.root.join("staging")), 0);
 }
 
-/// CARACTERIZACIÓN (#2822, caso 5), no un contrato: lo que pasa hoy con la
-/// versión rechazada, que `installed::stage` no vuelve a ofrecer. El feed y
-/// Confirm la conservan (`a_failed_c_goes_back_to_b_*`); un Setup sobre la
-/// instalación reescribe `update-status.json` sin ella, así que tras Reparar
-/// B el feed volvería a ofrecer C una vez. Pendiente de decisión.
+/// #2825 (caso 5 de P7): un Setup sobre la instalación conserva la versión
+/// rechazada, como Confirm y el feed. `installed::stage` la lee para no volver
+/// a ofrecerla, así que tras Reparar B el feed no ofrece C otra vez.
 #[test]
-fn characterization_a_setup_repair_forgets_the_rejected_version() {
+fn a_setup_repair_keeps_the_rejected_version() {
     let fixture = Fixture::new();
     let shell = fixture.shell();
     let [_, b] = fixture.chain_to_b(&shell);
@@ -5254,13 +5252,102 @@ fn characterization_a_setup_repair_forgets_the_rejected_version() {
         .setup(&shell, &fixture.electron("1.0.1"), Mode::Repair, None)
         .unwrap();
     assert_eq!(index(&fixture.data()), data_b, "the repair keeps B's data");
-    assert_eq!(fixture.status()["state"], "applied");
-    assert!(
-        fixture.status()["rejectedVersion"].is_null(),
-        "forgotten by Setup"
-    );
+    let status = fixture.status();
+    assert_eq!(status["state"], "applied");
+    assert_eq!(status["version"], "1.0.1");
+    assert_eq!(status["rejectedVersion"], "1.0.2", "kept by Setup");
     fixture.confirm();
-    assert!(fixture.status()["rejectedVersion"].is_null());
+    assert_eq!(fixture.status()["state"], "current");
+    assert_eq!(
+        fixture.status()["rejectedVersion"],
+        "1.0.2",
+        "and by Confirm"
+    );
+}
+
+/// Updating with Setup to a version below the rejected one keeps it rejected.
+#[test]
+fn a_setup_update_below_the_rejected_version_keeps_it_rejected() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    fixture.chain_to_b(&shell);
+    fixture.feed_to("1.0.3");
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    fixture
+        .setup(&shell, &fixture.electron("1.0.2"), Mode::Auto, None)
+        .unwrap();
+    assert_eq!(fixture.status()["version"], "1.0.2");
+    assert_eq!(fixture.status()["rejectedVersion"], "1.0.3");
+    fixture.confirm();
+    assert_eq!(
+        verified(&fixture.root).unwrap().installed_version(),
+        Some("1.0.2")
+    );
+    assert_eq!(fixture.status()["rejectedVersion"], "1.0.3");
+}
+
+/// Each product keeps its own rejected version: a Setup of one never writes,
+/// keeps or clears the other's.
+#[test]
+fn beta_and_nightly_keep_each_their_own_rejected_version() {
+    let (beta_fixture, nightly_fixture) = (Fixture::new(), Fixture::new());
+    let folders = beta_fixture.path.join("shell");
+    let registry = hive();
+    let beta = beta_fixture.shell_with("beta", folders.clone(), registry.clone());
+    let nightly = nightly_fixture.shell_with("nightly", folders, registry);
+    let nightly_package = |version| {
+        nightly_fixture.build_for(
+            "nightly",
+            "electron-nightly",
+            version,
+            electron_members(),
+            None,
+            2,
+        )
+    };
+    // Beta: C (1.0.2) failed and is rejected.
+    beta_fixture.chain_to_b(&beta);
+    beta_fixture.feed_to("1.0.2");
+    assert_eq!(
+        operations::rollback(&beta_fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    let beta_state = || product_snapshot(&beta_fixture, &beta, BETA_KEY, &NIGHTLY_PATHS);
+    let beta_before = beta_state();
+
+    // Nightly: its Setup took 1.0.1, which failed, and then repairs 1.0.0.
+    for version in ["1.0.0", "1.0.1"] {
+        nightly_fixture
+            .setup(&nightly, &nightly_package(version), Mode::Auto, Some(true))
+            .unwrap();
+    }
+    assert_eq!(
+        operations::rollback(&nightly_fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    nightly_fixture
+        .setup(&nightly, &nightly_package("1.0.0"), Mode::Repair, None)
+        .unwrap();
+    operations::confirm(&nightly_fixture.root).unwrap();
+    assert_eq!(nightly_fixture.status()["rejectedVersion"], "1.0.1");
+    assert_eq!(beta_state(), beta_before, "nightly never touches beta");
+
+    // And beta's repair keeps beta's rejected version, not nightly's.
+    let nightly_state = || product_snapshot(&nightly_fixture, &nightly, NIGHTLY_KEY, &BETA_PATHS);
+    let nightly_before = nightly_state();
+    beta_fixture
+        .setup(&beta, &beta_fixture.electron("1.0.1"), Mode::Repair, None)
+        .unwrap();
+    beta_fixture.confirm();
+    assert_eq!(beta_fixture.status()["rejectedVersion"], "1.0.2");
+    assert_eq!(
+        nightly_state(),
+        nightly_before,
+        "beta never touches nightly"
+    );
 }
 
 #[test]

@@ -15,6 +15,7 @@ import type { HostToUi, Request } from "../src/contract/generated/contract";
 import { createMockHost } from "../src/mock/host";
 import { HostFailure } from "../src/renderer/bridge/client";
 import { accessText } from "../src/renderer/i18n/access.es";
+import { accountText } from "../src/renderer/i18n/account.es";
 import { OnboardingAccountIntro } from "../src/renderer/screens/onboarding/AccountIntro";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 
@@ -58,11 +59,16 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
-async function mount(signedIn = false, configured = true) {
+async function mount(
+  signedIn = false,
+  configured = true,
+  scene = signedIn ? "cuenta-base" : "onboarding-3",
+) {
   let id = 0;
-  const account = createMockHost(signedIn ? "cuenta-base" : "onboarding-3");
+  const account = createMockHost(scene);
   const onboarding = createMockHost("onboarding-3");
   fake.request.mockImplementation(async (request: Request) => {
     if (request.method === "onboarding.prices")
@@ -98,7 +104,9 @@ async function mount(signedIn = false, configured = true) {
   fireEvent.click(start);
   fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
   fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
-  if (configured) {
+  if (scene.includes("cuenta-tester"))
+    await screen.findByRole("heading", { name: "TESTER" });
+  else if (configured) {
     await waitFor(() =>
       expect(
         screen
@@ -201,6 +209,60 @@ it("keeps public prices usable when account access is not configured", async () 
     fake.request.mock.calls.some(([r]) => r.method === "account.purchase"),
   ).toBe(false);
 });
+
+it.each([
+  ["onboarding-cuenta-tester", null],
+  ["onboarding-cuenta-tester-fecha", "10 de diciembre de 2026 a las 14:05"],
+])(
+  "gives a signed tester a pass and nothing to buy (%s)",
+  async (name, date) => {
+    // The card formats in the computer's zone and CI runs in UTC.
+    const NativeFormatter = Intl.DateTimeFormat;
+    vi.spyOn(Intl, "DateTimeFormat").mockImplementation(
+      function madridFormatter(locales, options) {
+        return new NativeFormatter(locales, {
+          ...options,
+          timeZone: options?.timeZone ?? "Europe/Madrid",
+        });
+      },
+    );
+    await mount(true, true, `visual-light:${name}`);
+    expect(
+      screen.queryAllByRole("button", { name: /Elegir|Comprar|Founders/ }),
+    ).toEqual([]);
+    const art = document.querySelector(".v-ob-art");
+    expect(art?.querySelectorAll("button, a")).toHaveLength(0);
+    for (const copy of [
+      accountText.beta,
+      accountText.testerLead,
+      accountText.betaHelpTester,
+    ])
+      expect(screen.getByText(copy)).toBeTruthy();
+    expect(
+      Array.from(art?.querySelectorAll("dt, dd") ?? [], (n) => n.textContent),
+    ).toEqual(date ? ["Válido hasta", date] : []);
+    expect(!!screen.queryByText(accountText.renewsOnline)).toBe(!!date);
+  },
+);
+
+it.each([
+  "onboarding-3",
+  "cuenta-base",
+  "visual-light:onboarding-cuenta-sesion",
+])(
+  "keeps the plans and no tester pass for a non-tester (%s)",
+  async (scene) => {
+    await mount(scene !== "onboarding-3", true, scene);
+    const art = document.querySelector(".v-ob-art");
+    expect(art?.children).toHaveLength(1);
+    expect(art?.firstElementChild?.className).toBe("v-ob-plans");
+    expect(
+      Array.from(art?.querySelectorAll("button") ?? [], (n) => n.textContent),
+    ).toEqual(["Elegir Pro", "Elegir Pro Plus"]);
+    expect(screen.queryByRole("heading", { name: "TESTER" })).toBeNull();
+    expect(screen.queryByText(accountText.betaHelpTester)).toBeNull();
+  },
+);
 
 it("provides closed QA account states without touching authentication services", () => {
   for (const [scene, session, gate] of [

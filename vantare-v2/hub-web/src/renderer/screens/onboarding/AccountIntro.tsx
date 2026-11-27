@@ -67,6 +67,7 @@ function ConnectedIntro(props: Props) {
             value.session === "pending" ||
             value.gate === "checking"),
         tester,
+        until: tester ? value?.license?.untilMs : null,
         accessLabel: tester
           ? accountText.testerAccess
           : verified &&

@@ -10,6 +10,8 @@ export const accountText = {
   sessionHelp: "Tu sesión de Vantare",
   active: "Acceso verificado · activo",
   testerAccess: "Tester · acceso gratuito durante la beta",
+  testerTitle: "TESTER",
+  testerLead: "acceso gratuito durante la beta",
   verified: "Acceso verificado",
   unverified: "Acceso sin verificar",
   photo: "Cambiar foto",

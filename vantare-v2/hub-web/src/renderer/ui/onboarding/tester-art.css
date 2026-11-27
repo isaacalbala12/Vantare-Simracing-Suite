@@ -1,0 +1,80 @@
+/* Same card surface as plans-art.css. */
+.v-ob-tester {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: calc(48 * var(--ob-unit)) calc(70 * var(--ob-unit));
+  color: var(--ob-raw-f3eeee);
+}
+.v-ob-tester-pass {
+  display: flex;
+  flex-direction: column;
+  gap: calc(14 * var(--ob-unit));
+  width: 100%;
+  max-width: calc(520 * var(--ob-unit));
+  padding: calc(28 * var(--ob-unit));
+  background: color-mix(in srgb, var(--ob-raw-080606) 76%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ob-raw-ffffff) 18%, transparent);
+  border-radius: calc(16 * var(--ob-unit));
+}
+.v-ob-tester-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: calc(10 * var(--ob-unit));
+}
+.v-ob-tester-heading .v-ob-wordmark {
+  width: calc(122 * var(--ob-unit));
+  color: var(--ob-raw-ffffff);
+}
+.v-ob-tester-chip {
+  padding: calc(6 * var(--ob-unit)) calc(10 * var(--ob-unit));
+  border: 1px solid var(--ob-raw-89565d);
+  border-radius: calc(6 * var(--ob-unit));
+  font-size: calc(10 * var(--ob-unit));
+  font-weight: 700;
+  letter-spacing: calc(1.08 * var(--ob-unit));
+  color: var(--ob-raw-ffffff);
+}
+.v-ob-tester-pass h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: calc(72 * var(--ob-unit));
+  font-weight: 600;
+  line-height: 0.9;
+  color: var(--ob-raw-faf7f7);
+}
+.v-ob-tester-pass p {
+  margin: 0;
+  font-size: calc(14 * var(--ob-unit));
+  line-height: 1.45;
+}
+.v-ob-tester-pass .v-ob-tester-lead {
+  font-size: calc(18 * var(--ob-unit));
+  font-weight: 600;
+  color: var(--ob-raw-faf7f7);
+}
+.v-ob-tester-pass dl {
+  display: flex;
+  justify-content: space-between;
+  gap: calc(16 * var(--ob-unit));
+  margin: calc(6 * var(--ob-unit)) 0 0;
+  padding: calc(14 * var(--ob-unit)) 0;
+  border-block: 1px solid var(--ob-raw-292325);
+  font-size: calc(13 * var(--ob-unit));
+}
+.v-ob-tester-pass dt {
+  color: var(--ob-raw-cfc6c7);
+}
+.v-ob-tester-pass dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+.v-ob-tester-pass .v-ob-tester-note {
+  font-size: calc(12 * var(--ob-unit));
+  color: var(--ob-raw-cfc6c7);
+}

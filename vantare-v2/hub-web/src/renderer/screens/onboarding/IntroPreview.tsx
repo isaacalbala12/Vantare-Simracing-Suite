@@ -43,6 +43,7 @@ import {
   PrivacyStep,
 } from "../../ui/onboarding/PrivacyStep";
 import { SummaryStep } from "../../ui/onboarding/SummaryStep";
+import { TesterArt } from "../../ui/onboarding/TesterArt";
 import { useCompletion } from "./useCompletion";
 
 /** Shared controller for the first-run gate and its component-catalog preview. */
@@ -346,7 +347,9 @@ export function OnboardingIntroPreview({
             />
           ) : step === 3 ? (
             // A tester is never offered a plan (PlansArt) during the beta.
-            account.tester ? null : (
+            account.tester ? (
+              <TesterArt until={account.until} />
+            ) : (
               <PlansArt
                 onPrices={() => void prices()}
                 onPro={onPro}

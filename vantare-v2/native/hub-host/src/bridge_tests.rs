@@ -107,6 +107,29 @@ fn rejects_wrong_token_on_real_pipe() {
 fn rejects_wrong_pid_even_when_the_image_matches() {
     assert_eq!(rejection("pid", true), io::ErrorKind::PermissionDenied);
 }
+/// #2810 (R12): the right child, with the right token, but not the UI image the
+/// host launched (e.g. a renamed or replaced executable) is never admitted.
+#[test]
+fn rejects_the_right_pid_and_token_when_the_image_is_not_the_ui() {
+    let root = Root::new();
+    let done = Signal::new().expect("peer stop");
+    let (name, stop, _listener, pipe) = endpoint();
+    let mut child = spawn_peer("valid", &name, &"a".repeat(64), &done);
+    let system = std::env::var_os("SystemRoot").expect("Windows directory");
+    let other = PathBuf::from(system).join("System32/cmd.exe");
+    let result = accept_ui(
+        &args(&root.path),
+        &mut child,
+        &other,
+        pipe,
+        &stop,
+        &"a".repeat(64),
+        || false,
+    );
+    done.set();
+    let _exited = child.0.wait().expect("join peer");
+    assert!(matches!(result, Err(error) if error.kind() == io::ErrorKind::PermissionDenied));
+}
 #[test]
 fn rejects_one_mib_plus_one_before_reading_payload() {
     assert_eq!(rejection("oversize", false), io::ErrorKind::InvalidData);

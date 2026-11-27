@@ -45,13 +45,16 @@ export function AccountPanel({
   newsError,
   newsLoading = false,
   onNewsReload,
+  tester = false,
   strategyOpen = false,
 }: {
   news?: readonly ReleaseNote[];
   newsError?: string;
   newsLoading?: boolean;
   onNewsReload?: () => void;
-  // «Estrategia» is open in this Hub (beta on nightly): the host still says «soon»
+  // the signed tester right: «Funciones en pruebas» is offered to this account
+  tester?: boolean;
+  // «Estrategia» is open for this tester (beta on): the host still says «soon»
   strategyOpen?: boolean;
 } & AccountPanelProps) {
   const actionDescription = useId();
@@ -258,7 +261,7 @@ export function AccountPanel({
           <Icon name="v-studio" />
           <TrackedCaps>{text.modules}</TrackedCaps>
         </h2>
-        <p>{strategyOpen ? text.modulesHelpTesting : text.modulesHelp}</p>
+        <p>{tester ? text.modulesHelpTester : text.modulesHelp}</p>
         <div>
           {value.modules.map((module) => {
             const copy = accountModules[module.id];

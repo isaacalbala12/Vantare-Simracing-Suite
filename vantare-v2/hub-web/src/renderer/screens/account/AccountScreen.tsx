@@ -1,10 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import type { SettingsView } from "../../../contract/generated/contract";
 import { useAccount } from "../../app/AccountState";
-import { settingsKey, useHost } from "../../app/Host";
+import { coreKey, offline, settingsKey, useHost } from "../../app/Host";
 import { strategyOpen } from "../../app/navigation";
 import { SectionChrome } from "../../app/SectionChrome";
-import { useUpdatesChannel } from "../../app/UpdatesState";
 import { accountText as text } from "../../i18n/account.es";
 import { AccountPanel } from "../../ui/AccountPanel";
 import { AccountRail } from "../../ui/AccountRail";
@@ -14,7 +13,11 @@ export function AccountScreen() {
   const state = useAccount();
   const { client, hello } = useHost();
   // the same shared reads the menu uses; nothing is requested from here
-  const channel = useUpdatesChannel();
+  const { data: core = offline } = useQuery({
+    queryKey: coreKey,
+    queryFn: async () => offline,
+    enabled: false,
+  });
   const { data: settings } = useQuery<SettingsView>({
     queryKey: settingsKey,
     enabled: false,
@@ -52,7 +55,11 @@ export function AccountScreen() {
           news={news.data}
           newsError={news.isError ? text.newsFailed : undefined}
           newsLoading={news.isFetching}
-          strategyOpen={strategyOpen(channel, settings?.general.analisisBeta)}
+          tester={core.access.tester}
+          strategyOpen={strategyOpen(
+            core.access,
+            settings?.general.analisisBeta,
+          )}
           onNewsReload={() => void news.refetch()}
         />
       ) : state.error ? (

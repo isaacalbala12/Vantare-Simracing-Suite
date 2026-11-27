@@ -56,6 +56,22 @@ export function create(context: MockContext): MockHandler {
     settings.track.exists = true;
   if (sceneName === "ajustes-layout-protegido") settings.track.protected = true;
   if (sceneName === "strategy-menu") settings.general.analisisBeta = true;
+  // «Funciones en pruebas» belongs to testers on any channel: these scenes are one.
+  if (
+    sceneName === "strategy-menu" ||
+    sceneName.startsWith("privacidad-beta-")
+  ) {
+    core.rights = "connected";
+    core.access = {
+      verified: true,
+      blocked: false,
+      tester: true,
+      calendar: true,
+      engineer: true,
+      strategy: true,
+      analysis: true,
+    };
+  }
   context.windowsNotificationsEnabled =
     settings.general.toasts && !settings.protected;
   context.settingsData = settings;

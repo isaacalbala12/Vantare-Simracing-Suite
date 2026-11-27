@@ -37,8 +37,6 @@ try {
     loading: "05b-cargando",
     "catalog-error": "05c-error",
     recording: "05d-bloqueada",
-    denied: "05e-sin-permiso",
-    signin: "05e-sin-permiso",
     disabled: "05f-desactivada",
     "disabled-empty": "05f-desactivada",
   };

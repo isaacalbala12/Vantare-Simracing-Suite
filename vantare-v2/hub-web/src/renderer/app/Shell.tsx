@@ -104,11 +104,8 @@ function ShellContent() {
   const host = useHost();
   const query = useQueryClient();
   const settings = useSettings();
-  const updates = useUpdates();
-  const channel = updates.isError ? undefined : updates.data?.channel;
-  // Strategy keeps the last channel read when a later read fails: the screen that
-  // is open (and its draft) stays; Analysis still closes.
-  const held = updates.data?.channel;
+  // keeps the updates view loaded and live for the whole window
+  useUpdates();
   const analisisBeta = settings.view?.general.analisisBeta;
   const editBlocked =
     !settings.view ||
@@ -183,45 +180,44 @@ function ShellContent() {
   } = useLauncherLaunch(core, launcher);
   const isUpcoming = (section: Section) =>
     section === "engineer" ||
-    (section === "strategy" && !strategyOpen(held, analisisBeta));
-  const items = navigation(core.access, channel, analisisBeta, held).map(
-    (item) =>
-      isUpcoming(item.id)
-        ? {
-            ...item,
-            locked: undefined,
-            label:
-              item.id === "strategy"
-                ? shellText.strategyName
-                : shellText.engineerName,
-            lockBadge: true,
-            badge: (
-              <span className="v-nav-soon">
-                <Icon name="v-lock" />
-                {upcoming.soon}
-              </span>
-            ),
-          }
-        : item.id === "studio"
-          ? { ...item, label: shellText.studioName }
-          : item.id === "strategy"
-            ? { ...item, label: shellText.strategyName }
-            : item.id === "launcher"
-              ? {
-                  ...item,
-                  badge: launcher?.profiles.length ? (
-                    <span className="v-nav-count">
-                      {launcher.profiles.length}
-                    </span>
-                  ) : undefined,
-                }
-              : item,
+    (section === "strategy" && !strategyOpen(core.access, analisisBeta));
+  const items = navigation(core.access, analisisBeta).map((item) =>
+    isUpcoming(item.id)
+      ? {
+          ...item,
+          locked: undefined,
+          label:
+            item.id === "strategy"
+              ? shellText.strategyName
+              : shellText.engineerName,
+          lockBadge: true,
+          badge: (
+            <span className="v-nav-soon">
+              <Icon name="v-lock" />
+              {upcoming.soon}
+            </span>
+          ),
+        }
+      : item.id === "studio"
+        ? { ...item, label: shellText.studioName }
+        : item.id === "strategy"
+          ? { ...item, label: shellText.strategyName }
+          : item.id === "launcher"
+            ? {
+                ...item,
+                badge: launcher?.profiles.length ? (
+                  <span className="v-nav-count">
+                    {launcher.profiles.length}
+                  </span>
+                ) : undefined,
+              }
+            : item,
   );
   function navigate(section: Section) {
     if (
       isUpcoming(section) ||
-      (visible(section, core.access, channel, analisisBeta) &&
-        !lock(section, core.access, channel, analisisBeta, held))
+      (visible(section, core.access, analisisBeta) &&
+        !lock(section, core.access, analisisBeta))
     )
       ui.navigate(section);
   }
@@ -249,7 +245,7 @@ function ShellContent() {
           document.documentElement.dataset.scheme === "dark" ? "light" : "dark",
       });
   }
-  const section = visible(ui.section, core.access, channel, analisisBeta)
+  const section = visible(ui.section, core.access, analisisBeta)
     ? ui.section
     : "home";
   useEffect(() => {
@@ -425,13 +421,7 @@ function ShellContent() {
                       locked: isUpcoming(item.id),
                       disabled: isUpcoming(item.id)
                         ? false
-                        : !!lock(
-                            item.id,
-                            core.access,
-                            channel,
-                            analisisBeta,
-                            held,
-                          ),
+                        : !!lock(item.id, core.access, analisisBeta),
                       run: () => navigate(item.id),
                     })),
                   ...(

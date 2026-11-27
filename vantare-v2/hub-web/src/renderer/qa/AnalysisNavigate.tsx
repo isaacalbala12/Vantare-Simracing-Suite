@@ -1,17 +1,20 @@
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { offline } from "../app/Host";
+import { coreKey, offline } from "../app/Host";
 import { visible } from "../app/navigation";
 import { useSettings } from "../app/SettingsState";
 import { useUi } from "../app/UiState";
-import { useUpdatesChannel } from "../app/UpdatesState";
 export default function AnalysisNavigate() {
   const navigate = useUi((s) => s.navigate);
   const settings = useSettings();
-  const channel = useUpdatesChannel();
+  const { data: core = offline } = useQuery({
+    queryKey: coreKey,
+    queryFn: async () => offline,
+    enabled: false,
+  });
   const canOpen = visible(
     "analysis",
-    offline.access,
-    channel,
+    core.access,
     settings.view?.general.analisisBeta,
   );
   const opened = useRef(false);

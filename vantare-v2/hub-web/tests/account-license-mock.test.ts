@@ -80,6 +80,9 @@ describe("unverified → verified → signed out", () => {
       verified: true,
       tester: true,
       calendar: true,
+      engineer: true,
+      strategy: true,
+      analysis: true,
     });
   });
 
@@ -274,6 +277,9 @@ describe("purchase wait", () => {
       verified: true,
       tester: false,
       calendar: false,
+      engineer: false,
+      strategy: false,
+      analysis: false,
     });
   });
   it("expires the wait with the host message and no rights in the expiring scene", () => {

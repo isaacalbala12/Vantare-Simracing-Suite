@@ -609,6 +609,13 @@ grabaciones de las generaciones con `Duplicates::RemoveIdentical`:
   repetir continúa donde se quedó.
 - Si `<raíz>\recordings` no es una carpeta normal (T2b), no se recoge nada y se
   anota una vez.
+- **Frontera de producto (#2812):** la recogida solo trabaja dentro de la raíz
+  que se confirma o se desinstala, con su propio `state.json`; cada raíz es de
+  un solo canal (beta o nightly), así que nunca toca grabaciones de otro
+  producto. Desinstalar en nombre de otro canal se rechaza antes de recoger
+  nada, y una raíz sin estado (restos) no se recoge. La regla «las copias
+  antiguas sin referencia solo las adopta beta» es de la adopción de datos al
+  reinstalar, no de esta recogida.
 - La primera Confirm con T3 es la de la **siguiente** actualización tras
   recibirlo: Confirm la ejecuta el lanzador que ya estaba en marcha.
 

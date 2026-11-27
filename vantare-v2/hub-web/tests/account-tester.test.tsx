@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { CSPProvider } from "@base-ui/react/csp-provider";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, expect, it } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { AccountView } from "../src/contract/generated/account";
 import type { Request } from "../src/contract/generated/contract";
 import { isAccount } from "../src/contract/modules/account";
@@ -16,10 +16,24 @@ import { AccountPanel } from "../src/renderer/ui/AccountPanel";
 import { AccountRail } from "../src/renderer/ui/AccountRail";
 import { ToastProvider, TooltipProvider } from "../src/renderer/ui/Layers";
 
-// Fixed zone before any date is written (R6 of the plan): the screen formats
-// in the computer's zone, the tests pin it to Madrid.
-process.env.TZ = "Europe/Madrid";
-afterEach(cleanup);
+// Fixed zone (R6 of the plan): the screen formats in the computer's zone and
+// CI runs in UTC. Worker threads ignore a runtime `process.env.TZ`, so the
+// default zone of Intl is pinned to Madrid, as calendar-live-permissions does.
+const NativeFormatter = Intl.DateTimeFormat;
+beforeEach(() => {
+  vi.spyOn(Intl, "DateTimeFormat").mockImplementation(
+    function madridFormatter(locales, options) {
+      return new NativeFormatter(locales, {
+        ...options,
+        timeZone: options?.timeZone ?? "Europe/Madrid",
+      });
+    },
+  );
+});
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 let id = 0;
 /** The account the mock host publishes for a scene, after optional actions. */
 function account(scene: string, ...actions: Request[]): AccountView {

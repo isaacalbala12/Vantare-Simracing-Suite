@@ -3988,6 +3988,13 @@ fn another_channel_is_rejected_before_anything_changes() {
     // A nightly Setup whose embedded ZIP declares beta fails at authentication.
     let mut forged = fixture.package("1.0.0");
     forged.channel = "nightly";
+    // The authenticated manifest is the arbiter, even with no Windows projection
+    // behind it to catch the mismatch later.
+    let stage = fixture.path.join("forged-stage");
+    assert!(engine::package::expand(&forged.path, &forged.sha, &stage, "nightly").is_err());
+    assert!(!stage.join("manifest.json").exists());
+    assert!(fixture.install(&forged, Mode::Auto, false, false).is_err());
+    assert!(!fixture.root.join("state.json").exists());
     assert!(
         fixture
             .setup(&nightly, &forged, Mode::Auto, Some(true))
@@ -4014,6 +4021,17 @@ fn another_channel_is_rejected_before_anything_changes() {
         .unwrap();
     fixture.write_data();
     let before = product_snapshot(&fixture, &beta, BETA_KEY, &NIGHTLY_PATHS);
+    // The nightly Setup probe already refuses the beta installation.
+    let mut probe = engine::Request::new(
+        &Args {
+            root: Some(disk::path(&fixture.root).unwrap()),
+            ..Args::default()
+        },
+        engine::Operation::Probe,
+    );
+    probe.qa = false;
+    assert!(nightly.context.probe(&probe).is_err());
+    assert!(beta.context.probe(&probe).is_ok());
     for mode in [Mode::Auto, Mode::Repair] {
         assert!(
             fixture

@@ -166,7 +166,7 @@ Desde native; envolver cada comando con `native/scripts/compilar.ps1` desde
 powershell -NoProfile -File packaging/build-candidate.ps1 `
   -Channel beta -Version 0.0.977 -OutputDirectory D:/VantareServer/qa/build-a
 powershell -NoProfile -File packaging/build-installer.ps1 -Version 0.0.977 `
-  -OutputDirectory D:/VantareServer/qa/build-a -TestInstaller
+  -Channel beta -OutputDirectory D:/VantareServer/qa/build-a -TestInstaller
 ```
 
 El builder exige ZIP/version/bootstrap idénticos y construye primero Uninstall,

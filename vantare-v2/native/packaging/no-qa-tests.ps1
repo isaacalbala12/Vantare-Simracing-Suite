@@ -29,7 +29,7 @@ try {
             & (Join-Path $PSScriptRoot 'publish-beta.ps1') -Version '0.0.0' -OutputDirectory $betaOutput -ConfigFile $config -SigningKeyFile $emptyConfig -AllowDirty | Out-Null
         } $expected
         Expect-GateFailure {
-            & (Join-Path $PSScriptRoot 'build-installer.ps1') -Version '0.0.0' -OutputDirectory $betaOutput -ConfigFile $config | Out-Null
+            & (Join-Path $PSScriptRoot 'build-installer.ps1') -Version '0.0.0' -Channel beta -OutputDirectory $betaOutput -ConfigFile $config | Out-Null
         } $expected
     }
 } finally {$env:DUCKDB_LIB_DIR=$duckBefore}

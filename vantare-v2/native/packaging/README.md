@@ -61,7 +61,7 @@ configurado exige una lista válida y no vacía. No se leen claves privadas.
 ### Autoridad de licencias obligatoria para beta
 
 `publish-beta.ps1`, `build-candidate.ps1 -Channel beta` y
-`build-installer.ps1` (canal beta por defecto) exigen `-ConfigFile` explícito y
+`build-installer.ps1 -Channel beta` exigen `-ConfigFile` explícito y
 un `VANTARE_LICENSE_PUBLIC_KEYS` no vacío dentro de ese archivo público.
 El entorno heredado no sustituye el archivo. La allowlist debe aprobar todas
 las claves; antes del RC Isaac debe incorporar las huellas de producción.

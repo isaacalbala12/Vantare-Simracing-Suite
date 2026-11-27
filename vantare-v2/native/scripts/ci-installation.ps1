@@ -35,7 +35,9 @@ $feedLauncher = Join-Path $env:RUNNER_TEMP 'hub-update-qa-launcher/vantare.exe'
 New-Item -ItemType Directory -Path (Split-Path $feedLauncher) -Force | Out-Null
 Copy-Item -LiteralPath "$target/debug/vantare.exe" -Destination $feedLauncher -Force
 & cargo build --manifest-path native/Cargo.toml -p vantare-services --example qa-feed-server --locked --offline -j 4 --target-dir $target
-if ($LASTEXITCODE) { throw 'QA feed server build failed' }
+# Todavía NO bloquea (condición de la raíz): sin servidor, aviso y sin recorrido firmado.
+$feedServerBuilt = -not $LASTEXITCODE
+if (-not $feedServerBuilt) { Write-Host '::warning::El servidor de feed de pruebas (qa-feed-server) no compiló; se omite el recorrido firmado' }
 foreach ($shell in @('powershell.exe', 'pwsh')) {
   $policy = if ($shell -eq 'powershell.exe') { @('-ExecutionPolicy', 'Bypass') } else { @() }
   & $shell -NoProfile @policy -File native/packaging/build-tooling-tests.ps1 -QaRoot "$env:RUNNER_TEMP/installation-tooling" -Verifier "$target/debug/examples/matrix-verifier.exe" -ServicesExecutable "$target/debug/vantare-services.exe" -PackageVerifier "$target/debug/examples/verify-package.exe"
@@ -65,5 +67,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/install
 if ($LASTEXITCODE) { throw 'installation matrix regression' }
 # #2771 (P5 PR C): actualización firmada con la raíz, la sesión y el feed reales. Todavía NO
 # bloquea (condición de la raíz): un fallo deja un aviso en el job y no lo tumba.
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/signed-feed-tests.ps1 -Root "$env:RUNNER_TEMP/signed-feed" -TestVerifier "$target/debug/examples/matrix-verifier.exe" -BootProbe "$target/debug/examples/boot-confirmation-matrix.exe" -WriteEngine "$target/debug/examples/installer-write-matrix.exe" -FeedLauncher $feedLauncher -FeedServer "$target/debug/examples/qa-feed-server.exe"
-if ($LASTEXITCODE) { Write-Host '::warning::Recorrido firmado de la matriz (signed-feed-tests.ps1) falló; no bloquea hasta el OK de la raíz' }
+if ($feedServerBuilt) {
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/signed-feed-tests.ps1 -Root "$env:RUNNER_TEMP/signed-feed" -TestVerifier "$target/debug/examples/matrix-verifier.exe" -BootProbe "$target/debug/examples/boot-confirmation-matrix.exe" -WriteEngine "$target/debug/examples/installer-write-matrix.exe" -FeedLauncher $feedLauncher -FeedServer "$target/debug/examples/qa-feed-server.exe"
+  if ($LASTEXITCODE) { Write-Host '::warning::Recorrido firmado de la matriz (signed-feed-tests.ps1) falló; no bloquea hasta el OK de la raíz' }
+}

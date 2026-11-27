@@ -25,6 +25,12 @@ mod platform {
         qa_action: Option<String>,
         #[serde(default)]
         verifier: Option<PathBuf>,
+        /// Canal del producto ensayado (#2812). La matriz histórica es beta.
+        #[serde(default = "beta")]
+        channel: String,
+    }
+    fn beta() -> String {
+        "beta".into()
     }
     fn verify(
         verifier: &std::path::Path,
@@ -82,7 +88,7 @@ mod platform {
                 let view = Installation::read(root)?;
                 let state = view.state.as_ref().ok_or("active QA state required")?;
                 let manifest = view.manifest.as_ref().ok_or("active manifest required")?;
-                if manifest.engine() != 2 || state.channel != "beta" {
+                if manifest.engine() != 2 || state.channel != "beta" || input.channel != "beta" {
                     return Err("motor 2 beta required".into());
                 }
                 if pending.exists() || root.join("boot-pending.json").exists() {
@@ -138,6 +144,7 @@ mod platform {
                         archive: &archive,
                         sha256: sha,
                         version,
+                        channel: &input.channel,
                     },
                     false,
                     &mut control,
@@ -189,7 +196,8 @@ mod platform {
                 .shell_root
                 .clone()
                 .ok_or("injected shell folders required")?,
-        )?;
+        )?
+        .for_channel(&input.channel)?;
         if let Some(action) = &input.qa_action {
             return qa_action(&input, &context, action);
         }

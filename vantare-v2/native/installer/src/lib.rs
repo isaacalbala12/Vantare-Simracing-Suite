@@ -25,6 +25,12 @@ mod view;
 mod work;
 
 pub const VERSION: &str = env!("VANTARE_INSTALLER_VERSION");
+/// Canal del paquete que lleva este Setup/Uninstall; vacío sin build de canal.
+pub const CHANNEL: &str = env!("VANTARE_INSTALLER_CHANNEL");
+/// Etiqueta del canal en la ventana del Setup; una build sin canal no instala.
+pub fn channel_label() -> &'static str {
+    engine::product::for_channel(CHANNEL).map_or("sin canal", |product| product.label)
+}
 pub const QA: bool = cfg!(feature = "test-installer");
 
 #[cfg(all(windows, feature = "write-engine"))]

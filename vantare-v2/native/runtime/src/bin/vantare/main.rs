@@ -696,7 +696,7 @@ fn main() -> ExitCode {
         Some("--root") => Some(installed::root(&args)),
         Some("--session") => Some(installed::session(&args)),
         Some("--open-hub") if args.len() == 1 => Some(
-            Stop::signal(&object_name("launcher-open-hub", "native-beta"))
+            Stop::signal(&object_name("launcher-open-hub", &installed::instance()))
                 .map(|()| ExitCode::SUCCESS),
         ),
         _ => None,

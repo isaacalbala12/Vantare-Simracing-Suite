@@ -29,6 +29,7 @@ struct Package {
     path: PathBuf,
     sha: String,
     version: String,
+    channel: &'static str,
 }
 struct OwnedChild(std::process::Child);
 impl Drop for OwnedChild {
@@ -53,6 +54,7 @@ impl Package {
             archive: &self.path,
             sha256: &self.sha,
             version: &self.version,
+            channel: self.channel,
         }
     }
 }
@@ -87,6 +89,17 @@ impl Fixture {
     ) -> Package {
         self.build("package", version, test_members(), extra, engine)
     }
+    /// The same package declared for another channel (#2812).
+    fn package_for(&self, channel: &'static str, version: &str) -> Package {
+        self.build_for(
+            channel,
+            &format!("package-{channel}"),
+            version,
+            test_members(),
+            None,
+            2,
+        )
+    }
     /// Electron generation: the Rust host keeps `bin/vantare-hub.exe` and the
     /// sealed `hub-ui` tree travels beside `bin`, as `build-candidate.ps1` emits it.
     fn electron(&self, version: &str) -> Package {
@@ -94,6 +107,17 @@ impl Fixture {
     }
     fn build(
         &self,
+        tag: &str,
+        version: &str,
+        members: Vec<String>,
+        extra: Option<(&str, &[u8])>,
+        engine: u32,
+    ) -> Package {
+        self.build_for("beta", tag, version, members, extra, engine)
+    }
+    fn build_for(
+        &self,
+        channel: &'static str,
         tag: &str,
         version: &str,
         members: Vec<String>,
@@ -129,7 +153,7 @@ impl Fixture {
             entries.push((name.to_owned(), bytes.to_vec()));
         }
         let files: Vec<_> = entries.iter().map(|(name, bytes)| json!({"path":name,"size":bytes.len(),"sha256":format!("{:x}",Sha256::digest(bytes))})).collect();
-        let manifest = json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","data_schema":"opaque-v1","source_sha":"0".repeat(40),"source_dirty":false,"build_profile":"Debug","version":version,"channel":"beta","engine":engine,"files":files});
+        let manifest = json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","data_schema":"opaque-v1","source_sha":"0".repeat(40),"source_dirty":false,"build_profile":"Debug","version":version,"channel":channel,"engine":engine,"files":files});
         entries.push((
             "manifest.json".into(),
             serde_json::to_vec(&manifest).expect("manifest"),
@@ -155,6 +179,7 @@ impl Fixture {
             path,
             sha,
             version: version.into(),
+            channel,
         }
     }
     fn install(
@@ -599,6 +624,7 @@ fn uninstall_probe_uses_manifest_or_a_neutral_absence_never_a_retained_version()
         ),
         fixture.path.join("shell"),
     )
+    .and_then(|context| context.for_channel("beta"))
     .expect("isolated context");
     let request = engine::Request::new(
         &vantare_installer::args::Args {
@@ -843,7 +869,7 @@ fn retirement_uses_the_shared_reader_and_rejects_invalid_references_before_delet
             checkpoint: &mut |_| Ok(()),
             warning: &mut |_| {},
         };
-        let error = operations::uninstall(&fixture.root, &mut control, |_| {
+        let error = operations::uninstall(&fixture.root, "beta", &mut control, |_| {
             panic!("invalid state cannot reach finalization")
         })
         .expect_err("invalid retirement state");
@@ -919,7 +945,7 @@ fn interrupted_uninstall_resumes_and_preserves_data_empty_folders_and_foreign_fi
         checkpoint: &mut checkpoint,
         warning: &mut |_| {},
     };
-    assert!(operations::uninstall(&fixture.root, &mut control, |_| Ok(())).is_err());
+    assert!(operations::uninstall(&fixture.root, "beta", &mut control, |_| Ok(())).is_err());
     assert!(fixture.root.join("state.json").is_file());
     let mut control = Control {
         cancel: &cancel,
@@ -927,7 +953,7 @@ fn interrupted_uninstall_resumes_and_preserves_data_empty_folders_and_foreign_fi
         checkpoint: &mut |_| Ok(()),
         warning: &mut |_| {},
     };
-    operations::uninstall(&fixture.root, &mut control, |_| Ok(())).expect("resume");
+    operations::uninstall(&fixture.root, "beta", &mut control, |_| Ok(())).expect("resume");
     assert!(!fixture.root.join("state.json").exists());
     assert_eq!(
         disk::data_index(&active.join("data")).expect("retained data"),
@@ -1300,6 +1326,7 @@ fn checkpoint_process_worker() {
         archive: &archive,
         sha256: value["sha256"].as_str().expect("sha"),
         version: value["version"].as_str().expect("version"),
+        channel: "beta",
     };
     operations::update(&root, &package, false, &mut control).expect("update reaches checkpoint");
     panic!("requested checkpoint was not reached");
@@ -1365,7 +1392,7 @@ fn uninstall_keeps_unreferenced_binaries_with_their_path_and_reason_in_the_log()
         checkpoint: &mut |_| Ok(()),
         warning: &mut warning,
     };
-    operations::uninstall(&fixture.root, &mut control, |_| Ok(())).unwrap();
+    operations::uninstall(&fixture.root, "beta", &mut control, |_| Ok(())).unwrap();
     assert!(!fixture.root.join("state.json").exists());
     assert_eq!(fs::read(&executable).unwrap(), b"unreferenced own bytes");
     assert!(orphan.join("manifest.json").is_file());
@@ -1524,7 +1551,7 @@ fn repair_without_active_state_rejects_before_touching_a_pending_cleanup() {
         checkpoint: &mut |_| Ok(()),
         warning: &mut |_| {},
     };
-    operations::uninstall(&fixture.root, &mut control, |_| Ok(())).unwrap();
+    operations::uninstall(&fixture.root, "beta", &mut control, |_| Ok(())).unwrap();
     let marker = fixture.root.join("installer-cleanup.json");
     fs::write(&marker, b"pending cleanup sentinel").unwrap();
     let error = operations::install(
@@ -1676,6 +1703,11 @@ impl Fixture {
             "Software\\VantareInstallerMatrix\\{}",
             disk::id().expect("hive ID")
         );
+        self.shell_with("beta", folders, registry)
+    }
+    /// A product context over the given injected HKCU subkey and shell folders,
+    /// so two products can share the same simulated user (#2812).
+    fn shell_with(&self, channel: &str, folders: PathBuf, registry: String) -> Shell {
         let payload = self.path.join("payload");
         fs::create_dir_all(&payload).expect("payload");
         fs::write(payload.join("Uninstall.exe"), inert_pe()).expect("inert uninstaller");
@@ -1686,6 +1718,7 @@ impl Fixture {
                 registry.clone(),
                 folders.clone(),
             )
+            .and_then(|context| context.for_channel(channel))
             .expect("isolated context"),
             payload,
             registry,
@@ -1746,7 +1779,8 @@ impl Fixture {
         let request = engine::Request::new(&arguments, engine::Operation::Uninstall);
         let previous = engine::context::options(&root, true)?;
         let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
-        operations::uninstall(&root, &mut sink.control(&cancel), |control| {
+        let channel = shell.context.product()?.channel;
+        operations::uninstall(&root, channel, &mut sink.control(&cancel), |control| {
             let options = engine::shell::Options {
                 request: &request,
                 previous: previous.as_ref(),
@@ -2065,7 +2099,7 @@ fn open_electron_image_blocks_setup_repair_and_uninstall_before_any_change() {
         );
     }
     let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
-    let error = operations::uninstall(&fixture.root, &mut sink.control(&cancel), |_| {
+    let error = operations::uninstall(&fixture.root, "beta", &mut sink.control(&cancel), |_| {
         panic!("a blocked uninstall cannot reach the Windows projection")
     })
     .unwrap_err();
@@ -2635,8 +2669,8 @@ fn uninstall_retires_orphan_binaries_and_never_touches_a_data_folder() {
         checkpoint: &mut checkpoint,
         warning: &mut warning,
     };
-    assert!(operations::uninstall(&fixture.root, &mut control, |_| Ok(())).is_err());
-    operations::uninstall(&fixture.root, &mut control, |_| Ok(())).expect("resumed");
+    assert!(operations::uninstall(&fixture.root, "beta", &mut control, |_| Ok(())).is_err());
+    operations::uninstall(&fixture.root, "beta", &mut control, |_| Ok(())).expect("resumed");
     assert!(!fixture.root.join("state.json").exists());
     assert_eq!(names(&a), ["bin", "data", "manifest.json"]);
     assert_eq!(names(&a.join("bin")), ["ajeno.dll"]);
@@ -2694,7 +2728,13 @@ fn confirm_and_uninstall_write_their_notes_to_the_installation_log() {
     }
     // Uninstall keeps writing to the same log, which stays with the user data.
     let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
-    operations::uninstall(&fixture.root, &mut sink.control(&cancel), |_| Ok(())).unwrap();
+    operations::uninstall(
+        &fixture.root,
+        "beta",
+        &mut sink.control(&cancel),
+        |_| Ok(()),
+    )
+    .unwrap();
     let notes = logged(&fixture.root);
     assert_eq!(notes.len(), 3, "{notes:?}");
     assert!(notes[2].contains("debug.log"));
@@ -2717,7 +2757,13 @@ fn a_log_that_cannot_be_written_never_fails_confirm_or_uninstall() {
     assert_eq!(names(&a), ["data"]);
     fixture.upgrade("1.0.3", Mode::Auto);
     let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
-    operations::uninstall(&fixture.root, &mut sink.control(&cancel), |_| Ok(())).unwrap();
+    operations::uninstall(
+        &fixture.root,
+        "beta",
+        &mut sink.control(&cancel),
+        |_| Ok(()),
+    )
+    .unwrap();
     assert_eq!(names(&b), ["data"]);
     assert!(log.is_dir() && children(&log) == 0);
 }
@@ -3642,4 +3688,667 @@ fn only_the_entry_named_recordings_at_the_root_is_left_alone() {
     )
     .unwrap();
     assert!(opens(), "a normal folder with links inside");
+}
+
+// ---------------------------------------------------------------------------
+// #2812: cada canal instalable es un producto separado. Nightly tiene registro,
+// carpetas y accesos propios y nunca lee, actualiza ni borra lo de beta.
+
+const BETA_KEY: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VantareNativeBeta";
+const NIGHTLY_KEY: &str =
+    "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VantareNativeNightly";
+const REGISTRATION: [&str; 5] = [
+    "InstallLocation",
+    "DisplayName",
+    "DisplayVersion",
+    "DisplayIcon",
+    "UninstallString",
+];
+const BETA_LINKS: [&str; 4] = [
+    "Programs/Vantare/Vantare Simracing Suite.lnk",
+    "Programs/Vantare/Desinstalar.lnk",
+    "DesktopDirectory/Vantare Simracing Suite.lnk",
+    "Startup/Vantare.lnk",
+];
+const NIGHTLY_LINKS: [&str; 4] = [
+    "Programs/Vantare Nightly/Vantare Nightly.lnk",
+    "Programs/Vantare Nightly/Desinstalar.lnk",
+    "DesktopDirectory/Vantare Nightly.lnk",
+    "Startup/Vantare Nightly.lnk",
+];
+
+fn registered(shell: &Shell, key: &str, name: &str) -> Option<String> {
+    windows_registry::CURRENT_USER
+        .open(format!("{}\\{key}", shell.registry))
+        .and_then(|key| key.get_string(name))
+        .ok()
+}
+fn files_below(directory: &Path, prefix: &str, into: &mut BTreeMap<String, Vec<u8>>) {
+    let Ok(entries) = fs::read_dir(directory) else {
+        return;
+    };
+    for entry in entries {
+        let entry = entry.expect("entry");
+        let name = format!("{prefix}/{}", entry.file_name().to_string_lossy());
+        if entry.file_type().expect("type").is_dir() {
+            into.insert(format!("{name}/"), Vec::new());
+            files_below(&entry.path(), &name, into);
+        } else {
+            into.insert(name, fs::read(entry.path()).expect("bytes"));
+        }
+    }
+}
+/// What the other product may own in the shared shell folders.
+const BETA_PATHS: [&str; 4] = [
+    "Programs/Vantare/",
+    "Programs/Vantare Native Beta",
+    "DesktopDirectory/Vantare Simracing Suite.lnk",
+    "Startup/Vantare.lnk",
+];
+const NIGHTLY_PATHS: [&str; 3] = [
+    "Programs/Vantare Nightly",
+    "DesktopDirectory/Vantare Nightly.lnk",
+    "Startup/Vantare Nightly.lnk",
+];
+const RUN: &str = "Software\\Microsoft\\Windows\\CurrentVersion\\Run";
+/// Everything in the shared simulated user except what the other product owns:
+/// this product's whole root (data included), every file and folder in the
+/// shell folders (foreign ones too), its registry values and the Run values,
+/// byte for byte.
+fn product_snapshot(
+    fixture: &Fixture,
+    shell: &Shell,
+    key: &str,
+    other: &[&str],
+) -> BTreeMap<String, Vec<u8>> {
+    let mut snapshot = BTreeMap::new();
+    files_below(&fixture.root, "root", &mut snapshot);
+    let mut folders = BTreeMap::new();
+    files_below(&shell.folders, "link", &mut folders);
+    snapshot.extend(folders.into_iter().filter(|(name, _)| {
+        !other
+            .iter()
+            .any(|path| name.starts_with(&format!("link/{path}")))
+    }));
+    for name in REGISTRATION {
+        if let Some(value) = registered(shell, key, name) {
+            snapshot.insert(format!("registry/{name}"), value.into_bytes());
+        }
+    }
+    let hive = windows_registry::CURRENT_USER.open(format!("{}\\{key}", shell.registry));
+    for name in ["NoModify", "NoRepair"] {
+        if let Some(value) = hive.as_ref().ok().and_then(|key| key.get_u32(name).ok()) {
+            snapshot.insert(format!("registry/{name}"), value.to_le_bytes().to_vec());
+        }
+    }
+    for name in ["VantareNative.Hub", "Ajeno"] {
+        if let Some(value) = registered(shell, RUN, name) {
+            snapshot.insert(format!("run/{name}"), value.into_bytes());
+        }
+    }
+    snapshot
+}
+fn channel_of(fixture: &Fixture) -> String {
+    verified(&fixture.root)
+        .expect("verified installation")
+        .state
+        .expect("state")
+        .channel
+}
+fn hive() -> String {
+    format!(
+        "Software\\VantareInstallerMatrix\\{}",
+        disk::id().expect("hive ID")
+    )
+}
+
+#[test]
+fn nightly_installs_repairs_updates_and_uninstalls_with_its_own_names() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell_with("nightly", fixture.path.join("shell"), hive());
+    fixture
+        .setup(
+            &shell,
+            &fixture.package_for("nightly", "1.0.0"),
+            Mode::Auto,
+            Some(true),
+        )
+        .unwrap();
+    assert_eq!(channel_of(&fixture), "nightly");
+    let root = disk::path(&fixture.root).unwrap().display().to_string();
+    assert_eq!(
+        registered(&shell, NIGHTLY_KEY, "InstallLocation"),
+        Some(root)
+    );
+    assert_eq!(
+        registered(&shell, NIGHTLY_KEY, "DisplayName").as_deref(),
+        Some("Vantare Simracing Suite (Nightly)")
+    );
+    assert_eq!(registered(&shell, BETA_KEY, "InstallLocation"), None);
+    for link in NIGHTLY_LINKS {
+        assert!(shell.folders.join(link).is_file(), "{link}");
+    }
+    for link in BETA_LINKS {
+        assert!(!shell.folders.join(link).exists(), "{link}");
+    }
+    assert!(!shell.folders.join("Programs/Vantare").exists());
+    let menu = fs::read(shell.folders.join(NIGHTLY_LINKS[0])).unwrap();
+    assert!(contains(&menu, &utf16("Vantare.SimracingSuite.Nightly")));
+
+    fixture.write_data();
+    fixture
+        .setup(
+            &shell,
+            &fixture.package_for("nightly", "1.0.0"),
+            Mode::Repair,
+            None,
+        )
+        .unwrap();
+    // Repair leaves a boot to check, as every Setup over an installation does.
+    operations::confirm(&fixture.root).unwrap();
+    assert_eq!(
+        fs::read(fixture.data().join("opaque.bin")).unwrap(),
+        b"opaque\0user\xffbytes"
+    );
+    fixture
+        .setup(
+            &shell,
+            &fixture.package_for("nightly", "1.0.1"),
+            Mode::Auto,
+            None,
+        )
+        .unwrap();
+    operations::confirm(&fixture.root).unwrap();
+    assert_eq!(
+        verified(&fixture.root).unwrap().installed_version(),
+        Some("1.0.1")
+    );
+    assert_eq!(
+        registered(&shell, NIGHTLY_KEY, "DisplayVersion").as_deref(),
+        Some("1.0.1")
+    );
+
+    fixture.remove(&shell).unwrap();
+    assert_eq!(registered(&shell, NIGHTLY_KEY, "InstallLocation"), None);
+    for link in NIGHTLY_LINKS {
+        assert!(!shell.folders.join(link).exists(), "{link}");
+    }
+    assert!(!fixture.root.join("state.json").exists());
+    let retained = fixture
+        .root
+        .join("generations")
+        .read_dir()
+        .unwrap()
+        .filter_map(|entry| fs::read(entry.unwrap().path().join("data/opaque.bin")).ok())
+        .collect::<Vec<_>>();
+    assert!(!retained.is_empty(), "user data is kept");
+    assert!(
+        retained
+            .iter()
+            .all(|bytes| bytes.as_slice() == b"opaque\0user\xffbytes")
+    );
+}
+
+#[test]
+fn beta_and_nightly_share_one_user_and_never_touch_each_other() {
+    let (beta_fixture, nightly_fixture) = (Fixture::new(), Fixture::new());
+    let folders = beta_fixture.path.join("shell");
+    let registry = hive();
+    let beta = beta_fixture.shell_with("beta", folders.clone(), registry.clone());
+    let nightly = nightly_fixture.shell_with("nightly", folders, registry);
+    let beta_state = || product_snapshot(&beta_fixture, &beta, BETA_KEY, &NIGHTLY_PATHS);
+    let nightly_state = || product_snapshot(&nightly_fixture, &nightly, NIGHTLY_KEY, &BETA_PATHS);
+
+    beta_fixture
+        .setup(
+            &beta,
+            &beta_fixture.package("1.0.0"),
+            Mode::Auto,
+            Some(true),
+        )
+        .unwrap();
+    beta_fixture.write_data();
+    // Foreign files beside the links and a foreign Run value must survive too.
+    for name in ["Programs/Vantare/ajeno.txt", "DesktopDirectory/ajeno.txt"] {
+        fs::write(beta.folders.join(name), b"ajeno").unwrap();
+    }
+    windows_registry::CURRENT_USER
+        .create(format!("{}\\{RUN}", beta.registry))
+        .and_then(|key| key.set_string("Ajeno", "C:\\Ajeno\\ajeno.exe"))
+        .unwrap();
+    let before = beta_state();
+    for key in [
+        "registry/InstallLocation",
+        "registry/NoModify",
+        "registry/NoRepair",
+        "run/Ajeno",
+        "link/Startup/Vantare.lnk",
+        "link/Programs/Vantare/ajeno.txt",
+        "link/DesktopDirectory/ajeno.txt",
+    ] {
+        assert!(before.contains_key(key), "{key}");
+    }
+
+    let package = |version| nightly_fixture.package_for("nightly", version);
+    nightly_fixture
+        .setup(&nightly, &package("1.0.0"), Mode::Auto, Some(true))
+        .unwrap();
+    assert_eq!(beta_state(), before, "nightly install");
+    nightly_fixture.write_data();
+    nightly_fixture
+        .setup(&nightly, &package("1.0.0"), Mode::Repair, None)
+        .unwrap();
+    assert_eq!(beta_state(), before, "nightly repair");
+    operations::confirm(&nightly_fixture.root).unwrap();
+    assert_eq!(beta_state(), before, "nightly repair confirmation");
+    nightly_fixture
+        .setup(&nightly, &package("1.0.1"), Mode::Auto, None)
+        .unwrap();
+    operations::confirm(&nightly_fixture.root).unwrap();
+    assert_eq!(beta_state(), before, "nightly update");
+
+    // Each product finds its own installation, never the other one.
+    let probe = |shell: &Shell| {
+        let mut request = engine::Request::new(&Args::default(), engine::Operation::Probe);
+        request.qa = false; // Discovery through the registry, as the product Setup does.
+        shell.context.probe(&request).unwrap().root
+    };
+    assert_eq!(probe(&nightly), disk::path(&nightly_fixture.root).unwrap());
+    assert_eq!(probe(&beta), disk::path(&beta_fixture.root).unwrap());
+
+    nightly_fixture.remove(&nightly).unwrap();
+    assert_eq!(beta_state(), before, "nightly uninstall");
+    assert_eq!(registered(&nightly, NIGHTLY_KEY, "InstallLocation"), None);
+
+    // And the other way round: beta leaves nightly untouched.
+    nightly_fixture
+        .setup(&nightly, &package("1.0.1"), Mode::Auto, Some(true))
+        .unwrap();
+    let nightly_before = nightly_state();
+    beta_fixture
+        .setup(&beta, &beta_fixture.package("1.0.0"), Mode::Repair, None)
+        .unwrap();
+    operations::confirm(&beta_fixture.root).unwrap();
+    assert_eq!(
+        nightly_state(),
+        nightly_before,
+        "beta repair and confirmation"
+    );
+    beta_fixture.remove(&beta).unwrap();
+    assert_eq!(nightly_state(), nightly_before, "beta repair and uninstall");
+    assert_eq!(registered(&beta, BETA_KEY, "InstallLocation"), None);
+}
+
+#[test]
+fn another_channel_is_rejected_before_anything_changes() {
+    let fixture = Fixture::new();
+    let registry = hive();
+    let nightly = fixture.shell_with("nightly", fixture.path.join("shell"), registry.clone());
+
+    // A nightly Setup whose embedded ZIP declares beta fails at authentication.
+    let mut forged = fixture.package("1.0.0");
+    forged.channel = "nightly";
+    // The authenticated manifest is the arbiter, even with no Windows projection
+    // behind it to catch the mismatch later.
+    let stage = fixture.path.join("forged-stage");
+    assert!(engine::package::expand(&forged.path, &forged.sha, &stage, "nightly").is_err());
+    assert!(!stage.join("manifest.json").exists());
+    assert!(fixture.install(&forged, Mode::Auto, false, false).is_err());
+    assert!(!fixture.root.join("state.json").exists());
+    assert!(
+        fixture
+            .setup(&nightly, &forged, Mode::Auto, Some(true))
+            .is_err()
+    );
+    // A beta package projected with nightly names is restored, never registered.
+    assert!(
+        fixture
+            .setup(&nightly, &fixture.package("1.0.0"), Mode::Auto, Some(true))
+            .is_err()
+    );
+    assert!(!fixture.root.join("state.json").exists());
+    for key in [NIGHTLY_KEY, BETA_KEY] {
+        assert_eq!(registered(&nightly, key, "InstallLocation"), None, "{key}");
+    }
+    for link in NIGHTLY_LINKS.iter().chain(&BETA_LINKS) {
+        assert!(!nightly.folders.join(link).exists(), "{link}");
+    }
+
+    // An existing beta installation is never adopted, updated or removed by nightly.
+    let beta = fixture.shell_with("beta", fixture.path.join("shell"), registry);
+    fixture
+        .setup(&beta, &fixture.package("1.0.0"), Mode::Auto, Some(true))
+        .unwrap();
+    fixture.write_data();
+    let before = product_snapshot(&fixture, &beta, BETA_KEY, &NIGHTLY_PATHS);
+    // The nightly Setup probe already refuses the beta installation.
+    let mut probe = engine::Request::new(
+        &Args {
+            root: Some(disk::path(&fixture.root).unwrap()),
+            ..Args::default()
+        },
+        engine::Operation::Probe,
+    );
+    probe.qa = false;
+    assert!(nightly.context.probe(&probe).is_err());
+    assert!(beta.context.probe(&probe).is_ok());
+    for mode in [Mode::Auto, Mode::Repair] {
+        assert!(
+            fixture
+                .setup(
+                    &nightly,
+                    &fixture.package_for("nightly", "1.0.0"),
+                    mode,
+                    None
+                )
+                .is_err()
+        );
+    }
+    // Without the Setup probe in front, the engine itself refuses the other channel.
+    for mode in [Mode::Auto, Mode::Repair] {
+        let package = fixture.package_for("nightly", "1.0.0");
+        assert!(fixture.install(&package, mode, false, false).is_err());
+    }
+    let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+    let update = fixture.package_for("nightly", "1.0.1");
+    assert!(
+        operations::update(
+            &fixture.root,
+            &update.borrowed(),
+            false,
+            &mut sink.control(&cancel)
+        )
+        .is_err()
+    );
+    let mut beta_update = fixture.package("1.0.1");
+    beta_update.channel = "nightly";
+    assert!(
+        operations::update(
+            &fixture.root,
+            &beta_update.borrowed(),
+            false,
+            &mut sink.control(&cancel)
+        )
+        .is_err()
+    );
+    let error = operations::uninstall(&fixture.root, "nightly", &mut sink.control(&cancel), |_| {
+        panic!("another channel's uninstall must not reach Windows")
+    })
+    .unwrap_err();
+    assert!(error.to_string().contains("canal"), "{error}");
+    assert!(nightly.context.install_location().unwrap().is_none());
+    assert_eq!(
+        product_snapshot(&fixture, &beta, BETA_KEY, &NIGHTLY_PATHS),
+        before
+    );
+}
+
+#[test]
+fn testers_and_master_have_no_installer_yet() {
+    for channel in ["testers", "master"] {
+        let fixture = Fixture::new();
+        let package = fixture.package_for(channel, "1.0.0");
+        assert!(
+            fixture
+                .install(&package, Mode::Auto, false, false)
+                .unwrap_err()
+                .to_string()
+                .contains("Canal sin producto")
+        );
+        assert!(!fixture.root.exists(), "{channel}: nothing is created");
+        assert!(
+            Context::isolated(
+                fixture.path.join("LocalAppData"),
+                hive(),
+                fixture.path.join("shell"),
+            )
+            .unwrap()
+            .for_channel(channel)
+            .is_err()
+        );
+    }
+}
+
+#[test]
+fn a_context_without_product_never_falls_back_to_beta_names() {
+    let fixture = Fixture::new();
+    let registry = hive();
+    let unbound = Context::isolated(
+        fixture.path.join("LocalAppData"),
+        registry.clone(),
+        fixture.path.join("shell"),
+    )
+    .unwrap();
+    assert!(unbound.install_location().is_err());
+    assert!(unbound.has_registration().is_err());
+    assert!(engine::Session::with_context(unbound.clone()).is_err());
+    assert!(
+        unbound
+            .clone()
+            .for_channel("beta")
+            .unwrap()
+            .for_channel("nightly")
+            .is_err()
+    );
+
+    // The running Hub and launcher take the names of the installation itself.
+    let nightly = fixture.shell_with("nightly", fixture.path.join("shell"), registry);
+    fixture
+        .setup(
+            &nightly,
+            &fixture.package_for("nightly", "1.0.0"),
+            Mode::Auto,
+            Some(false),
+        )
+        .unwrap();
+    let root = disk::path(&fixture.root).unwrap();
+    engine::shell::sync_running_with_context(&root, &unbound, Some(true)).unwrap();
+    assert!(nightly.folders.join(NIGHTLY_LINKS[3]).is_file());
+    assert!(!nightly.folders.join(BETA_LINKS[3]).exists());
+    let beta = unbound.for_channel("beta").unwrap();
+    assert!(engine::shell::sync_running_with_context(&root, &beta, Some(false)).is_err());
+    assert!(nightly.folders.join(NIGHTLY_LINKS[3]).is_file());
+    assert_eq!(registered(&nightly, BETA_KEY, "InstallLocation"), None);
+}
+
+#[test]
+fn a_build_without_channel_has_no_product_and_never_installs_as_beta() {
+    if !vantare_installer::CHANNEL.is_empty() {
+        eprintln!("omitido: build con canal {}", vantare_installer::CHANNEL);
+        return;
+    }
+    assert_eq!(vantare_installer::channel_label(), "sin canal");
+    let error = engine::Session::new()
+        .err()
+        .expect("a build without channel has no product");
+    #[cfg(not(feature = "test-installer"))]
+    assert!(error.contains("Canal sin producto"), "{error}");
+    let _ = error;
+}
+
+/// Installs, writes data and uninstalls one product, leaving its retained data.
+fn retained_residue(fixture: &Fixture, channel: &'static str) -> Shell {
+    let shell = fixture.shell_with(channel, fixture.path.join("shell"), hive());
+    fixture
+        .setup(
+            &shell,
+            &fixture.package_for(channel, "1.0.0"),
+            Mode::Auto,
+            None,
+        )
+        .expect("install");
+    fixture.write_data();
+    fixture.remove(&shell).expect("uninstall");
+    assert!(fixture.root.join("retained-data.json").is_file());
+    shell
+}
+fn root_tree(fixture: &Fixture) -> BTreeMap<String, Vec<u8>> {
+    let mut tree = BTreeMap::new();
+    files_below(&fixture.root, "root", &mut tree);
+    tree
+}
+
+#[test]
+fn retained_data_name_their_channel_and_beta_keeps_its_published_format() {
+    let beta = Fixture::new();
+    retained_residue(&beta, "beta");
+    let saved = disk::read_json(&beta.root.join("retained-data.json"), None).unwrap();
+    assert!(
+        saved.get("channel").is_none(),
+        "beta format unchanged: {saved}"
+    );
+    let nightly = Fixture::new();
+    retained_residue(&nightly, "nightly");
+    let saved = disk::read_json(&nightly.root.join("retained-data.json"), None).unwrap();
+    assert_eq!(saved["channel"], "nightly");
+    // Each product adopts its own data again.
+    for (fixture, channel) in [(&beta, "beta"), (&nightly, "nightly")] {
+        let shell = fixture.shell_with(channel, fixture.path.join("shell"), hive());
+        fixture
+            .setup(
+                &shell,
+                &fixture.package_for(channel, "1.0.0"),
+                Mode::Auto,
+                None,
+            )
+            .unwrap();
+        assert_eq!(
+            fs::read(fixture.data().join("opaque.bin")).unwrap(),
+            b"opaque\0user\xffbytes"
+        );
+        assert!(!fixture.root.join("retained-data.json").exists());
+    }
+}
+
+#[test]
+fn retained_data_of_another_channel_are_never_adopted_moved_or_removed() {
+    for (owner, intruder) in [("beta", "nightly"), ("nightly", "beta")] {
+        let fixture = Fixture::new();
+        let _owner = retained_residue(&fixture, owner);
+        let before = root_tree(&fixture);
+        let shell = fixture.shell_with(intruder, fixture.path.join("other-shell"), hive());
+        for mode in [Mode::Auto, Mode::Repair] {
+            assert!(
+                fixture
+                    .setup(&shell, &fixture.package_for(intruder, "1.0.0"), mode, None)
+                    .is_err(),
+                "{intruder} over {owner}"
+            );
+            let package = fixture.package_for(intruder, "1.0.0");
+            assert!(fixture.install(&package, mode, false, false).is_err());
+        }
+        // The residue of an interrupted uninstall belongs to its own channel too.
+        let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+        let error =
+            operations::uninstall(&fixture.root, intruder, &mut sink.control(&cancel), |_| {
+                panic!("another channel's residue must not reach Windows")
+            })
+            .unwrap_err();
+        assert!(error.to_string().contains("otro canal"), "{error}");
+        assert!(operations::residue_owned(&fixture.root, intruder).is_err());
+        operations::residue_owned(&fixture.root, owner).unwrap();
+        assert_eq!(root_tree(&fixture), before, "{intruder} over {owner}");
+        assert_eq!(registered(&shell, NIGHTLY_KEY, "InstallLocation"), None);
+        assert_eq!(registered(&shell, BETA_KEY, "InstallLocation"), None);
+    }
+}
+
+#[test]
+fn unreferenced_old_data_are_only_adopted_by_beta() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    fixture.write_data();
+    // A generation with data and neither state nor retained-data: pre-#2812 residue.
+    fs::remove_file(fixture.root.join("state.json")).unwrap();
+    let before = root_tree(&fixture);
+    let package = fixture.package_for("nightly", "1.0.0");
+    let error = fixture
+        .install(&package, Mode::Auto, false, false)
+        .unwrap_err();
+    assert!(error.to_string().contains("otra instalación"), "{error}");
+    assert_eq!(root_tree(&fixture), before);
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    assert_eq!(
+        fs::read(fixture.data().join("opaque.bin")).unwrap(),
+        b"opaque\0user\xffbytes"
+    );
+}
+
+#[test]
+fn update_never_turns_a_nightly_root_into_beta() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell_with("nightly", fixture.path.join("shell"), hive());
+    fixture
+        .setup(
+            &shell,
+            &fixture.package_for("nightly", "1.0.0"),
+            Mode::Auto,
+            None,
+        )
+        .unwrap();
+    fixture.write_data();
+    let before = product_snapshot(&fixture, &shell, NIGHTLY_KEY, &BETA_PATHS);
+    // A beta ZIP announced as nightly: only the authenticated manifest stops it,
+    // because update copies the incoming channel into state.json.
+    let mut forged = fixture.package("1.0.1");
+    forged.channel = "nightly";
+    // A beta package announced as beta: the state of the root stops it.
+    let beta = fixture.package("1.0.1");
+    for package in [&forged, &beta] {
+        let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+        assert!(
+            operations::update(
+                &fixture.root,
+                &package.borrowed(),
+                false,
+                &mut sink.control(&cancel)
+            )
+            .is_err()
+        );
+        assert_eq!(channel_of(&fixture), "nightly");
+        assert_eq!(
+            product_snapshot(&fixture, &shell, NIGHTLY_KEY, &BETA_PATHS),
+            before
+        );
+    }
+    // The running Hub still projects nightly names only.
+    let root = disk::path(&fixture.root).unwrap();
+    engine::shell::sync_running_with_context(&root, &shell.context, None).unwrap();
+    assert_eq!(registered(&shell, BETA_KEY, "InstallLocation"), None);
+    assert!(registered(&shell, NIGHTLY_KEY, "InstallLocation").is_some());
+}
+
+#[test]
+fn foreign_data_are_refused_before_the_orphan_marker_or_any_staging() {
+    for (owner, intruder) in [("beta", "nightly"), ("nightly", "beta")] {
+        let fixture = Fixture::new();
+        let _owner = retained_residue(&fixture, owner);
+        // Cleanup already removed Uninstall.exe and left its marker: an orphan
+        // that the owner's next Setup would retire.
+        fs::remove_file(fixture.root.join("Uninstall.exe")).unwrap();
+        assert!(fixture.root.join("installer-cleanup.json").is_file());
+        let before = root_tree(&fixture);
+        let package = fixture.package_for(intruder, "1.0.0");
+        let prepared = std::cell::Cell::new(false);
+        let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+        let error = operations::install(
+            &fixture.root,
+            &package.borrowed(),
+            Mode::Auto,
+            &mut sink.control(&cancel),
+            |_, _, _| panic!("another channel's data must not reach Windows"),
+            || {
+                prepared.set(true);
+                Ok(())
+            },
+        )
+        .unwrap_err();
+        assert!(error.to_string().contains("otro canal"), "{error}");
+        assert!(!prepared.get(), "{intruder} over {owner}: orphan untouched");
+        assert_eq!(root_tree(&fixture), before, "{intruder} over {owner}");
+    }
 }

@@ -6,7 +6,7 @@ param(
     [ValidateSet('Debug','Release')][string]$BuildProfile = 'Release',
     [switch]$TestInstaller,
     [string]$ConfigFile,
-    [ValidateSet('nightly','testers','master','beta')][string]$Channel='beta',
+    [Parameter(Mandatory)][ValidateSet('nightly','testers','master','beta',IgnoreCase=$false)][string]$Channel,
     [Parameter(ValueFromRemainingArguments)][string[]]$Defines = @()
 )
 Set-StrictMode -Version Latest
@@ -33,6 +33,8 @@ $oldTarget=$env:CARGO_TARGET_DIR
 $previousConfig=Import-NativeBuildConfig $ConfigFile
 try {
 if($Channel -ieq 'beta'){Assert-NativeDistributionLicenseRegistry $env:VANTARE_LICENSE_PUBLIC_KEYS -Required}
+# El canal del Setup es el del paquete (#2812): un ConfigFile de otro canal se rechaza.
+if($env:VANTARE_BUILD_CHANNEL -and $env:VANTARE_BUILD_CHANNEL -cne $Channel){throw 'El ConfigFile es de otro canal.'}
 
 if(-not $InBuildSlot){
     $forward=@('-Version',$Version,'-OutputDirectory',$output,'-BuildProfile',$BuildProfile,'-Channel',$Channel)
@@ -59,12 +61,14 @@ foreach($pair in @(@('VANTARE_NATIVE_DATA_ROOT','native'),@('LOCALAPPDATA','loca
 }
 $native=Split-Path $PSScriptRoot
 $saved=@{}
-$names=@('VANTARE_VERSION','VANTARE_INSTALLER_ARCHIVE','VANTARE_INSTALLER_UNINSTALLER','VANTARE_INSTALLER_SHA256','VANTARE_INSTALLER_QA_OWNER_SID','CARGO_ENCODED_RUSTFLAGS','CARGO_TARGET_DIR')
+$names=@('VANTARE_VERSION','VANTARE_BUILD_CHANNEL','VANTARE_INSTALLER_ARCHIVE','VANTARE_INSTALLER_UNINSTALLER','VANTARE_INSTALLER_SHA256','VANTARE_INSTALLER_QA_OWNER_SID','CARGO_ENCODED_RUSTFLAGS','CARGO_TARGET_DIR')
 foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 Push-Location $native
 try {
 
     $env:VANTARE_VERSION=$Version
+    # Test-BuildPackage ya comprobó que el manifiesto del ZIP declara este canal.
+    $env:VANTARE_BUILD_CHANNEL=$Channel
     # Setup debe abrirse antes de instalar el payload, también sin VC Redist.
     # CRT estático del toolchain ya existente; no redistribuye otra dependencia.
     $staticFlags='-C'+[char]31+'target-feature=+crt-static'

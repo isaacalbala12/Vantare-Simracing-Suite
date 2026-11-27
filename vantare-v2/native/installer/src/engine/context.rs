@@ -1,6 +1,8 @@
 //! Explicit OS context. QA never falls back to real HKCU or shell folders.
 use super::{
-    Installation, Request, installation, validation,
+    Installation, Request, installation,
+    product::{self, Product},
+    validation,
     write_fs::{self as disk, Result, WriteError, ensure},
 };
 use crate::model::Info;
@@ -13,6 +15,10 @@ pub struct Context {
     pub local_app_data: PathBuf,
     pub registry_prefix: String,
     pub shell_root: Option<PathBuf>,
+    /// Producto cuyos nombres de Windows usa este contexto (#2812). Nunca hay
+    /// uno por defecto: quien lo crea lo ata al canal del paquete o de la instalación.
+    #[serde(skip)]
+    product: Option<&'static Product>,
 }
 impl Context {
     pub fn isolated(
@@ -24,6 +30,7 @@ impl Context {
             local_app_data,
             registry_prefix,
             shell_root: Some(shell_root),
+            product: None,
         };
         result.validate_isolation()?;
         Ok(result)
@@ -77,7 +84,24 @@ impl Context {
                 .into(),
             registry_prefix: String::new(),
             shell_root: None,
+            product: None,
         })
+    }
+    /// Ata el contexto al producto de un canal. Un contexto ya atado a otro
+    /// canal se rechaza: un producto nunca actúa con los nombres de otro.
+    pub fn for_channel(mut self, channel: &str) -> Result<Self> {
+        let product = product::for_channel(channel)
+            .ok_or_else(|| WriteError::new(1, "Canal sin producto de instalación"))?;
+        ensure(
+            self.product.is_none_or(|bound| bound == product),
+            "Canal de instalación incompatible",
+        )?;
+        self.product = Some(product);
+        Ok(self)
+    }
+    pub fn product(&self) -> Result<&'static Product> {
+        self.product
+            .ok_or_else(|| WriteError::new(1, "Contexto sin producto de instalación"))
     }
     pub fn is_isolated(&self) -> bool {
         !self.registry_prefix.is_empty()
@@ -113,13 +137,13 @@ impl Context {
         Ok(())
     }
     pub fn install_location(&self) -> Result<Option<String>> {
-        self.registry(UNINSTALL_KEY, "InstallLocation")
+        self.registry(self.product()?.uninstall_key, "InstallLocation")
     }
     pub fn has_registration(&self) -> Result<bool> {
         self.validate_context()?;
         Ok(super::windows::registry_exists(
             &self.registry_prefix,
-            UNINSTALL_KEY,
+            self.product()?.uninstall_key,
         ))
     }
     fn validate_context(&self) -> Result<()> {
@@ -165,22 +189,29 @@ impl Context {
                 "El desinstalador no pertenece a esta instalación",
             )?;
         }
+        let product = self.product()?;
         let mut root = registered
             .as_ref()
             .map(PathBuf::from)
             .or_else(|| explicit.cloned())
-            .unwrap_or_else(|| self.local_app_data.join("Programs/Vantare"));
+            .unwrap_or_else(|| product::default_root(&self.local_app_data, product));
         if registered.is_none() && explicit.is_none() && !request.qa && !request.uninstall {
-            let old = self.local_app_data.join("Programs/Vantare Native Beta");
-            if old.join("state.json").try_exists()?
-                || old.join("retained-data.json").try_exists()?
-            {
-                root = old;
-            }
+            root = self.legacy_root(product)?.unwrap_or(root);
         }
         root = disk::path(&root)?;
         self.validate_root(&root)?;
         Ok(root)
+    }
+    /// Raíz anterior al Setup GPUI con una instalación o datos dentro. Solo beta
+    /// existió entonces: ningún otro producto la adopta.
+    fn legacy_root(&self, product: &Product) -> Result<Option<PathBuf>> {
+        if !product.legacy {
+            return Ok(None);
+        }
+        let old = self.local_app_data.join("Programs/Vantare Native Beta");
+        let used =
+            old.join("state.json").try_exists()? || old.join("retained-data.json").try_exists()?;
+        Ok(used.then_some(old))
     }
     pub fn probe(&self, request: &Request) -> Result<Info> {
         let root = self.resolve_root(request)?;
@@ -205,10 +236,11 @@ impl Context {
             )
         } else {
             let view = Installation::read(&root)?;
+            let channel = self.product()?.channel;
             if view
                 .manifest
                 .as_ref()
-                .is_some_and(|manifest| manifest.channel != "beta")
+                .is_some_and(|manifest| manifest.channel != channel)
             {
                 return Err(super::ReadError::Rejected(super::Rejection::Manifest).into());
             }
@@ -329,8 +361,6 @@ fn canonical(path: &Path) -> Option<String> {
 fn below_prefix(path: &Path, prefix: &Path) -> bool {
     !prefix.as_os_str().is_empty() && path != prefix && path.starts_with(prefix)
 }
-pub(crate) const UNINSTALL_KEY: &str =
-    "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\VantareNativeBeta";
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct Options {
@@ -645,5 +675,45 @@ mod tests {
             )
             .expect("different root")
         );
+    }
+}
+
+#[cfg(test)]
+mod legacy_root_tests {
+    use super::*;
+
+    #[test]
+    fn only_beta_adopts_the_root_of_the_old_beta_installer() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let id = disk::id().expect("ID");
+        let qa = parent.join("p2812-legacy-root").join(&id);
+        qa_path(&qa).expect("QA guard");
+        let old = qa.join("LocalAppData/Programs/Vantare Native Beta");
+        std::fs::create_dir_all(&old).expect("old root");
+        std::fs::write(old.join("state.json"), b"{}").expect("old installation");
+        let context = |channel| {
+            Context::isolated(
+                qa.join("LocalAppData"),
+                format!("Software\\VantareInstallerMatrix\\{id}"),
+                qa.join("shell"),
+            )
+            .and_then(|context| context.for_channel(channel))
+            .expect("isolated context")
+        };
+        let beta = context("beta");
+        assert_eq!(
+            beta.legacy_root(beta.product().unwrap()).unwrap(),
+            Some(old.clone())
+        );
+        let nightly = context("nightly");
+        assert_eq!(
+            nightly.legacy_root(nightly.product().unwrap()).unwrap(),
+            None
+        );
+        std::fs::remove_dir_all(qa).expect("owned QA tree");
     }
 }

@@ -32,7 +32,11 @@ pub(super) fn render(view: &Installer) -> AnyElement {
                 402.,
                 192.,
                 34.,
-                format!("{} · beta\nPara tu usuario · sin admin", view.info.version),
+                format!(
+                    "{} · {}\nPara tu usuario · sin admin",
+                    view.info.version,
+                    crate::channel_label()
+                ),
                 10.,
                 style::FAINT,
             )

@@ -41,8 +41,8 @@ El paso 5b elimina complete_probe/readContext, el driver y el catálogo manual.
 | verify | Mismos metadatos más tamaño, SHA, PE x64 y sidecar de los binarios; una comprobación por generación única y operación |
 
 La lectura acepta BOM, usan documentos de hasta 64 KiB y campos cerrados. La versión
-usa tres u16 sin ceros iniciales para todos los consumidores Rust. Setup mantiene
-su política beta; el lector común admite los cuatro canales cerrados hasta la
+usa tres u16 sin ceros iniciales para todos los consumidores Rust. Setup instala
+solo el canal de su paquete (véase «Un producto por canal»); el lector común admite los cuatro canales cerrados hasta la
 retirada de compatibilidad de los pasos 6–7. Un estado ilegible se rechaza sin
 modificarlo. State conserva la lectura informativa de una retirada antigua parcial.
 Uninstall usa el mismo decodificador, pero exige previous presente y referencias
@@ -114,7 +114,8 @@ uninstaller adopta su directorio y acepta `_?=` legacy. Los códigos del motor
 se conservan; 5 significa cancelación previa a la transacción. Tras iniciarla,
 la UI espera su resultado y no mata el host ni los procesos de la app.
 
-Registro HKCU `VantareNativeBeta`, menú Inicio Vantare, acceso «Vantare Simracing Suite»; QA conserva
+Registro HKCU `VantareNativeBeta`, menú Inicio Vantare, acceso «Vantare Simracing Suite» en beta
+(nightly usa los suyos; véase «Un producto por canal»); QA conserva
 `VantareNativeBetaQA1492` y carpetas QA1492. `installer-ui.json` persiste opciones
 y valida la identidad/hash del uninstaller; Register conserva esa UI. Su
 autoeliminación sucede en un helper temporal acotado que espera al proceso,
@@ -165,7 +166,7 @@ Desde native; envolver cada comando con `native/scripts/compilar.ps1` desde
 powershell -NoProfile -File packaging/build-candidate.ps1 `
   -Channel beta -Version 0.0.977 -OutputDirectory D:/VantareServer/qa/build-a
 powershell -NoProfile -File packaging/build-installer.ps1 -Version 0.0.977 `
-  -OutputDirectory D:/VantareServer/qa/build-a -TestInstaller
+  -Channel beta -OutputDirectory D:/VantareServer/qa/build-a -TestInstaller
 ```
 
 El builder exige ZIP/version/bootstrap idénticos y construye primero Uninstall,
@@ -570,3 +571,80 @@ comprobar y mover, lo que aparece después de tomar la lista, el resumen del
 registro y dos adopciones a la vez) y, para la sesión, en
 `runtime/src/bin/vantare/installed_update_tests.rs` y `recording.rs`. La poda
 sobre lo adoptado se comprueba en `runtime/src/service/series/prune_tests.rs`.
+
+## Un producto por canal — #2812
+
+Antes el motor solo aceptaba paquetes beta (`"beta"` fijo en cinco sitios), así
+que un Setup nightly se abría pero no instalaba. Ahora cada canal instalable es
+un **producto separado**, con sus propios nombres en Windows, y nunca toca los
+de otro. La tabla cerrada está en `engine/product.rs`:
+
+| Recurso | beta (como siempre) | nightly |
+| --- | --- | --- |
+| Registro HKCU (Aplicaciones instaladas) | `Uninstall\VantareNativeBeta` | `Uninstall\VantareNativeNightly` |
+| Nombre visible | Vantare Simracing Suite | Vantare Simracing Suite (Nightly) |
+| Raíz por defecto | `%LOCALAPPDATA%\Programs\Vantare` | `%LOCALAPPDATA%\Programs\Vantare Nightly` |
+| Menú Inicio | `Vantare\Vantare Simracing Suite.lnk` y `Desinstalar.lnk` | `Vantare Nightly\Vantare Nightly.lnk` y `Desinstalar.lnk` |
+| Escritorio / Inicio de Windows | `Vantare Simracing Suite.lnk` / `Vantare.lnk` | `Vantare Nightly.lnk` / `Vantare Nightly.lnk` |
+| AppUserModelID del acceso | `Vantare.SimracingSuite` | `Vantare.SimracingSuite.Nightly` |
+| Nombres heredados (raíz y accesos `Vantare Native Beta`, Run `VantareNative.Hub`) | Se migran como antes | No existen: nightly no los lee ni los borra |
+| Instancia del lanzador (mutex, eventos y pipe del núcleo) | `native-beta` | `native-nightly` |
+| Feed de actualización | Oferta firmada beta | Ninguno: se actualiza con su Setup |
+
+testers y master no tienen producto: su Setup se niega a instalar antes de
+crear nada («Canal sin producto de instalación»).
+
+**De dónde sale el canal.** Del paquete, no de una constante:
+
+- `build-installer.ps1` fija `VANTARE_BUILD_CHANNEL` a `-Channel` después de que
+  `Test-BuildPackage` compruebe que el manifiesto del ZIP declara ese canal, y
+  falla si el ConfigFile trae otro. Setup y Uninstall lo llevan compilado
+  (`crate::CHANNEL`), igual que ya llevaban la versión y el SHA del paquete.
+- Al instalar, `operations::Package::channel` se exige al manifiesto
+  autenticado por SHA: si no coincide, se rechaza antes de copiar nada.
+- Para una instalación que ya existe (Hub, lanzador, vuelta atrás) el canal
+  sale de su `state.json`. `shell::sync_running` ata el contexto a ese canal.
+- Una build sin canal (desarrollo, `cargo test`) no tiene producto: Setup y
+  Uninstall se niegan y un `Context` sin producto no da ningún nombre. Nunca
+  se cae a beta por defecto.
+
+**Qué se rechaza sin tocar nada:** un paquete de otro canal que el del Setup;
+instalar, reparar o actualizar sobre una raíz de otro canal; desinstalar una
+raíz de otro canal (un `Uninstall.exe /D=` nightly apuntado a la raíz beta);
+proyectar en Windows un estado de otro canal (se restaura el estado anterior).
+
+**Convivencia.** Raíz, registro y accesos distintos; además cada acceso y el
+registro se siguen comprobando por propiedad de la raíz. Los datos viven en la
+generación de cada raíz. Los candados (`beta-session.lock`, `.operation.lock`)
+conservan su nombre porque son de cada raíz y los usan versiones publicadas.
+Con instancias separadas, un arranque nightly fallido ya no puede mandar la
+parada al Vantare beta abierto. Si se abren los dos a la vez, cada uno lleva su
+núcleo y sus overlays.
+
+Sin cambios: `state.json` v1, manifiesto, generaciones, `installer-ui.json`,
+catálogo de miembros retirados, códigos 0–5, protocolo y licencias (nightly
+sigue siendo «smoke sin autoridad»; beta sigue exigiendo ConfigFile y registro
+de licencias aprobado).
+
+Tests en el último bloque de `tests/installation_write.rs`: nightly instala,
+repara, actualiza y desinstala con sus nombres; beta y nightly en el mismo
+usuario simulado sin cambiar ni un byte del otro (raíz, datos, accesos y
+registro), en los dos sentidos; rechazos cruzados; testers/master; contexto sin
+producto. Más los unitarios de `product.rs` y de la instancia del lanzador.
+
+Qué no se puede comprobar aquí (P8, VM o PC): los accesos y el AppUserModelID
+en un Windows limpio, desinstalar desde «Aplicaciones instaladas», abrir beta y
+nightly a la vez con sesión real y SmartScreen. La raíz por defecto tampoco se
+puede ejercitar con carpetas QA inyectadas (cae dentro de su LocalAppData).
+
+**Datos conservados y restos de una desinstalación.** Desinstalar deja
+`retained-data.json` junto a los datos. Nightly escribe en él
+`"channel":"nightly"`; beta no escribe canal, así que su documento sigue siendo
+idéntico y los Setup beta publicados lo leen igual (un documento sin canal es
+de beta). Un producto nunca adopta, mueve ni borra los datos conservados de
+otro: instalar nightly con `/D=` sobre una carpeta beta desinstalada se rechaza,
+y al revés. Las copias antiguas de datos sin `retained-data.json` (anteriores a
+este cambio) solo las adopta beta. Terminar una desinstalación a medias o
+ejecutar la limpieza del desinstalador exige también que los restos sean del
+mismo canal (`operations::residue_owned`). Si la sonda del Setup falla, la
+carpeta que propone «Reintentar» es la de su producto, nunca la de beta.

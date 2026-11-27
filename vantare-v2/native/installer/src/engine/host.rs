@@ -92,13 +92,20 @@ pub struct Session {
     transferred: bool,
 }
 impl Session {
+    /// Setup y Uninstall usan los nombres del canal de su paquete (#2812); una
+    /// build sin canal no tiene producto y no instala ni desinstala nada.
     pub fn new() -> Result<Self, String> {
-        Self::with_context(Context::system().map_err(|error| error.to_string())?)
+        Self::with_context(
+            Context::system()
+                .and_then(|context| context.for_channel(crate::CHANNEL))
+                .map_err(|error| error.to_string())?,
+        )
     }
     pub fn with_context(context: Context) -> Result<Self, String> {
         if context.is_isolated() && !cfg!(feature = "test-installer") {
             return Err("El transporte aislado requiere una build test-installer".into());
         }
+        context.product().map_err(|error| error.to_string())?;
         let parent = std::env::temp_dir();
         reject_links(&parent)?;
         if context.is_isolated() {
@@ -148,6 +155,8 @@ impl Session {
             !root.join("state.json").try_exists()? && !self.context.has_registration()?,
             "La instalación se ha renovado; se conserva el desinstalador",
         )?;
+        // Solo se limpian los restos de este canal (#2812).
+        operations::residue_owned(root, self.context.product()?.channel)?;
         if super::context::cleanup_marker(root, None)?.is_none() {
             return Ok(false); // A legacy image without ownership proof is retained.
         }
@@ -282,11 +291,7 @@ impl Session {
             .open(&request.log_file)?;
         let previous = super::context::options(&root, request.uninstall)?;
         let archive = payload_directory.join("package.zip");
-        let package = operations::Package {
-            archive: &archive,
-            sha256: &request.package_sha,
-            version: &request.version,
-        };
+        let package = self.package(&archive, request)?;
         let mut warning = |message: &str| {
             let _ = writeln!(&log, "{message}");
         };
@@ -323,6 +328,19 @@ impl Session {
                 Ok(error.code)
             }
         }
+    }
+    /// El paquete embebido se autentica con el canal del producto de este Setup.
+    fn package<'a>(
+        &self,
+        archive: &'a Path,
+        request: &'a Request,
+    ) -> WriteResult<operations::Package<'a>> {
+        Ok(operations::Package {
+            archive,
+            sha256: &request.package_sha,
+            version: &request.version,
+            channel: self.context.product()?.channel,
+        })
     }
     fn execute(
         &self,
@@ -369,7 +387,8 @@ impl Session {
                     return Err(WriteError::new(1, "La instalación no está registrada"));
                 }
                 (control.progress)(Progress::step("copy", 12, false));
-                operations::uninstall(root, control, |control| {
+                let channel = self.context.product()?.channel;
+                operations::uninstall(root, channel, control, |control| {
                     self.sync(root, &options, None, control)
                 })
             }
@@ -493,6 +512,35 @@ mod tests {
     use std::{fs, path::PathBuf};
 
     #[test]
+    fn the_embedded_package_is_authenticated_with_the_setup_channel() {
+        let parent = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa/isa-1840")
+        };
+        let id = disk::id().expect("ID");
+        let root = parent.join("p2812-package-channel").join(&id);
+        qa_path(&root).expect("QA guard");
+        let request = Request::new(&Args::default(), crate::engine::Operation::Install);
+        let archive = root.join("package.zip");
+        for channel in ["nightly", "beta"] {
+            let session = Session {
+                directory: root.join("transport"),
+                context: Context::isolated(
+                    root.join("LocalAppData"),
+                    format!("Software\\VantareInstallerMatrix\\{id}"),
+                    root.join("shell"),
+                )
+                .and_then(|context| context.for_channel(channel))
+                .expect("isolated context"),
+                transferred: false,
+            };
+            let package = session.package(&archive, &request).expect("package");
+            assert_eq!(package.channel, channel);
+        }
+    }
+
+    #[test]
     fn cleanup_exit_status_is_authoritative_and_missing_marker_retains_legacy_residue() {
         for code in [0, 7] {
             let parent = if std::env::var("CI").as_deref() == Ok("true") {
@@ -510,6 +558,7 @@ mod tests {
                 format!("Software\\VantareInstallerMatrix\\{id}"),
                 root.join("shell"),
             )
+            .and_then(|context| context.for_channel("beta"))
             .expect("isolated context");
             // This script only emits diagnostics/progress; it never runs product
             // shell code or touches registry. The session owns/reaps its child.
@@ -582,8 +631,9 @@ exit EXIT_CODE
         fs::create_dir_all(root.join("install")).unwrap();
         fs::write(root.join("install/sentinel"), b"preserve").unwrap();
         let prefix = format!("Software\\VantareInstallerMatrix\\{id}");
-        let context =
-            Context::isolated(root.join("local"), prefix.clone(), root.join("shell")).unwrap();
+        let context = Context::isolated(root.join("local"), prefix.clone(), root.join("shell"))
+            .and_then(|context| context.for_channel("beta"))
+            .unwrap();
         let session = Session::with_context(context).unwrap();
         let mut request = Request::new(
             &Args {
@@ -593,7 +643,7 @@ exit EXIT_CODE
             Operation::Install,
         );
         request.log_file = root.join("operation.log");
-        let uninstall = format!("{prefix}\\{}", super::super::context::UNINSTALL_KEY);
+        let uninstall = format!("{prefix}\\{}", super::super::product::BETA.uninstall_key);
         let key = windows_registry::CURRENT_USER.create(&uninstall).unwrap();
         let run = windows_registry::CURRENT_USER
             .create(format!("{prefix}\\{}", super::super::shell::RUN))
@@ -649,6 +699,7 @@ exit EXIT_CODE
             format!("Software\\VantareInstallerMatrix\\{id}"),
             root.join("shell"),
         )
+        .and_then(|context| context.for_channel("beta"))
         .unwrap();
         let mut session = Session::with_context(context).unwrap();
         let name = format!("Local\\VantareCleanupOutput{id}");

@@ -16,7 +16,10 @@ pub(super) fn render(view: &Installer, window: &Window, _cx: &mut Context<Instal
             window,
         ));
     for (i, (label, value)) in [
-        ("Versión", format!("{} beta", view.info.version)),
+        (
+            "Versión",
+            format!("{} {}", view.info.version, crate::channel_label()),
+        ),
         ("Carpeta", view.info.root.display().to_string()),
         (
             "Accesos",

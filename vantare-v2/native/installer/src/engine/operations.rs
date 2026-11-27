@@ -1,6 +1,7 @@
 //! Generation mutations. One bound installation snapshot per operation.
 use super::{
-    Generation, Installation, State, WriteError, installation, package, validation, windows,
+    Generation, Installation, State, WriteError, installation, package, product, validation,
+    windows,
     write_fs::{self as disk, Result, ensure},
 };
 use crate::model::{Mode, Progress};
@@ -17,16 +18,39 @@ pub struct Package<'a> {
     pub archive: &'a Path,
     pub sha256: &'a str,
     pub version: &'a str,
+    /// Canal que el manifiesto autenticado debe declarar (#2812).
+    pub channel: &'a str,
 }
 impl Package<'_> {
-    fn expand(&self, destination: &Path, channel: &str) -> Result<super::Manifest> {
-        let manifest = package::expand(self.archive, self.sha256, destination, channel)?;
+    fn expand(&self, destination: &Path) -> Result<super::Manifest> {
+        let manifest = package::expand(self.archive, self.sha256, destination, self.channel)?;
         ensure(
             manifest.version == self.version,
             "Versión del paquete incompatible",
         )?;
         Ok(manifest)
     }
+}
+/// Restos de una instalación sin `state.json` (desinstalación a medias): son de
+/// este canal si lo dicen sus datos conservados. Sin ellos solo beta, el único
+/// producto anterior a #2812, los reconoce; otro producto los rechaza.
+pub fn residue_owned(root: &Path, channel: &str) -> Result<()> {
+    let view = Installation::read(root)?;
+    let owner = view
+        .retained
+        .as_ref()
+        .map_or(product::UNDECLARED_CHANNEL, |saved| saved.channel());
+    ensure(
+        owner == channel,
+        "Los restos de esta carpeta son de otro canal; se conservan",
+    )
+}
+/// Solo los canales con identidad de producto propia se instalan (#2812).
+fn installable(channel: &str) -> Result<()> {
+    ensure(
+        product::for_channel(channel).is_some(),
+        "Canal sin producto de instalación",
+    )
 }
 pub struct Control<'a> {
     pub cancel: &'a AtomicBool,
@@ -368,6 +392,27 @@ fn generations(root: &Path) -> Result<Vec<(String, PathBuf)>> {
     }
     Ok(result)
 }
+/// Una raíz sin estado con datos de otro producto no se toca (#2812): ni sus
+/// datos conservados ni las copias antiguas sin referencia, que solo pueden ser
+/// de beta, el único producto anterior a que los datos declararan su canal.
+fn foreign_data(root: &Path, view: &Installation, channel: &str) -> Result<()> {
+    if let Some(saved) = &view.retained {
+        return ensure(
+            saved.channel() == channel,
+            "Los datos conservados en esta carpeta son de otro canal; se conservan",
+        );
+    }
+    if product::for_channel(channel).is_some_and(|product| product.legacy) {
+        return Ok(());
+    }
+    for (id, directory) in generations(root)? {
+        ensure(
+            !(validation::hex(&id, 32) && directory.join("data").is_dir()),
+            "Hay datos de otra instalación en esta carpeta; se conservan",
+        )?;
+    }
+    Ok(())
+}
 fn retained_source(
     root: &Path,
     incoming: [u16; 3],
@@ -428,11 +473,24 @@ pub fn install(
     mut finalize: impl FnMut(&mut Control<'_>, bool, Option<(&State, &str)>) -> Result<()>,
     mut prepare: impl FnMut() -> Result<()>,
 ) -> Result<()> {
+    installable(package.channel)?;
     let root = disk::open_root(root, true)?;
     let _session = disk::lock(&root, "beta-session.lock")
         .map_err(|_| WriteError::new(2, "Cierra Vantare para continuar"))?;
     let _operation = disk::lock(&root, ".operation.lock")?;
     let mut view = Installation::read(&root)?;
+    // Otro producto en esta raíz: ni se lee su versión ni se toca nada.
+    ensure(
+        view.state
+            .as_ref()
+            .is_none_or(|state| state.channel == package.channel),
+        "Canal de instalación incompatible",
+    )?;
+    // Y sin estado, sus datos conservados: se rechaza antes de retirar un
+    // marcador huérfano o de escribir el temporal en la raíz.
+    if view.state.is_none() {
+        foreign_data(&root, &view, package.channel)?;
+    }
     if mode == Mode::Repair && view.state.is_none() {
         return Err(WriteError::new(
             3,
@@ -446,13 +504,13 @@ pub fn install(
     let mut projected = false;
     let mut created_launcher = false;
     let result = (|| {
-        let incoming = package.expand(&stage, "beta")?;
+        let incoming = package.expand(&stage)?;
         let source;
         let previous;
         let updating = view.state.is_some();
         if let Some(current) = &view.manifest {
             ensure(
-                current.channel == "beta",
+                current.channel == package.channel,
                 "Canal de instalación incompatible",
             )?;
             if (mode == Mode::Repair && incoming.version != current.version)
@@ -586,9 +644,10 @@ pub fn update(
     ensure(
         view.state
             .as_ref()
-            .is_some_and(|state| state.channel == "beta"),
+            .is_some_and(|state| state.channel == package.channel),
         "El actualizador no cambia de canal",
     )?;
+    installable(package.channel)?;
     ensure(
         !root.join("boot-pending.json").try_exists()?,
         "Hay un arranque pendiente",
@@ -598,8 +657,7 @@ pub fn update(
     let _handles = disk::binary_guard_running(&root)?;
     let stage = root.join("staging").join(format!("update-{}", disk::id()?));
     let result = (|| {
-        let incoming =
-            package.expand(&stage, &view.state.as_ref().expect("checked state").channel)?;
+        let incoming = package.expand(&stage)?;
         ensure(
             !repair || Some(incoming.version.as_str()) == view.installed_version(),
             "La reparación exige la misma versión",
@@ -971,7 +1029,7 @@ fn rollback_with_policy(root: &Path, reject_version: bool) -> Result<BootRecover
         .state
         .ok_or_else(|| WriteError::new(1, "Falta estado para rollback"))?;
     ensure(
-        state.channel == "beta" && marker["schema"] == 1,
+        product::for_channel(&state.channel).is_some() && marker["schema"] == 1,
         "Rollback inválido",
     )?;
     let active = view
@@ -1051,6 +1109,7 @@ fn finish_rollback(
 #[allow(clippy::too_many_lines)] // The ownership checks and deletion share one transaction.
 pub fn uninstall(
     root: &Path,
+    channel: &str,
     control: &mut Control<'_>,
     mut finalize: impl FnMut(&mut Control<'_>) -> Result<()>,
 ) -> Result<()> {
@@ -1059,10 +1118,17 @@ pub fn uninstall(
     let _lock = disk::lock(&root, ".operation.lock")?;
     let state_path = root.join("state.json");
     let Some(document) = installation::read_state(&root)? else {
+        // Una desinstalación a medias ya no tiene state.json: solo se termina
+        // si sus datos conservados son de este canal (#2812).
+        residue_owned(&root, channel)?;
         return finalize(control);
     };
     ensure(
-        document.state.channel == "beta" && references_bound(&document),
+        document.state.channel == channel,
+        "La instalación pertenece a otro canal; no se desinstala",
+    )?;
+    ensure(
+        references_bound(&document),
         "Referencia de generación inválida",
     )?;
     let state = document.state;
@@ -1100,10 +1166,11 @@ pub fn uninstall(
                     "No se puede autenticar la versión de los datos conservados",
                 )
             })?;
-        disk::write_json(
-            &retained,
-            &json!({"schema":1,"generation":state.active.generation,"version":version}),
-        )?;
+        let mut saved = json!({"schema":1,"generation":state.active.generation,"version":version});
+        if state.channel != product::UNDECLARED_CHANNEL {
+            saved["channel"] = state.channel.clone().into();
+        }
+        disk::write_json(&retained, &saved)?;
     }
     for (_, directory, manifest) in owned {
         installation::walk(&directory, false)?;

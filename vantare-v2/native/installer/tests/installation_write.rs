@@ -5089,10 +5089,10 @@ fn the_feed_takes_a_to_b_to_c_copying_each_from_the_confirmed_generation() {
         without_recordings(index(&a.join("data"))),
         without_recordings(data_a)
     );
-    assert!(names(&recordings(&a)).is_empty());
+    assert_eq!(names(&recordings(&a)), [] as [String; 0]);
     assert_eq!(index(&b), whole_b, "previous keeps the way back");
     assert_eq!(names(&single), [IN_A, IN_B]);
-    assert!(names(&recordings(&c)).is_empty());
+    assert_eq!(names(&recordings(&c)), [] as [String; 0]);
     assert_eq!(
         without_recordings(index(&c.join("data"))),
         without_recordings(data_b)

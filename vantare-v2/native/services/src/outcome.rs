@@ -129,9 +129,24 @@ pub fn outcome(observation: Observation<'_>) -> Outcome {
     }
 }
 
+/// Margen de la renovación automática fuera de carrera: así el aviso de
+/// «caduca pronto» (24 h) solo aparece si no se ha podido renovar.
+pub const RENEW_AHEAD_AUTO_MS: u64 = 36 * 60 * 60_000;
+/// Margen de la renovación en carrera: única ventana que abre la red en carrera.
+pub const RENEW_AHEAD_URGENT_MS: u64 = 60 * 60_000;
+
 /// Renovar antes del vencimiento firmado, sin sumar ni restar gracia local.
 pub fn renewal_urgent(policy: &Policy, wall: u64) -> bool {
-    renewal_deadline(policy).is_some_and(|end| end <= wall.saturating_add(60 * 60_000))
+    renewal_within(policy, wall, RENEW_AHEAD_URGENT_MS)
+}
+
+/// Toca renovar automáticamente; sin fecha firmada nunca se adelanta.
+pub fn renewal_due(policy: &Policy, wall: u64) -> bool {
+    renewal_within(policy, wall, RENEW_AHEAD_AUTO_MS)
+}
+
+fn renewal_within(policy: &Policy, wall: u64, ahead: u64) -> bool {
+    renewal_deadline(policy).is_some_and(|end| end <= wall.saturating_add(ahead))
 }
 
 pub fn renewal_deadline(policy: &Policy) -> Option<u64> {
@@ -141,6 +156,41 @@ pub fn renewal_deadline(policy: &Policy) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn automatic_renewal_starts_thirty_six_hours_ahead_and_urgent_stays_at_one_hour() {
+        use vantare_ipc::control::{AccessState, Policy, VERSION};
+        const HOUR: u64 = 60 * 60_000;
+        assert_eq!(RENEW_AHEAD_AUTO_MS, 36 * HOUR);
+        assert_eq!(RENEW_AHEAD_URGENT_MS, HOUR);
+        let wall = 1_000_000;
+        let at = |left: u64| Policy {
+            version: VERSION,
+            revision: 1,
+            checked_at_ms: wall,
+            state: AccessState::Active,
+            signed_until_ms: Some(wall + left),
+            ..Policy::default()
+        };
+        // (tiempo restante, renovación automática, renovación urgente)
+        for (left, due, urgent) in [
+            (36 * HOUR + 1, false, false),
+            (36 * HOUR, true, false),
+            (HOUR + 1, true, false),
+            (HOUR, true, true),
+            (0, true, true),
+        ] {
+            assert_eq!(renewal_due(&at(left), wall), due, "automática {left}");
+            assert_eq!(renewal_urgent(&at(left), wall), urgent, "urgente {left}");
+        }
+        let unsigned = Policy {
+            signed_until_ms: None,
+            ..at(0)
+        };
+        assert!(!renewal_due(&unsigned, wall), "sin fecha firmada");
+        assert!(!renewal_urgent(&unsigned, wall), "sin fecha firmada");
+        assert!(renewal_due(&at(0), u64::MAX), "sin desbordar el reloj");
+    }
 
     #[test]
     fn a_fresh_denied_state_is_never_a_verified_renewal() {

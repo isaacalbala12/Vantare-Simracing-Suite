@@ -525,6 +525,7 @@ mod qa_transport {
             ("80\n", None),
             ("-80", None),
             ("000080", None),
+            ("+80", None),
         ] {
             fs::write(root.join(QA_PORT_FILE), text).expect("port file");
             assert_eq!(qa_port(&root).ok(), expected, "{text:?}");

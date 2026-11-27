@@ -49,6 +49,16 @@ if ($LASTEXITCODE) { throw 'matrix read probe build failed' }
 if ($LASTEXITCODE) { throw 'matrix writer build failed' }
 & cargo build --manifest-path native/Cargo.toml -p vantare-hub --example boot-confirmation-matrix --locked --offline -j 4 --target-dir $target
 if ($LASTEXITCODE) { throw 'matrix boot confirmation fixture build failed' }
+# #2849 (P7-3): anfitrión real con las features de producto y la UI de pega, antes del
+# vantare.exe de installer-qa. Dos órdenes: el ejemplo activa las dev-dependencies y no
+# deben llegar al anfitrión. Todavía NO bloquea: sin binarios, aviso y sin recorrido.
+& cargo build --manifest-path native/Cargo.toml -p vantare-hub-host --bin vantare-hub-host --locked --offline -j 4 --target-dir $target
+$electronBuilt = -not $LASTEXITCODE
+if ($electronBuilt) {
+  & cargo build --manifest-path native/Cargo.toml -p vantare-hub-host --example ui-peer --locked --offline -j 4 --target-dir $target
+  $electronBuilt = -not $LASTEXITCODE
+}
+if (-not $electronBuilt) { Write-Host '::warning::El anfitrión real o la UI de pega (electron-boot) no compiló; se omite el arranque Electron instalado' }
 & cargo build --manifest-path native/Cargo.toml -p vantare-runtime --bin vantare --features installer-qa --locked --offline -j 4 --target-dir $target
 if ($LASTEXITCODE) { throw 'matrix root launcher build failed' }
 & cargo test --manifest-path native/Cargo.toml -p vantare-hub --test installed_data_root --features installer-qa --locked --offline -j 4 --target-dir $target
@@ -70,4 +80,10 @@ if ($LASTEXITCODE) { throw 'installation matrix regression' }
 if ($feedServerBuilt) {
   powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/signed-feed-tests.ps1 -Root "$env:RUNNER_TEMP/signed-feed" -TestVerifier "$target/debug/examples/matrix-verifier.exe" -BootProbe "$target/debug/examples/boot-confirmation-matrix.exe" -WriteEngine "$target/debug/examples/installer-write-matrix.exe" -FeedLauncher $feedLauncher -FeedServer "$target/debug/examples/qa-feed-server.exe"
   if ($LASTEXITCODE) { Write-Host '::warning::Recorrido firmado de la matriz (signed-feed-tests.ps1) falló; no bloquea hasta el OK de la raíz' }
+}
+# #2849 (P7-3): arranque Electron instalado con el anfitrión real y la UI de pega. Todavía
+# NO bloquea (condición de la raíz): un fallo deja un aviso en el job y no lo tumba.
+if ($electronBuilt) {
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/matrix/electron-boot-tests.ps1 -Root "$env:RUNNER_TEMP/electron-boot" -TestVerifier "$target/debug/examples/matrix-verifier.exe" -BootProbe "$target/debug/examples/boot-confirmation-matrix.exe" -WriteEngine "$target/debug/examples/installer-write-matrix.exe" -RootLauncher "$target/debug/vantare.exe" -HostExecutable "$target/debug/vantare-hub-host.exe" -UiPeer "$target/debug/examples/ui-peer.exe"
+  if ($LASTEXITCODE) { Write-Host '::warning::Arranque Electron instalado (electron-boot-tests.ps1) falló; no bloquea hasta el OK de la raíz' }
 }

@@ -18,6 +18,21 @@ Casos, cada uno con raíz y HKCU inyectado propios:
 
 El servidor se para con su archivo de parada o por su propio proceso, nunca por nombre. El token ajeno usa `VANTARE_QA_WRONG_PENDING_BOOT_TOKEN`, que solo actúa con `boot-pending.json` porque la raíz hereda el entorno a todas sus sesiones. `VANTARE_QA_WRONG_BOOT_TOKEN` sigue actuando en toda sesión, como espera `launcher-tests.ps1`. La clave TEST es pública: el riesgo y su contención están en `../README.md`. De momento el paso no bloquea el job de CI: un fallo deja un aviso.
 
+`electron-boot-tests.ps1` (#2849, P7-3) arranca la generación como lo hará Electron: raíz y sesión reales (`vantare.exe` con `installer-qa`), el anfitrión real `vantare-hub-host` con las features de producto como `bin/vantare-hub.exe` y la UI de pega `hub-host/examples/ui-peer.rs` como `hub-ui/vantare-hub-ui.exe`, con su hash y su `.sha256` en el manifiesto. La UI de pega no abre ventana: habla el pipe real (autenticación, `hello`, `ready`, respuesta de cierre) y escribe una traza por arranque en `<raíz>/qa-ui-peer/`. Solo actúa si la raíz tiene `qa-ui-peer-owned` y `qa-ui-peer-mode`; sus modos de fallo solo actúan con `boot-pending.json`, así que la vuelta a 0.0.989 va bien. Si la generación tiene `hub-ui/vantare-hub-ui.exe`, la sesión QA usa `qa_session_host`: argumentos del constructor de producto, stdin de control y EOF solo cuando la raíz ya confirmó y existe `allow-exit`; las generaciones sin `hub-ui` siguen por el Hub de pega GPUI.
+
+Casos (A = 0.0.989 confirmada con ajustes minimizado y zoom 125; C = 0.0.990 pendiente):
+
+1. Bien con `--background`: C confirmada y registrada; el `hello` dice minimizado y zoom 125 (los ajustes copiados de A). Segunda raíz sin `--background`: no minimizado.
+2. Nunca `ready`: tras el minuto de la raíz vuelve A **sin** `rejectedVersion` (reintentable; un PC lento no veta una versión).
+3. Cae antes de conectar: vuelve A y rechaza C.
+4. Cae tras Confirm: C sigue confirmada, la raíz sale con error una vez y la siguiente abre C.
+5. Versión distinta: el anfitrión responde `Incompatible` y se rechaza C.
+6. Token ajeno: el anfitrión cierra sin saludar y se rechaza C.
+7. `hub-ui/resources/app.asar` alterado: la integridad impide arrancar la UI y se rechaza C.
+8. Reinicio en cada arranque: tres vueltas y la raíz para con «Demasiados reinicios consecutivos; ejecuta Reparar», en menos de 30 s y sin diálogo.
+
+Tras cada raíz, todos los procesos propios (los de «Hub en marcha (pid N)» y los de las trazas) deben haber terminado; si alguno sigue, falla y se cierra solo ese PID, comprobando que su imagen está en la raíz del caso. Si falla un caso, el script imprime en el log del job su `root-*.log` y sus trazas. Al final imprime `N electron boot checks PASS`. De momento no bloquea: un fallo, o un anfitrión o UI de pega que no compila, deja un `::warning::`. Lo que solo cubre una VM o un PC (Electron real pintando, reinicio de Windows, Defender, SmartScreen) es de P8.
+
 El workflow `branch-channel-gates.yml` construye los cinco fixtures con `native/scripts/compilar.ps1`, descarga el ZIP histórico, ejecuta el guard y después la matriz. Una ejecución local usa las mismas rutas de binarios y una raíz nueva bajo `D:/VantareServer/qa`; no debe usar la instalación ni el registro reales.
 
 La evidencia anterior se conserva en `evidence-1840-p3.md`, `evidence-1840-p4.md`, `evidence-1840-p5.md` y `evidence-1840-p5b.md`. Los arneses que solo ejercitaban el PowerShell instalado se retiraron en el paso 7.

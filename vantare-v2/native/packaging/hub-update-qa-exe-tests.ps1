@@ -21,7 +21,9 @@ function Expect-QaRejection([string]$Path) {
 # Latin-1 keeps every byte. Same public key as services/examples/matrix-verifier.rs.
 $encoding=[Text.Encoding]::GetEncoding(28591)
 $key=Get-NativeLicensePublicKeyBytes 'GX9rI-FshTLGq8g4-s1ep4m-DHaykgM0A5v6iz02jWE'
-$needles=[ordered]@{'marker'='VANTARE_QA_HUB_UPDATE_NOT_FOR_DISTRIBUTION';'TEST public key'=$encoding.GetString($key)}
+# #2849: `hub-update-qa` implica `installer-qa`; su sesión QA con el anfitrión real tampoco
+# puede llegar al EXE limpio de producto.
+$needles=[ordered]@{'marker'='VANTARE_QA_HUB_UPDATE_NOT_FOR_DISTRIBUTION';'TEST public key'=$encoding.GetString($key);'Electron session marker'='VANTARE_QA_ELECTRON_SESSION_NOT_FOR_DISTRIBUTION'}
 $qa=$encoding.GetString([IO.File]::ReadAllBytes($QaExecutable))
 $clean=$encoding.GetString([IO.File]::ReadAllBytes($CleanExecutable))
 [IO.Directory]::CreateDirectory($EvidenceDirectory)|Out-Null

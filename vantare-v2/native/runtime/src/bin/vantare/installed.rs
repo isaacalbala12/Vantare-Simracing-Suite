@@ -367,7 +367,7 @@ pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {
     }
     #[cfg(feature = "installer-qa")]
     if let Some(probe) = std::env::var_os("VANTARE_QA_SESSION_PROBE") {
-        return qa_session(&root, Path::new(&probe));
+        return qa_session(&root, &data, Path::new(&probe));
     }
     let bin = image
         .parent()
@@ -390,7 +390,7 @@ pub(super) fn session(args: &[String]) -> io::Result<ExitCode> {
 }
 
 #[cfg(feature = "installer-qa")]
-fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
+fn qa_session(root: &Path, data: &Path, probe: &Path) -> io::Result<ExitCode> {
     use super::{Program, Service};
     let context = Context::from_qa_env(root).map_err(io_error)?;
     context.validate_root(root).map_err(io_error)?;
@@ -404,6 +404,10 @@ fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
     }
     let token =
         std::env::var("VANTARE_BOOT_TOKEN").map_err(|_| io_error("Falta token de arranque QA"))?;
+    // Generación con interfaz Electron instalada (#2849): el anfitrión real y su UI.
+    if generation.join("hub-ui/vantare-hub-ui.exe").is_file() {
+        return qa_session_host(root, data, &hub_image, &token);
+    }
     // `VANTARE_QA_WRONG_BOOT_TOKEN`: token ajeno en toda sesión; `launcher-tests` espera que
     // la raíz acabe en error. `VANTARE_QA_WRONG_PENDING_BOOT_TOKEN`: solo en el arranque
     // pendiente de confirmar, porque la raíz hereda el entorno a todas sus sesiones y la
@@ -474,6 +478,58 @@ fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
     #[cfg(feature = "hub-update-qa")]
     if status.success() && root.join("staging/pending.json").try_exists()? {
         return apply(root);
+    }
+    Ok(if status.success() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
+}
+
+/// Solo existe en el EXE QA: `no-qa.ps1` rechaza todo EXE con `VANTARE_QA_` y
+/// `packaging/hub-update-qa-exe-tests.ps1` exige que esté en el QA y no en el limpio.
+/// En un binario `#[used]` no basta (el enlazador lo descartaba): la sesión lo usa.
+#[cfg(feature = "installer-qa")]
+static ELECTRON_SESSION_MARKER: [u8; 48] = *b"VANTARE_QA_ELECTRON_SESSION_NOT_FOR_DISTRIBUTION";
+
+/// Sesión QA con el anfitrión real `vantare-hub-host` (#2849, P7-3): sus argumentos salen
+/// del constructor de producto, con stdin de control y el token de esta vuelta. Sin
+/// núcleo: el pipe de foto es QA y no existe. Cierra el stdin (EOF real) solo cuando la
+/// raíz ya confirmó (`boot-pending.json` retirado) y la matriz lo permite (`allow-exit`).
+#[cfg(feature = "installer-qa")]
+fn qa_session_host(root: &Path, data: &Path, image: &Path, token: &str) -> io::Result<ExitCode> {
+    use super::{Program, Service};
+    std::hint::black_box(&ELECTRON_SESSION_MARKER);
+    let photo = format!("vantare-qa-{}", disk::id().map_err(io_error)?);
+    let (_, args) = super::recording::installed_session(root, data, &photo, Vec::new());
+    let program = Program {
+        path: image.to_path_buf(),
+        args,
+    };
+    let mut hub = Service::new("Hub", program, 0);
+    hub.boot_token = Some(token.to_owned());
+    hub.spawn()?;
+    let child = hub.child.as_mut().expect("spawned Hub");
+    let deadline = Instant::now() + Duration::from_secs(90);
+    let status = loop {
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+        if ready_token_matches(root, token)
+            && !root.join("boot-pending.json").try_exists()?
+            && root.join("allow-exit").try_exists()?
+        {
+            drop(child.stdin.take());
+            break child.wait()?;
+        }
+        if Instant::now() >= deadline {
+            return Err(io_error("Anfitrión QA sin confirmar"));
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    // Como `run()`: una petición de reinicio se consume cuando el Hub ya salió.
+    if status.success() && super::restart::take(root)? {
+        return Ok(ExitCode::from(10));
     }
     Ok(if status.success() {
         ExitCode::SUCCESS

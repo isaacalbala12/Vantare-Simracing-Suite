@@ -11,6 +11,10 @@ absoluta de QA; `dev` usa el Electron local de `hub-web`. Release sin ese featur
 exige la interfaz incluida en la generación instalada. El renderer no recibe
 rutas, credenciales ni acceso directo al sistema de archivos.
 
+`examples/ui-peer.rs` es la UI de pega de la matriz instalada (#2849): un EXE de
+pruebas sin ventana que habla este pipe y nunca se distribuye. Se describe en
+[la matriz](../packaging/matrix/README.md).
+
 ## Puente y ciclo de vida
 
 El experimento de stdio en Windows y la alternativa están conservados en

@@ -44,6 +44,11 @@ fn route(folder: &Path, path: &str) -> Option<PathBuf> {
     (plain(tag) && plain(file)).then(|| folder.join(tag).join(file))
 }
 
+/// Solo loopback y un puerto que elige el sistema.
+fn bind() -> io::Result<TcpListener> {
+    TcpListener::bind("127.0.0.1:0")
+}
+
 fn serve(mut stream: TcpStream, folder: &Path, log: &Path) -> io::Result<()> {
     stream.set_nonblocking(false)?;
     stream.set_read_timeout(Some(Duration::from_secs(5)))?;
@@ -87,7 +92,7 @@ fn main() -> Result<(), Failure> {
     for path in [port, log, stop] {
         guarded(path.parent().ok_or("ruta sin carpeta")?)?;
     }
-    let listener = TcpListener::bind("127.0.0.1:0")?;
+    let listener = bind()?;
     listener.set_nonblocking(true)?;
     // El puerto aparece completo o no aparece: quien lo espera nunca lee medio número.
     let temporary = port.with_extension("tmp");
@@ -109,4 +114,79 @@ fn main() -> Result<(), Failure> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{bind, guarded, route};
+    use std::path::{Path, PathBuf};
+
+    #[test]
+    fn listens_only_on_loopback() {
+        let listener = bind().expect("listener");
+        let address = listener.local_addr().expect("address");
+        assert_eq!(address.ip(), std::net::Ipv4Addr::LOCALHOST);
+        assert_ne!(address.port(), 0);
+    }
+
+    #[test]
+    fn serves_only_the_two_routes_with_plain_names() {
+        let folder = Path::new("D:/VantareServer/qa/feed");
+        assert_eq!(
+            route(folder, "/api/releases?per_page=100"),
+            Some(folder.join("releases.json"))
+        );
+        assert_eq!(
+            route(folder, "/download/hub-beta-v0.0.990/vantare-hub-beta.json"),
+            Some(
+                folder
+                    .join("hub-beta-v0.0.990")
+                    .join("vantare-hub-beta.json")
+            )
+        );
+        for path in [
+            "/api/releases",
+            "/api/releases?per_page=99",
+            "/releases.json",
+            "/download/hub-beta-v0.0.990",
+            "/download//vantare-hub-beta.json",
+            "/download/hub-beta-v0.0.990/",
+            "/download/../releases.json",
+            "/download/hub-beta-v0.0.990/../releases.json",
+            "/download/hub-beta-v0.0.990/a/b",
+            "/download/.git/config",
+            "/download/hub-beta-v0.0.990/.env",
+            "/download/hub%2Fbeta/vantare-hub-beta.json",
+            r"/download/hub\beta/vantare-hub-beta.json",
+            "/download/C:/Windows",
+        ] {
+            assert_eq!(route(folder, path), None, "{path}");
+        }
+    }
+
+    #[test]
+    fn serves_only_from_inside_the_guarded_qa_root() {
+        let prefix = if std::env::var("CI").as_deref() == Ok("true") {
+            PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("RUNNER_TEMP"))
+        } else {
+            PathBuf::from("D:/VantareServer/qa")
+        };
+        if !prefix.is_dir() {
+            eprintln!(
+                "omitido: no existe la raíz QA {prefix:?}; este test solo corre en el servidor o en CI"
+            );
+            return;
+        }
+        let inside = prefix.join(format!("qa-feed-server-{}", std::process::id()));
+        std::fs::create_dir_all(&inside).expect("QA folder");
+        let accepted = guarded(&inside);
+        std::fs::remove_dir(&inside).expect("cleanup");
+        assert!(accepted.is_ok(), "{accepted:?}");
+        // La raíz misma, y una carpeta real fuera de ella, no valen.
+        assert!(guarded(&prefix).is_err());
+        let outside = std::env::var_os("WINDIR")
+            .map(PathBuf::from)
+            .expect("WINDIR");
+        assert!(guarded(&outside).is_err());
+    }
 }

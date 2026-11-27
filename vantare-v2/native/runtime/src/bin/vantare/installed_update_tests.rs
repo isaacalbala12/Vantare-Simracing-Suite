@@ -276,6 +276,20 @@ mod qa_chain {
     const INSTALLED: &str = "0.0.989";
     const NEXT: &str = "0.0.990";
     const PACKAGE: &str = "vantare-native-amd64-package.zip";
+    /// Copia dentro de este paquete de `installer/fixtures/manifest-full.json`
+    /// (SHA-256 3785b55376519a0526557d735ee38a3f2b4e07f39f9db69ddfba9b4846a97e05):
+    /// un paquete solo incluye archivos propios. Un test exige que no diverja.
+    const CANDIDATE: &str = include_str!("fixtures/candidate-manifest.json");
+
+    #[test]
+    fn candidate_fixture_matches_the_installer_inventory() {
+        let installer =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../installer/fixtures/manifest-full.json");
+        assert!(
+            fs::read(&installer).expect("installer inventory") == CANDIDATE.as_bytes(),
+            "fixtures/candidate-manifest.json diverge de {installer:?}: cópialo de nuevo"
+        );
+    }
 
     /// ZIP con los miembros reales de un candidato (`manifest-full.json` del instalador):
     /// cada EXE es un PE inerte del sistema con su sidecar; el resto, bytes fijos.
@@ -285,10 +299,8 @@ mod qa_chain {
         expanded: u64,
     }
     fn build(parent: &Path, version: &str) -> Built {
-        let full: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../../installer/fixtures/manifest-full.json"
-        ))
-        .expect("full candidate manifest");
+        let full: serde_json::Value =
+            serde_json::from_str(CANDIDATE).expect("full candidate manifest");
         let windows = std::env::var_os("WINDIR").expect("Windows root");
         let mut executable = fs::read(Path::new(&windows).join("System32/cmd.exe")).expect("PE");
         // El sufijo mantiene el PE válido y distingue el lanzador de cada versión.
@@ -330,7 +342,12 @@ mod qa_chain {
         let expanded = files.iter().fold(initial, |total, file| {
             total + file["size"].as_u64().expect("size")
         });
-        let archive = parent.join(format!("package-{version}.zip"));
+        // Un nombre por llamada: `ZipFile.Open(…, 'Create')` falla si el ZIP ya existe, y la
+        // vuelta atrás vuelve a servir la misma versión.
+        let archive = parent.join(format!(
+            "package-{version}-{}.zip",
+            disk::id().expect("ZIP id")
+        ));
         // La compresión del sistema crea un ZIP real, sin dependencia nueva de Rust. Cada
         // entrada lleva su nombre exacto con «/»: `CreateFromDirectory` de .NET Framework
         // escribe «bin\vantare.exe» y el motor solo admite los nombres del manifiesto.

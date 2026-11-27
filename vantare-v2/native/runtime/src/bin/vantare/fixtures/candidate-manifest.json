@@ -1,0 +1,559 @@
+{
+    "architecture":  "windows-x64",
+    "source_dirty":  false,
+    "version":  "0.0.989",
+    "files":  [
+                  {
+                      "path":  "bin/vantare.exe",
+                      "sha256":  "a6e3b3b22b7fe8ce2c9245816126723eaa13f43b9f591883e59959a2d409426a",
+                      "size":  327680
+                  },
+                  {
+                      "path":  "bin/vantare.exe.sha256",
+                      "sha256":  "3684d119c078f6c4a70bdccda3ee57e482e735c69a532a60fe8a122b7ab2b188",
+                      "size":  78
+                  },
+                  {
+                      "path":  "bin/vantare-core.exe",
+                      "sha256":  "a6e3b3b22b7fe8ce2c9245816126723eaa13f43b9f591883e59959a2d409426a",
+                      "size":  327680
+                  },
+                  {
+                      "path":  "bin/vantare-core.exe.sha256",
+                      "sha256":  "4fb1865ec8eb5a518036108b9c79780c0d2e18557d5004e5b8f5fb2e40637914",
+                      "size":  83
+                  },
+                  {
+                      "path":  "bin/vantare-overlays.exe",
+                      "sha256":  "a6e3b3b22b7fe8ce2c9245816126723eaa13f43b9f591883e59959a2d409426a",
+                      "size":  327680
+                  },
+                  {
+                      "path":  "bin/vantare-overlays.exe.sha256",
+                      "sha256":  "a47905d7918e650c8bfeb885ef01d0ab16ce7942cdb306ac03751495c11dbe1d",
+                      "size":  87
+                  },
+                  {
+                      "path":  "bin/vantare-hub.exe",
+                      "sha256":  "a6e3b3b22b7fe8ce2c9245816126723eaa13f43b9f591883e59959a2d409426a",
+                      "size":  327680
+                  },
+                  {
+                      "path":  "bin/vantare-hub.exe.sha256",
+                      "sha256":  "27bc9c6d25260fb13388826ee150ab826d591bdfae26cdfa143eb3e77cbd8843",
+                      "size":  82
+                  },
+                  {
+                      "path":  "bin/vantare-engineer.exe",
+                      "sha256":  "a6e3b3b22b7fe8ce2c9245816126723eaa13f43b9f591883e59959a2d409426a",
+                      "size":  327680
+                  },
+                  {
+                      "path":  "bin/vantare-engineer.exe.sha256",
+                      "sha256":  "5dffcb862e244cc08274da44d03d186bedc7f2fbd5c667b527e3fe2b312b5875",
+                      "size":  87
+                  },
+                  {
+                      "path":  "bin/vantare-services.exe",
+                      "sha256":  "2e5f030404c9115dc7ced15207444630a6b846d0782cdbb5aa2ad73b9227beae",
+                      "size":  733696
+                  },
+                  {
+                      "path":  "bin/vantare-services.exe.sha256",
+                      "sha256":  "6a9095960ac15271065003ef6ac1e278a5ed645d498383f0b89af6e027a1e9eb",
+                      "size":  87
+                  },
+                  {
+                      "path":  "bin/vantare-storage.exe",
+                      "sha256":  "a6e3b3b22b7fe8ce2c9245816126723eaa13f43b9f591883e59959a2d409426a",
+                      "size":  327680
+                  },
+                  {
+                      "path":  "bin/vantare-storage.exe.sha256",
+                      "sha256":  "89624a6703771b72f5cc027ddb053672bf1d9f2ec17b39ef1b91e132e7d09630",
+                      "size":  86
+                  },
+                  {
+                      "path":  "bin/vantare-grabar-lmu.exe",
+                      "sha256":  "a6e3b3b22b7fe8ce2c9245816126723eaa13f43b9f591883e59959a2d409426a",
+                      "size":  327680
+                  },
+                  {
+                      "path":  "bin/vantare-grabar-lmu.exe.sha256",
+                      "sha256":  "b853786747f405e6e4153982fae67d68f96ddcd8c98f88015bf85b3fe18416e6",
+                      "size":  89
+                  },
+                  {
+                      "path":  "bin/vantare-grabar-acc.exe",
+                      "sha256":  "a6e3b3b22b7fe8ce2c9245816126723eaa13f43b9f591883e59959a2d409426a",
+                      "size":  327680
+                  },
+                  {
+                      "path":  "bin/vantare-grabar-acc.exe.sha256",
+                      "sha256":  "a34606c75119d6e78c9fa178d06f478d4b6626858906519780f64b1d12dd2894",
+                      "size":  89
+                  },
+                  {
+                      "path":  "bin/vantare-import-profile.exe",
+                      "sha256":  "a6e3b3b22b7fe8ce2c9245816126723eaa13f43b9f591883e59959a2d409426a",
+                      "size":  327680
+                  },
+                  {
+                      "path":  "bin/vantare-import-profile.exe.sha256",
+                      "sha256":  "80fe8e0c9ce3cef3409e2fff0f606b9685caa6e74bfc0134b7394be9a8ac19b7",
+                      "size":  93
+                  },
+                  {
+                      "path":  "bin/fixtures/broadcast-tower-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/car-damage-visual-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/delta-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/delta-trace-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/fastest-lap-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/fuel-strategy-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/head-to-head-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/input-telemetry-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/multiclass-relative-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/pedals-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/pedals-telemetry-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/racing-flags-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/radar-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/relative-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/track-map-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/track-weather-design-system.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/session-alerts.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/broadcast-tower-crossing.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/broadcast-tower-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/broadcast-tower-exit-reentry.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/broadcast-tower-fast-inversion.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/broadcast-tower-overtake-sequence.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/broadcast-tower-stable-values.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/broadcast-tower.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/car-damage-numbers-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/car-damage-numbers.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/car-damage-visual-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/car-damage-visual.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/delta-cross-zero.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/delta-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/delta-new-best.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/delta-trace-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/delta-trace.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/delta-trace.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/delta.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/fastest-lap-alert.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/fastest-lap-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/fastest-lap.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/fuel-strategy-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/fuel-strategy.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/head-to-head-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/head-to-head.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/input-telemetry-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/input-telemetry.sequence.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/input-telemetry.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/layout.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/lmu47.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/multiclass-relative-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/multiclass-relative.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/pedals-clutch.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/pedals-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/pedals-lap.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/pedals-telemetry-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/pedals-telemetry.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/pedals.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/racing-flags-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/racing-flags.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/radar-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/radar-nearby-traffic.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/radar.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/relative-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/relative-functional-cross-ahead.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/relative-functional-cross-behind.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/relative-functional-fast-reversal.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/relative-functional-lap-difference.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/relative-functional-sequence.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/relative-functional-stable-values.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/relative-functional-window-cycle.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/relative.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings-functional-battle.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings-functional-combined.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings-functional-personal-best.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings-functional-pit.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings-functional-position.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings-functional-session-best.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings-functional-window.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings-legacy.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/standings.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/track-map-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/track-map.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/track-weather-default.scene.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/track-weather.snapshot.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "bin/fixtures/workshop-sources.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "candidate.ps1",
+                      "sha256":  "51929ce016e2e61b68397071174f7635cea4b22680aa845b19508d259b4c4ff4",
+                      "size":  89326
+                  },
+                  {
+                      "path":  "README.md",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "licenses/OFL-Inter.txt",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  },
+                  {
+                      "path":  "dependencies.json",
+                      "sha256":  "cd612b875bd3c4e941a72cfd961f0c341e869a6653f1476ff994416b3518b389",
+                      "size":  14
+                  }
+              ],
+    "data_schema":  "opaque-v1",
+    "build_profile":  "Debug",
+    "channel":  "beta",
+    "schema":  1,
+    "product":  "vantare-native",
+    "candidate":  true,
+    "source_sha":  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}

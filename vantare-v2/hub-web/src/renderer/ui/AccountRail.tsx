@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { accountText as text } from "../i18n/account.es";
+import { licenseDate, accountText as text } from "../i18n/account.es";
 import { AccountNotice, type AccountPanelProps } from "./AccountPanel";
 import { Button } from "./Button";
 import { DeviceResetDialog } from "./DeviceResetDialog";
@@ -21,7 +21,9 @@ export function AccountRail({ value, pending, demo, act }: AccountPanelProps) {
       : pending
         ? text.busy
         : "";
-  const rows = [
+  const license = value.license;
+  const tester = license?.tester === true;
+  const rows: [string, string][] = [
     [
       text.state,
       value.sessionNotice
@@ -30,10 +32,11 @@ export function AccountRail({ value, pending, demo, act }: AccountPanelProps) {
           ? text.sessionConnected
           : text.signedOut,
     ],
-    [text.lastAccess, text.unknown],
-    [text.duringBeta, text.freeBeta],
-    [text.channel, value.channel],
   ];
+  if (tester) rows.push([text.accessKind, text.testerKind]);
+  if (license?.untilMs != null)
+    rows.push([text.validUntil, licenseDate(license.untilMs)]);
+  rows.push([text.channel, value.channel]);
   return (
     <div className="v-account-rail">
       <RailBlock title={text.sessionTitle} icon="key">
@@ -49,6 +52,7 @@ export function AccountRail({ value, pending, demo, act }: AccountPanelProps) {
             </div>
           ))}
         </dl>
+        {tester && license?.untilMs != null && <p>{text.renewsOnline}</p>}
       </RailBlock>
       <RailBlock title={text.devices} icon="v-monitor">
         <span className="v-account-meta">{text.thisComputer}</span>

@@ -261,7 +261,8 @@
   color: var(--text-3);
 }
 .v-account-rail dd {
-  white-space: nowrap;
+  /* A long date wraps instead of leaving the rail (B3). */
+  text-wrap: pretty;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -413,6 +414,7 @@
   align-items: center;
   gap: 10px;
   min-height: 42px;
+  padding-block: 6px;
   border-bottom: 1px solid var(--line-1);
 }
 

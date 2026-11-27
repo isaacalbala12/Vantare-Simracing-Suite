@@ -3,7 +3,10 @@ import { resolve } from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "playwright-core";
 import { accessText } from "../src/renderer/i18n/access.es.ts";
-import { accountText as text } from "../src/renderer/i18n/account.es.ts";
+import {
+  foundersCopy,
+  accountText as text,
+} from "../src/renderer/i18n/account.es.ts";
 
 /**
  * Account/license QA scenes of the simulated Hub (mock/modules/account-license.ts):
@@ -60,7 +63,7 @@ export async function checkAccountLicense(
     await calendar("locked", scheme, "sin-verificar");
     await state(scheme, "1-sin-verificar");
     await page.getByRole("button", { name: text.check, exact: true }).click();
-    await pill(text.active).waitFor();
+    await pill(text.testerAccess).waitFor();
     await calendar("open", scheme, "verificado");
     await state(scheme, "2-verificado");
     await page.getByRole("button", { name: text.logout, exact: true }).click();
@@ -74,5 +77,23 @@ export async function checkAccountLicense(
     await state(scheme, "4-bloqueada");
     await page.getByRole("button", { name: text.check, exact: true }).click();
     await pill(text.active).waitFor();
+    // B3: the tester's date and warnings; a tester never sees a purchase.
+    for (const [scene, warning] of [
+      ["cuenta-tester", null],
+      ["cuenta-tester-caduca", "Tu acceso caduca el"],
+      ["cuenta-tester-gracia", "Estás en carrera"],
+    ] as const) {
+      await open(scheme, scene);
+      await pill(text.testerAccess).waitFor();
+      await page.getByText(text.validUntil, { exact: true }).waitFor();
+      for (const name of [text.monthly, text.annual, foundersCopy.ES.button])
+        assert.equal(
+          await page.getByRole("button", { name, exact: true }).count(),
+          0,
+          `purchase for a tester ${scheme}/${scene}`,
+        );
+      if (warning) await page.getByText(warning).waitFor();
+      await state(scheme, `5-${scene}`);
+    }
   }
 }

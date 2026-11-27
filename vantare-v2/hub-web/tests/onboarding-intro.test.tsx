@@ -180,6 +180,7 @@ function mount(
       checking: boolean;
       blocked: boolean;
       failed?: boolean;
+      tester?: boolean;
     }) {
       view.rerender(
         <QueryClientProvider client={query}>
@@ -327,6 +328,26 @@ it("updates the assistant voice when Account changes while the step stays open",
   );
 });
 
+it("never offers a plan to a tester on the Account step", async () => {
+  fake.request.mockResolvedValue(initial());
+  const view = await accountPage();
+  const plans = () =>
+    ["Elegir Pro", "Elegir Pro Plus"].filter((name) =>
+      screen.queryByRole("button", { name }),
+    );
+  expect(plans()).toHaveLength(2);
+  view.account({
+    signedIn: true,
+    checking: false,
+    blocked: false,
+    tester: true,
+  });
+  expect(plans()).toEqual([]);
+  // Nothing else takes the plans' place on this step.
+  expect(document.querySelector(".v-ob-art")?.children).toHaveLength(0);
+  view.account({ signedIn: true, checking: false, blocked: false });
+  expect(plans()).toHaveLength(2);
+});
 async function accountPage(full = false) {
   const view = mount(true, full);
   const start = await screen.findByRole("button", { name: "Empezar" });

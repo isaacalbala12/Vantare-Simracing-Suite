@@ -213,7 +213,15 @@ try{
     Stop-Feed $feed
     Assert-Signed ($run.ExitCode -eq 0) "equal or older feed run exits cleanly ($($run.ExitCode))"
     Assert-Signed (Test-Same (Get-Requests $feed) @($releases)) 'equal or older versions are never fetched'
-    Assert-Signed ((Get-Status $case).state -ceq 'current') 'equal or older versions leave the status current'
+    Assert-Signed (-not(Test-Path -LiteralPath (Join-Path $case.Install 'staging/pending.json'))) 'equal or older versions publish nothing'
+    Assert-Signed (-not(Test-Path -LiteralPath (Join-Path $case.Install 'boot-pending.json'))) 'equal or older versions leave no boot marker'
+    Assert-Signed ((Get-ActiveVersion $case) -ceq '0.0.989') 'equal or older versions leave 0.0.989 active'
+    # «Estás al día» se publica bajo .operation.lock, que la raíz toma a la vez para renovar el
+    # registro: si la sesión llega mientras, `stage` falla con «archivo en uso» (os error 32),
+    # lo registra y no escribe estado (igual que el producto). Uno de los dos, completo.
+    $status=Get-Status $case
+    $busy=$run.Output -match 'feed beta QA: .*\(os error 32\)'
+    Assert-Signed ((($null -ne $status) -and $status.state -ceq 'current') -or (($null -eq $status) -and $busy)) 'equal or older versions: status current, or none with the busy-lock log'
 
     # 5. Sin archivo de puerto: el feed falla, se registra y la sesión sigue.
     $case=New-Case 'sin-puerto'

@@ -149,3 +149,16 @@ que el enlazador los conserve enteros en el EXE final, así que no se da por
 supuesto: `hub-update-qa-exe-tests.ps1` comprueba en el EXE real (Debug en
 instalación, Release en distribución) que esos bytes están seguidos, que el gate
 lo rechaza y que el candidato limpio no los lleva.
+
+Transporte QA (#2771, PR B). Solo con `hub-update-qa`, `stage()` consulta el
+feed en `http://127.0.0.1:<puerto>` en lugar de GitHub. Traduce únicamente la
+lista de releases y las dos descargas `hub-beta-v<versión>` de nombre fijo. El
+puerto sale del archivo `qa-feed-port` de la raíz, leído después del guard QA.
+No hay redirecciones ni proxy, y la oferta guardada conserva la URL firmada.
+**Riesgo aceptado:** la clave TEST es pública (semilla `[42; 32]`). Cualquier
+proceso del mismo equipo que ocupe ese puerto, o que escriba `qa-feed-port` en
+la raíz, puede servir paquetes que esta build acepta. Por eso solo opera en el
+contexto aislado que exigen los guards (sesión, `stage`, `apply` y el propio
+archivo de puerto, bajo `D:/VantareServer/qa` o el temporal del runner), y la
+distribución nunca la contiene. Como mucho elige otro puerto de `127.0.0.1`:
+no cambia el host ni la ruta.

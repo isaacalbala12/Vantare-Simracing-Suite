@@ -261,3 +261,247 @@ fn the_session_brings_its_recordings_waits_its_turn_and_never_fails() {
     }
     fs::remove_dir_all(root).expect("cleanup");
 }
+
+/// Cadena real en CPU (#2771, PR B2): instalación con la estructura del candidato, oferta
+/// firmada con la clave TEST servida por `127.0.0.1`, `stage()` y `apply()` reales y la
+/// confirmación o la vuelta atrás del instalador. Sin ventanas, sin Electron y sin red.
+#[cfg(feature = "hub-update-qa")]
+mod qa_chain {
+    use super::super::qa_transport::{RELEASES, Server, asset, reply};
+    use super::*;
+    use crate::installed::stage;
+    use std::process::ExitCode;
+    use vantare_installer::engine::operations::{self, BootRecovery, Control, Package};
+
+    const INSTALLED: &str = "0.0.989";
+    const NEXT: &str = "0.0.990";
+    const PACKAGE: &str = "vantare-native-amd64-package.zip";
+
+    /// ZIP con los miembros reales de un candidato (`manifest-full.json` del instalador):
+    /// cada EXE es un PE inerte del sistema con su sidecar; el resto, bytes fijos.
+    struct Built {
+        archive: std::path::PathBuf,
+        sha256: String,
+        expanded: u64,
+    }
+    fn build(parent: &Path, version: &str) -> Built {
+        let full: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../../installer/fixtures/manifest-full.json"
+        ))
+        .expect("full candidate manifest");
+        let windows = std::env::var_os("WINDIR").expect("Windows root");
+        let mut executable = fs::read(Path::new(&windows).join("System32/cmd.exe")).expect("PE");
+        // El sufijo mantiene el PE válido y distingue el lanzador de cada versión.
+        executable.extend_from_slice(format!("vantare-{version}").as_bytes());
+        let executable_sha = format!("{:x}", sha2::Sha256::digest(&executable));
+        let source = parent.join(format!("source-{version}"));
+        let mut files = Vec::new();
+        for path in full["files"]
+            .as_array()
+            .expect("files")
+            .iter()
+            .map(|file| file["path"].as_str().expect("path").to_owned())
+        {
+            if path == "candidate.ps1" {
+                continue;
+            }
+            let is_exe = Path::new(&path)
+                .extension()
+                .is_some_and(|extension| extension.eq_ignore_ascii_case("exe"));
+            let bytes = if is_exe {
+                executable.clone()
+            } else if let Some(exe) = path.strip_suffix(".sha256") {
+                let name = Path::new(exe)
+                    .file_name()
+                    .expect("PE name")
+                    .to_string_lossy();
+                format!("{executable_sha}  {name}\n").into_bytes()
+            } else {
+                b"fixture".to_vec()
+            };
+            let target = source.join(&path);
+            fs::create_dir_all(target.parent().expect("member folder")).expect("member folder");
+            fs::write(&target, &bytes).expect("member");
+            files.push(serde_json::json!({"path":path,"size":bytes.len(),"sha256":format!("{:x}", sha2::Sha256::digest(&bytes))}));
+        }
+        let manifest = serde_json::to_vec(&serde_json::json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","data_schema":"opaque-v1","source_sha":"0".repeat(40),"source_dirty":false,"build_profile":"Debug","version":version,"channel":"beta","engine":2,"files":files})).expect("manifest");
+        fs::write(source.join("manifest.json"), &manifest).expect("manifest");
+        let initial = u64::try_from(manifest.len()).expect("manifest length");
+        let expanded = files.iter().fold(initial, |total, file| {
+            total + file["size"].as_u64().expect("size")
+        });
+        let archive = parent.join(format!("package-{version}.zip"));
+        // La compresión del sistema crea un ZIP real; sin dependencia nueva de Rust.
+        let output = Command::new(vantare_installer::engine::powershell().expect("system PowerShell"))
+            .creation_flags(0x0800_0000)
+            .args(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory($env:VANTARE_TEST_ZIP_SOURCE,$env:VANTARE_TEST_ZIP)"])
+            .env("VANTARE_TEST_ZIP_SOURCE", &source)
+            .env("VANTARE_TEST_ZIP", &archive)
+            .output()
+            .expect("candidate ZIP");
+        assert!(output.status.success(), "{:?}", output.stderr);
+        fs::remove_dir_all(&source).expect("source cleanup");
+        Built {
+            sha256: hash_file(&archive).expect("ZIP hash"),
+            archive,
+            expanded,
+        }
+    }
+    /// `apply` pide reiniciar con la salida 10; `ExitCode` solo se compara por su forma.
+    fn restarts(code: ExitCode) -> bool {
+        format!("{code:?}") == format!("{:?}", ExitCode::from(10))
+    }
+    /// Raíz QA con `INSTALLED` instalada de verdad por el instalador, sin registro ni accesos.
+    struct Installed {
+        parent: std::path::PathBuf,
+        root: std::path::PathBuf,
+    }
+    impl Installed {
+        fn new() -> Self {
+            let parent = qa_root();
+            let root = parent.join("instalación");
+            fs::create_dir_all(&parent).expect("parent");
+            let built = build(&parent, INSTALLED);
+            let cancel = AtomicBool::new(false);
+            let mut control = Control {
+                cancel: &cancel,
+                progress: &mut |_| {},
+                checkpoint: &mut |_| Ok(()),
+                warning: &mut |message| eprintln!("{message}"),
+            };
+            operations::install(
+                &root,
+                &Package {
+                    archive: &built.archive,
+                    sha256: &built.sha256,
+                    version: INSTALLED,
+                    channel: "beta",
+                },
+                vantare_installer::model::Mode::Install,
+                &mut control,
+                |_, _, _| Ok(()),
+                || Ok(()),
+            )
+            .expect("installed candidate");
+            Self { parent, root }
+        }
+        fn version(&self) -> String {
+            vantare_installer::engine::Installation::read(&self.root)
+                .expect("installation")
+                .manifest
+                .expect("active manifest")
+                .version
+        }
+        fn status(&self) -> serde_json::Value {
+            serde_json::from_slice(&fs::read(self.root.join("update-status.json")).expect("status"))
+                .expect("status JSON")
+        }
+        /// Sirve `NEXT` firmado (con `expanded_delta` de más en el total firmado).
+        fn serve(&self, releases: &[&str], expanded_delta: u64) -> Server {
+            let built = build(&self.parent, NEXT);
+            let mut next = offer();
+            next.sha256 = built.sha256.clone();
+            next.compressed_bytes = fs::metadata(&built.archive).expect("ZIP").len();
+            next.expanded_bytes = built.expanded + expanded_delta;
+            let list: Vec<_> = releases
+                .iter()
+                .map(|version| serde_json::json!({"draft":false,"tag_name":format!("hub-beta-v{version}")}))
+                .collect();
+            let server = Server::start(vec![
+                (
+                    RELEASES.into(),
+                    reply("200 OK", &serde_json::to_vec(&list).expect("list")),
+                ),
+                (
+                    asset(NEXT, "vantare-hub-beta.json"),
+                    reply("200 OK", &signed(&next)),
+                ),
+                (
+                    asset(NEXT, PACKAGE),
+                    reply("200 OK", &fs::read(&built.archive).expect("ZIP")),
+                ),
+            ]);
+            fs::write(self.root.join("qa-feed-port"), server.port.to_string()).expect("port");
+            server
+        }
+    }
+    impl Drop for Installed {
+        fn drop(&mut self) {
+            if !std::thread::panicking() {
+                let _ = fs::remove_dir_all(&self.parent);
+            }
+        }
+    }
+    fn requests(listed: bool, offered: bool) -> Vec<String> {
+        let mut expected = vec![RELEASES.to_owned()];
+        if listed {
+            expected.push(asset(NEXT, "vantare-hub-beta.json"));
+        }
+        if offered {
+            expected.push(asset(NEXT, PACKAGE));
+        }
+        expected
+    }
+
+    #[test]
+    fn qa_chain_stages_applies_and_confirms_a_signed_update() {
+        let installed = Installed::new();
+        let server = installed.serve(&[NEXT], 0);
+        stage(&installed.root, &AtomicBool::new(false)).expect("stage");
+        assert_eq!(server.finish(), requests(true, true));
+        assert_eq!(installed.status()["state"], "ready");
+        assert!(installed.root.join("staging/pending.json").exists());
+        // `apply` instala la generación nueva y pide reiniciar (salida 10).
+        assert!(restarts(apply(&installed.root).expect("apply")));
+        assert!(!installed.root.join("staging/pending.json").exists());
+        assert_eq!(installed.version(), NEXT);
+        assert!(installed.root.join("boot-pending.json").exists());
+        operations::confirm(&installed.root).expect("confirm");
+        assert!(!installed.root.join("boot-pending.json").exists());
+        assert_eq!(installed.version(), NEXT);
+        assert_eq!(installed.status()["state"], "current");
+    }
+
+    #[test]
+    fn qa_chain_rollback_rejects_the_version_and_never_offers_it_again() {
+        let installed = Installed::new();
+        let server = installed.serve(&[NEXT], 0);
+        stage(&installed.root, &AtomicBool::new(false)).expect("stage");
+        assert_eq!(server.finish(), requests(true, true));
+        assert!(restarts(apply(&installed.root).expect("apply")));
+        // Arranque no confirmado: vuelve la generación anterior y la nueva queda rechazada.
+        assert_eq!(
+            operations::rollback(&installed.root).expect("rollback"),
+            BootRecovery::Restored
+        );
+        assert_eq!(installed.version(), INSTALLED);
+        assert_eq!(installed.status()["rejectedVersion"], NEXT);
+        // La misma oferta firmada sigue publicada: no se vuelve a pedir ni a descargar.
+        let server = installed.serve(&[NEXT], 0);
+        stage(&installed.root, &AtomicBool::new(false)).expect("stage after rollback");
+        assert_eq!(server.finish(), requests(false, false));
+        assert!(!installed.root.join("staging/pending.json").exists());
+        assert_eq!(installed.version(), INSTALLED);
+    }
+
+    #[test]
+    fn qa_chain_offers_nothing_at_or_below_the_installed_version() {
+        let installed = Installed::new();
+        let server = installed.serve(&[INSTALLED, "0.0.988"], 0);
+        stage(&installed.root, &AtomicBool::new(false)).expect("stage");
+        assert_eq!(server.finish(), requests(false, false));
+        assert!(!installed.root.join("staging/pending.json").exists());
+        assert_eq!(installed.status()["state"], "current");
+    }
+
+    #[test]
+    fn qa_chain_publishes_nothing_when_the_expanded_total_differs() {
+        let installed = Installed::new();
+        let server = installed.serve(&[NEXT], 1);
+        assert!(stage(&installed.root, &AtomicBool::new(false)).is_err());
+        assert_eq!(server.finish(), requests(true, true));
+        assert!(!installed.root.join("staging/pending.json").exists());
+        assert!(!installed.root.join("update-status.json").exists());
+        assert_eq!(installed.version(), INSTALLED);
+    }
+}

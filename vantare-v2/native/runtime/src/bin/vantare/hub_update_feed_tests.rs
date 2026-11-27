@@ -489,7 +489,7 @@ mod qa_transport {
             format!("https://api.github.com/repos/{REPO}/releases?per_page=99"),
             format!("http://api.github.com/repos/{REPO}/releases?per_page=100"),
             format!("https://api.github.com/repos/{REPO}/releases?per_page=100#x"),
-            format!("https://api.github.com/repos/other/Vantare-Downloads/releases?per_page=100"),
+            "https://api.github.com/repos/other/Vantare-Downloads/releases?per_page=100".to_owned(),
             format!("{download}native-beta-v0.0.990/vantare-hub-beta.json"),
             format!("{download}hub-beta-v0.0.990/other.zip"),
             format!("{download}hub-beta-v0.0.990/vantare-hub-beta.json/x"),

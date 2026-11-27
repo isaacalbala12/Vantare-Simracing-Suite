@@ -331,14 +331,30 @@ mod qa_chain {
             total + file["size"].as_u64().expect("size")
         });
         let archive = parent.join(format!("package-{version}.zip"));
-        // La compresión del sistema crea un ZIP real; sin dependencia nueva de Rust.
-        let output = Command::new(vantare_installer::engine::powershell().expect("system PowerShell"))
-            .creation_flags(0x0800_0000)
-            .args(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", "Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory($env:VANTARE_TEST_ZIP_SOURCE,$env:VANTARE_TEST_ZIP)"])
-            .env("VANTARE_TEST_ZIP_SOURCE", &source)
-            .env("VANTARE_TEST_ZIP", &archive)
-            .output()
-            .expect("candidate ZIP");
+        // La compresión del sistema crea un ZIP real, sin dependencia nueva de Rust. Cada
+        // entrada lleva su nombre exacto con «/»: `CreateFromDirectory` de .NET Framework
+        // escribe «bin\vantare.exe» y el motor solo admite los nombres del manifiesto.
+        let script = "Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem; \
+            $source = (Get-Item -LiteralPath $env:VANTARE_TEST_ZIP_SOURCE).FullName.TrimEnd('\\'); \
+            $zip = [IO.Compression.ZipFile]::Open($env:VANTARE_TEST_ZIP, 'Create'); \
+            try { Get-ChildItem -LiteralPath $source -Recurse -File | ForEach-Object { \
+                $name = $_.FullName.Substring($source.Length + 1).Replace('\\', '/'); \
+                [void][IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $name) } \
+            } finally { $zip.Dispose() }";
+        let output =
+            Command::new(vantare_installer::engine::powershell().expect("system PowerShell"))
+                .creation_flags(0x0800_0000)
+                .args([
+                    "-NoLogo",
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-Command",
+                    script,
+                ])
+                .env("VANTARE_TEST_ZIP_SOURCE", &source)
+                .env("VANTARE_TEST_ZIP", &archive)
+                .output()
+                .expect("candidate ZIP");
         assert!(output.status.success(), "{:?}", output.stderr);
         fs::remove_dir_all(&source).expect("source cleanup");
         Built {

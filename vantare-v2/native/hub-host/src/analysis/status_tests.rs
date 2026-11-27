@@ -216,6 +216,13 @@ impl Drop for Directory {
         let _ = fs::remove_dir_all(&self.0);
     }
 }
+struct LinkGuard(PathBuf);
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = fs::remove_dir(&self.0).or_else(|_| fs::remove_file(&self.0));
+    }
+}
 fn directory_link(target: &Path, link: &Path) {
     #[cfg(unix)]
     std::os::unix::fs::symlink(target, link).unwrap();
@@ -287,6 +294,7 @@ fn data_dir_inside_a_relocated_profile_keeps_status_catalog_and_stamps_working()
     write_recording(&root);
     let link = owned.0.join("relocated-profile");
     directory_link(&profile, &link);
+    let _link = LinkGuard(link.clone());
     assert!(super::super::reparse(&fs::symlink_metadata(&link).unwrap()));
     let aliased = link.join("AppData/Vantare/native/recordings");
     assert!(read(&aliased, &BTreeMap::new()).is_some());
@@ -306,9 +314,11 @@ fn rejects_a_link_at_recordings_or_between_data_dir_and_recordings() {
     fs::create_dir(&data).unwrap();
     let recordings_link = data.join("recordings");
     directory_link(&physical.join("recordings"), &recordings_link);
+    let _recordings_link = LinkGuard(recordings_link.clone());
     rejects_recording_directory(&recordings_link);
     let intermediate = data.join("intermediate");
     directory_link(&physical, &intermediate);
+    let _intermediate = LinkGuard(intermediate.clone());
     rejects_recording_directory(&intermediate.join("recordings"));
 }
 // Una instalación recién hecha aún no tiene `recordings`: eso no es «carpeta
@@ -330,6 +340,7 @@ fn rejects_file_links_including_a_swap_at_open_without_reading_the_target() {
     if !file_link(&target, &path) {
         return;
     }
+    let _path = LinkGuard(path.clone());
     assert!(read(&owned.0, &BTreeMap::new()).is_none());
     fs::remove_file(&path).unwrap();
     fs::write(&path, serde_json::to_vec(&core()).unwrap()).unwrap();

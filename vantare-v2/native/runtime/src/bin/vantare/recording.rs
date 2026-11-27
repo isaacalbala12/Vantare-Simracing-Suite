@@ -193,6 +193,16 @@ mod tests {
         }
     }
 
+    #[cfg(windows)]
+    struct LinkGuard(PathBuf);
+    #[cfg(windows)]
+    impl Drop for LinkGuard {
+        // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+        fn drop(&mut self) {
+            let _ = fs::remove_dir(&self.0).or_else(|_| fs::remove_file(&self.0));
+        }
+    }
+
     #[test]
     fn startup_defaults_on_for_missing_invalid_and_unreadable_settings() {
         let hub = TempDir::new();
@@ -392,6 +402,7 @@ mod tests {
             (core, host, adopted, notes.len())
         };
         let single = installation.join("recordings");
+        let _single = LinkGuard(single.clone());
         let folder = single.to_string_lossy().into_owned();
         let (core, host, adopted, notes) = told();
         assert_eq!(core, ["--live", "--series-dir", folder.as_str()]);

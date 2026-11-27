@@ -1,5 +1,12 @@
 use super::*;
 use std::{fs::OpenOptions, path::PathBuf};
+struct LinkGuard(PathBuf);
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir(&self.0).or_else(|_| std::fs::remove_file(&self.0));
+    }
+}
 struct Root(PathBuf);
 impl Root {
     fn new() -> Self {
@@ -368,6 +375,7 @@ fn symlink_documents_are_protected_and_the_target_is_untouched() {
         }
         panic!("QA symlink setup: {error}");
     }
+    let _link = LinkGuard(link.clone());
     let mut state = root.state();
     assert_eq!(
         state.config().documents.prefs,

@@ -2,6 +2,16 @@ use super::*;
 use serde_json::json;
 use std::path::PathBuf;
 
+#[cfg(windows)]
+struct LinkGuard(PathBuf);
+#[cfg(windows)]
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
+
 struct Root(PathBuf);
 impl Root {
     fn new() -> Self {
@@ -127,6 +137,7 @@ fn history_rejects_a_symbolic_link_without_reading_its_target() {
         );
         return;
     }
+    let _link = LinkGuard(root.0.join("calendar-history.json"));
     assert!(root.state().history().invalid_cache);
     assert!(target.exists());
 }

@@ -1,6 +1,15 @@
 use super::*;
 use std::fs::File;
 
+struct LinkGuard(std::path::PathBuf);
+
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir(&self.0).or_else(|_| std::fs::remove_file(&self.0));
+    }
+}
+
 struct Directory(PathBuf);
 impl Directory {
     fn new() -> Self {
@@ -286,11 +295,14 @@ fn pruning_never_deletes_or_follows_what_is_behind_a_link() {
     let db = dir.file("series-1-1.duckdb", 1, 1);
     let wal = dir.0.join("series-1-1.duckdb.wal");
     symlink_file(&mine, &wal).unwrap();
+    let _wal = LinkGuard(wal.clone());
     // Un enlace con nombre de grabación y un temporal viejo con un enlace dentro.
     symlink_file(&mine, dir.0.join("series-2-1.duckdb")).unwrap();
+    let _named = LinkGuard(dir.0.join("series-2-1.duckdb"));
     let creating = dir.0.join("series-3-1.duckdb.creating-10-3");
     fs::create_dir(&creating).unwrap();
     symlink_dir(&folder, creating.join("enlace")).unwrap();
+    let _inner = LinkGuard(creating.join("enlace"));
     let later = SystemTime::now() + Duration::from_secs(601);
     let report = prune(&dir.0, later, 1, MAX_BYTES).unwrap();
     // Nada de lo que hay detrás se toca; la grabación conserva su WAL y lo anota.
@@ -323,6 +335,7 @@ fn deleting_through_exclusive_removes_the_link_and_never_its_target() {
         }
         Err(error) => panic!("crear el enlace: {error}"),
     }
+    let _link = LinkGuard(link.clone());
     drop(exclusive(&link, true).unwrap());
     assert!(fs::symlink_metadata(&link).is_err(), "el enlace se borra");
     assert_eq!(fs::read(&mine).unwrap(), [0; 7]);

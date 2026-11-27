@@ -2,6 +2,13 @@ use super::*;
 use crate::protocol::{AccessView, LinkState};
 use crate::test_support::{Root, Signal};
 use std::sync::{Condvar, Mutex};
+struct LinkGuard(std::path::PathBuf);
+impl Drop for LinkGuard {
+    // Quita la unión sin seguirla, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir(&self.0);
+    }
+}
 fn authority() -> CoreStatus {
     CoreStatus {
         account_generation: Some("a".repeat(64)),
@@ -285,6 +292,7 @@ fn a_new_host_sweeps_crash_remains_only_inside_its_preview_root() {
     fs::create_dir(&outside_directory).expect("outside directory");
     fs::write(outside_directory.join("keep"), b"outside").expect("outside marker");
     junction(&remains.join("redirect"), &outside_directory);
+    let _redirect = LinkGuard(remains.join("redirect"));
     let outside_acl = acl_sddl(&outside_directory);
     let now = Instant::now();
     let mut state = State::new(preview.clone());
@@ -374,6 +382,7 @@ fn a_redirected_preview_root_is_rejected_without_touching_its_target() {
     fs::write(outside.join("keep"), b"keep").expect("marker");
     let preview = root.path.join("preview");
     junction(&preview, &outside);
+    let _preview = LinkGuard(preview.clone());
     let mut state = State::new(preview.clone());
     let result = start(&mut state, Instant::now(), "ok", None);
     fs::remove_dir(&preview).expect("unlink QA junction");

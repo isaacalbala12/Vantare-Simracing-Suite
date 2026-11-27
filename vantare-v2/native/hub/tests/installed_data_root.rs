@@ -35,6 +35,14 @@ impl Drop for QaFixture {
     }
 }
 
+struct LinkGuard(PathBuf);
+impl Drop for LinkGuard {
+    // Quita la unión sin seguirla, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = fs::remove_dir(&self.0);
+    }
+}
+
 fn run(exe: &Path, data: Option<&Path>, qa: &Path, redirected: bool) -> Output {
     let mut command = Command::new(exe);
     command
@@ -152,6 +160,7 @@ fn installed_hub_redirects_to_root_and_keeps_qa_clean() {
         .arg(&source)
         .output()
         .expect("junction probe");
+    let _junction = LinkGuard(junction.clone());
     if std::env::var("CI").as_deref() == Ok("true") {
         assert!(
             created.status.success(),

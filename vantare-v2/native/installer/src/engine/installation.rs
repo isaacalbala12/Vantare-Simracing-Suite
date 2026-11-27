@@ -563,6 +563,15 @@ mod member_tests {
 // borra) sigue rechazando un enlace con ese nombre en su primer nivel.
 #[cfg(all(test, windows))]
 mod walk_tests {
+    struct LinkGuard(std::path::PathBuf);
+
+    impl Drop for LinkGuard {
+        // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir(&self.0);
+        }
+    }
+
     #[test]
     fn only_the_installation_walk_leaves_recordings_alone() {
         let name = format!("vantare-walk-{}", std::process::id());
@@ -573,6 +582,7 @@ mod walk_tests {
         }
         std::fs::write(outside.join("mio.txt"), b"mine").unwrap();
         std::os::windows::fs::symlink_dir(&outside, tree.join("recordings")).unwrap();
+        let _recordings = LinkGuard(tree.join("recordings"));
         assert!(super::walk(&tree, false).is_err());
         assert!(super::walk(&tree, true).is_err());
         let nothing: Vec<(std::path::PathBuf, bool)> = Vec::new();

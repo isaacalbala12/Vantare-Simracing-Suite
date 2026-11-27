@@ -8,6 +8,15 @@ use std::{
     time::{Duration, Instant},
 };
 use vantare_ipc::session_alerts::Feed;
+#[cfg(windows)]
+struct LinkGuard(PathBuf);
+#[cfg(windows)]
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.0);
+    }
+}
 struct Root(PathBuf);
 impl Root {
     fn new() -> Self {
@@ -318,6 +327,7 @@ fn a_symbolic_feed_destination_never_changes_its_target() {
         }
         panic!("QA symlink setup: {error:?}");
     }
+    let _link = LinkGuard(link.clone());
     assert_eq!(
         publish(
             &root.layout(),

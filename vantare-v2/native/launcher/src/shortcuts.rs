@@ -317,6 +317,15 @@ pub(crate) fn resolve(_links: &[PathBuf]) -> Result<Vec<PathBuf>, String> {
 mod trust_tests {
     use super::*;
 
+    struct LinkGuard(std::path::PathBuf);
+
+    impl Drop for LinkGuard {
+        // Quita la unión sin seguirla, también si el test falla antes de su limpieza.
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir(&self.0);
+        }
+    }
+
     #[test]
     fn shared_shortcuts_resolve_junctions_and_private_shortcuts_allow_other_roots() {
         use std::os::windows::process::CommandExt;
@@ -345,6 +354,7 @@ mod trust_tests {
             .creation_flags(0x0800_0000)
             .status()
             .expect("junction");
+        let _junction = LinkGuard(junction.clone());
         assert!(status.success());
         let roots = [root.join("shared")];
         let escaped = accepts_target(&shared_link, &junction.join("obs64.exe"), &roots);

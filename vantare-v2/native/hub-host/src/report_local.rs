@@ -231,6 +231,13 @@ impl State {
 #[cfg(test)]
 mod tests {
     use super::*;
+    struct LinkGuard(std::path::PathBuf);
+    impl Drop for LinkGuard {
+        // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir(&self.0).or_else(|_| std::fs::remove_file(&self.0));
+        }
+    }
     struct Root(std::path::PathBuf);
     impl Root {
         fn new() -> Self {
@@ -319,6 +326,7 @@ mod tests {
         if linked.is_err() {
             eprintln!("QA symlink case omitted: privilege unavailable");
         }
+        let _linked = LinkGuard(root.0.join(BINARIES[2]));
         let entries = state.collect_at(Some(&root.0), |_| {
             panic!("non-files, links and oversized files must not be read")
         });

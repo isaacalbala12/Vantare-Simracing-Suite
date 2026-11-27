@@ -7,6 +7,15 @@ use std::{
 use vantare_installer::engine::{Installation, ReadError, Rejection, State, validation};
 
 static NEXT: AtomicU64 = AtomicU64::new(0);
+#[cfg(windows)]
+struct LinkGuard(PathBuf);
+#[cfg(windows)]
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = fs::remove_dir(&self.0).or_else(|_| fs::remove_file(&self.0));
+    }
+}
 struct Fixture(PathBuf);
 impl Fixture {
     fn new() -> Self {
@@ -218,6 +227,7 @@ fn read_only_probe_allows_a_link_nested_in_user_data_without_following_it() {
     let nested = fixture.generation().join("data/nested");
     fs::create_dir(&nested).unwrap();
     std::os::windows::fs::symlink_file(&canary, nested.join("pointer.txt")).unwrap();
+    let _pointer = LinkGuard(nested.join("pointer.txt"));
     assert!(Installation::read(&fixture.0).unwrap().state.is_some());
     assert_eq!(fs::read(canary).unwrap(), b"outside stays intact");
 }

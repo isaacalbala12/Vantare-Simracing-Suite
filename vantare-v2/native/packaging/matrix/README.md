@@ -16,7 +16,7 @@ Casos, cada uno con raíz y HKCU inyectado propios:
 4. Solo versiones iguales o menores: solo se pide la lista.
 5. Sin `qa-feed-port`: la sesión sigue.
 
-El servidor se para con su archivo de parada o por su propio proceso, nunca por nombre. `VANTARE_QA_WRONG_BOOT_TOKEN` solo actúa con `boot-pending.json`, porque la raíz hereda el entorno a todas sus sesiones. La clave TEST es pública: el riesgo y su contención están en `../README.md`. De momento el paso no bloquea el job de CI: un fallo deja un aviso.
+El servidor se para con su archivo de parada o por su propio proceso, nunca por nombre. El token ajeno usa `VANTARE_QA_WRONG_PENDING_BOOT_TOKEN`, que solo actúa con `boot-pending.json` porque la raíz hereda el entorno a todas sus sesiones. `VANTARE_QA_WRONG_BOOT_TOKEN` sigue actuando en toda sesión, como espera `launcher-tests.ps1`. La clave TEST es pública: el riesgo y su contención están en `../README.md`. De momento el paso no bloquea el job de CI: un fallo deja un aviso.
 
 El workflow `branch-channel-gates.yml` construye los cinco fixtures con `native/scripts/compilar.ps1`, descarga el ZIP histórico, ejecuta el guard y después la matriz. Una ejecución local usa las mismas rutas de binarios y una raíz nueva bajo `D:/VantareServer/qa`; no debe usar la instalación ni el registro reales.
 

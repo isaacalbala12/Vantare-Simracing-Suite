@@ -404,10 +404,13 @@ fn qa_session(root: &Path, probe: &Path) -> io::Result<ExitCode> {
     }
     let token =
         std::env::var("VANTARE_BOOT_TOKEN").map_err(|_| io_error("Falta token de arranque QA"))?;
-    // La raíz hereda el entorno a todas sus sesiones: el token ajeno solo vale para el
-    // arranque pendiente de confirmar, no para la sesión que prepara la actualización.
+    // `VANTARE_QA_WRONG_BOOT_TOKEN`: token ajeno en toda sesión; `launcher-tests` espera que
+    // la raíz acabe en error. `VANTARE_QA_WRONG_PENDING_BOOT_TOKEN`: solo en el arranque
+    // pendiente de confirmar, porque la raíz hereda el entorno a todas sus sesiones y la
+    // que prepara la actualización firmada (y la de después de revertir) deben ir bien.
     let wrong_token = std::env::var_os("VANTARE_QA_WRONG_BOOT_TOKEN").is_some()
-        && root.join("boot-pending.json").try_exists()?;
+        || (std::env::var_os("VANTARE_QA_WRONG_PENDING_BOOT_TOKEN").is_some()
+            && root.join("boot-pending.json").try_exists()?);
     #[cfg(feature = "hub-update-qa")]
     qa_session_feed(root)?;
     let mut hub = Service::new(

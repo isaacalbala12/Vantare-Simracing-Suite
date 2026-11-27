@@ -136,7 +136,9 @@ function Invoke-Root($Case,[switch]$WrongToken){
     $info.EnvironmentVariables['VANTARE_QA_REGISTRY_PREFIX']=$Case.Prefix
     $info.EnvironmentVariables['VANTARE_QA_SHELL_ROOT']=$Case.Shell
     $info.EnvironmentVariables['VANTARE_QA_SESSION_PROBE']=$BootProbe
-    if($WrongToken){$info.EnvironmentVariables['VANTARE_QA_WRONG_BOOT_TOKEN']='1'}
+    # Solo el arranque pendiente de 0.0.990 publica otro token; la sesión de después de
+    # revertir debe ir bien para demostrar que la oferta rechazada no se vuelve a pedir.
+    if($WrongToken){$info.EnvironmentVariables['VANTARE_QA_WRONG_PENDING_BOOT_TOKEN']='1'}
     $process=[Diagnostics.Process]::Start($info)
     try{
         $stdout=$process.StandardOutput.ReadToEndAsync();$stderr=$process.StandardError.ReadToEndAsync()

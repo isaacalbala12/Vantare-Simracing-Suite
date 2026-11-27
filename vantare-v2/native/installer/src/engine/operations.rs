@@ -1491,8 +1491,8 @@ const DUCK_HEADER: usize = 4096;
 /// then cuts the free blocks off the end (#2815): blocks the file lacks must
 /// all be in the free list of that header. Checked against recordings of the
 /// real recorder (`tests/fixtures/grabaciones-reales.py`) and of hub-host.
+const IN_USE: &str = "falta un bloque en uso";
 fn intact(mut file: &fs::File) -> std::result::Result<(), String> {
-    const IN_USE: &str = "falta un bloque en uso";
     let broken = |detail: &str| {
         format!("no es una grabación completa ({detail}): puede ser una copia cortada")
     };
@@ -1515,11 +1515,12 @@ fn intact(mut file: &fs::File) -> std::result::Result<(), String> {
             "versión de almacenamiento {version}; solo se lee la {STORAGE_VERSION} de DuckDB 1.5.5"
         )));
     }
-    // iteration, meta block, free list, block count, block size.
-    let newest = if word(&headers[2], 8) > word(&headers[1], 8) {
-        &headers[2]
-    } else {
+    // iteration, meta block, free list, block count, block size. As `DuckDB`
+    // does, the one at 8 192 wins a tie.
+    let newest = if word(&headers[1], 8) > word(&headers[2], 8) {
         &headers[1]
+    } else {
+        &headers[2]
     };
     let blocks = word(newest, 32);
     let size = usize::try_from(word(newest, 40))
@@ -1540,11 +1541,7 @@ fn intact(mut file: &fs::File) -> std::result::Result<(), String> {
         if pointer == u64::MAX {
             return Err(broken(IN_USE)); // No free list: every block is in use.
         }
-        let free = free_list(file, pointer, blocks, present, size).map_err(broken)?;
-        let missing = blocks - present;
-        if missing > free.len() as u64 || !(present..blocks).all(|id| free.contains(&id)) {
-            return Err(broken(IN_USE));
-        }
+        free_tail(file, pointer, blocks, present, size).map_err(broken)?;
     }
     Ok(())
 }
@@ -1562,25 +1559,43 @@ fn sound(block: &[u8]) -> bool {
                 sum ^ u64::from_le_bytes(*chunk).wrapping_mul(0xbf58_476d_1ce4_e5b9)
             })
 }
-/// The free list `pointer` names, as `DuckDB` 1.5.5 writes it: a count and that
-/// many block ids, 8 bytes each, along a chain of metadata parts. A block holds
-/// 64 parts after its checksum, of `(size - 8) / 64` bytes rounded down to 8,
-/// each starting with the pointer to the next (block id in the low 56 bits,
-/// part in the high 8; all ones: none). Only blocks already verified are read,
-/// each part once, and no more parts than `blocks` ids would fill.
-fn free_list(
+/// Whether every block from `present` to `blocks` is in the free list `pointer`
+/// names, as `DuckDB` 1.5.5 writes it: a count and that many block ids, 8 bytes
+/// each, along a chain of metadata parts. A block holds 64 parts after its
+/// checksum, of `(size - 8) / 64` bytes rounded down to 8, each starting with
+/// the pointer to the next (block id in the low 56 bits, part in the high 8;
+/// all ones: none). Only blocks already verified are read, each part once, so
+/// a chain ends within the file. Memory is one bit per part and one per missing
+/// block, and a list that could not name every missing block is not read: a
+/// header that counts more blocks than the file could list stops at once.
+fn free_tail(
     mut file: &fs::File,
     pointer: u64,
     blocks: u64,
     present: u64,
     size: usize,
-) -> std::result::Result<BTreeSet<u64>, &'static str> {
+) -> std::result::Result<(), &'static str> {
     const OUTSIDE: &str = "la lista de bloques libres apunta fuera de lo comprobado";
     const LIMIT: &str = "la lista de bloques libres supera su tope";
     let part = (size - 8) / 64 / 8 * 8;
-    let hops = blocks.saturating_add(1).div_ceil((part as u64 - 8) / 8);
-    let (mut next, mut seen) = (pointer, BTreeSet::new());
-    let (mut buffer, mut at) = (vec![0_u8; part], part);
+    let missing = blocks - present;
+    // Every part of every verified block, filled with ids.
+    let room = present.saturating_mul(64 * (part as u64 - 8) / 8);
+    if missing > room {
+        return Err(IN_USE);
+    }
+    let bits = |count: u64| usize::try_from(count.div_ceil(64)).map_err(|_| LIMIT);
+    let (mut seen, mut free) = (
+        vec![0_u64; bits(present * 64)?],
+        vec![0_u64; bits(missing)?],
+    );
+    let mark = |set: &mut [u64], at: u64| {
+        let (word, bit) = (usize::try_from(at / 64).expect("within the set"), at % 64);
+        let new = set[word] & (1 << bit) == 0;
+        set[word] |= 1 << bit;
+        new
+    };
+    let (mut next, mut buffer, mut at) = (pointer, vec![0_u8; part], part);
     let mut read = || -> std::result::Result<u64, &'static str> {
         let mut bytes = [0_u8; 8];
         for byte in &mut bytes {
@@ -1589,11 +1604,8 @@ fn free_list(
                 if next == u64::MAX || block >= present || index >= 64 {
                     return Err(OUTSIDE);
                 }
-                if !seen.insert(next) {
+                if !mark(&mut seen, block * 64 + index) {
                     return Err("la lista de bloques libres vuelve a una parte ya leída");
-                }
-                if seen.len() as u64 > hops {
-                    return Err(LIMIT);
                 }
                 let offset = 3 * DUCK_HEADER as u64 + block * size as u64 + 8;
                 io::Seek::seek(&mut file, io::SeekFrom::Start(offset + index * part as u64))
@@ -1610,7 +1622,20 @@ fn free_list(
     if count > blocks {
         return Err(LIMIT);
     }
-    (0..count).map(|_| read()).collect()
+    if count < missing {
+        return Err(IN_USE);
+    }
+    let mut found = 0;
+    for _ in 0..count {
+        let id = read()?;
+        if (present..blocks).contains(&id) && mark(&mut free, id - present) {
+            found += 1;
+        }
+    }
+    if found < missing {
+        return Err(IN_USE);
+    }
+    Ok(())
 }
 /// The generation an unconfirmed update staged, which a sweep never gathers
 /// from. An error when `boot-pending.json` cannot be read or does not name a

@@ -614,7 +614,12 @@ grabaciones de las generaciones con `Duplicates::RemoveIdentical`:
   bloques libres a la que apunta esa cabecera (en bruto, en sus bloques de
   metadatos ya comprobados, cada parte una sola vez y con tope) y solo se acepta
   si **todos** los bloques que faltan están libres. Cualquier cosa inesperada
-  deja la grabación donde está. Comprobado con grabaciones del grabador real
+  deja la grabación donde está. La lectura usa como mucho un bit por parte de
+  metadatos y uno por bloque que falta: una cabecera que cuenta más bloques de
+  los que el archivo podría listar se rechaza sin leer. La suma de control de
+  DuckDB **no es una firma**: protege de la corrupción accidental (copias
+  cortadas, ceros, bytes cambiados), no de un archivo falsificado a propósito
+  con sus sumas recalculadas. Comprobado con grabaciones del grabador real
   (`tests/fixtures/grabaciones-reales.py`, bloques de 256 KiB) y con las de
   `hub-host/src/analysis/fixtures/`; un test falla si cambia la versión de
   DuckDB del `Cargo.lock`, para revalidar este lector.

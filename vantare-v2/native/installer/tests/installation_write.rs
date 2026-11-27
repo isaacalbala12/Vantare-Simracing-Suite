@@ -4760,9 +4760,15 @@ fn confirm_moves_real_recordings_even_when_duckdb_cut_their_free_blocks_off_the_
     };
     let counted = [newest(&trimmed), newest(&full)];
     assert_eq!(counted, [(8192, 15, 256 * 1024), (4096, 15, 256 * 1024)]);
+    // Both database headers of the same iteration: `DuckDB` takes the one at
+    // 8 192, here the newest; the one at 4 096 lists other free blocks.
+    let mut tie = trimmed.clone();
+    tie[4096 + 8..4096 + 16].copy_from_slice(&word(&trimmed, 8192 + 8).to_le_bytes());
+    seal(&mut tie[4096..8192]);
     let files = [
         ("series-1-1.duckdb", &trimmed),
         ("series-2-2.duckdb", &full),
+        ("series-3-3.duckdb", &tie),
     ];
     record(
         &recordings(&c),
@@ -4849,7 +4855,7 @@ fn the_free_list_is_read_bounded_and_anything_unexpected_keeps_the_recording() {
     let [_, _, c] = fixture.three_generations();
     let (next, none) = (1_u64 << 56, u64::MAX); // Part 1 of block 0; the end.
     let six: &[u64] = &[7, 2, 3, 4, 5, 6];
-    let files: [(&str, Vec<u8>); 8] = [
+    let files: [(&str, Vec<u8>); 10] = [
         // Seven ids over two parts: 2 to 8 are free, the file stops at 2.
         (
             "series-1-1.duckdb",
@@ -4864,6 +4870,10 @@ fn the_free_list_is_read_bounded_and_anything_unexpected_keeps_the_recording() {
         ("series-4-1.duckdb", trimmed(1, &[(none, &[4, 2])])),
         ("series-5-1.duckdb", trimmed(2, &[(none, &[1, 3])])),
         ("series-5-2.duckdb", trimmed(2, &[(none, &[1, 2])])),
+        // Enough ids, but one of them twice.
+        ("series-5-3.duckdb", trimmed(2, &[(none, &[2, 3, 3])])),
+        // A header that counts 2^60 blocks: stops before reading or allocating.
+        ("series-6-1.duckdb", trimmed(1 << 60, &[(none, &[1, 2])])),
     ];
     let listed = files
         .each_ref()

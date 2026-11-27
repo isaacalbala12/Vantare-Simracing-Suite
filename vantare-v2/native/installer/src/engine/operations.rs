@@ -929,7 +929,7 @@ fn retire_member(path: &Path, member: &installation::Member) -> Result<()> {
     Ok(fs::remove_file(path)?)
 }
 /// Size and SHA-256 of the bytes behind an open handle.
-fn fingerprint(file: &mut fs::File) -> Result<(u64, String)> {
+pub(super) fn fingerprint(file: &mut fs::File) -> Result<(u64, String)> {
     let mut hash = Sha256::new();
     let size = io::copy(file, &mut hash)?;
     Ok((size, format!("{:x}", hash.finalize())))

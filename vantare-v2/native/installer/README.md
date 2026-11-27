@@ -133,19 +133,22 @@ startup-options.json en la raíz (schema1/autostart), siempre sin escribir data.
 Desinstalar retira la Run válida después de retirar programa; si Windows niega
 borrarla avisa y termina. Una Run ajena con el mismo nombre se conserva.
 
-Si Cleanup se interrumpe después de retirar Uninstall.exe y queda su marker,
-el Setup público puede reinstalar sin limpieza manual. Solo retira ese marker
-si faltan EXE/state/registro, reconoce la raíz nativa y valida identidad
-residual y schema/hash/tamaño de los metadatos. Un marker con EXE pendiente o
-instalación renovada sigue bloqueando Setup; el helper antiguo conserva la
-instalación renovada. Los datos conservados se adoptan por el motor habitual.
+Si Cleanup falla o se interrumpe y queda su marker, el Setup público reinstala
+sin limpieza manual (#2829). Sin state ni registro, reconoce la raíz nativa,
+valida schema/hash del marker y, si queda `Uninstall.exe`, lo retira solo si es
+de su canal (`residue_owned`), ningún proceso vivo tiene esa imagen (PID +
+`QueryFullProcessImageNameW`, ruta canónica, nunca por nombre) y se abre en
+exclusiva con el hash del marker. Si sigue abierto, salida 2 con el PID que hay
+que cerrar. Solo retira esos dos archivos; datos y grabaciones se adoptan por el
+motor habitual. Con state o registro sigue bloqueando. El script, si aún corre,
+vuelve a comprobar marker y state bajo `beta-session.lock` y no borra nada.
 `packaging/matrix/cleanup-tests.ps1` cubre las guardas del script (marcador,
 hash, instalación renovada, espera al padre, raíz enlazada y `PSModulePath`
-heredado); el test de `src/engine/host.rs`
-`cleanup_exit_status_is_authoritative_and_missing_marker_retains_legacy_residue`
-cubre las del motor (código de salida, resto sin marcador, canal ajeno,
-instalación renovada y entorno). La reinstalación tras una limpieza
-interrumpida (marcador sin ejecutable) no tiene hoy un test propio.
+heredado); los tests de `src/engine/host.rs` cubren las del motor y la
+recuperación (proceso vivo, mismo nombre en otra carpeta, archivo en uso, canal
+ajeno, sin marcador u otro hash), y
+`setup_reinstalls_after_a_cleanup_that_never_finished_and_adopts_the_data` la
+reinstalación completa, con y sin `Uninstall.exe`.
 
 ## Build y QA
 

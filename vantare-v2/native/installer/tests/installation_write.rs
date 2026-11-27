@@ -1768,7 +1768,7 @@ impl Fixture {
                     control.warning,
                 )
             },
-            || Ok(()),
+            || engine::prepare_orphan(&shell.context, &root),
         )
     }
     fn remove(&self, shell: &Shell) -> disk::Result<()> {
@@ -4231,6 +4231,41 @@ fn retained_data_name_their_channel_and_beta_keeps_its_published_format() {
             b"opaque\0user\xffbytes"
         );
         assert!(!fixture.root.join("retained-data.json").exists());
+    }
+}
+
+/// La limpieza diferida no terminó (#2829): con el desinstalador todavía en la
+/// carpeta o ya retirado, el Setup siguiente reinstala sin esperar para siempre
+/// y adopta los datos del usuario.
+#[test]
+fn setup_reinstalls_after_a_cleanup_that_never_finished_and_adopts_the_data() {
+    for uninstaller_left in [true, false] {
+        let fixture = Fixture::new();
+        let shell = retained_residue(&fixture, "beta");
+        let marker = fixture.root.join("installer-cleanup.json");
+        assert!(marker.is_file(), "the uninstall left its cleanup marker");
+        if !uninstaller_left {
+            fs::remove_file(fixture.root.join("Uninstall.exe")).unwrap();
+        }
+        fixture
+            .setup(
+                &shell,
+                &fixture.package_for("beta", "1.0.0"),
+                Mode::Auto,
+                None,
+            )
+            .unwrap_or_else(|error| panic!("left={uninstaller_left}: {error}"));
+        assert!(!marker.exists(), "left={uninstaller_left}");
+        assert!(fixture.root.join("state.json").is_file());
+        assert!(
+            fixture.root.join("Uninstall.exe").is_file(),
+            "new uninstaller"
+        );
+        assert_eq!(
+            fs::read(fixture.data().join("opaque.bin")).unwrap(),
+            b"opaque\0user\xffbytes",
+            "left={uninstaller_left}"
+        );
     }
 }
 

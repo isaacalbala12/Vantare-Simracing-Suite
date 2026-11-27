@@ -139,8 +139,13 @@ si faltan EXE/state/registro, reconoce la raíz nativa y valida identidad
 residual y schema/hash/tamaño de los metadatos. Un marker con EXE pendiente o
 instalación renovada sigue bloqueando Setup; el helper antiguo conserva la
 instalación renovada. Los datos conservados se adoptan por el motor habitual.
-`packaging/installer-cleanup-recovery-tests.ps1` cubre handle real del marker,
-interrupción sincronizada, reinstalación pública y estas guardas.
+`packaging/matrix/cleanup-tests.ps1` cubre las guardas del script (marcador,
+hash, instalación renovada, espera al padre, raíz enlazada y `PSModulePath`
+heredado); el test de `src/engine/host.rs`
+`cleanup_exit_status_is_authoritative_and_missing_marker_retains_legacy_residue`
+cubre las del motor (código de salida, resto sin marcador, canal ajeno,
+instalación renovada y entorno). La reinstalación tras una limpieza
+interrumpida (marcador sin ejecutable) no tiene hoy un test propio.
 
 ## Build y QA
 

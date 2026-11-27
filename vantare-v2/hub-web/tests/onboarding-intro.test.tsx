@@ -343,8 +343,10 @@ it("never offers a plan to a tester on the Account step", async () => {
     tester: true,
   });
   expect(plans()).toEqual([]);
-  // Nothing else takes the plans' place on this step.
-  expect(document.querySelector(".v-ob-art")?.children).toHaveLength(0);
+  // Only the tester pass takes the plans' place, with nothing to press.
+  const art = document.querySelector(".v-ob-art");
+  expect(art?.querySelector("h2")?.textContent).toBe("TESTER");
+  expect(art?.querySelectorAll("button, a")).toHaveLength(0);
   view.account({ signedIn: true, checking: false, blocked: false });
   expect(plans()).toHaveLength(2);
 });

@@ -55,9 +55,12 @@ export function create(context: MockContext): MockHandler {
   }
   if (context.sceneName === "onboarding-cuenta-cargando")
     current = { ...current, session: "pending", gate: "checking" };
+  const datedTester = context.sceneName === "onboarding-cuenta-tester-fecha";
+  const onboardingTester =
+    datedTester || context.sceneName === "onboarding-cuenta-tester";
   if (
     context.sceneName === "onboarding-cuenta-sesion" ||
-    context.sceneName === "onboarding-cuenta-tester" ||
+    onboardingTester ||
     context.sceneName.startsWith("onboarding-correo-")
   )
     current = {
@@ -67,9 +70,10 @@ export function create(context: MockContext): MockHandler {
       name: demoIdentity.name,
       plan: { kind: "verified" },
       license: {
-        tester: context.sceneName === "onboarding-cuenta-tester",
+        tester: onboardingTester,
         status: "active",
-        untilMs: null,
+        // 10 December 2026, 14:05 in Madrid.
+        untilMs: datedTester ? Date.UTC(2026, 11, 10, 13, 5) : null,
       },
     };
   // First-run exit checks must still meet Access's existing modal boundary.

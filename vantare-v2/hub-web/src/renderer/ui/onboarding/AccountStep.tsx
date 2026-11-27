@@ -11,6 +11,8 @@ export interface OnboardingAccountStatus {
   accessLabel?: string;
   /** The host's signed tester role: no plans are offered to this account. */
   tester?: boolean;
+  /** The host's signed license date (Unix ms) of that tester, if it sent one. */
+  until?: number | null;
   failed?: boolean;
 }
 export const signedOutAccount: OnboardingAccountStatus = {

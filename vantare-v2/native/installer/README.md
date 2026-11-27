@@ -603,11 +603,29 @@ grabaciones de las generaciones con `Duplicates::RemoveIdentical`:
   base de datos y cada bloque que cuenta la más reciente (cada bloque de DuckDB
   empieza con la suma de control del resto). Una copia cortada, a ceros (lo que
   deja `CopyFileW` cortado por un apagón: el tamaño final con ceros detrás) o
-  con un byte cambiado se queda donde está y se anota. El cálculo se comprobó
-  con los dos archivos DuckDB reales de `hub-host/src/analysis/fixtures/`.
+  con un byte cambiado se queda donde está y se anota **con el motivo
+  concreto** (cabecera cortada, sin marca, versión, suma de control de una
+  cabecera o de un bloque, bloque en uso que falta, lista de libres rara).
+- **Formato de DuckDB 1.5.5** (#2815), el que fija `storage`: versión de
+  almacenamiento 64 en el byte 12 de la cabecera principal; otra versión no se
+  lee y la grabación se queda. Al cerrar, DuckDB escribe la cabecera y **después**
+  recorta del final los bloques libres, así que una grabación buena puede tener
+  menos bloques de los que cuenta su cabecera. Entonces se lee la lista de
+  bloques libres a la que apunta esa cabecera (en bruto, en sus bloques de
+  metadatos ya comprobados, cada parte una sola vez y con tope) y solo se acepta
+  si **todos** los bloques que faltan están libres. Cualquier cosa inesperada
+  deja la grabación donde está. La lectura usa como mucho un bit por parte de
+  metadatos y uno por bloque que falta: una cabecera que cuenta más bloques de
+  los que el archivo podría listar se rechaza sin leer. La suma de control de
+  DuckDB **no es una firma**: protege de la corrupción accidental (copias
+  cortadas, ceros, bytes cambiados), no de un archivo falsificado a propósito
+  con sus sumas recalculadas. Comprobado con grabaciones del grabador real
+  (`tests/fixtures/grabaciones-reales.py`, bloques de 256 KiB) y con las de
+  `hub-host/src/analysis/fixtures/`; un test falla si cambia la versión de
+  DuckDB del `Cargo.lock`, para revalidar este lector.
   Coste: leer la grabación entera una vez, solo al moverla (medido en la PR).
-  Un bloque libre que DuckDB no hubiera escrito nunca haría que una grabación
-  buena se quedara en su generación: nada se pierde.
+  Un bloque libre dentro del archivo que DuckDB no hubiera escrito nunca haría
+  que una grabación buena se quedara en su generación: nada se pierde.
 - Una copia repetida se retira **solo** si tamaño y SHA-256 coinciden con la de
   la carpeta única (lo de T1). Un archivo con dos nombres (enlace duro) cuyo
   otro nombre ya está en la carpeta única no se puede comparar, porque no se

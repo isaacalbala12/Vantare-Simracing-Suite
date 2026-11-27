@@ -2727,6 +2727,15 @@ fn logged(root: &Path) -> Vec<String> {
 }
 
 #[test]
+fn a_note_names_the_root_however_its_path_is_written() {
+    let note = r"se conserva \\?\C:\Users\Ana\Vantare\a; c:\users\ana\VANTARE\b";
+    for root in [r"\\?\C:\Users\Ana\Vantare", r"C:\Users\Ana\Vantare"] {
+        let shown = disk::relative(Path::new(root), note);
+        assert_eq!(shown, r"se conserva <raíz>\a; <raíz>\b", "{root}");
+    }
+}
+
+#[test]
 fn confirm_and_uninstall_write_their_notes_to_the_installation_log() {
     let fixture = Fixture::new();
     let [a, _] = fixture.two_generations();
@@ -4433,14 +4442,20 @@ fn seal(block: &mut [u8]) {
         });
     block[..8].copy_from_slice(&sum.to_le_bytes());
 }
-/// A recording as `DuckDB` leaves it: its mark, two database headers (the newest
-/// counts `blocks` of 4 096 bytes; the older one, more than the file has) and
-/// those blocks, filled with `fill`; every one sealed with its checksum.
+/// A recording as `DuckDB` 1.5.5 leaves it: its mark and storage version, two
+/// database headers (the newest, at 8 192, counts `blocks` of 4 096 bytes; the
+/// older one, more than the file has; neither has free blocks) and those
+/// blocks, filled with `fill`; every one sealed with its checksum.
 fn duck(blocks: u64, fill: u8) -> Vec<u8> {
+    duck_at([4096, 8192], blocks, fill)
+}
+/// `duck`, with the older and the newest database header at `[older, newest]`.
+fn duck_at(places: [usize; 2], blocks: u64, fill: u8) -> Vec<u8> {
     let mut bytes = vec![0_u8; 3 * 4096];
     bytes[8..12].copy_from_slice(b"DUCK");
-    for (at, iteration, count) in [(4096, 1_u64, blocks + 7), (8192, 2, blocks)] {
-        for (offset, value) in [(8, iteration), (32, count), (40, 4096)] {
+    bytes[12..20].copy_from_slice(&64_u64.to_le_bytes());
+    for (at, iteration, count) in [(places[0], 1_u64, blocks + 7), (places[1], 2, blocks)] {
+        for (offset, value) in [(8, iteration), (24, u64::MAX), (32, count), (40, 4096)] {
             bytes[at + offset..at + offset + 8].copy_from_slice(&value.to_le_bytes());
         }
     }
@@ -4681,12 +4696,230 @@ fn a_reverted_orphan_gives_its_whole_recordings_and_keeps_the_broken_ones() {
         assert_eq!(&read(&recordings(&b).join(name)), bytes, "{name}");
     }
     assert_eq!(read(&recordings(&c).join(moved[2])), half);
-    let reason = "no es una grabación completa";
-    assert!(
-        summarized(&notes, &recordings(&b), &broken, reason),
-        "{notes:?}"
+    // One note per reason, each saying what failed (#2815).
+    for (names, detail) in [
+        (&broken[..1], IN_USE),
+        // Its free list lives in the block that was cut off.
+        (
+            &broken[1..2],
+            "la lista de bloques libres apunta fuera de lo comprobado",
+        ),
+        (&broken[2..3], "no lleva la marca DUCK"),
+        (&broken[3..4], "la cabecera está cortada"),
+        (&broken[4..7], "falla la suma de control de un bloque"),
+        (&broken[7..], "falla la suma de control de una cabecera"),
+    ] {
+        let reason = format!("no es una grabación completa ({detail})");
+        assert!(
+            summarized(&notes, &recordings(&b), names, &reason),
+            "{detail}: {notes:?}"
+        );
+    }
+    let half = format!("no es una grabación completa ({IN_USE})");
+    assert!(summarized(&notes, &recordings(&c), &[moved[2]], &half));
+}
+
+const IN_USE: &str = "falta un bloque en uso";
+const BLOCK: usize = 256 * 1024;
+fn word(bytes: &[u8], at: usize) -> u64 {
+    u64::from_le_bytes(bytes[at..at + 8].try_into().expect("eight bytes"))
+}
+/// Two recordings of the real recorder (`DuckDB` 1.5.5, blocks of 256 KiB),
+/// made by `fixtures/grabaciones-reales.py`: `recortada` counts 15 blocks and
+/// has 9, because its last checkpoint cut the six free ones at the end off the
+/// file; `completa` has its 15, with free ones inside.
+fn real_recordings() -> [Vec<u8>; 2] {
+    let zip = include_bytes!("fixtures/grabaciones-reales.zip");
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(&zip[..])).expect("fixture");
+    ["recortada.duckdb", "completa.duckdb"].map(|name| {
+        let mut bytes = Vec::new();
+        let mut entry = archive.by_name(name).expect(name);
+        std::io::Read::read_to_end(&mut entry, &mut bytes).expect(name);
+        bytes
+    })
+}
+
+#[test]
+fn confirm_moves_real_recordings_even_when_duckdb_cut_their_free_blocks_off_the_end() {
+    let fixture = Fixture::new();
+    let [_, _, c] = fixture.three_generations();
+    let [trimmed, full] = real_recordings();
+    assert_eq!(
+        trimmed.len(),
+        3 * 4096 + 9 * BLOCK,
+        "six free blocks cut off"
     );
-    assert!(summarized(&notes, &recordings(&c), &[moved[2]], reason));
+    assert_eq!(full.len(), 3 * 4096 + 15 * BLOCK);
+    let newest = |bytes: &[u8]| {
+        let at = if word(bytes, 8192 + 8) > word(bytes, 4096 + 8) {
+            8192
+        } else {
+            4096
+        };
+        (at, word(bytes, at + 32), word(bytes, at + 40))
+    };
+    let counted = [newest(&trimmed), newest(&full)];
+    assert_eq!(counted, [(8192, 15, 256 * 1024), (4096, 15, 256 * 1024)]);
+    // Both database headers of the same iteration: `DuckDB` takes the one at
+    // 8 192, here the newest; the one at 4 096 lists other free blocks.
+    let mut tie = trimmed.clone();
+    tie[4096 + 8..4096 + 16].copy_from_slice(&word(&trimmed, 8192 + 8).to_le_bytes());
+    seal(&mut tie[4096..8192]);
+    let files = [
+        ("series-1-1.duckdb", &trimmed),
+        ("series-2-2.duckdb", &full),
+        ("series-3-3.duckdb", &tie),
+    ];
+    record(
+        &recordings(&c),
+        &files.map(|(name, bytes)| (name, bytes.as_slice())),
+    );
+    let notes = fixture.confirm();
+    let single = fixture.root.join("recordings");
+    assert_eq!(names(&single), files.map(|(name, _)| name), "{notes:?}");
+    for (name, bytes) in files {
+        assert_eq!(&read(&single.join(name)), bytes, "{name}");
+    }
+}
+
+#[test]
+fn a_cut_or_altered_real_recording_stays_and_the_log_says_why() {
+    let fixture = Fixture::new();
+    let [_, _, c] = fixture.three_generations();
+    let [trimmed, full] = real_recordings();
+    let used = 3 * 4096 + 8 * BLOCK; // Block 8 is in use; 9 to 14 are free.
+    let mut header = full.clone();
+    header[4096 + 100] ^= 1; // The newest database header of `completa`.
+    let mut version = full.clone();
+    version[12] = 65;
+    seal(&mut version[..4096]);
+    let files: [(&str, Vec<u8>); 5] = [
+        ("series-1-1.duckdb", trimmed[..used].to_vec()),
+        ("series-1-2.duckdb", trimmed[..used + BLOCK / 2].to_vec()),
+        ("series-2-1.duckdb", full[..full.len() - BLOCK].to_vec()),
+        ("series-3-1.duckdb", header),
+        ("series-4-1.duckdb", version),
+    ];
+    let listed = files
+        .each_ref()
+        .map(|(name, bytes)| (*name, bytes.as_slice()));
+    record(&recordings(&c), &listed);
+    let notes = fixture.confirm();
+    let names_of = files.each_ref().map(|(name, _)| *name);
+    assert_eq!(names(&recordings(&c)), names_of);
+    for (name, bytes) in &files {
+        assert_eq!(&read(&recordings(&c).join(name)), bytes, "{name}");
+    }
+    assert!(!fixture.root.join("recordings").exists());
+    let log = logged(&fixture.root);
+    let version = "versión de almacenamiento 65; solo se lee la 64 de DuckDB 1.5.5";
+    for (names, detail) in [
+        (&names_of[..3], IN_USE),
+        (&names_of[3..4], "falla la suma de control de una cabecera"),
+        (&names_of[4..], version),
+    ] {
+        let reason = format!("no es una grabación completa ({detail})");
+        assert!(
+            summarized(&notes, &recordings(&c), names, &reason),
+            "{notes:?}"
+        );
+        let written = |line: &String| line.contains(&reason) && line.contains(names[0]);
+        assert!(log.iter().any(written), "{detail}: {log:?}");
+    }
+}
+
+/// A recording of 4 096-byte blocks whose newest header counts `2 + missing`
+/// while the file has two: block 0 keeps the free list in its metadata parts of
+/// 56 bytes (each the pointer to the next and up to six 8-byte words).
+fn trimmed(missing: u64, parts: &[(u64, &[u64])]) -> Vec<u8> {
+    let mut bytes = duck(2, 0xA);
+    for (offset, value) in [(24, 0), (32, 2 + missing)] {
+        bytes[8192 + offset..8192 + offset + 8].copy_from_slice(&value.to_le_bytes());
+    }
+    seal(&mut bytes[8192..3 * 4096]);
+    let block = &mut bytes[3 * 4096..4 * 4096];
+    block.fill(0);
+    for (index, (next, words)) in parts.iter().enumerate() {
+        for (at, value) in std::iter::once(next).chain(*words).enumerate() {
+            let at = 8 + index * 56 + at * 8;
+            block[at..at + 8].copy_from_slice(&value.to_le_bytes());
+        }
+    }
+    seal(block);
+    bytes
+}
+
+#[test]
+fn the_free_list_is_read_bounded_and_anything_unexpected_keeps_the_recording() {
+    let fixture = Fixture::new();
+    let [_, _, c] = fixture.three_generations();
+    let (next, none) = (1_u64 << 56, u64::MAX); // Part 1 of block 0; the end.
+    let six: &[u64] = &[7, 2, 3, 4, 5, 6];
+    let files: [(&str, Vec<u8>); 10] = [
+        // Seven ids over two parts: 2 to 8 are free, the file stops at 2.
+        (
+            "series-1-1.duckdb",
+            trimmed(7, &[(next, six), (none, &[7, 8])]),
+        ),
+        // The newest header at 4 096, the older one counting more blocks.
+        ("series-1-2.duckdb", duck_at([8192, 4096], 2, 0xC)),
+        ("series-2-1.duckdb", trimmed(7, &[(0, six)])),
+        // A block past the file, and a part past the 64 of a block.
+        ("series-3-1.duckdb", trimmed(7, &[(9, six)])),
+        ("series-3-2.duckdb", trimmed(7, &[(64 << 56, six)])),
+        ("series-4-1.duckdb", trimmed(1, &[(none, &[4, 2])])),
+        ("series-5-1.duckdb", trimmed(2, &[(none, &[1, 3])])),
+        ("series-5-2.duckdb", trimmed(2, &[(none, &[1, 2])])),
+        // Enough ids, but one of them twice.
+        ("series-5-3.duckdb", trimmed(2, &[(none, &[2, 3, 3])])),
+        // A header that counts 2^60 blocks: stops before reading or allocating.
+        ("series-6-1.duckdb", trimmed(1 << 60, &[(none, &[1, 2])])),
+    ];
+    let listed = files
+        .each_ref()
+        .map(|(name, bytes)| (*name, bytes.as_slice()));
+    record(&recordings(&c), &listed);
+    let notes = fixture.confirm();
+    let single = fixture.root.join("recordings");
+    assert_eq!(names(&single), [files[0].0, files[1].0], "{notes:?}");
+    for (name, bytes) in &files[..2] {
+        assert_eq!(&read(&single.join(name)), bytes, "{name}");
+    }
+    let names_of = files.each_ref().map(|(name, _)| *name);
+    for (names, detail) in [
+        (
+            &names_of[2..3],
+            "la lista de bloques libres vuelve a una parte ya leída",
+        ),
+        (
+            &names_of[3..5],
+            "la lista de bloques libres apunta fuera de lo comprobado",
+        ),
+        (&names_of[5..6], "la lista de bloques libres supera su tope"),
+        (&names_of[6..], IN_USE),
+    ] {
+        let reason = format!("no es una grabación completa ({detail})");
+        assert!(
+            summarized(&notes, &recordings(&c), names, &reason),
+            "{notes:?}"
+        );
+    }
+}
+
+#[test]
+fn the_recording_reader_is_checked_against_the_pinned_duckdb() {
+    let lock = include_str!("../../Cargo.lock").replace("\r\n", "\n");
+    for package in ["duckdb", "libduckdb-sys"] {
+        let pinned = format!("name = \"{package}\"\nversion = \"1.10505.0\"\n");
+        assert!(
+            lock.contains(&pinned),
+            "{package} ya no es DuckDB 1.5.5: el lector de integridad de grabaciones \
+             (`intact` en installer/src/engine/operations.rs) solo está validado con \
+             ella. Revalida la versión de almacenamiento del byte 12 (64), la lista \
+             de bloques libres y el recorte del final; regenera los fixtures reales \
+             con tests/fixtures/grabaciones-reales.py y actualiza este test"
+        );
+    }
 }
 
 #[test]

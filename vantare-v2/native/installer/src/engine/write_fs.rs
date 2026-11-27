@@ -396,9 +396,30 @@ fn append(root: &Path, note: &str, once: bool) {
     let _ = write();
 }
 /// A note names paths from the root of its installation, never the machine:
-/// what callers show and what the log keeps are the same text.
+/// what callers show and what the log keeps are the same text. Windows paths
+/// ignore case, and the same root comes with or without `\\?\` (#2815); only
+/// ASCII letters are folded, which keeps every byte where it was.
 pub fn relative(root: &Path, note: &str) -> String {
-    note.replace(&root.display().to_string(), "<raíz>")
+    const VERBATIM: &str = r"\\?\";
+    let shown = root.display().to_string();
+    let plain = shown.strip_prefix(VERBATIM).unwrap_or(&shown);
+    let (plain, lower) = (plain.to_ascii_lowercase(), note.to_ascii_lowercase());
+    if plain.is_empty() {
+        return note.to_owned();
+    }
+    let (mut text, mut from) = (String::new(), 0);
+    while let Some(found) = lower[from..].find(&plain).map(|found| from + found) {
+        let start = if lower[from..found].ends_with(VERBATIM) {
+            found - VERBATIM.len()
+        } else {
+            found
+        };
+        text.push_str(&note[from..start]);
+        text.push_str("<raíz>");
+        from = found + plain.len();
+    }
+    text.push_str(&note[from..]);
+    text
 }
 /// `YYYY-MM-DD hh:mm:ssZ` without a calendar dependency (days to civil date).
 fn utc(seconds: u64) -> String {

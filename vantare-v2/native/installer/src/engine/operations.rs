@@ -1478,59 +1478,162 @@ fn remove_identical(path: &Path, target: &Path) -> std::result::Result<(), Strin
     }
     windows::delete_open(&copy).map_err(|error| format!("no se pudo retirar la copia ({error})"))
 }
-/// A `DuckDB` file is a header block with its mark, two database headers and the
-/// blocks the newest header counts; each of them starts with the checksum of
-/// the rest. Every checksum is verified, so a copy cut short, or one whose
-/// blocks never reached the disk (zeros), does not pass and stays where it is
-/// (#2746, condition 6). The algorithm and the layout were checked against the
-/// two real files of the `DuckDB` in use (no blocks, and five of 16 384 bytes).
+/// The storage format `intact` reads: version 64, the one `DuckDB` 1.5.5 writes
+/// and `storage` pins (`Cargo.lock`; a test fails when it changes, so that the
+/// reader is checked again). Another version is not read: the recording stays.
+const STORAGE_VERSION: u64 = 64;
+const DUCK_HEADER: usize = 4096;
+/// A `DuckDB` 1.5.5 file is a main header (its mark and storage version), two
+/// database headers and the blocks the newest of them counts; each one starts
+/// with the checksum of the rest. Every block in the file is verified, so a
+/// copy cut short, or one whose blocks never reached the disk (zeros), stays
+/// where it is (#2746, condition 6). A checkpoint writes the header and only
+/// then cuts the free blocks off the end (#2815): blocks the file lacks must
+/// all be in the free list of that header. Checked against recordings of the
+/// real recorder (`tests/fixtures/grabaciones-reales.py`) and of hub-host.
+const IN_USE: &str = "falta un bloque en uso";
 fn intact(mut file: &fs::File) -> std::result::Result<(), String> {
-    const HEADER: usize = 4096;
-    let broken = || "no es una grabación completa: puede ser una copia cortada".to_owned();
-    let mut read =
-        |buffer: &mut [u8]| io::Read::read_exact(&mut file, buffer).map_err(|_| broken());
-    let word = |bytes: &[u8], at: usize| -> u64 {
-        u64::from_le_bytes(bytes[at..at + 8].try_into().expect("eight bytes"))
+    let broken = |detail: &str| {
+        format!("no es una grabación completa ({detail}): puede ser una copia cortada")
     };
-    // DuckDB: 5381, then each further 8-byte word multiplied and xored in.
-    let sound = |block: &[u8]| -> bool {
-        word(block, 0)
-            == block[8..]
-                .as_chunks::<8>()
-                .0
-                .iter()
-                .fold(5381_u64, |sum, chunk| {
-                    sum ^ u64::from_le_bytes(*chunk).wrapping_mul(0xbf58_476d_1ce4_e5b9)
-                })
-    };
-    let mut head = [0_u8; 3 * HEADER];
-    read(&mut head)?;
-    let headers: Vec<&[u8]> = head
-        .as_chunks::<HEADER>()
-        .0
-        .iter()
-        .map(<[u8; HEADER]>::as_slice)
-        .collect();
-    if &head[8..12] != b"DUCK" || !headers.iter().all(|&header| sound(header)) {
-        return Err(broken());
+    let length = file
+        .metadata()
+        .map_err(|error| format!("no se pudo leer ({error})"))?
+        .len();
+    let mut head = [0_u8; 3 * DUCK_HEADER];
+    io::Read::read_exact(&mut file, &mut head).map_err(|_| broken("la cabecera está cortada"))?;
+    let headers = head.as_chunks::<DUCK_HEADER>().0;
+    if &head[8..12] != b"DUCK" {
+        return Err(broken("no lleva la marca DUCK"));
     }
-    // iteration, meta block, free list, block count, block size.
-    let newest = if word(headers[2], 8) > word(headers[1], 8) {
-        headers[2]
+    if !headers.iter().all(|header| sound(header)) {
+        return Err(broken("falla la suma de control de una cabecera"));
+    }
+    let version = word(&head, 12);
+    if version != STORAGE_VERSION {
+        return Err(broken(&format!(
+            "versión de almacenamiento {version}; solo se lee la {STORAGE_VERSION} de DuckDB 1.5.5"
+        )));
+    }
+    // iteration, meta block, free list, block count, block size. As `DuckDB`
+    // does, the one at 8 192 wins a tie.
+    let newest = if word(&headers[1], 8) > word(&headers[2], 8) {
+        &headers[1]
     } else {
-        headers[1]
+        &headers[2]
     };
-    let (blocks, size) = (word(newest, 32), word(newest, 40));
-    let size = usize::try_from(size)
+    let blocks = word(newest, 32);
+    let size = usize::try_from(word(newest, 40))
         .ok()
-        .filter(|size| (HEADER..=1 << 24).contains(size) && size.is_power_of_two())
-        .ok_or_else(broken)?;
+        .filter(|size| (DUCK_HEADER..=1 << 24).contains(size) && size.is_power_of_two())
+        .ok_or_else(|| broken("tamaño de bloque no válido"))?;
+    let room = length.saturating_sub(head.len() as u64) / size as u64;
+    let present = blocks.min(room);
     let mut block = vec![0_u8; size];
-    for _ in 0..blocks {
-        read(&mut block)?;
+    for _ in 0..present {
+        io::Read::read_exact(&mut file, &mut block).map_err(|_| broken(IN_USE))?;
         if !sound(&block) {
-            return Err(broken());
+            return Err(broken("falla la suma de control de un bloque"));
         }
+    }
+    if present < blocks {
+        let pointer = word(newest, 24);
+        if pointer == u64::MAX {
+            return Err(broken(IN_USE)); // No free list: every block is in use.
+        }
+        free_tail(file, pointer, blocks, present, size).map_err(broken)?;
+    }
+    Ok(())
+}
+fn word(bytes: &[u8], at: usize) -> u64 {
+    u64::from_le_bytes(bytes[at..at + 8].try_into().expect("eight bytes"))
+}
+/// `DuckDB`: 5381, then each further 8-byte word multiplied and xored in.
+fn sound(block: &[u8]) -> bool {
+    word(block, 0)
+        == block[8..]
+            .as_chunks::<8>()
+            .0
+            .iter()
+            .fold(5381_u64, |sum, chunk| {
+                sum ^ u64::from_le_bytes(*chunk).wrapping_mul(0xbf58_476d_1ce4_e5b9)
+            })
+}
+/// Whether every block from `present` to `blocks` is in the free list `pointer`
+/// names, as `DuckDB` 1.5.5 writes it: a count and that many block ids, 8 bytes
+/// each, along a chain of metadata parts. A block holds 64 parts after its
+/// checksum, of `(size - 8) / 64` bytes rounded down to 8, each starting with
+/// the pointer to the next (block id in the low 56 bits, part in the high 8;
+/// all ones: none). Only blocks already verified are read, each part once, so
+/// a chain ends within the file. Memory is one bit per part and one per missing
+/// block, and a list that could not name every missing block is not read: a
+/// header that counts more blocks than the file could list stops at once.
+fn free_tail(
+    mut file: &fs::File,
+    pointer: u64,
+    blocks: u64,
+    present: u64,
+    size: usize,
+) -> std::result::Result<(), &'static str> {
+    const OUTSIDE: &str = "la lista de bloques libres apunta fuera de lo comprobado";
+    const LIMIT: &str = "la lista de bloques libres supera su tope";
+    let part = (size - 8) / 64 / 8 * 8;
+    let missing = blocks - present;
+    // Every part of every verified block, filled with ids.
+    let room = present.saturating_mul(64 * (part as u64 - 8) / 8);
+    if missing > room {
+        return Err(IN_USE);
+    }
+    let bits = |count: u64| usize::try_from(count.div_ceil(64)).map_err(|_| LIMIT);
+    let (mut seen, mut free) = (
+        vec![0_u64; bits(present * 64)?],
+        vec![0_u64; bits(missing)?],
+    );
+    let mark = |set: &mut [u64], at: u64| {
+        let (word, bit) = (usize::try_from(at / 64).expect("within the set"), at % 64);
+        let new = set[word] & (1 << bit) == 0;
+        set[word] |= 1 << bit;
+        new
+    };
+    let (mut next, mut buffer, mut at) = (pointer, vec![0_u8; part], part);
+    let mut read = || -> std::result::Result<u64, &'static str> {
+        let mut bytes = [0_u8; 8];
+        for byte in &mut bytes {
+            if at == part {
+                let (block, index) = (next & ((1 << 56) - 1), next >> 56);
+                if next == u64::MAX || block >= present || index >= 64 {
+                    return Err(OUTSIDE);
+                }
+                if !mark(&mut seen, block * 64 + index) {
+                    return Err("la lista de bloques libres vuelve a una parte ya leída");
+                }
+                let offset = 3 * DUCK_HEADER as u64 + block * size as u64 + 8;
+                io::Seek::seek(&mut file, io::SeekFrom::Start(offset + index * part as u64))
+                    .and_then(|_| io::Read::read_exact(&mut file, &mut buffer))
+                    .map_err(|_| OUTSIDE)?;
+                (next, at) = (word(&buffer, 0), 8);
+            }
+            *byte = buffer[at];
+            at += 1;
+        }
+        Ok(u64::from_le_bytes(bytes))
+    };
+    let count = read()?;
+    if count > blocks {
+        return Err(LIMIT);
+    }
+    if count < missing {
+        return Err(IN_USE);
+    }
+    let mut found = 0;
+    for _ in 0..count {
+        let id = read()?;
+        if (present..blocks).contains(&id) && mark(&mut free, id - present) {
+            found += 1;
+        }
+    }
+    if found < missing {
+        return Err(IN_USE);
     }
     Ok(())
 }

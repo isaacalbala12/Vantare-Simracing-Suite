@@ -635,6 +635,9 @@
 }
 .v-ob-header {
   -webkit-app-region: drag;
+  /* Issue 2799: los tres botones de ventana (46 px, sin escalar) flotan a la
+     derecha; el contenido de la cabecera termina antes para no quedar debajo. */
+  padding-right: max(calc(40 * var(--ob-unit)), calc(3 * 46px + 8px));
 }
 .v-ob-header button {
   -webkit-app-region: no-drag;

@@ -4428,6 +4428,13 @@ impl Fixture {
         &self,
         cut: &mut dyn FnMut(&str) -> disk::Result<()>,
     ) -> (disk::Result<()>, Vec<String>) {
+        self.uninstall_as("beta", cut)
+    }
+    fn uninstall_as(
+        &self,
+        channel: &str,
+        cut: &mut dyn FnMut(&str) -> disk::Result<()>,
+    ) -> (disk::Result<()>, Vec<String>) {
         let cancel = AtomicBool::new(false);
         let mut notes = Vec::new();
         let mut warning = |note: &str| notes.push(note.to_owned());
@@ -4437,7 +4444,7 @@ impl Fixture {
             checkpoint: cut,
             warning: &mut warning,
         };
-        let result = operations::uninstall(&self.root, &mut control, |_| Ok(()));
+        let result = operations::uninstall(&self.root, channel, &mut control, |_| Ok(()));
         (result, notes)
     }
 }
@@ -4879,6 +4886,69 @@ fn an_update_flushes_its_copy_of_the_data_and_keeps_read_only_files_read_only() 
     assert!(disk::flush(&copy).is_err());
     drop(held);
     disk::flush(&copy).expect("flushed");
+}
+
+#[test]
+fn the_gathering_stays_inside_the_product_of_its_root() {
+    // Beta, as before: an uninstall in the name of nightly is refused before it
+    // brings or removes anything.
+    let beta = Fixture::new();
+    let [a, b, c] = beta.three_generations();
+    record(&recordings(&a), &[("series-1-1.duckdb", &duck(1, 1))]);
+    record(&recordings(&c), &[("series-3-3.duckdb", &duck(1, 3))]);
+    let before = index(&beta.root);
+    let (result, notes) = beta.uninstall_as("nightly", &mut |_| Ok(()));
+    assert!(result.is_err(), "{notes:?}");
+    assert_eq!(index(&beta.root), before, "nothing of beta was touched");
+    let (result, _) = beta.uninstall_cut(&mut |_| Ok(()));
+    result.expect("uninstalled as beta");
+    assert_eq!(
+        names(&beta.root.join("recordings")),
+        ["series-1-1.duckdb", "series-3-3.duckdb"]
+    );
+    assert!(fs::read_dir(recordings(&b)).is_err(), "previous had none");
+    // Nightly, with its own root: the same rules, bound to its own state.
+    let nightly = Fixture::new();
+    let install = |version: &str| {
+        nightly
+            .install(
+                &nightly.package_for("nightly", version),
+                Mode::Auto,
+                false,
+                false,
+            )
+            .expect(version);
+        nightly.active()
+    };
+    let orphan = install("1.0.0");
+    install("1.0.1");
+    nightly.confirm();
+    let active = install("1.0.2");
+    assert_eq!(channel_of(&nightly), "nightly");
+    let previous = nightly.root.join("generations").join(
+        verified(&nightly.root)
+            .unwrap()
+            .state
+            .unwrap()
+            .previous
+            .unwrap()
+            .generation,
+    );
+    record(&recordings(&orphan), &[("series-1-1.duckdb", &duck(1, 1))]);
+    record(
+        &recordings(&previous),
+        &[("series-2-2.duckdb", &duck(1, 2))],
+    );
+    record(&recordings(&active), &[("series-3-3.duckdb", &duck(1, 3))]);
+    nightly.confirm();
+    let single = nightly.root.join("recordings");
+    assert_eq!(names(&single), ["series-1-1.duckdb", "series-3-3.duckdb"]);
+    assert_eq!(names(&recordings(&previous)), ["series-2-2.duckdb"]);
+    // And a beta uninstall never reaches the recordings of nightly.
+    let before = index(&nightly.root);
+    let (result, _) = nightly.uninstall_as("beta", &mut |_| Ok(()));
+    assert!(result.is_err());
+    assert_eq!(index(&nightly.root), before);
 }
 
 /// Cost of what T3 adds, measured by hand: `--run-ignored only`.

@@ -1,8 +1,11 @@
 use super::{HostError, HostToUi, Pipe, Reply, Request, Session, frame, io};
 use crate::strategy::Picked;
 
+/// Strategy needs the signed `access.strategy` right, as Analysis needs
+/// `access.analysis`: the screen only decides what is shown.
 pub(super) fn allowed(session: &Session) -> bool {
-    session.current.access.verified && !session.current.access.blocked && session.closing.is_none()
+    let access = &session.current.access;
+    access.verified && !access.blocked && access.strategy && session.closing.is_none()
 }
 
 /// The trusted answer of the main process to a ticket. Without access, or for

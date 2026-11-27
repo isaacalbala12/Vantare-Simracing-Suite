@@ -550,9 +550,13 @@ pub fn install(
             created_launcher = renew_launcher(&root, &next)?;
         }
         if updating {
-            disk::publish_json(
-                &root.join("update-status.json"),
-                &json!({"schema":1,"state":"applied","message":"Instalación aplicada; comprobando el arranque","version":incoming.version,"notes":""}),
+            // As the feed and Confirm do: a version rejected by an earlier
+            // rollback stays rejected, so the feed does not offer it again (#2825).
+            status(
+                &root,
+                "applied",
+                "Instalación aplicada; comprobando el arranque",
+                &incoming.version,
             )?;
         }
         disk::remove_file(&root.join("retained-data.json"))?;

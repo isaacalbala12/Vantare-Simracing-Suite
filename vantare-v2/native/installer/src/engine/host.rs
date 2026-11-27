@@ -379,7 +379,7 @@ impl Session {
                             control,
                         )
                     },
-                    || self.prepare_orphan(root),
+                    || prepare_orphan(&self.context, root),
                 )
             }
             Operation::Update => operations::update(root, package, false, control),
@@ -414,24 +414,6 @@ impl Session {
             control.warning,
         )
     }
-    fn prepare_orphan(&self, root: &Path) -> WriteResult<()> {
-        let marker = root.join("installer-cleanup.json");
-        if !marker.try_exists()? {
-            return Ok(());
-        }
-        if root.join("Uninstall.exe").try_exists()?
-            || root.join("state.json").try_exists()?
-            || self.context.has_registration()?
-        {
-            return Err(WriteError::new(
-                2,
-                "Espera a que termine la limpieza del desinstalador anterior",
-            ));
-        }
-        disk::open_root(root, false)?;
-        super::context::cleanup_marker(root, None)?;
-        disk::remove_file(&marker)
-    }
     /// Permanent, guarded PowerShell cleanup; no native self-delete workaround.
     pub fn schedule_cleanup(args: &Args) -> Result<(), String> {
         let mut session = Self::new()?;
@@ -450,6 +432,58 @@ impl Session {
             .map_err(|error| error.to_string())?;
         Ok(())
     }
+}
+/// Antes de instalar, con `beta-session.lock` tomado: retira los restos de una
+/// limpieza diferida que no terminó. Sin proceso vivo que la termine, el Setup
+/// no espera para siempre (#2829).
+pub fn prepare_orphan(context: &Context, root: &Path) -> WriteResult<()> {
+    let marker = root.join("installer-cleanup.json");
+    if !marker.try_exists()? {
+        return Ok(());
+    }
+    if root.join("state.json").try_exists()? || context.has_registration()? {
+        return Err(WriteError::new(
+            2,
+            "Espera a que termine la limpieza del desinstalador anterior",
+        ));
+    }
+    disk::open_root(root, false)?;
+    let image = root.join("Uninstall.exe");
+    if image.try_exists()? {
+        retire_stale_uninstaller(context, root, &image)?;
+    }
+    super::context::cleanup_marker(root, None)?;
+    disk::remove_file(&marker)
+}
+/// La limpieza diferida falló y nadie la va a terminar (#2829): sin proceso
+/// vivo con esa imagen, el Setup retira el desinstalador marcado, solo si es
+/// de su canal y es el del marcador. Nunca toca nada más de la raíz.
+fn retire_stale_uninstaller(context: &Context, root: &Path, image: &Path) -> WriteResult<()> {
+    operations::residue_owned(root, context.product()?.channel)?;
+    if let Some(pid) = super::windows::running_image(image)? {
+        return Err(WriteError::new(
+            2,
+            format!(
+                "El desinstalador anterior sigue abierto (proceso {pid}). Ciérralo y vuelve a abrir el Setup"
+            ),
+        ));
+    }
+    let in_use = |cause: &dyn std::fmt::Display| {
+        WriteError::new(
+            2,
+            format!(
+                "El desinstalador anterior está en uso ({cause}). Ciérralo y vuelve a abrir el Setup"
+            ),
+        )
+    };
+    // En exclusiva: falla si alguien, de cualquier sesión, lo tiene abierto o
+    // en ejecución, y mientras dura nadie puede arrancarlo.
+    let mut file = disk::open_exclusive(image).map_err(|cause| in_use(&cause))?;
+    let (_, sha256) = operations::fingerprint(&mut file)?;
+    super::context::cleanup_marker(root, Some(&sha256))?;
+    drop(file);
+    // Una imagen arrancada justo ahora no se deja borrar: se detiene sin cambios.
+    fs::remove_file(image).map_err(|cause| in_use(&cause))
 }
 impl Drop for Session {
     fn drop(&mut self) {
@@ -763,5 +797,194 @@ exit EXIT_CODE
                 .unwrap()
                 .contains("normal cleanup output")
         );
+    }
+
+    /// Restos de una limpieza diferida que falló (#2829): `Uninstall.exe` (copia
+    /// de `sort.exe`, que espera en stdin sin temporizadores), su marcador y
+    /// datos del usuario que nunca se tocan.
+    struct Stale {
+        root: PathBuf,
+        install: PathBuf,
+        id: String,
+    }
+    impl Stale {
+        fn new() -> Self {
+            let parent = if std::env::var("CI").as_deref() == Ok("true") {
+                PathBuf::from(std::env::var_os("RUNNER_TEMP").expect("CI root"))
+            } else {
+                PathBuf::from("D:/VantareServer/qa/isa-1840")
+            };
+            let id = disk::id().expect("ID");
+            let root = parent.join("p2829-recovery").join(&id);
+            qa_path(&root).expect("QA guard");
+            let install = root.join("install");
+            fs::create_dir_all(install.join("data")).expect("user data");
+            fs::create_dir_all(install.join("recordings")).expect("recordings");
+            fs::write(install.join(".vantare-native"), b"offline-candidate-v1").expect("root");
+            fs::write(install.join("data/profile.json"), b"{\"user\":true}").expect("data");
+            fs::write(install.join("recordings/series.duckdb"), b"rec").expect("recording");
+            let image = install.join("Uninstall.exe");
+            fs::copy(sort_exe(), &image).expect("uninstaller copy");
+            let hash = crate::engine::installation::hash_file(&image).expect("hash");
+            disk::write_json(
+                &install.join("installer-cleanup.json"),
+                &serde_json::json!({"schema":1,"sha256":hash}),
+            )
+            .expect("marker");
+            Self { root, install, id }
+        }
+        fn context(&self, channel: &str) -> Context {
+            Context::isolated(
+                self.root.join("LocalAppData"),
+                format!("Software\\VantareInstallerMatrix\\{}", self.id),
+                self.root.join("shell"),
+            )
+            .and_then(|context| context.for_channel(channel))
+            .expect("isolated context")
+        }
+        fn prepare(&self, channel: &str) -> disk::Result<()> {
+            super::prepare_orphan(&self.context(channel), &self.install)
+        }
+        fn image(&self) -> PathBuf {
+            self.install.join("Uninstall.exe")
+        }
+        fn marker(&self) -> PathBuf {
+            self.install.join("installer-cleanup.json")
+        }
+        fn tree(&self) -> Vec<(PathBuf, Vec<u8>)> {
+            let mut files = Vec::new();
+            let mut pending = vec![self.install.clone()];
+            while let Some(directory) = pending.pop() {
+                for entry in fs::read_dir(directory).expect("tree") {
+                    let path = entry.expect("entry").path();
+                    if path.is_dir() {
+                        pending.push(path);
+                    } else {
+                        let bytes = fs::read(&path).expect("bytes");
+                        files.push((path, bytes));
+                    }
+                }
+            }
+            files.sort();
+            files
+        }
+    }
+    fn sort_exe() -> PathBuf {
+        PathBuf::from(std::env::var_os("SystemRoot").expect("SystemRoot"))
+            .join("System32")
+            .join("sort.exe")
+    }
+    /// Proceso propio: se cierra por el handle de su PID, nunca por nombre.
+    struct Running(std::process::Child);
+    impl Running {
+        fn start(image: &std::path::Path) -> Self {
+            Self(
+                std::process::Command::new(image)
+                    .stdin(std::process::Stdio::piped())
+                    .stdout(std::process::Stdio::null())
+                    .stderr(std::process::Stdio::null())
+                    .spawn()
+                    .expect("own child"),
+            )
+        }
+    }
+    impl Drop for Running {
+        fn drop(&mut self) {
+            let _ = self.0.kill();
+            let _ = self.0.wait();
+        }
+    }
+
+    #[test]
+    fn setup_retires_a_stale_uninstaller_and_keeps_every_user_file() {
+        let stale = Stale::new();
+        let kept: Vec<_> = stale
+            .tree()
+            .into_iter()
+            .filter(|(path, _)| *path != stale.image() && *path != stale.marker())
+            .collect();
+        stale.prepare("beta").expect("recovers");
+        assert!(!stale.image().exists(), "stale uninstaller retired");
+        assert!(!stale.marker().exists(), "marker retired");
+        assert_eq!(stale.tree(), kept, "data, recordings and root untouched");
+    }
+
+    #[test]
+    fn a_live_uninstaller_of_that_root_keeps_blocking_and_names_its_process() {
+        let stale = Stale::new();
+        let before = stale.tree();
+        let running = Running::start(&stale.image());
+        let error = stale.prepare("beta").expect_err("still running");
+        assert_eq!(error.code, 2);
+        // El usuario ve qué proceso cerrar.
+        assert!(
+            error
+                .to_string()
+                .contains(&format!("proceso {}", running.0.id())),
+            "{error}"
+        );
+        assert_eq!(stale.tree(), before);
+    }
+
+    #[test]
+    fn an_uninstaller_with_the_same_name_in_another_folder_does_not_block() {
+        let stale = Stale::new();
+        let other = stale.root.join("other");
+        fs::create_dir_all(&other).expect("other folder");
+        fs::copy(sort_exe(), other.join("Uninstall.exe")).expect("same name elsewhere");
+        let _running = Running::start(&other.join("Uninstall.exe"));
+        stale
+            .prepare("beta")
+            .expect("another folder is not this uninstaller");
+        assert!(!stale.image().exists());
+        assert!(other.join("Uninstall.exe").exists());
+    }
+
+    #[test]
+    fn an_uninstaller_held_open_by_anyone_is_kept() {
+        let stale = Stale::new();
+        let before = stale.tree();
+        let held = fs::File::open(stale.image()).expect("held by another handle");
+        let error = stale.prepare("beta").expect_err("in use");
+        assert_eq!(error.code, 2);
+        drop(held);
+        assert_eq!(stale.tree(), before);
+    }
+
+    #[test]
+    fn residue_of_another_channel_is_never_recovered() {
+        let stale = Stale::new();
+        let before = stale.tree();
+        // Sin canal declarado, el resto es de beta: nightly no lo toca (#2814).
+        assert!(stale.prepare("nightly").is_err());
+        assert_eq!(stale.tree(), before);
+        stale.prepare("beta").expect("its own channel recovers");
+    }
+
+    #[test]
+    fn without_marker_or_with_another_hash_the_uninstaller_is_kept() {
+        let stale = Stale::new();
+        fs::remove_file(stale.marker()).expect("no marker");
+        let before = stale.tree();
+        stale.prepare("beta").expect("nothing to recover");
+        assert_eq!(stale.tree(), before, "no marker: nothing is retired");
+        disk::write_json(
+            &stale.marker(),
+            &serde_json::json!({"schema":1,"sha256":"0".repeat(64)}),
+        )
+        .expect("foreign marker");
+        let before = stale.tree();
+        assert!(stale.prepare("beta").is_err());
+        assert_eq!(stale.tree(), before, "another hash: kept");
+    }
+
+    #[test]
+    fn a_renewed_installation_keeps_waiting() {
+        let stale = Stale::new();
+        fs::write(stale.install.join("state.json"), b"{}").expect("renewed");
+        let before = stale.tree();
+        let error = stale.prepare("beta").expect_err("renewed");
+        assert_eq!(error.code, 2);
+        assert_eq!(stale.tree(), before);
     }
 }

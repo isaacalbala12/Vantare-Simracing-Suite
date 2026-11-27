@@ -256,6 +256,77 @@ pub fn paths_equal(left: &Path, right: &Path) -> Result<bool> {
     ensure(result.0 != 0, "No se pudieron comparar las rutas Windows")?;
     Ok(result == CSTR_EQUAL)
 }
+/// PID de un proceso vivo cuya imagen es exactamente `image`: por ruta canónica
+/// (nombres 8.3 y mayúsculas incluidos), nunca por nombre. Un PID reutilizado por
+/// otro programa tiene otra imagen y no cuenta (#2829). Un proceso que no se deja
+/// consultar (otro usuario, protegido) se salta: quien llama cierra ese hueco
+/// abriendo el archivo en exclusiva.
+pub fn running_image(image: &Path) -> Result<Option<u32>> {
+    use std::os::windows::io::{FromRawHandle, OwnedHandle};
+    use windows::Win32::{
+        Foundation::ERROR_NO_MORE_FILES,
+        System::Diagnostics::ToolHelp::{
+            CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW,
+            TH32CS_SNAPPROCESS,
+        },
+    };
+    let target = std::fs::canonicalize(image)?;
+    let snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) }
+        .map_err(|cause| error(&cause))?;
+    // SAFETY: handle válido recién devuelto; se posee una sola vez y se cierra al salir.
+    let _owned = unsafe { OwnedHandle::from_raw_handle(snapshot.0) };
+    let mut entry = PROCESSENTRY32W {
+        dwSize: u32::try_from(size_of::<PROCESSENTRY32W>()).unwrap_or(0),
+        ..Default::default()
+    };
+    let mut next = unsafe { Process32FirstW(snapshot, &raw mut entry) };
+    loop {
+        match next {
+            Ok(()) => {}
+            Err(cause) if cause.code() == ERROR_NO_MORE_FILES.to_hresult() => return Ok(None),
+            Err(cause) => return Err(error(&cause)),
+        }
+        let pid = entry.th32ProcessID;
+        if let Some(path) = process_image(pid)
+            && let Ok(path) = std::fs::canonicalize(path)
+            && paths_equal(&path, &target)?
+        {
+            return Ok(Some(pid));
+        }
+        next = unsafe { Process32NextW(snapshot, &raw mut entry) };
+    }
+}
+fn process_image(pid: u32) -> Option<PathBuf> {
+    use std::os::windows::{
+        ffi::OsStringExt,
+        io::{FromRawHandle, OwnedHandle},
+    };
+    use windows::{
+        Win32::System::Threading::{
+            OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION,
+            QueryFullProcessImageNameW,
+        },
+        core::PWSTR,
+    };
+    let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid) }.ok()?;
+    // SAFETY: handle válido recién devuelto; se posee una sola vez y se cierra al salir.
+    let _owned = unsafe { OwnedHandle::from_raw_handle(process.0) };
+    let mut buffer = vec![0_u16; 32768];
+    let mut length = u32::try_from(buffer.len()).ok()?;
+    unsafe {
+        QueryFullProcessImageNameW(
+            process,
+            PROCESS_NAME_WIN32,
+            PWSTR(buffer.as_mut_ptr()),
+            &raw mut length,
+        )
+    }
+    .ok()?;
+    let length = usize::try_from(length).ok()?;
+    Some(PathBuf::from(std::ffi::OsString::from_wide(
+        buffer.get(..length)?,
+    )))
+}
 pub fn new_id() -> Result<String> {
     Ok(format!(
         "{:032x}",

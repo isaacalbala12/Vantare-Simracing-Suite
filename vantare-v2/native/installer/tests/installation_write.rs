@@ -4900,12 +4900,12 @@ fn the_gathering_stays_inside_the_product_of_its_root() {
     let (result, notes) = beta.uninstall_as("nightly", &mut |_| Ok(()));
     assert!(result.is_err(), "{notes:?}");
     assert_eq!(index(&beta.root), before, "nothing of beta was touched");
+    // As beta it gathers as before: the orphan's recording comes; the active
+    // one is still the generation an unconfirmed update staged, so it stays.
     let (result, _) = beta.uninstall_cut(&mut |_| Ok(()));
     result.expect("uninstalled as beta");
-    assert_eq!(
-        names(&beta.root.join("recordings")),
-        ["series-1-1.duckdb", "series-3-3.duckdb"]
-    );
+    assert_eq!(names(&beta.root.join("recordings")), ["series-1-1.duckdb"]);
+    assert_eq!(names(&recordings(&c)), ["series-3-3.duckdb"]);
     assert!(fs::read_dir(recordings(&b)).is_err(), "previous had none");
     // Nightly, with its own root: the same rules, bound to its own state.
     let nightly = Fixture::new();

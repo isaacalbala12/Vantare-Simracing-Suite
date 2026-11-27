@@ -21,6 +21,13 @@ use vantare_installer::{
     model::Mode,
 };
 
+struct LinkGuard(PathBuf);
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo (nunca `remove_dir_all`), también si el test falla.
+    fn drop(&mut self) {
+        let _ = fs::remove_dir(&self.0).or_else(|_| fs::remove_file(&self.0));
+    }
+}
 struct Fixture {
     path: PathBuf,
     root: PathBuf,
@@ -794,6 +801,7 @@ fn user_junction_is_readable_for_start_but_blocks_data_copy() {
     fs::create_dir_all(&target).unwrap();
     let link = fixture.data().join("user-junction");
     std::os::windows::fs::symlink_dir(&target, &link).unwrap();
+    let _link = LinkGuard(link.clone());
     assert_eq!(
         Installation::read(&fixture.root)
             .unwrap()
@@ -1532,6 +1540,7 @@ fn integrity_checks_reject_a_sidecar_reparse_before_attempting_to_read_it() {
         .unwrap();
     fs::remove_file(&sidecar).unwrap();
     std::os::windows::fs::symlink_file(&canary, &sidecar).unwrap();
+    let _sidecar = LinkGuard(sidecar.clone());
     assert!(matches!(
         view.verify(&fixture.root),
         Err(engine::ReadError::Invalid(_))
@@ -2824,6 +2833,7 @@ fn the_installation_log_is_capped_at_two_files_and_keeps_one_note_per_line() {
     let target = fixture.path.join("outside.txt");
     fs::write(&target, b"outside").unwrap();
     std::os::windows::fs::symlink_file(&target, &log).unwrap();
+    let _log = LinkGuard(log.clone());
     disk::log(&root, "enlace");
     assert_eq!(fs::read(&target).unwrap(), b"outside");
     fs::remove_file(&log).unwrap();
@@ -3165,6 +3175,7 @@ fn links_in_the_source_or_in_the_single_folder_are_never_followed() {
             record(&single, &[]);
         }
         let folder = matches!(place, "source" | "single");
+        let _link = LinkGuard(link.clone());
         if folder {
             symlink_dir(&outside, &link).unwrap();
         } else {
@@ -3598,6 +3609,7 @@ fn recordings_that_are_not_a_folder(kind: &str) {
     record(&outside, &files);
     setup("1.0.0", Mode::Auto).expect("first installation");
     let single = fixture.root.join("recordings");
+    let _single = LinkGuard(single.clone());
     match kind {
         "junction" => junction(&single, &outside),
         "broken junction" => {
@@ -3687,20 +3699,24 @@ fn only_the_entry_named_recordings_at_the_root_is_left_alone() {
     ] {
         fs::create_dir_all(place.parent().expect("a parent")).unwrap();
         symlink_dir(&outside, &place).unwrap();
+        let _place = LinkGuard(place.clone());
         assert!(!opens(), "{place:?}");
         fs::remove_dir(&place).unwrap();
     }
     // The name as Windows compares it; and nothing inside it is looked at.
     symlink_dir(&outside, fixture.root.join("RECORDINGS")).unwrap();
+    let _capitals = LinkGuard(fixture.root.join("RECORDINGS"));
     assert!(opens(), "in capitals");
     fs::remove_dir(&single).unwrap();
     record(&single.join("carpeta"), &[]);
     symlink_dir(&outside, single.join("carpeta/enlace")).unwrap();
+    let _folder_link = LinkGuard(single.join("carpeta/enlace"));
     symlink_file(
         outside.join("series-1-1.duckdb"),
         single.join("series-1-1.duckdb"),
     )
     .unwrap();
+    let _file_link = LinkGuard(single.join("series-1-1.duckdb"));
     assert!(opens(), "a normal folder with links inside");
 }
 

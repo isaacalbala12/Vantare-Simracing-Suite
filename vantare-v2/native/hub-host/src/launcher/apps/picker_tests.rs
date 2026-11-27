@@ -1,4 +1,11 @@
 use super::*;
+struct LinkGuard(PathBuf);
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir(&self.0).or_else(|_| std::fs::remove_file(&self.0));
+    }
+}
 fn save_new_selection(
     picker: &mut Picker,
     path: &Path,
@@ -43,6 +50,7 @@ fn junction_choice_is_saved_canonical_and_cannot_be_retargeted_afterwards() {
     let first = directory.join("first");
     let second = directory.join("second");
     let alias = directory.join("alias");
+    let _alias = LinkGuard(alias.clone());
     std::fs::create_dir(&first).unwrap();
     std::fs::create_dir(&second).unwrap();
     std::fs::write(first.join("chosen.exe"), b"first inert fixture").unwrap();
@@ -102,12 +110,14 @@ fn symlink_choice_is_saved_canonical_or_reports_missing_privilege() {
         }
         panic!("symlink fixture: {error}");
     }
+    let _alias = LinkGuard(alias.clone());
     let now = Instant::now();
     let mut picker = Picker::default();
     let non_executable = root.path.join("private.txt");
     let invalid_alias = root.path.join("invalid.exe");
     std::fs::write(&non_executable, b"inert non executable").unwrap();
     std::os::windows::fs::symlink_file(&non_executable, &invalid_alias).unwrap();
+    let _invalid_alias = LinkGuard(invalid_alias.clone());
     assert_eq!(
         picker.selected(invalid_alias.to_str(), None, now),
         Err(HostError::Denied)

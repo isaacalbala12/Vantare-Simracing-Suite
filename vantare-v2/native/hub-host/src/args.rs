@@ -141,6 +141,15 @@ fn refused(root: &Path) {
 mod tests {
     use super::*;
     #[cfg(windows)]
+    struct LinkGuard(PathBuf);
+    #[cfg(windows)]
+    impl Drop for LinkGuard {
+        // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir(&self.0).or_else(|_| std::fs::remove_file(&self.0));
+        }
+    }
+    #[cfg(windows)]
     #[test]
     fn the_recordings_folder_is_exactly_the_one_of_this_installation() {
         use crate::analysis::status::{AnalysisRecordingCause::InvalidDirectory, read};
@@ -157,6 +166,7 @@ mod tests {
         };
         // Not created yet, already there, and spelled in another case.
         let single = root.join("recordings");
+        let _single = LinkGuard(single.clone());
         let named = parse(&single, Some(&root)).expect("not created yet");
         assert_eq!(named.recordings(), single);
         std::fs::create_dir(&single).expect("fixture");
@@ -201,7 +211,9 @@ mod tests {
         // Anything else is not the argument of the session.
         let (link, back) = (root.join("enlace"), root.join("vuelta"));
         symlink_dir(&outside, &link).expect("link to the outside");
+        let _link = LinkGuard(link.clone());
         symlink_dir(&root, &back).expect("link back to the root");
+        let _back = LinkGuard(back.clone());
         for (value, why) in [
             (root.clone(), "the root itself"),
             (

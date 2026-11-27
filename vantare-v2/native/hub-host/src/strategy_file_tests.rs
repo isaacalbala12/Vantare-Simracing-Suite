@@ -53,6 +53,15 @@ impl Drop for Root {
     }
 }
 
+struct LinkGuard(PathBuf);
+
+impl Drop for LinkGuard {
+    // Quita la unión sin seguirla, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = fs::remove_dir(&self.0).or_else(|_| fs::remove_file(&self.0));
+    }
+}
+
 fn document(first_event: &str) -> Vec<u8> {
     let event = |id: &str| {
         let mut event = vantare_strategy::document::new_event(id, "Practice", 90, 90.0, 18.0);
@@ -1064,6 +1073,7 @@ fn a_file_reached_through_a_junction_is_refused() {
     let (mut state, view) = opened(&root);
     fs::write(root.file("real.json"), document("event-9")).unwrap();
     junction(&elsewhere.file("link"), &root.0);
+    let _link = LinkGuard(elsewhere.file("link"));
     let through = elsewhere.file("link").join("real.json");
     assert_eq!(
         choose(
@@ -1142,6 +1152,7 @@ fn another_document_never_writes_the_primary_by_any_spelling_existing_or_not() {
             fs::remove_file(root.primary()).unwrap();
         }
         let before = listing(&root.0);
+        let _link = LinkGuard(elsewhere.file("link"));
         for (spelling, same_file) in primary_spellings(&root, &elsewhere) {
             let result = choose(&mut state, StrategyFileMode::SaveAs, &spelling);
             if same_file {
@@ -1631,6 +1642,7 @@ fn save_as_through_a_junction_is_refused_and_creates_nothing() {
     let (mut state, _) = opened(&root);
     let draft = dirty(&mut state);
     junction(&elsewhere.file("link"), &target.0);
+    let _link = LinkGuard(elsewhere.file("link"));
     let before = listing(&target.0);
     let through = elsewhere.file("link").join("nuevo.json");
     assert_eq!(

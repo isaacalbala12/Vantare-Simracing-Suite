@@ -57,6 +57,15 @@ pub(crate) mod tests {
     use std::os::windows::process::CommandExt as _;
     use vantare_installer::engine::hash_file;
 
+    struct LinkGuard(PathBuf);
+
+    impl Drop for LinkGuard {
+        // Quita la unión sin seguirla, también si el test falla antes de su limpieza.
+        fn drop(&mut self) {
+            let _ = fs::remove_dir(&self.0);
+        }
+    }
+
     pub(crate) fn fixture() -> (crate::test_support::Root, PathBuf) {
         let owned = crate::test_support::Root::new();
         let root = &owned.path;
@@ -163,6 +172,7 @@ pub(crate) mod tests {
             .creation_flags(windows_sys::Win32::System::Threading::CREATE_NO_WINDOW)
             .output()
             .expect("QA junction");
+        let _locales = LinkGuard(locales.clone());
         assert!(
             result.status.success(),
             "QA junction: {}",

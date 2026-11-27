@@ -1743,6 +1743,17 @@ fn a_hard_link_to_the_document_is_replaced_as_a_name_and_the_document_is_left_wh
 }
 
 #[cfg(windows)]
+struct LinkGuard(std::path::PathBuf);
+
+#[cfg(windows)]
+impl Drop for LinkGuard {
+    // Quita la unión sin seguirla, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = fs::remove_dir(&self.0);
+    }
+}
+
+#[cfg(windows)]
 #[test]
 fn a_folder_or_file_reached_through_a_junction_is_refused_and_nothing_is_created() {
     let root = Root::new();
@@ -1757,6 +1768,7 @@ fn a_folder_or_file_reached_through_a_junction_is_refused_and_nothing_is_created
         .output()
         .unwrap();
     assert!(status.status.success(), "{status:?}");
+    let _through = LinkGuard(through.file("vinculo"));
     let before = elsewhere.listing();
     // the folder is a junction
     assert_eq!(
@@ -1776,6 +1788,7 @@ fn a_folder_or_file_reached_through_a_junction_is_refused_and_nothing_is_created
         .output()
         .unwrap();
     assert!(status.status.success(), "{status:?}");
+    let _named = LinkGuard(named.file("plan.csv"));
     assert_eq!(
         choose(&mut state, &target, &named.text("plan.csv")),
         Err(HostError::StrategyFileUnavailable)

@@ -254,6 +254,17 @@ mod tests {
     use super::*;
 
     #[cfg(windows)]
+    struct LinkGuard(std::path::PathBuf);
+
+    #[cfg(windows)]
+    impl Drop for LinkGuard {
+        // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir(&self.0).or_else(|_| std::fs::remove_file(&self.0));
+        }
+    }
+
+    #[cfg(windows)]
     #[test]
     fn a_recordings_folder_that_is_not_one_is_never_used() {
         let name = format!("series-not-a-folder-{}", std::process::id());
@@ -261,6 +272,7 @@ mod tests {
         let (outside, recordings) = (base.join("fuera"), base.join("recordings"));
         std::fs::create_dir_all(&outside).unwrap();
         std::fs::write(outside.join("notas.txt"), b"mine").unwrap();
+        let _link = LinkGuard(recordings.clone());
         for kind in ["link", "file"] {
             if kind == "link" {
                 std::os::windows::fs::symlink_dir(&outside, &recordings).unwrap();

@@ -384,6 +384,15 @@ fn identical_archive_retries_and_partial_retirement_preserve_remaining_source() 
     assert!(!first.exists());
     assert!(first.with_extension("json.imported").exists());
 }
+struct LinkGuard(PathBuf);
+
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = fs::remove_dir(&self.0).or_else(|_| fs::remove_file(&self.0));
+    }
+}
+
 #[test]
 fn symbolic_source_is_never_followed() {
     let root = Root::new();
@@ -400,6 +409,7 @@ fn symbolic_source_is_never_followed() {
         }
         panic!("QA symlink failed: {error}");
     }
+    let _link = LinkGuard(path.clone());
     let mut state = State::new(&root.path);
     state.begin(Operation::Load);
     state.complete(Operation::Load, reply(None)).unwrap();

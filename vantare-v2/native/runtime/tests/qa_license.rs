@@ -548,6 +548,15 @@ mod windows {
         }
     }
 
+    struct LinkGuard(PathBuf);
+
+    impl Drop for LinkGuard {
+        // Quita la unión sin seguirla, también si el test falla antes de su limpieza.
+        fn drop(&mut self) {
+            let _ = fs::remove_dir(&self.0);
+        }
+    }
+
     fn create_junction(link: &Path, target: &Path) {
         let dos_path = |path: &Path| {
             path.to_str()
@@ -584,7 +593,9 @@ mod windows {
         let git_link = fixture.0.join("git-alias");
         let key_link = fixture.0.join("key-alias");
         create_junction(&git_link, &nested);
+        let _git_link = LinkGuard(git_link.clone());
         create_junction(&key_link, key_dir);
+        let _key_link = LinkGuard(key_link.clone());
         let mixed_case = PathBuf::from(key_dir.to_str().expect("key path").to_ascii_uppercase());
         for out in [
             git_link.join("credential.json"),

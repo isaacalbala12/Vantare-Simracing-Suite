@@ -1,6 +1,17 @@
 #![allow(clippy::unwrap_used)]
 use super::*;
 
+#[cfg(windows)]
+struct LinkGuard(PathBuf);
+
+#[cfg(windows)]
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = fs::remove_dir(&self.0).or_else(|_| fs::remove_file(&self.0));
+    }
+}
+
 #[derive(Deserialize)]
 struct Source<'a> {
     #[serde(borrow)]
@@ -316,6 +327,8 @@ fn invalid_files_are_omitted_and_catalog_is_bounded() {
         );
         eprintln!("fixture symlink case omitted: Windows requires symlink privilege (1314)");
     }
+    #[cfg(windows)]
+    let _link = LinkGuard(root.join("standings-link.snapshot.json"));
     let scenes = Scenes::load(Some(root.clone()));
     assert_eq!(
         scenes.widgets()[0]

@@ -171,6 +171,13 @@ fn oversized_files_bad_stamps_and_duplicate_following_are_reported_without_write
         assert_eq!(std::fs::read(&path).unwrap(), bytes);
     }
 }
+struct LinkGuard(std::path::PathBuf);
+impl Drop for LinkGuard {
+    // Quita el enlace sin seguirlo, también si el test falla antes de su limpieza.
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir(&self.0).or_else(|_| std::fs::remove_file(&self.0));
+    }
+}
 #[test]
 fn linked_cache_is_not_followed() {
     let root = Root::new();
@@ -185,6 +192,7 @@ fn linked_cache_is_not_followed() {
         eprintln!("QA symlink test omitted: privilege unavailable");
         return;
     }
+    let _link = LinkGuard(link.clone());
     let mut state = State::new(root.0.clone());
     let view = state.load();
     assert!(view.invalid_cache);

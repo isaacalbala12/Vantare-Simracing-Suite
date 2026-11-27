@@ -1191,9 +1191,37 @@ fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
     );
 }
 
+/// The feed update of `package` in an owned child that exits abruptly at
+/// `point`, as a power cut or a killed session would leave it.
+fn cut_update_at(fixture: &Fixture, package: &Package, point: &str) {
+    let temp = fixture.path.join(format!("temp-{point}"));
+    fs::create_dir(&temp).expect("isolated temp");
+    let input = fixture.path.join(format!("request-{point}.json"));
+    fs::write(&input,serde_json::to_vec(&json!({"root":fixture.root,"archive":package.path,"sha256":package.sha,"version":package.version,"stopAt":point})).expect("guarded request")).expect("request file");
+    let output = Command::new(std::env::current_exe().expect("owned libtest child"))
+        .args([
+            "--exact",
+            "checkpoint_process_worker",
+            "--ignored",
+            "--nocapture",
+        ])
+        .env("VANTARE_P4_CRASH_REQUEST", input)
+        .env("TEMP", &temp)
+        .env("TMP", &temp)
+        .env("LOCALAPPDATA", fixture.path.join("LocalAppData"))
+        .creation_flags(0x0800_0000)
+        .output()
+        .expect("owned crash fixture child");
+    assert_eq!(
+        output.status.code(),
+        Some(90),
+        "{point}: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 #[test]
 fn abrupt_process_exit_at_staged_and_commit_never_leaves_torn_state() {
-    let executable = std::env::current_exe().expect("owned libtest child");
     for point in ["staged", "before-commit", "after-commit"] {
         let fixture = Fixture::new();
         fixture
@@ -1202,33 +1230,7 @@ fn abrupt_process_exit_at_staged_and_commit_never_leaves_torn_state() {
         fixture.write_data();
         let old = fs::read(fixture.root.join("state.json")).expect("old state bytes");
         let package = fixture.package("1.0.1");
-        let payload_directory = fixture.path.join("engine");
-        fs::create_dir(&payload_directory).expect("payload dir");
-        fs::copy(&package.path, payload_directory.join("package.zip")).expect("package fixture");
-        let temp = fixture.path.join("temp");
-        fs::create_dir(&temp).expect("isolated temp");
-        let input = fixture.path.join("request.json");
-        fs::write(&input,serde_json::to_vec(&json!({"root":fixture.root,"archive":package.path,"sha256":package.sha,"version":package.version,"stopAt":point})).expect("guarded request")).expect("request file");
-        let output = Command::new(&executable)
-            .args([
-                "--exact",
-                "checkpoint_process_worker",
-                "--ignored",
-                "--nocapture",
-            ])
-            .env("VANTARE_P4_CRASH_REQUEST", input)
-            .env("TEMP", &temp)
-            .env("TMP", &temp)
-            .env("LOCALAPPDATA", fixture.path.join("LocalAppData"))
-            .creation_flags(0x0800_0000)
-            .output()
-            .expect("owned crash fixture child");
-        assert_eq!(
-            output.status.code(),
-            Some(90),
-            "{}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        cut_update_at(&fixture, &package, point);
         let view = verified(&fixture.root).expect("fully valid state after abrupt exit");
         assert_eq!(
             view.installed_version(),
@@ -4991,4 +4993,334 @@ fn measure_the_cost_of_checking_a_recording_and_of_the_flush() {
          flush de 500 archivos de 4 KiB: {flushed_small:?}; \
          flush de 64 MiB recién escritos: {flushed_large:?}"
     );
+}
+
+// ---------------------------------------------------------------------------
+// P7-1 (#2822): A→B→C de paquetes Electron por el camino del feed
+// (`operations::update`, el mismo que usa `vantare.exe` al aplicar), con un
+// Confirm o un rollback en cada salto. Cada generación escribe lo suyo.
+
+const IN_A: &str = "series-1700000000000-1.duckdb";
+const IN_B: &str = "series-1700000360000-2.duckdb";
+const IN_C: &str = "series-1700000720000-3.duckdb";
+
+impl Fixture {
+    /// The feed applies an authenticated package after every child exited.
+    fn feed(&self, package: &Package) -> disk::Result<()> {
+        let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+        operations::update(
+            &self.root,
+            &package.borrowed(),
+            false,
+            &mut sink.control(&cancel),
+        )
+    }
+    fn feed_to(&self, version: &str) -> PathBuf {
+        self.feed(&self.electron(version)).expect(version);
+        self.active()
+    }
+    fn status(&self) -> serde_json::Value {
+        disk::read_json(&self.root.join("update-status.json"), None).expect("update status")
+    }
+    /// A, installed by Setup with a recording, and B, applied by the feed and
+    /// confirmed, which then writes documents and a recording of its own.
+    fn chain_to_b(&self, shell: &Shell) -> [PathBuf; 2] {
+        self.setup(shell, &self.electron("1.0.0"), Mode::Auto, Some(true))
+            .expect("A");
+        self.write_documents();
+        let a = self.active();
+        record(&recordings(&a), &[(IN_A, &duck(1, 0xA1))]);
+        let b = self.feed_to("1.0.1");
+        self.confirm();
+        fs::write(b.join("data/hub/hub-settings.json"), b"{\"by\":\"B\"}").expect("B settings");
+        fs::write(b.join("data/hub/hub-ui/Preferences"), b"{}").expect("B profile");
+        record(&recordings(&b), &[(IN_B, &duck(1, 0xB2))]);
+        [a, b]
+    }
+}
+/// The index of a data folder without its recordings, which Confirm gathers.
+fn without_recordings(mut index: Index) -> Index {
+    index.retain(|path, _| !path.starts_with("hub/recordings"));
+    index
+}
+
+#[test]
+fn the_feed_takes_a_to_b_to_c_copying_each_from_the_confirmed_generation() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    let [a, b] = fixture.chain_to_b(&shell);
+    let single = fixture.root.join("recordings");
+    // B's Confirm brought the copy of A's recording; `previous` keeps its own.
+    assert_eq!(names(&single), [IN_A]);
+    assert_eq!(names(&recordings(&a)), [IN_A]);
+    // A stale write in A after B took over must never reach C.
+    fs::write(a.join("data/escrito en A tras B.bin"), b"stale").unwrap();
+    let (data_a, data_b, whole_b) = (index(&a.join("data")), index(&b.join("data")), index(&b));
+    let location = shell.context.install_location().unwrap();
+
+    let c = fixture.feed_to("1.0.2");
+    assert_eq!(
+        index(&c.join("data")),
+        data_b,
+        "C starts from B, not from A"
+    );
+    assert_eq!(index(&a.join("data")), data_a);
+    assert_eq!(index(&b), whole_b);
+    let view = verified(&fixture.root).unwrap();
+    assert_eq!(view.installed_version(), Some("1.0.2"));
+    assert_eq!(
+        view.state.unwrap().previous.unwrap().generation,
+        b.file_name().unwrap().to_string_lossy()
+    );
+    assert_eq!(
+        fs::read(fixture.root.join("Vantare.exe")).unwrap(),
+        fs::read(c.join("bin/vantare.exe")).unwrap()
+    );
+    assert_launcher_links(&fixture, &shell, true);
+    assert_eq!(shell.context.install_location().unwrap(), location);
+
+    let notes = fixture.confirm();
+    assert!(!fixture.root.join("boot-pending.json").exists());
+    // A, without a reference, loses its binaries; its documents stay and its
+    // copy of a recording already in the single folder goes as identical.
+    assert_eq!(names(&a), ["data"]);
+    assert!(noted(&notes, &a, "retirados"), "{notes:?}");
+    assert_eq!(
+        without_recordings(index(&a.join("data"))),
+        without_recordings(data_a)
+    );
+    assert_eq!(names(&recordings(&a)), [] as [String; 0]);
+    assert_eq!(index(&b), whole_b, "previous keeps the way back");
+    assert_eq!(names(&single), [IN_A, IN_B]);
+    assert_eq!(names(&recordings(&c)), [] as [String; 0]);
+    assert_eq!(
+        without_recordings(index(&c.join("data"))),
+        without_recordings(data_b)
+    );
+}
+
+#[test]
+fn a_failed_c_goes_back_to_b_untouched_and_c_keeps_what_it_wrote() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    let [a, b] = fixture.chain_to_b(&shell);
+    let (whole_b, data_b) = (index(&b), index(&b.join("data")));
+    let c = fixture.feed_to("1.0.2");
+    // C wrote before its window failed to confirm the boot (P6).
+    fs::write(c.join("data/hub/hub-settings.json"), b"{\"by\":\"C\"}").unwrap();
+    fs::write(c.join("data/solo en C.bin"), b"only in C").unwrap();
+    record(&recordings(&c), &[(IN_C, &duck(1, 0xC3))]);
+    let data_c = index(&c.join("data"));
+
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    assert_eq!(fixture.active(), b);
+    assert_eq!(index(&b), whole_b, "B and its data, as before C");
+    assert_eq!(index(&c.join("data")), data_c, "what C wrote stays in C");
+    assert_eq!(
+        fs::read(fixture.root.join("Vantare.exe")).unwrap(),
+        fs::read(b.join("bin/vantare.exe")).unwrap()
+    );
+    assert_launcher_links(&fixture, &shell, true);
+    let status = fixture.status();
+    assert_eq!(status["state"], "rollback");
+    assert_eq!(status["rejectedVersion"], "1.0.2");
+    assert!(!fixture.root.join("boot-pending.json").exists());
+
+    // The next version starts again from B; the feed and Confirm keep C rejected.
+    let d = fixture.feed_to("1.0.3");
+    assert_eq!(index(&d.join("data")), data_b);
+    assert_eq!(fixture.status()["rejectedVersion"], "1.0.2");
+    fixture.confirm();
+    assert_eq!(fixture.status()["rejectedVersion"], "1.0.2");
+    assert_eq!([names(&a), names(&c)], [["data"], ["data"]]);
+    // C's recording is not lost: it reaches the single folder, and its other
+    // documents stay in C for an explicit recovery.
+    assert_eq!(names(&fixture.root.join("recordings")), [IN_A, IN_B, IN_C]);
+    assert_eq!(
+        without_recordings(index(&c.join("data"))),
+        without_recordings(data_c)
+    );
+    assert!(!d.join("data/solo en C.bin").exists());
+}
+
+#[test]
+fn a_cut_at_every_point_of_the_b_to_c_hop_leaves_b_or_a_c_to_confirm() {
+    for point in ["staged", "before-commit", "after-commit"] {
+        let fixture = Fixture::new();
+        let shell = fixture.shell();
+        let [_, b] = fixture.chain_to_b(&shell);
+        let state = fs::read(fixture.root.join("state.json")).unwrap();
+        let (whole_b, data_b) = (index(&b), index(&b.join("data")));
+        let package = fixture.electron("1.0.2");
+        cut_update_at(&fixture, &package, point);
+        let view = verified(&fixture.root).expect("valid state after the cut");
+        assert_eq!(index(&b), whole_b, "{point}: B untouched");
+        if point == "after-commit" {
+            // C is active and its boot still to confirm: the next start tries it.
+            assert_eq!(view.installed_version(), Some("1.0.2"));
+            assert!(!operations::discard_stale_boot_marker(&fixture.root).unwrap());
+            let c = fixture.active();
+            assert_eq!(index(&c.join("data")), data_b);
+            let marker = fs::read(fixture.root.join("boot-pending.json")).unwrap();
+            fixture.confirm();
+            // Confirm cut before its marker went away: the next start confirms
+            // again, with no rollback and nothing more retired.
+            fs::write(fixture.root.join("boot-pending.json"), &marker).unwrap();
+            assert!(!operations::discard_stale_boot_marker(&fixture.root).unwrap());
+            let whole = index(&fixture.root.join("generations"));
+            fixture.confirm();
+            assert_eq!(fixture.active(), c);
+            assert_eq!(index(&fixture.root.join("generations")), whole);
+            assert!(!fixture.root.join("boot-pending.json").exists());
+        } else {
+            assert_eq!(view.installed_version(), Some("1.0.1"), "{point}");
+            assert_eq!(fs::read(fixture.root.join("state.json")).unwrap(), state);
+            assert!(
+                operations::discard_stale_boot_marker(&fixture.root).unwrap(),
+                "{point}"
+            );
+            assert_eq!(fixture.active(), b);
+            assert_eq!(index(&b), whole_b);
+            // And the retry starts from B again.
+            fixture.feed(&package).expect("retry");
+            assert_eq!(index(&fixture.data()), data_b, "{point}");
+            fixture.confirm();
+        }
+        assert_eq!(
+            verified(&fixture.root).unwrap().installed_version(),
+            Some("1.0.2")
+        );
+    }
+}
+
+#[test]
+fn once_c_is_confirmed_neither_setup_nor_feed_nor_rollback_goes_back_to_b() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    fixture.chain_to_b(&shell);
+    fixture.feed_to("1.0.2");
+    fixture.confirm();
+    let seen = || {
+        let json = |name: &str| disk::read_json(&fixture.root.join(name), None).unwrap();
+        (
+            json("state.json"),
+            json("update-status.json"),
+            fs::read(fixture.root.join("Vantare.exe")).unwrap(),
+            index(&fixture.root.join("generations")),
+        )
+    };
+    let before = seen();
+    let older = fixture.electron("1.0.1");
+    for mode in [Mode::Auto, Mode::Repair] {
+        assert_eq!(
+            fixture.setup(&shell, &older, mode, None).unwrap_err().code,
+            3
+        );
+    }
+    assert!(fixture.feed(&older).is_err(), "the feed only goes up");
+    assert!(
+        fixture.feed(&fixture.electron("1.0.2")).is_err(),
+        "nor sideways"
+    );
+    assert!(
+        operations::rollback(&fixture.root).is_err(),
+        "no manual way back"
+    );
+    assert!(seen() == before, "a refused way back changes nothing");
+    assert_eq!(children(&fixture.root.join("staging")), 0);
+}
+
+/// CARACTERIZACIÓN (#2822, caso 5), no un contrato: lo que pasa hoy con la
+/// versión rechazada, que `installed::stage` no vuelve a ofrecer. El feed y
+/// Confirm la conservan (`a_failed_c_goes_back_to_b_*`); un Setup sobre la
+/// instalación reescribe `update-status.json` sin ella, así que tras Reparar
+/// B el feed volvería a ofrecer C una vez. Pendiente de decisión.
+#[test]
+fn characterization_a_setup_repair_forgets_the_rejected_version() {
+    let fixture = Fixture::new();
+    let shell = fixture.shell();
+    let [_, b] = fixture.chain_to_b(&shell);
+    fixture.feed_to("1.0.2");
+    assert_eq!(
+        operations::rollback(&fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    assert_eq!(fixture.status()["rejectedVersion"], "1.0.2");
+    let data_b = index(&b.join("data"));
+    fixture
+        .setup(&shell, &fixture.electron("1.0.1"), Mode::Repair, None)
+        .unwrap();
+    assert_eq!(index(&fixture.data()), data_b, "the repair keeps B's data");
+    assert_eq!(fixture.status()["state"], "applied");
+    assert!(
+        fixture.status()["rejectedVersion"].is_null(),
+        "forgotten by Setup"
+    );
+    fixture.confirm();
+    assert!(fixture.status()["rejectedVersion"].is_null());
+}
+
+#[test]
+fn the_beta_feed_chain_and_the_nightly_setup_chain_never_touch_each_other() {
+    let (beta_fixture, nightly_fixture) = (Fixture::new(), Fixture::new());
+    let folders = beta_fixture.path.join("shell");
+    let registry = hive();
+    let beta = beta_fixture.shell_with("beta", folders.clone(), registry.clone());
+    let nightly = nightly_fixture.shell_with("nightly", folders, registry);
+    let nightly_package = |version| {
+        nightly_fixture.build_for(
+            "nightly",
+            "electron-nightly",
+            version,
+            electron_members(),
+            None,
+            2,
+        )
+    };
+    nightly_fixture
+        .setup(&nightly, &nightly_package("1.0.0"), Mode::Auto, Some(true))
+        .unwrap();
+    nightly_fixture.write_documents();
+    let nightly_state = || product_snapshot(&nightly_fixture, &nightly, NIGHTLY_KEY, &BETA_PATHS);
+    let nightly_before = nightly_state();
+
+    // Beta: A by Setup, B and C by the feed, C fails and goes back to B.
+    beta_fixture.chain_to_b(&beta);
+    beta_fixture.feed_to("1.0.2");
+    assert_eq!(
+        operations::rollback(&beta_fixture.root).unwrap(),
+        operations::BootRecovery::Restored
+    );
+    assert_eq!(nightly_state(), nightly_before, "beta chain");
+    // A beta package never enters the nightly root through the feed.
+    assert!(
+        nightly_fixture
+            .feed(&nightly_fixture.electron("1.0.1"))
+            .is_err()
+    );
+    assert_eq!(nightly_state(), nightly_before, "refused feed");
+
+    // Nightly has no feed: its Setup takes it 1.0.0 → 1.0.1 → 1.0.2.
+    let beta_state = || product_snapshot(&beta_fixture, &beta, BETA_KEY, &NIGHTLY_PATHS);
+    let beta_before = beta_state();
+    let mut data = index(&nightly_fixture.data());
+    for version in ["1.0.1", "1.0.2"] {
+        nightly_fixture
+            .setup(&nightly, &nightly_package(version), Mode::Auto, None)
+            .unwrap();
+        assert_eq!(index(&nightly_fixture.data()), data, "{version}");
+        operations::confirm(&nightly_fixture.root).unwrap();
+        fs::write(
+            nightly_fixture.data().join(format!("{version}.bin")),
+            version,
+        )
+        .unwrap();
+        data = index(&nightly_fixture.data());
+    }
+    assert_eq!(beta_state(), beta_before, "nightly chain");
+    assert_eq!(channel_of(&nightly_fixture), "nightly");
+    assert_eq!(channel_of(&beta_fixture), "beta");
 }

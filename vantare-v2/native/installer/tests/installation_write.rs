@@ -4698,7 +4698,12 @@ fn a_reverted_orphan_gives_its_whole_recordings_and_keeps_the_broken_ones() {
     assert_eq!(read(&recordings(&c).join(moved[2])), half);
     // One note per reason, each saying what failed (#2815).
     for (names, detail) in [
-        (&broken[..2], IN_USE),
+        (&broken[..1], IN_USE),
+        // Its free list lives in the block that was cut off.
+        (
+            &broken[1..2],
+            "la lista de bloques libres apunta fuera de lo comprobado",
+        ),
         (&broken[2..3], "no lleva la marca DUCK"),
         (&broken[3..4], "la cabecera está cortada"),
         (&broken[4..7], "falla la suma de control de un bloque"),
@@ -4844,7 +4849,7 @@ fn the_free_list_is_read_bounded_and_anything_unexpected_keeps_the_recording() {
     let [_, _, c] = fixture.three_generations();
     let (next, none) = (1_u64 << 56, u64::MAX); // Part 1 of block 0; the end.
     let six: &[u64] = &[7, 2, 3, 4, 5, 6];
-    let files: [(&str, Vec<u8>); 7] = [
+    let files: [(&str, Vec<u8>); 8] = [
         // Seven ids over two parts: 2 to 8 are free, the file stops at 2.
         (
             "series-1-1.duckdb",
@@ -4853,7 +4858,9 @@ fn the_free_list_is_read_bounded_and_anything_unexpected_keeps_the_recording() {
         // The newest header at 4 096, the older one counting more blocks.
         ("series-1-2.duckdb", duck_at([8192, 4096], 2, 0xC)),
         ("series-2-1.duckdb", trimmed(7, &[(0, six)])),
+        // A block past the file, and a part past the 64 of a block.
         ("series-3-1.duckdb", trimmed(7, &[(9, six)])),
+        ("series-3-2.duckdb", trimmed(7, &[(64 << 56, six)])),
         ("series-4-1.duckdb", trimmed(1, &[(none, &[4, 2])])),
         ("series-5-1.duckdb", trimmed(2, &[(none, &[1, 3])])),
         ("series-5-2.duckdb", trimmed(2, &[(none, &[1, 2])])),
@@ -4875,11 +4882,11 @@ fn the_free_list_is_read_bounded_and_anything_unexpected_keeps_the_recording() {
             "la lista de bloques libres vuelve a una parte ya leída",
         ),
         (
-            &names_of[3..4],
+            &names_of[3..5],
             "la lista de bloques libres apunta fuera de lo comprobado",
         ),
-        (&names_of[4..5], "la lista de bloques libres supera su tope"),
-        (&names_of[5..], IN_USE),
+        (&names_of[5..6], "la lista de bloques libres supera su tope"),
+        (&names_of[6..], IN_USE),
     ] {
         let reason = format!("no es una grabación completa ({detail})");
         assert!(

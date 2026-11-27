@@ -1478,61 +1478,139 @@ fn remove_identical(path: &Path, target: &Path) -> std::result::Result<(), Strin
     }
     windows::delete_open(&copy).map_err(|error| format!("no se pudo retirar la copia ({error})"))
 }
-/// A `DuckDB` file is a header block with its mark, two database headers and the
-/// blocks the newest header counts; each of them starts with the checksum of
-/// the rest. Every checksum is verified, so a copy cut short, or one whose
-/// blocks never reached the disk (zeros), does not pass and stays where it is
-/// (#2746, condition 6). The algorithm and the layout were checked against the
-/// two real files of the `DuckDB` in use (no blocks, and five of 16 384 bytes).
+/// The storage format `intact` reads: version 64, the one `DuckDB` 1.5.5 writes
+/// and `storage` pins (`Cargo.lock`; a test fails when it changes, so that the
+/// reader is checked again). Another version is not read: the recording stays.
+const STORAGE_VERSION: u64 = 64;
+const DUCK_HEADER: usize = 4096;
+/// A `DuckDB` 1.5.5 file is a main header (its mark and storage version), two
+/// database headers and the blocks the newest of them counts; each one starts
+/// with the checksum of the rest. Every block in the file is verified, so a
+/// copy cut short, or one whose blocks never reached the disk (zeros), stays
+/// where it is (#2746, condition 6). A checkpoint writes the header and only
+/// then cuts the free blocks off the end (#2815): blocks the file lacks must
+/// all be in the free list of that header. Checked against recordings of the
+/// real recorder (`tests/fixtures/grabaciones-reales.py`) and of hub-host.
 fn intact(mut file: &fs::File) -> std::result::Result<(), String> {
-    const HEADER: usize = 4096;
-    let broken = || "no es una grabación completa: puede ser una copia cortada".to_owned();
-    let mut read =
-        |buffer: &mut [u8]| io::Read::read_exact(&mut file, buffer).map_err(|_| broken());
-    let word = |bytes: &[u8], at: usize| -> u64 {
-        u64::from_le_bytes(bytes[at..at + 8].try_into().expect("eight bytes"))
+    const IN_USE: &str = "falta un bloque en uso";
+    let broken = |detail: &str| {
+        format!("no es una grabación completa ({detail}): puede ser una copia cortada")
     };
-    // DuckDB: 5381, then each further 8-byte word multiplied and xored in.
-    let sound = |block: &[u8]| -> bool {
-        word(block, 0)
-            == block[8..]
-                .as_chunks::<8>()
-                .0
-                .iter()
-                .fold(5381_u64, |sum, chunk| {
-                    sum ^ u64::from_le_bytes(*chunk).wrapping_mul(0xbf58_476d_1ce4_e5b9)
-                })
-    };
-    let mut head = [0_u8; 3 * HEADER];
-    read(&mut head)?;
-    let headers: Vec<&[u8]> = head
-        .as_chunks::<HEADER>()
-        .0
-        .iter()
-        .map(<[u8; HEADER]>::as_slice)
-        .collect();
-    if &head[8..12] != b"DUCK" || !headers.iter().all(|&header| sound(header)) {
-        return Err(broken());
+    let length = file
+        .metadata()
+        .map_err(|error| format!("no se pudo leer ({error})"))?
+        .len();
+    let mut head = [0_u8; 3 * DUCK_HEADER];
+    io::Read::read_exact(&mut file, &mut head).map_err(|_| broken("la cabecera está cortada"))?;
+    let headers = head.as_chunks::<DUCK_HEADER>().0;
+    if &head[8..12] != b"DUCK" {
+        return Err(broken("no lleva la marca DUCK"));
+    }
+    if !headers.iter().all(|header| sound(header)) {
+        return Err(broken("falla la suma de control de una cabecera"));
+    }
+    let version = word(&head, 12);
+    if version != STORAGE_VERSION {
+        return Err(broken(&format!(
+            "versión de almacenamiento {version}; solo se lee la {STORAGE_VERSION} de DuckDB 1.5.5"
+        )));
     }
     // iteration, meta block, free list, block count, block size.
-    let newest = if word(headers[2], 8) > word(headers[1], 8) {
-        headers[2]
+    let newest = if word(&headers[2], 8) > word(&headers[1], 8) {
+        &headers[2]
     } else {
-        headers[1]
+        &headers[1]
     };
-    let (blocks, size) = (word(newest, 32), word(newest, 40));
-    let size = usize::try_from(size)
+    let blocks = word(newest, 32);
+    let size = usize::try_from(word(newest, 40))
         .ok()
-        .filter(|size| (HEADER..=1 << 24).contains(size) && size.is_power_of_two())
-        .ok_or_else(broken)?;
+        .filter(|size| (DUCK_HEADER..=1 << 24).contains(size) && size.is_power_of_two())
+        .ok_or_else(|| broken("tamaño de bloque no válido"))?;
+    let room = length.saturating_sub(head.len() as u64) / size as u64;
+    let present = blocks.min(room);
     let mut block = vec![0_u8; size];
-    for _ in 0..blocks {
-        read(&mut block)?;
+    for _ in 0..present {
+        io::Read::read_exact(&mut file, &mut block).map_err(|_| broken(IN_USE))?;
         if !sound(&block) {
-            return Err(broken());
+            return Err(broken("falla la suma de control de un bloque"));
+        }
+    }
+    if present < blocks {
+        let pointer = word(newest, 24);
+        if pointer == u64::MAX {
+            return Err(broken(IN_USE)); // No free list: every block is in use.
+        }
+        let free = free_list(file, pointer, blocks, present, size).map_err(broken)?;
+        let missing = blocks - present;
+        if missing > free.len() as u64 || !(present..blocks).all(|id| free.contains(&id)) {
+            return Err(broken(IN_USE));
         }
     }
     Ok(())
+}
+fn word(bytes: &[u8], at: usize) -> u64 {
+    u64::from_le_bytes(bytes[at..at + 8].try_into().expect("eight bytes"))
+}
+/// `DuckDB`: 5381, then each further 8-byte word multiplied and xored in.
+fn sound(block: &[u8]) -> bool {
+    word(block, 0)
+        == block[8..]
+            .as_chunks::<8>()
+            .0
+            .iter()
+            .fold(5381_u64, |sum, chunk| {
+                sum ^ u64::from_le_bytes(*chunk).wrapping_mul(0xbf58_476d_1ce4_e5b9)
+            })
+}
+/// The free list `pointer` names, as `DuckDB` 1.5.5 writes it: a count and that
+/// many block ids, 8 bytes each, along a chain of metadata parts. A block holds
+/// 64 parts after its checksum, of `(size - 8) / 64` bytes rounded down to 8,
+/// each starting with the pointer to the next (block id in the low 56 bits,
+/// part in the high 8; all ones: none). Only blocks already verified are read,
+/// each part once, and no more parts than `blocks` ids would fill.
+fn free_list(
+    mut file: &fs::File,
+    pointer: u64,
+    blocks: u64,
+    present: u64,
+    size: usize,
+) -> std::result::Result<BTreeSet<u64>, &'static str> {
+    const OUTSIDE: &str = "la lista de bloques libres apunta fuera de lo comprobado";
+    const LIMIT: &str = "la lista de bloques libres supera su tope";
+    let part = (size - 8) / 64 / 8 * 8;
+    let hops = blocks.saturating_add(1).div_ceil((part as u64 - 8) / 8);
+    let (mut next, mut seen) = (pointer, BTreeSet::new());
+    let (mut buffer, mut at) = (vec![0_u8; part], part);
+    let mut read = || -> std::result::Result<u64, &'static str> {
+        let mut bytes = [0_u8; 8];
+        for byte in &mut bytes {
+            if at == part {
+                let (block, index) = (next & ((1 << 56) - 1), next >> 56);
+                if next == u64::MAX || block >= present || index >= 64 {
+                    return Err(OUTSIDE);
+                }
+                if !seen.insert(next) {
+                    return Err("la lista de bloques libres vuelve a una parte ya leída");
+                }
+                if seen.len() as u64 > hops {
+                    return Err(LIMIT);
+                }
+                let offset = 3 * DUCK_HEADER as u64 + block * size as u64 + 8;
+                io::Seek::seek(&mut file, io::SeekFrom::Start(offset + index * part as u64))
+                    .and_then(|_| io::Read::read_exact(&mut file, &mut buffer))
+                    .map_err(|_| OUTSIDE)?;
+                (next, at) = (word(&buffer, 0), 8);
+            }
+            *byte = buffer[at];
+            at += 1;
+        }
+        Ok(u64::from_le_bytes(bytes))
+    };
+    let count = read()?;
+    if count > blocks {
+        return Err(LIMIT);
+    }
+    (0..count).map(|_| read()).collect()
 }
 /// The generation an unconfirmed update staged, which a sweep never gathers
 /// from. An error when `boot-pending.json` cannot be read or does not name a

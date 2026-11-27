@@ -79,6 +79,7 @@ export async function checkOnboarding(
   });
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(`${base}?escena=onboarding-7`);
+  await checkSkipTarget(page);
   await page.getByRole("button", { name: "Empezar", exact: true }).click();
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
   await page.getByRole("button", { name: "Continuar", exact: true }).click();
@@ -149,6 +150,71 @@ export async function checkOnboarding(
   assert.equal(state.finishes, 1);
   assert.equal(state.completions, 1);
   await accountBoundary(page);
+}
+
+// #2799: los botones de ventana flotan sobre la cabecera. Se prueba una rejilla
+// y no solo el centro: a 1440×1000 el centro se libraba por 0,1 px con medio
+// botón tapado.
+async function checkSkipTarget(page: Page) {
+  const previous = page.viewportSize();
+  const skip = page.getByRole("button", { name: "Saltar", exact: true });
+  await skip.waitFor();
+  for (const [width, height] of [
+    [1280, 900],
+    [1440, 1000],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    // El asistente se reescala (ResizeObserver) después de cambiar el tamaño.
+    await until(
+      async () =>
+        Number(
+          await page
+            .locator(".v-onboarding")
+            .evaluate((node) =>
+              getComputedStyle(node).getPropertyValue("--ob-s"),
+            ),
+        ) === Math.min(width / 1600, height / 900),
+      5000,
+      "onboarding scale",
+    );
+    const stolen = await skip.evaluate((button) => {
+      const box = button.getBoundingClientRect();
+      const fractions = [0.1, 0.5, 0.9];
+      return fractions.flatMap((x) =>
+        fractions.flatMap((y) => {
+          const hit = document.elementFromPoint(
+            box.left + box.width * x,
+            box.top + box.height * y,
+          );
+          if (button.contains(hit)) return [];
+          const thief = hit?.closest("button")?.getAttribute("aria-label");
+          return [`${x}/${y}: ${thief ?? hit?.className}`];
+        }),
+      );
+    });
+    assert.deepEqual(
+      stolen,
+      [],
+      `${width}×${height}: «Saltar» debe recibir su clic`,
+    );
+    const controls = page.locator(".v-window-controls button");
+    assert.equal(await controls.count(), 3);
+    for (const control of await controls.all())
+      assert.equal(
+        await control.evaluate((button) => {
+          const box = button.getBoundingClientRect();
+          return button.contains(
+            document.elementFromPoint(
+              box.left + box.width / 2,
+              box.top + box.height / 2,
+            ),
+          );
+        }),
+        true,
+        `${width}×${height}: cada botón de ventana debe recibir su clic`,
+      );
+  }
+  if (previous) await page.setViewportSize(previous);
 }
 
 async function accountBoundary(page: Page) {

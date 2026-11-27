@@ -272,6 +272,7 @@ mod qa_chain {
     use crate::installed::stage;
     use std::process::ExitCode;
     use vantare_installer::engine::operations::{self, BootRecovery, Control, Package};
+    use vantare_installer::model::Mode;
 
     const INSTALLED: &str = "0.0.989";
     const NEXT: &str = "0.0.990";
@@ -299,6 +300,9 @@ mod qa_chain {
         expanded: u64,
     }
     fn build(parent: &Path, version: &str) -> Built {
+        build_for(parent, version, "beta")
+    }
+    fn build_for(parent: &Path, version: &str, channel: &str) -> Built {
         let full: serde_json::Value =
             serde_json::from_str(CANDIDATE).expect("full candidate manifest");
         let windows = std::env::var_os("WINDIR").expect("Windows root");
@@ -336,7 +340,7 @@ mod qa_chain {
             fs::write(&target, &bytes).expect("member");
             files.push(serde_json::json!({"path":path,"size":bytes.len(),"sha256":format!("{:x}", sha2::Sha256::digest(&bytes))}));
         }
-        let manifest = serde_json::to_vec(&serde_json::json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","data_schema":"opaque-v1","source_sha":"0".repeat(40),"source_dirty":false,"build_profile":"Debug","version":version,"channel":"beta","engine":2,"files":files})).expect("manifest");
+        let manifest = serde_json::to_vec(&serde_json::json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","data_schema":"opaque-v1","source_sha":"0".repeat(40),"source_dirty":false,"build_profile":"Debug","version":version,"channel":channel,"engine":2,"files":files})).expect("manifest");
         fs::write(source.join("manifest.json"), &manifest).expect("manifest");
         let initial = u64::try_from(manifest.len()).expect("manifest length");
         let expanded = files.iter().fold(initial, |total, file| {
@@ -391,10 +395,21 @@ mod qa_chain {
     }
     impl Installed {
         fn new() -> Self {
+            Self::of("beta")
+        }
+        fn of(channel: &str) -> Self {
             let parent = qa_root();
             let root = parent.join("instalación");
             fs::create_dir_all(&parent).expect("parent");
-            let built = build(&parent, INSTALLED);
+            let installed = Self { parent, root };
+            installed
+                .setup(INSTALLED, channel, Mode::Install)
+                .expect("installed candidate");
+            installed
+        }
+        /// The Setup of `version` over this root, as the product Setup runs it.
+        fn setup(&self, version: &str, channel: &str, mode: Mode) -> io::Result<()> {
+            let built = build_for(&self.parent, version, channel);
             let cancel = AtomicBool::new(false);
             let mut control = Control {
                 cancel: &cancel,
@@ -403,20 +418,28 @@ mod qa_chain {
                 warning: &mut |message| eprintln!("{message}"),
             };
             operations::install(
-                &root,
+                &self.root,
                 &Package {
                     archive: &built.archive,
                     sha256: &built.sha256,
-                    version: INSTALLED,
-                    channel: "beta",
+                    version,
+                    channel,
                 },
-                vantare_installer::model::Mode::Install,
+                mode,
                 &mut control,
                 |_, _, _| Ok(()),
                 || Ok(()),
             )
-            .expect("installed candidate");
-            Self { parent, root }
+            .map_err(|error| io::Error::other(error.to_string()))
+        }
+        /// The data folder of the active generation.
+        fn data(&self) -> std::path::PathBuf {
+            let view =
+                vantare_installer::engine::Installation::read(&self.root).expect("installation");
+            self.root
+                .join("generations")
+                .join(&view.state.expect("state").active.generation)
+                .join("data")
         }
         fn version(&self) -> String {
             vantare_installer::engine::Installation::read(&self.root)
@@ -431,8 +454,16 @@ mod qa_chain {
         }
         /// Sirve `NEXT` firmado (con `expanded_delta` de más en el total firmado).
         fn serve(&self, releases: &[&str], expanded_delta: u64) -> Server {
-            let built = build(&self.parent, NEXT);
+            self.serve_version(releases, NEXT, expanded_delta)
+        }
+        /// Anuncia `releases` y sirve solo la oferta firmada y el ZIP de `version`.
+        fn serve_version(&self, releases: &[&str], version: &str, expanded_delta: u64) -> Server {
+            let built = build(&self.parent, version);
             let mut next = offer();
+            next.version = version.to_owned();
+            next.url = format!(
+                "https://github.com/{REPO}/releases/download/hub-beta-v{version}/{PACKAGE}"
+            );
             next.sha256 = built.sha256.clone();
             next.compressed_bytes = fs::metadata(&built.archive).expect("ZIP").len();
             next.expanded_bytes = built.expanded + expanded_delta;
@@ -446,11 +477,11 @@ mod qa_chain {
                     reply("200 OK", &serde_json::to_vec(&list).expect("list")),
                 ),
                 (
-                    asset(NEXT, "vantare-hub-beta.json"),
+                    asset(version, "vantare-hub-beta.json"),
                     reply("200 OK", &signed(&next)),
                 ),
                 (
-                    asset(NEXT, PACKAGE),
+                    asset(version, PACKAGE),
                     reply("200 OK", &fs::read(&built.archive).expect("ZIP")),
                 ),
             ]);
@@ -535,6 +566,151 @@ mod qa_chain {
         assert_eq!(server.finish(), requests(true, true));
         assert!(!installed.root.join("staging/pending.json").exists());
         assert!(!installed.root.join("update-status.json").exists());
+        assert_eq!(installed.version(), INSTALLED);
+    }
+
+    // P7-2 (#2822): varios saltos por el runtime real (`stage`, `apply`,
+    // `confirm` y `rollback`) contra el feed de `127.0.0.1`.
+    const THIRD: &str = "0.0.991";
+    const FOURTH: &str = "0.0.992";
+    const FIFTH: &str = "0.0.993";
+    fn index(path: &Path) -> std::collections::BTreeMap<std::path::PathBuf, Option<(u64, String)>> {
+        disk::data_index(path).expect("data index")
+    }
+    fn asked(version: &str, package: bool) -> Vec<String> {
+        let mut expected = vec![RELEASES.to_owned(), asset(version, "vantare-hub-beta.json")];
+        if package {
+            expected.push(asset(version, PACKAGE));
+        }
+        expected
+    }
+    impl Installed {
+        /// `stage` real con `releases` anunciadas y `version` servida; devuelve lo pedido.
+        fn stage_from(&self, releases: &[&str], version: &str) -> Vec<String> {
+            let server = self.serve_version(releases, version, 0);
+            stage(&self.root, &AtomicBool::new(false)).expect("stage");
+            server.finish()
+        }
+        /// Un salto entero hasta la salida 10, con la generación nueva por confirmar.
+        fn hop(&self, version: &str) {
+            assert_eq!(self.stage_from(&[version], version), asked(version, true));
+            assert!(restarts(apply(&self.root).expect("apply")));
+            assert_eq!(self.version(), version);
+            assert!(self.root.join("boot-pending.json").exists());
+        }
+        fn generations(&self) -> usize {
+            fs::read_dir(self.root.join("generations"))
+                .expect("generations")
+                .count()
+        }
+    }
+
+    #[test]
+    fn qa_chain_takes_a_to_b_to_c_and_each_starts_from_the_confirmed_data() {
+        let installed = Installed::new();
+        fs::write(installed.data().join("de A.bin"), b"A").expect("A data");
+        installed.hop(NEXT);
+        operations::confirm(&installed.root).expect("confirm B");
+        fs::write(installed.data().join("de B.bin"), b"B").expect("B data");
+        let data_b = index(&installed.data());
+        installed.hop(THIRD);
+        assert_eq!(index(&installed.data()), data_b, "C starts from B");
+        operations::confirm(&installed.root).expect("confirm C");
+        assert_eq!(installed.version(), THIRD);
+        assert_eq!(installed.status()["state"], "current");
+        assert!(!installed.root.join("staging/pending.json").exists());
+    }
+
+    #[test]
+    fn qa_chain_after_a_rejected_c_offers_only_the_newest_valid_version() {
+        let installed = Installed::new();
+        installed.hop(NEXT);
+        operations::confirm(&installed.root).expect("confirm B");
+        let data_b = index(&installed.data());
+        installed.hop(THIRD);
+        assert_eq!(
+            operations::rollback(&installed.root).expect("rollback"),
+            BootRecovery::Restored
+        );
+        assert_eq!(installed.status()["rejectedVersion"], THIRD);
+        // C rechazada y una 0.0.993 anunciada sin oferta: se prueba primero la mayor,
+        // después 0.0.992; C nunca se pide.
+        let asked_for = installed.stage_from(&[THIRD, FOURTH, FIFTH], FOURTH);
+        let mut expected = vec![RELEASES.to_owned(), asset(FIFTH, "vantare-hub-beta.json")];
+        expected.extend(asked(FOURTH, true).into_iter().skip(1));
+        assert_eq!(asked_for, expected);
+        assert!(restarts(apply(&installed.root).expect("apply D")));
+        assert_eq!(index(&installed.data()), data_b, "D starts from B");
+        operations::confirm(&installed.root).expect("confirm D");
+        assert_eq!(installed.version(), FOURTH);
+    }
+
+    #[test]
+    fn qa_chain_never_offers_a_rejected_c_again_after_a_setup_repair() {
+        let installed = Installed::new();
+        installed.hop(NEXT);
+        operations::confirm(&installed.root).expect("confirm B");
+        installed.hop(THIRD);
+        assert_eq!(
+            operations::rollback(&installed.root).expect("rollback"),
+            BootRecovery::Restored
+        );
+        // #2825: el Setup repara B y la versión rechazada sigue rechazada.
+        installed
+            .setup(NEXT, "beta", Mode::Repair)
+            .expect("Setup repair");
+        operations::confirm(&installed.root).expect("confirm repair");
+        assert_eq!(installed.stage_from(&[THIRD], THIRD), [RELEASES.to_owned()]);
+        assert!(!installed.root.join("staging/pending.json").exists());
+        assert_eq!(installed.version(), NEXT);
+    }
+
+    #[test]
+    fn qa_chain_a_pending_left_after_apply_never_applies_twice() {
+        let installed = Installed::new();
+        assert_eq!(installed.stage_from(&[NEXT], NEXT), asked(NEXT, true));
+        let pending = installed.root.join("staging/pending.json");
+        let offer_b = fs::read(&pending).expect("pending offer");
+        assert!(restarts(apply(&installed.root).expect("apply")));
+        let generations = installed.generations();
+        // Corte antes de borrar `pending.json`: el siguiente arranque lo retira sin aplicarlo.
+        fs::write(&pending, &offer_b).expect("restored pending");
+        assert!(!restarts(apply(&installed.root).expect("stale pending")));
+        assert!(!pending.exists());
+        // Ni siquiera una oferta mayor se aplica sobre B sin confirmar.
+        let mut later = offer();
+        later.version = THIRD.to_owned();
+        later.url =
+            format!("https://github.com/{REPO}/releases/download/hub-beta-v{THIRD}/{PACKAGE}");
+        fs::write(&pending, signed(&later)).expect("later pending");
+        assert!(!restarts(
+            apply(&installed.root).expect("pending over a trial")
+        ));
+        assert!(!pending.exists());
+        assert_eq!(installed.generations(), generations);
+        assert_eq!(installed.version(), NEXT);
+        operations::confirm(&installed.root).expect("confirm B");
+    }
+
+    #[test]
+    fn qa_chain_a_cancelled_stage_asks_nothing_and_the_next_one_completes() {
+        let installed = Installed::new();
+        let server = installed.serve(&[NEXT], 0);
+        stage(&installed.root, &AtomicBool::new(true)).expect("cancelled stage");
+        assert_eq!(server.finish(), [] as [String; 0]);
+        assert!(!installed.root.join("staging/pending.json").exists());
+        assert_eq!(installed.stage_from(&[NEXT], NEXT), asked(NEXT, true));
+        assert!(installed.root.join("staging/pending.json").exists());
+    }
+
+    #[test]
+    fn qa_chain_a_nightly_root_never_asks_the_feed() {
+        let installed = Installed::of("nightly");
+        let server = installed.serve(&[NEXT], 0);
+        let error = stage(&installed.root, &AtomicBool::new(false)).expect_err("nightly");
+        assert!(error.to_string().contains("canal beta"), "{error}");
+        assert_eq!(server.finish(), [] as [String; 0]);
+        assert!(!installed.root.join("staging/pending.json").exists());
         assert_eq!(installed.version(), INSTALLED);
     }
 }

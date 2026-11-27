@@ -44,7 +44,11 @@ try{
     if($cleanup.schema -ne 1 -or $cleanup.sha256 -cnotmatch '^[a-f0-9]{64}$' -or @($cleanup.PSObject.Properties).Count -ne 2){throw 'CLEANUP_MARKER_REJECTED'}
     $exe=Assert-CleanupPath (Join-Path $root 'Uninstall.exe')
     if(Test-Path -LiteralPath $exe){
-        if((Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash.ToLowerInvariant() -cne $cleanup.sha256){throw 'CLEANUP_HASH_CHANGED'}
+        # .NET y no Get-FileHash: con el PSModulePath de PowerShell 7 heredado, esa función no existe (#2824).
+        $sha=[Security.Cryptography.SHA256]::Create();$stream=$null
+        try{$stream=[IO.File]::OpenRead($exe);$actual=[BitConverter]::ToString($sha.ComputeHash($stream)).Replace('-','').ToLowerInvariant()}
+        finally{if($null -ne $stream){$stream.Dispose()};$sha.Dispose()}
+        if($actual -cne $cleanup.sha256){throw 'CLEANUP_HASH_CHANGED'}
         Remove-Item -LiteralPath $exe
     }
     Remove-Item -LiteralPath $marker

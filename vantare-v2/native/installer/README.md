@@ -21,6 +21,10 @@ raíz, temporal, marcador y hash para retirar el Uninstall propio y su temporal.
 No interpreta ni modifica estado, registro, accesos ni datos; powershell.exe vive
 fuera del árbol. Tras esperar al padre, vuelve a comprobar state.json y marker/hash
 bajo el bloqueo para rechazar una renovación concurrente.
+Calcula el SHA-256 con .NET y el motor lo lanza sin `PSModulePath`: heredada de
+PowerShell 7, Windows PowerShell 5.1 deja de encontrar funciones como
+`Get-FileHash` y la limpieza quedaba a medias (#2824). No usar en este script
+funciones de módulos; lo comprueba `packaging/matrix/cleanup-tests.ps1`.
 El ensayo POSIX falló ACCESS_DENIED y queda manual, documentado en la evidencia p5.
 Feed y Register continúan heredados hasta sus pasos previstos.
 

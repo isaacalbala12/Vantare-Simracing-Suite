@@ -144,6 +144,9 @@ impl Session {
             .arg(self.directory.join("installer-cleanup.ps1"))
             .arg("-RequestFile")
             .arg(self.directory.join("shell.json"));
+        // Heredada de PowerShell 7 apunta a módulos que 5.1 no puede usar (#2824);
+        // sin ella, 5.1 reconstruye su propia ruta.
+        command.env_remove("PSModulePath");
         command.creation_flags(0x0800_0000);
         Ok(command)
     }
@@ -553,20 +556,28 @@ mod tests {
             qa_path(&root).expect("QA guard");
             let directory = root.join("write-engine");
             fs::create_dir_all(&directory).expect("owned transport");
-            let context = Context::isolated(
-                root.join("LocalAppData"),
-                format!("Software\\VantareInstallerMatrix\\{id}"),
-                root.join("shell"),
-            )
-            .and_then(|context| context.for_channel("beta"))
-            .expect("isolated context");
+            let isolated = |channel: &str| {
+                Context::isolated(
+                    root.join("LocalAppData"),
+                    format!("Software\\VantareInstallerMatrix\\{id}"),
+                    root.join("shell"),
+                )
+                .and_then(|context| context.for_channel(channel))
+                .expect("isolated context")
+            };
             // This script only emits diagnostics/progress; it never runs product
             // shell code or touches registry. The session owns/reaps its child.
             let session = Session {
                 directory,
-                context,
+                context: isolated("beta"),
                 transferred: false,
             };
+            let command = session.command().expect("cleanup command");
+            assert!(
+                command
+                    .get_envs()
+                    .any(|(name, value)| name == "PSModulePath" && value.is_none())
+            );
             let script = r#"Write-Warning 'injected cosmetic warning'
 [Console]::WriteLine('{"step":"register","percent":93,"done":0,"total":0,"can_cancel":false}')
 [Console]::WriteLine('{"step":"bad","percent":255,"done":0,"total":0,"can_cancel":false}')
@@ -603,6 +614,13 @@ exit EXIT_CODE
             let log = fs::read_to_string(&request.log_file).expect("diagnostics");
             assert!(log.contains("injected cosmetic warning"));
             assert!(log.contains("\"percent\":255"));
+            // El resto sin canal declarado es de beta: nightly no lo limpia (#2812).
+            let foreign = Session {
+                directory: session.directory.clone(),
+                context: isolated("nightly"),
+                transferred: true,
+            };
+            assert!(foreign.cleanup_contract(root, &request).is_err());
             fs::remove_file(root.join("installer-cleanup.json")).expect("legacy marker absent");
             fs::write(&request.log_file, []).expect("clear log");
             assert!(

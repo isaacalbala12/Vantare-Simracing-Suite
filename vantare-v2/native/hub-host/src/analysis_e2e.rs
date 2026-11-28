@@ -89,6 +89,16 @@ fn wait_for_database_release(root: &Path) -> io::Result<()> {
     Ok(())
 }
 
+/// El Core no espera a su writer: la grabación puede tardar en publicarse y en
+/// abrirse, y hasta entonces el catálogo en vivo está vacío. Su WAL aparece con
+/// la primera escritura confirmada; verlo no abre ni toca ningún archivo.
+fn writer_recording(root: &Path) -> bool {
+    fs::read_dir(root).unwrap().any(|entry| {
+        let name = entry.unwrap().file_name();
+        name.to_string_lossy().ends_with(".duckdb.wal")
+    })
+}
+
 fn record(fixture: &Fixture, image: &Path, helper: &Path, interrupted: bool) {
     let root = fixture.0.join("recordings");
     fs::create_dir_all(&root).unwrap();
@@ -141,20 +151,23 @@ fn record(fixture: &Fixture, image: &Path, helper: &Path, interrupted: bool) {
             "Core terminó durante replay: {}",
             replay.diagnostics()
         );
+        // Antes de cortar o cerrar, esperar a que el writer esté grabando: es
+        // una condición observada, no un punto del replay ni un retardo (#2865).
+        if !checked_live && writer_recording(&replay.root) {
+            checked_live = true;
+            verify_live_writer(fixture, helper.to_owned());
+        }
         let Some(photo) = photos.next(Duration::from_millis(100)) else {
             continue;
         };
         let Some(car) = photo.state.player_car() else {
             continue;
         };
-        if !checked_live && car.laps.current() == Some(&1) {
-            checked_live = true;
-            verify_live_writer(fixture, helper.to_owned());
-        }
         if interrupted {
             // Una vuelta cerrada y varias fotos de la segunda. El Core publica
             // estas fotos después de entregar las series y los eventos al writer.
-            if car.laps.current() == Some(&1)
+            if checked_live
+                && car.laps.current() == Some(&1)
                 && car
                     .lap_elapsed_s
                     .current()
@@ -164,8 +177,11 @@ fn record(fixture: &Fixture, image: &Path, helper: &Path, interrupted: bool) {
                 assert!(!replay.wait().success());
                 break;
             }
-            assert!(car.laps.current() != Some(&2), "se pasó la foto de corte");
-        } else if car.laps.current() == Some(&2) {
+            assert!(
+                car.laps.current() != Some(&2),
+                "se pasó la foto de corte (writer grabando: {checked_live})"
+            );
+        } else if checked_live && car.laps.current() == Some(&2) {
             // Replay sigue sirviendo fotos al final del archivo. EOF de stdin es
             // el cierre ordenado de producto solicitado por el launcher.
             drop(replay.child.stdin.take());

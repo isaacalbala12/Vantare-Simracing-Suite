@@ -1,5 +1,8 @@
-use vantare_ipc::launcher::review::{
-    BlockedReason, ReviewError, authorization_current, can_trust, frame_pages, review_pages,
+use vantare_ipc::launcher::{
+    MAX_STATUS_BYTES,
+    review::{
+        BlockedReason, ReviewError, authorization_current, can_trust, frame_pages, review_pages,
+    },
 };
 
 #[test]
@@ -451,14 +454,16 @@ fn a_program_without_an_ascii_extension_blocks_the_review() {
     // ejecuta el programa igual. Casos medidos por el revisor y rutas sin archivo.
     let games = "\u{418}\u{433}\u{440}\u{44b}";
     let exe = "\u{435}\u{445}\u{435}";
-    for dot in [
-        '\u{b7}', '\u{387}', '\u{2027}', '\u{22c5}', '\u{ff61}', '\u{3002}', '\u{30fb}', '\u{323}',
-    ] {
+    for dot in DOT_LOOKALIKES {
         assert_blocked(
             &format!("C:\\Program Files (x86)\\Steam\\steam{dot}exe"),
-            BlockedReason::UnusualPath,
+            BlockedReason::Lookalike,
         );
     }
+    assert_blocked(
+        "C:\\Program Files (x86)\\Steam\\steam\u{323}exe",
+        BlockedReason::UnusualPath,
+    );
     for path in [
         "C:\\Games\\steam".to_owned(),
         format!("C:\\Games\\{games}"),
@@ -601,13 +606,18 @@ fn only_a_lookalike_sign_or_a_letter_in_the_file_name_means_lookalike() {
     }
 }
 
+const UNUSUAL: &str = "C:\\Games\\app.appref-ms";
+const LOOKALIKE: &str = "C:\\Games\\steam\u{2024}exe";
+const BOTH_REASONS: [(&str, BlockedReason); 2] = [
+    (UNUSUAL, BlockedReason::UnusualPath),
+    (LOOKALIKE, BlockedReason::Lookalike),
+];
+
 #[test]
-fn the_first_failing_step_decides_the_reason() {
-    let unusual = "C:\\Games\\app.appref-ms";
-    let lookalike = "C:\\Games\\steam\u{2024}exe";
+fn the_first_blocked_step_decides_the_reason() {
     for (first, later, reason) in [
-        (unusual, lookalike, BlockedReason::UnusualPath),
-        (lookalike, unusual, BlockedReason::Lookalike),
+        (UNUSUAL, LOOKALIKE, BlockedReason::UnusualPath),
+        (LOOKALIKE, UNUSUAL, BlockedReason::Lookalike),
     ] {
         let mut input = input_with_path(first);
         input["steps"][2]["path"] = later.into();
@@ -616,6 +626,198 @@ fn the_first_failing_step_decides_the_reason() {
             Err(ReviewError::Blocked(reason)),
             "{first}"
         );
+        // Con un paso sin ruta delante, decide el primero de los bloqueados.
+        input["steps"][0]["path"] = "".into();
+        input["steps"][1]["path"] = first.into();
+        assert_eq!(
+            review_pages(&input.to_string()),
+            Err(ReviewError::Blocked(reason)),
+            "{first}"
+        );
+    }
+}
+
+/// Un primer paso que falla sin estar bloqueado, y el error que da él solo.
+fn failing_first_steps() -> Vec<(&'static str, serde_json::Value, ReviewError)> {
+    let long_path = format!("C:\\{}.exe", "a".repeat(254));
+    vec![
+        ("path", "".into(), ReviewError::Unavailable),
+        ("path", long_path.into(), ReviewError::TooLong),
+        (
+            "args",
+            serde_json::json!(["a".repeat(201)]),
+            ReviewError::TooLong,
+        ),
+    ]
+}
+
+#[test]
+fn a_blocked_step_wins_over_an_earlier_failing_step() {
+    // #2903: quien prepara el perfil no elige qué explicación se ve.
+    for (field, value, alone) in failing_first_steps() {
+        let mut input = corto();
+        input["steps"][0][field] = value;
+        assert_eq!(review_pages(&input.to_string()), Err(alone), "{field}");
+        for later in [1, 2] {
+            for (path, reason) in BOTH_REASONS {
+                let mut blocked = input.clone();
+                blocked["steps"][later]["path"] = path.into();
+                assert_eq!(
+                    review_pages(&blocked.to_string()),
+                    Err(ReviewError::Blocked(reason)),
+                    "{field} {later} {path}"
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn a_blocked_step_wins_over_its_own_long_arguments() {
+    for (path, reason) in BOTH_REASONS {
+        let mut input = input_with_path(path);
+        input["steps"][0]["args"] = serde_json::json!(["a".repeat(201)]);
+        assert_eq!(
+            review_pages(&input.to_string()),
+            Err(ReviewError::Blocked(reason)),
+            "{path}"
+        );
+    }
+}
+
+#[test]
+fn a_blocked_step_wins_over_too_many_steps() {
+    let step = corto()["steps"][0].clone();
+    let mut steps = vec![step.clone(); 100];
+    let mut input = corto();
+    input["steps"] = steps.clone().into();
+    assert_eq!(review_pages(&input.to_string()), Err(ReviewError::TooLong));
+    steps.push(step);
+    steps[100]["path"] = LOOKALIKE.into();
+    input["steps"] = steps.into();
+    assert_eq!(
+        review_pages(&input.to_string()),
+        Err(ReviewError::Blocked(BlockedReason::Lookalike))
+    );
+}
+
+#[test]
+fn a_path_over_260_characters_is_not_judged() {
+    // Igual que antes de #2903: más de 260 caracteres es «demasiado largo».
+    let padded = |chars: usize| {
+        let tail = "\\steam\u{2024}exe";
+        format!("C:\\{}{tail}", "a".repeat(chars - 3 - tail.chars().count()))
+    };
+    assert_eq!(padded(260).chars().count(), 260);
+    assert_blocked(&padded(260), BlockedReason::Lookalike);
+    let mut input = input_with_path(&padded(261));
+    assert_eq!(review_pages(&input.to_string()), Err(ReviewError::TooLong));
+    input["steps"][1]["path"] = UNUSUAL.into();
+    assert_eq!(
+        review_pages(&input.to_string()),
+        Err(ReviewError::Blocked(BlockedReason::UnusualPath))
+    );
+}
+
+/// El perfil `corto` con la ruta dada, rellenado por el nombre hasta `bytes`.
+fn message_of(path: &str, bytes: usize) -> String {
+    let mut input = input_with_path(path);
+    input["name"] = "".into();
+    let used = input.to_string().len();
+    input["name"] = "a".repeat(bytes - used).into();
+    let message = input.to_string();
+    assert_eq!(message.len(), bytes);
+    message
+}
+
+#[test]
+fn a_blocked_step_wins_over_the_message_size() {
+    const REVIEW: usize = 64 * 1024;
+    let clean = "C:\\Games\\steam.exe";
+    assert!(review_pages(&message_of(clean, REVIEW)).is_ok());
+    for bytes in [REVIEW + 1, MAX_STATUS_BYTES, MAX_STATUS_BYTES + 1] {
+        assert_eq!(
+            review_pages(&message_of(clean, bytes)),
+            Err(ReviewError::TooLong),
+            "{bytes}"
+        );
+    }
+    for (path, reason) in BOTH_REASONS {
+        for bytes in [REVIEW, REVIEW + 1, MAX_STATUS_BYTES] {
+            assert_eq!(
+                review_pages(&message_of(path, bytes)),
+                Err(ReviewError::Blocked(reason)),
+                "{bytes}"
+            );
+        }
+        // Lo que no cabe en el estado del residente ni se lee.
+        assert_eq!(
+            review_pages(&message_of(path, MAX_STATUS_BYTES + 1)),
+            Err(ReviewError::TooLong)
+        );
+    }
+}
+
+#[test]
+fn an_unreadable_message_keeps_its_own_error() {
+    // Sin perfil no hay rutas que juzgar.
+    let broken = message_of(LOOKALIKE, 64 * 1024 + 2);
+    assert_eq!(
+        review_pages(&broken[..broken.len() - 1]),
+        Err(ReviewError::TooLong)
+    );
+    let mut input = input_with_path(LOOKALIKE);
+    input["steps"][0]["path"] = serde_json::Value::Null;
+    input["steps"][1]["path"] = LOOKALIKE.into();
+    assert_eq!(
+        review_pages(&input.to_string()),
+        Err(ReviewError::Unavailable)
+    );
+}
+
+/// Los puntos que solo explican el bloqueo (#2903): los seis pedidos y U+22C5.
+const DOT_LOOKALIKES: [char; 7] = [
+    '\u{b7}', '\u{387}', '\u{2027}', '\u{22c5}', '\u{ff61}', '\u{3002}', '\u{30fb}',
+];
+
+#[test]
+fn a_middle_dot_explains_a_blocked_path_as_lookalike() {
+    for dot in DOT_LOOKALIKES {
+        for path in [
+            format!("C:\\Games\\steam{dot}exe"),
+            format!("C:\\Games\\steam.exe{dot}"),
+            format!("C:\\Games\\a{dot}b\\app.appref-ms"),
+            format!("C:\\Games\\steam{dot}exe\\"),
+        ] {
+            assert_blocked(&path, BlockedReason::Lookalike);
+        }
+    }
+    // U+0323 es un acento: NFD y NFC dan el mismo motivo.
+    for path in [
+        "C:\\Games\\a\u{323}.appref-ms",
+        "C:\\Games\\\u{1ea1}.appref-ms",
+    ] {
+        assert_blocked(path, BlockedReason::UnusualPath);
+    }
+}
+
+#[test]
+fn a_middle_dot_never_blocks_or_marks_a_normal_program() {
+    let mut paths = vec![
+        "C:\\\u{30b2}\u{30fc}\u{30e0}\\\u{30b2}\u{30fc}\u{30e0}\u{30fb}\u{30e9}\u{30f3}\u{30c1}\u{30e3}\u{30fc}.exe".to_owned(),
+        "C:\\M\u{fa}sica\\Col\u{b7}lecci\u{f3}\\instal\u{b7}lador.exe".into(),
+        "C:\\\u{6e38}\u{620f}\u{3002}\\\u{6e38}\u{620f}.exe".into(),
+    ];
+    for dot in DOT_LOOKALIKES {
+        paths.push(format!("C:\\Games\\a{dot}b.exe"));
+        paths.push(format!("C:\\Games{dot}\\steam.exe"));
+    }
+    for path in &paths {
+        let pages = review_pages(&input_with_path(path).to_string()).expect("no bloquea");
+        assert!(can_trust(&pages), "{path}");
+        let pages = pages.join("\n");
+        assert!(pages.contains(&format!("Programa: {path}")), "{pages}");
+        assert!(!pages.contains("[U+") && !pages.contains(NOTICE), "{pages}");
     }
 }
 

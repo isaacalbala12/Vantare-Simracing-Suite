@@ -181,6 +181,14 @@ export function create(
       pending = undefined;
       if (reviewScene === "reviewing") return new Promise(() => {});
       if (reviewScene === "awaiting-confirmation") return "submitted";
+      // La ruta queda bloqueada mientras se revisa: el anfitrión manda el
+      // resultado anterior y el motivo nuevo (issue 2903).
+      if (reviewScene === "changed-blocked" && view.decision) {
+        view.decision = { ...view.decision, review: "blocked-lookalike" };
+        view.reviewOutcome = { question: target.decision, state: "changed" };
+        context.emit?.(event());
+        return "submitted";
+      }
       if (
         reviewScene === "trusted" ||
         reviewScene === "declined" ||

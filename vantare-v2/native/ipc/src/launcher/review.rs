@@ -8,6 +8,10 @@ const WRAP: usize = 76;
 const BUDGET: usize = 26;
 const MAX_PAGES: usize = 3;
 pub const AUTHORIZATION_MS: u64 = 10_000;
+/// Lo que cabe en una revisión.
+const MAX_MESSAGE_BYTES: usize = 64 * 1024;
+/// Hasta aquí se juzga la ruta de un programa; más larga es «demasiado largo».
+const MAX_PATH_CHARS: usize = 260;
 /// Texto fijado por la raíz (#2579). Cabe en una línea de la página.
 const CONFUSABLE_NOTICE: &str =
     "\nAtención: letras o signos que imitan a los normales, marcados así: [U+…].";
@@ -120,18 +124,24 @@ fn lines(text: &str) -> usize {
 }
 
 impl Step {
-    /// Demasiado largo y sin ruta van antes que el bloqueo: los tres impiden
-    /// confiar, pero así cada uno conserva su motivo.
+    /// Una ruta vacía o demasiado larga no se juzga: tiene su propio error.
+    fn blocked(&self) -> Option<BlockedReason> {
+        if self.path.is_empty() || self.path.chars().count() > MAX_PATH_CHARS {
+            return None;
+        }
+        confusables::blocked_path(&self.path)
+    }
+
     fn check(&self) -> Result<(), ReviewError> {
-        if self.path.chars().count() > 260 || self.args.iter().any(|arg| arg.chars().count() > 200)
+        if self.path.chars().count() > MAX_PATH_CHARS
+            || self.args.iter().any(|arg| arg.chars().count() > 200)
         {
             return Err(ReviewError::TooLong);
         }
         if self.path.is_empty() {
             return Err(ReviewError::Unavailable);
         }
-        confusables::blocked_path(&self.path)
-            .map_or(Ok(()), |reason| Err(ReviewError::Blocked(reason)))
+        Ok(())
     }
 
     fn format(&self, number: usize) -> String {
@@ -231,11 +241,24 @@ impl Profile {
     }
 }
 
+/// El bloqueo gana a cualquier otro error de los pasos (#2903): si alguno está
+/// bloqueado, decide el primero de los bloqueados, haya lo que haya delante. Por
+/// eso se juzga también un mensaje que no cabe en la revisión, hasta lo que cabe
+/// en el estado del residente.
 pub fn review_pages(message: &str) -> Result<Vec<String>, ReviewError> {
-    if message.len() > 64 * 1024 {
+    let profile = (message.len() <= super::MAX_STATUS_BYTES)
+        .then(|| serde_json::from_str::<Profile>(message).ok())
+        .flatten();
+    if let Some(reason) = profile
+        .as_ref()
+        .and_then(|profile| profile.steps.iter().find_map(Step::blocked))
+    {
+        return Err(ReviewError::Blocked(reason));
+    }
+    if message.len() > MAX_MESSAGE_BYTES {
         return Err(ReviewError::TooLong);
     }
-    let profile: Profile = serde_json::from_str(message).map_err(|_| ReviewError::Unavailable)?;
+    let profile = profile.ok_or(ReviewError::Unavailable)?;
     for step in &profile.steps {
         step.check()?;
     }

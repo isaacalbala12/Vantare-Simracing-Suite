@@ -271,6 +271,7 @@ Consecuencias:
   «Сезон 1.Этап 2» como último segmento.
 - `CreateProcess` ejecuta un programa se llame como se llame. Por eso no basta con
   marcar: `steam·exe` (U+00B7) se ve como `steam.exe` y no tiene extensión.
+- Las páginas que se firman solo existen si ningún paso se bloquea.
 - Un nombre corto 8.3 (`STEAM~1.EXE`) pasa, aunque sea el alias de un nombre largo
   que sí bloquearía.
 - Las carpetas con nombre no ASCII o con punto no bloquean (`C:\Игры\game.exe`,
@@ -286,8 +287,8 @@ El error dice por qué, con una lista cerrada (`BlockedReason`):
 
 | Motivo | Cuándo | Ejemplos |
 |---|---|---|
-| `Lookalike` | La ruta lleva un punto o una barra que imitan a los normales, en cualquier parte, o el **nombre del archivo** (el último segmento) tiene una letra marcada como imitación. | `steam․exe` (U+2024), `C:\Juegos∕steam.exe`, `steam.ехе` |
-| `UnusualPath` | Todo lo demás que bloquea. | `steam`, `app.appref-ms`, `game.café`, `игры.рф`, `steam·exe`, espacio o punto final, `::$DATA`, barra final |
+| `Lookalike` | La ruta lleva, en cualquier parte, un punto o una barra que imitan a los normales o uno de los **puntos que explican** (ver abajo), o el **nombre del archivo** (el último segmento) tiene una letra marcada como imitación. | `steam․exe` (U+2024), `steam·exe` (U+00B7), `C:\Juegos∕steam.exe`, `steam.ехе` |
+| `UnusualPath` | Todo lo demás que bloquea. | `steam`, `app.appref-ms`, `game.café`, `игры.рф`, espacio o punto final, `::$DATA`, barra final |
 
 - La letra del nombre se mira dos veces: dentro de la ruta y con el nombre solo.
   Así `C:\Users\Иван\steam.ехе` sigue siendo una imitación aunque la carpeta esté
@@ -295,13 +296,36 @@ El error dice por qué, con una lista cerrada (`BlockedReason`):
   La contrapartida: un nombre hecho entero de letras que imitan junto a algo
   latino («хор.appref-ms») cuenta como imitación aunque la carpeta esté en ruso.
 - Una letra que imita en una carpeta, con un nombre limpio, no basta. Un guion que
-  imita no es un punto, una barra ni una letra. `steam·exe` (U+00B7) no está en las
-  tablas de imitación y queda como forma rara.
-- Si varios pasos se bloquean, decide el primero. Un paso demasiado largo o sin
-  ruta conserva su propio error, como antes.
+  imita no es un punto, una barra ni una letra.
+- **Puntos que explican** (#2903): U+00B7, U+0387, U+2027, U+22C5, U+FF61, U+3002
+  y U+30FB. Se usan en nombres legítimos (kana, chino, el «l·l» catalán), así que
+  **ni bloquean ni se marcan**: `ゲーム・ランチャー.exe` sigue limpio. Solo cambian
+  el motivo de una ruta que ya se bloquea. La contrapartida: una ruta legítima
+  que se bloquea por otra cosa y lleva uno de ellos también sale como imitación.
+  U+0323 (punto combinable bajo una letra) no cuenta: es un acento vietnamita y la
+  letra precompuesta no lo lleva, así que la misma ruta daría dos motivos.
 - El motivo **no cambia** qué se bloquea, las páginas, el hash que se firma ni el
   residente, que rechaza la confianza ante cualquier error. El perfil no se borra
   ni cambia.
+
+### El bloqueo gana a los demás errores (#2903)
+
+Si algún paso está bloqueado, `review_pages` devuelve `Blocked` con el motivo del
+**primer paso bloqueado**, aunque antes (o en el mismo paso) haya una ruta vacía,
+una ruta o unos argumentos demasiado largos, demasiados pasos o un mensaje de más
+de 64 KiB. Así quien prepara el perfil no elige qué explicación se ve. Solo ganan
+al bloqueo los casos en los que no hay una ruta que juzgar:
+
+| Caso | Resultado | Por qué |
+|---|---|---|
+| Mensaje de más de 128 KiB (`MAX_STATUS_BYTES`) | `TooLong` | No cabe en el estado del residente; no se lee. |
+| Mensaje que no se puede leer (JSON roto, campos de más, ruta `null`) | `Unavailable`, o `TooLong` si pasa de 64 KiB | No hay rutas. |
+| La única ruta sospechosa mide más de 260 caracteres | `TooLong` | Nunca se ha juzgado: juzgarla cambiaría qué se bloquea. |
+| Ruta vacía y ningún otro paso bloqueado | `Unavailable` | No es una ruta bloqueada. |
+
+En el anfitrión sigue por delante lo que ya exigía para revisar: sin cuenta,
+permiso o `checkedAnswer` la pregunta sale como `unavailable`. En ningún caso se
+ofrece «Confiar».
 
 ## Documento y fotos de overlays — ADR 0110, PR 3 (#2333)
 

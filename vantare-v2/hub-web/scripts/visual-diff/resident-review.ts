@@ -7,7 +7,7 @@ export const residentReviewScenes = Object.fromEntries(
     {
       mock: `launcher-review-${scene}`,
       async prepare(page) {
-        await openReviewScene(page, state);
+        await openReviewScene(page, state, scene);
       },
     } satisfies VisualScene,
   ]),

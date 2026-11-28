@@ -17,6 +17,8 @@ export const reviewScenes = [
   ["too-long", "demasiado-largo"],
   ["blocked-lookalike", "bloqueado-imita"],
   ["blocked-unusual-path", "bloqueado-forma"],
+  // La revisión cambia mientras está abierta y ahora hay una ruta bloqueada.
+  ["blocked-lookalike", "cambiado-y-bloqueado", "changed-blocked"],
   ["unconfirmed", "esperando-confirmacion", "awaiting-confirmation"],
 ] as const;
 
@@ -32,6 +34,7 @@ const fromHost: readonly string[] = [
 export async function openReviewScene(
   page: Page,
   state: (typeof reviewScenes)[number][0],
+  scene: string = state,
 ) {
   await page.getByRole("button", { name: /^Launcher(, ?\d+)?$/ }).click();
   const drawer = page.getByRole("dialog", {
@@ -45,7 +48,7 @@ export async function openReviewScene(
   });
   if ((await toggle.getAttribute("aria-expanded")) === "true")
     await toggle.click();
-  if (!fromHost.includes(state))
+  if (scene === "changed-blocked" || !fromHost.includes(state))
     await drawer
       .getByRole("button", { name: text.review, exact: true })
       .click();
@@ -82,7 +85,7 @@ export async function checkResidentReview(
         await page.goto(
           `${base}?escena=visual-${scheme}:launcher-review-${scene}`,
         );
-        const drawer = await openReviewScene(page, state);
+        const drawer = await openReviewScene(page, state, scene);
         await page.evaluate(() => document.fonts.ready);
         const live = page.getByRole("region", {
           name: residentText.answerStatusLabel,
@@ -122,6 +125,14 @@ export async function checkResidentReview(
             true,
           );
         }
+        // El botón «Revisar otra vez» desaparece: el foco no se pierde.
+        if (scene === "changed-blocked")
+          await until(
+            () =>
+              drawer.evaluate((node) => node.contains(document.activeElement)),
+            5000,
+            `${scene}: review focus`,
+          );
         if (["changed", "expired", "trusted", "declined"].includes(state)) {
           const focus =
             state === "changed" || state === "expired"

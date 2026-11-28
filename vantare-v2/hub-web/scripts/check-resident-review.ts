@@ -15,8 +15,19 @@ export const reviewScenes = [
   ["expired", "caducado"],
   ["unavailable", "no-disponible"],
   ["too-long", "demasiado-largo"],
+  ["blocked-lookalike", "bloqueado-imita"],
+  ["blocked-unusual-path", "bloqueado-forma"],
   ["unconfirmed", "esperando-confirmacion", "awaiting-confirmation"],
 ] as const;
+
+// Estados que llegan decididos del anfitrión: no hay nada que pulsar antes.
+const fromHost: readonly string[] = [
+  "question",
+  "unavailable",
+  "too-long",
+  "blocked-lookalike",
+  "blocked-unusual-path",
+];
 
 export async function openReviewScene(
   page: Page,
@@ -34,7 +45,7 @@ export async function openReviewScene(
   });
   if ((await toggle.getAttribute("aria-expanded")) === "true")
     await toggle.click();
-  if (state !== "question" && state !== "unavailable" && state !== "too-long")
+  if (!fromHost.includes(state))
     await drawer
       .getByRole("button", { name: text.review, exact: true })
       .click();
@@ -86,6 +97,17 @@ export async function checkResidentReview(
             .count(),
           0,
         );
+        if (state === "blocked-lookalike" || state === "blocked-unusual-path") {
+          await drawer
+            .getByText(text.states[state].text, { exact: true })
+            .waitFor();
+          for (const name of [text.review, text.reviewAgain])
+            assert.equal(
+              await drawer.getByRole("button", { name, exact: true }).count(),
+              0,
+            );
+          assert.equal(await drawer.getByRole("alert").count(), 0);
+        }
         if (state === "unconfirmed") {
           assert.equal(
             await drawer

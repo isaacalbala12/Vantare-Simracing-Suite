@@ -136,6 +136,121 @@ it.each([
   },
 );
 
+// Textos aprobados (issue 2881): escritos aquí a propósito, no leídos de i18n.
+const blockedPhrases = [
+  [
+    "blocked-lookalike",
+    "Vantare no abrirá este perfil: la ruta de uno de sus programas usa letras o signos que imitan a los normales para parecer otro programa.",
+  ],
+  [
+    "blocked-unusual-path",
+    "Vantare no abrirá este perfil: la ruta de uno de sus programas no tiene la forma de un programa normal de Windows.",
+  ],
+] as const;
+
+it.each(blockedPhrases)(
+  "explains the %s review without offering review or trust",
+  (state, phrase) => {
+    render(view(make(state)));
+    const drawer = screen.getByRole("dialog", {
+      name: "Decisión de lanzamiento",
+    });
+    const panel = within(drawer);
+    // Todo lo que se lee en el panel, y nada más.
+    expect(drawer.textContent).toBe(
+      [
+        "Decisión de lanzamiento",
+        "×",
+        "Importado · origen no verificado",
+        "Creador de Contenido",
+        "3 pasos · Le Mans Ultimate, OBS Studio, Spotify",
+        "Bloqueado por seguridad",
+        phrase,
+        "Cancelar",
+        "Todavía no se ha abierto ninguna aplicación. Cerrar este panel no responde ni cancela la secuencia.",
+      ].join(""),
+    );
+    // El título y la frase son la descripción del panel.
+    const described = (drawer.getAttribute("aria-describedby") ?? "")
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent)
+      .join(" ");
+    expect(described).toBe(`Bloqueado por seguridad${phrase}`);
+    expect(panel.queryByRole("status")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    const status = screen.getAllByRole("status");
+    expect(status).toHaveLength(1);
+    expect(status[0].textContent).toBe(
+      "Perfil bloqueado por seguridad. No se ha abierto ninguna aplicación.",
+    );
+    expect(
+      panel.getAllByRole("button").map((button) => button.textContent),
+    ).toEqual(["×", "Cancelar"]);
+    fireEvent.click(panel.getByRole("button", { name: "Cancelar" }));
+    expect(cancel).toHaveBeenCalledExactlyOnceWith("cancel", scope);
+    expect(open).not.toHaveBeenCalled();
+  },
+);
+
+it("keeps the unavailable screen exactly as it was", () => {
+  render(view({ ...make("unavailable"), open: undefined }));
+  const drawer = screen.getByRole("dialog");
+  expect(drawer.textContent).toBe(
+    [
+      "Decisión de lanzamiento",
+      "×",
+      "Este perfil viene de fuera de Vantare. Antes de abrir nada, revisa qué hará.",
+      "Importado · origen no verificado",
+      "Creador de Contenido",
+      "3 pasos · Le Mans Ultimate, OBS Studio, Spotify",
+      "Los nombres de los pasos los escribió quien creó el perfil y pueden no coincidir con lo que se abre. La revisión te enseña, en una ventana de Windows, el programa y los argumentos reales de cada paso.",
+      "La revisión no está disponible",
+      "Este Hub no puede abrir la revisión ahora mismo. No se ha confiado en nada.",
+      "Revisar el perfil…",
+      "No se puede revisar con el residente y el Hub actuales. Puedes cancelar el lanzamiento.",
+      "Cancelar",
+      "Todavía no se ha abierto ninguna aplicación. Cerrar este panel no responde ni cancela la secuencia.",
+    ].join(""),
+  );
+  expect(
+    within(drawer)
+      .getByRole("button", { name: "Revisar el perfil…" })
+      .getAttribute("aria-disabled"),
+  ).toBe("true");
+  expect(screen.getByRole("status").textContent).toBe(
+    "La revisión no está disponible. No se ha confiado en nada.",
+  );
+});
+
+it.each(blockedPhrases)(
+  "does not move focus when a dismissed drawer turns %s",
+  async (state) => {
+    const mounted = render(view(make("question")));
+    fireEvent.click(screen.getByRole("button", { name: /^Cerrar$/ }));
+    const reveal = await screen.findByRole("button", { name: "Ver decisión" });
+    reveal.blur();
+    mounted.rerender(view(make(state)));
+    expect(document.activeElement).not.toBe(reveal);
+  },
+);
+
+it.each(blockedPhrases)(
+  "never requests reviewOpen when the resident question is %s",
+  async (review) => {
+    const { hook, request, reviewTrust } = reviewHook({ ...question, review });
+    expect(hook.result.current).toMatchObject({
+      state: review,
+      cancelOffered: true,
+    });
+    expect(hook.result.current?.open).toBeUndefined();
+    await act(async () => {
+      await hook.result.current?.open?.();
+    });
+    expect(request).not.toHaveBeenCalled();
+    expect(reviewTrust).not.toHaveBeenCalled();
+  },
+);
+
 it("restores focus to the retry button or drawer following native review", () => {
   const mounted = render(view(make("question")));
   const drawer = screen.getByRole("dialog");

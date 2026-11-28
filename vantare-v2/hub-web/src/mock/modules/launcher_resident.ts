@@ -108,7 +108,10 @@ export function create(
         id: "2",
         kind: "authorization",
         review:
-          reviewScene === "unavailable" || reviewScene === "too-long"
+          reviewScene === "unavailable" ||
+          reviewScene === "too-long" ||
+          reviewScene === "blocked-lookalike" ||
+          reviewScene === "blocked-unusual-path"
             ? reviewScene
             : "available",
         actions: [

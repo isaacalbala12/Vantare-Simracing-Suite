@@ -155,9 +155,21 @@ pub(crate) fn corpus() -> serde_json::Value {
             },
         },
         HostToUi::Event {
-            event: Event::LauncherResident { value },
+            event: Event::LauncherResident {
+                value: value.clone(),
+            },
         },
     ];
+    for review in [
+        crate::launcher_resident::ResidentReview::BlockedLookalike,
+        crate::launcher_resident::ResidentReview::BlockedUnusualPath,
+    ] {
+        let mut blocked = value.clone();
+        blocked.decision.as_mut().expect("question fixture").review = review;
+        host.push(HostToUi::Event {
+            event: Event::LauncherResident { value: blocked },
+        });
+    }
     host.extend(
         crate::launcher_resident::ResidentAnswerRejection::ALL
             .into_iter()

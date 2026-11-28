@@ -51,6 +51,14 @@ pub(crate) fn corpus() -> serde_json::Value {
                 found: VERSION + 1,
             },
         },
+        // The refusal a UI built for the previous protocol receives.
+        HostToUi::Failure {
+            id: 0,
+            error: HostError::Incompatible {
+                expected: VERSION,
+                found: VERSION - 1,
+            },
+        },
         HostToUi::Failure {
             id: 1,
             error: HostError::Denied,

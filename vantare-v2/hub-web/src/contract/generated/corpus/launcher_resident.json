@@ -147,6 +147,140 @@
       "kind": "event"
     },
     {
+      "event": {
+        "topic": "launcherResident",
+        "value": {
+          "decision": {
+            "actions": [
+              {
+                "id": "trust",
+                "label": "Confiar y lanzar"
+              },
+              {
+                "id": "cancel",
+                "label": "Cancelar"
+              }
+            ],
+            "id": "18446744073709551615",
+            "kind": "authorization",
+            "review": "blocked-lookalike"
+          },
+          "error": false,
+          "execution": {
+            "active": null,
+            "checkedAnswer": false,
+            "checkedControl": false,
+            "events": [
+              {
+                "kind": {
+                  "kind": "received",
+                  "receipt": {
+                    "kind": "accepted",
+                    "run": "1"
+                  },
+                  "request": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "seq": "1"
+              },
+              {
+                "kind": {
+                  "kind": "finished",
+                  "outcome": {
+                    "kind": "completed"
+                  },
+                  "run": "1"
+                },
+                "seq": "2"
+              }
+            ],
+            "firstRetainedSeq": "1",
+            "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "question": null,
+            "results": {
+              "kind": "unsupported"
+            },
+            "revisionCheckedLaunch": true
+          },
+          "online": true,
+          "ownership": {
+            "kind": "unknown"
+          },
+          "protected": false,
+          "registrations": [],
+          "reviewOutcome": null,
+          "running": true
+        }
+      },
+      "kind": "event"
+    },
+    {
+      "event": {
+        "topic": "launcherResident",
+        "value": {
+          "decision": {
+            "actions": [
+              {
+                "id": "trust",
+                "label": "Confiar y lanzar"
+              },
+              {
+                "id": "cancel",
+                "label": "Cancelar"
+              }
+            ],
+            "id": "18446744073709551615",
+            "kind": "authorization",
+            "review": "blocked-unusual-path"
+          },
+          "error": false,
+          "execution": {
+            "active": null,
+            "checkedAnswer": false,
+            "checkedControl": false,
+            "events": [
+              {
+                "kind": {
+                  "kind": "received",
+                  "receipt": {
+                    "kind": "accepted",
+                    "run": "1"
+                  },
+                  "request": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "seq": "1"
+              },
+              {
+                "kind": {
+                  "kind": "finished",
+                  "outcome": {
+                    "kind": "completed"
+                  },
+                  "run": "1"
+                },
+                "seq": "2"
+              }
+            ],
+            "firstRetainedSeq": "1",
+            "instance": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "question": null,
+            "results": {
+              "kind": "unsupported"
+            },
+            "revisionCheckedLaunch": true
+          },
+          "online": true,
+          "ownership": {
+            "kind": "unknown"
+          },
+          "protected": false,
+          "registrations": [],
+          "reviewOutcome": null,
+          "running": true
+        }
+      },
+      "kind": "event"
+    },
+    {
       "error": {
         "kind": "residentAnswerRejected",
         "reason": "wrong-instance"

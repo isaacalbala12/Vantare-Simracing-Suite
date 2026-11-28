@@ -835,3 +835,26 @@ con la causa «directorio inválido» una grabación que no pudo empezar en una
 carpeta normal (un fallo pasajero), y el anfitrión lo traduce a «causa
 desconocida» para que el aviso de la carpeta no salga sin motivo. La interfaz
 sigue sin ver rutas y el protocolo no cambia.
+
+## Motivo del bloqueo en la revisión (#2881, v73)
+
+`launcher.resident.get` publica `decision.review` como una cadena cerrada. Además
+de `available`, `unavailable` y `too-long`, la revisión que bloquea la ruta de un
+programa (#2579) sale con su motivo:
+
+| Valor | Origen en `ipc` |
+|---|---|
+| `blocked-lookalike` | `ReviewError::Blocked(BlockedReason::Lookalike)` |
+| `blocked-unusual-path` | `ReviewError::Blocked(BlockedReason::UnusualPath)` |
+
+Antes los dos casos salían como `unavailable`. La clasificación vive en
+`ipc::launcher::review`; el anfitrión solo la traduce, con las mismas condiciones
+que ya exigía para revisar (pregunta de autorización, cuenta y permiso vigentes,
+residente con `checkedAnswer`). Sin ellas sigue siendo `unavailable`. Viaja el
+código, nunca la ruta.
+
+No cambia qué se bloquea. `reviewOpen`, el contenido y la confianza siguen
+rechazando un perfil bloqueado y no escriben ninguna orden; el residente no cambia
+de comportamiento (rechaza ante cualquier error de la revisión). El perfil no se
+borra ni se modifica. Un cliente v72 saluda con su versión y el anfitrión v73 lo
+rechaza al negociar, así que nunca recibe un valor que no conozca.

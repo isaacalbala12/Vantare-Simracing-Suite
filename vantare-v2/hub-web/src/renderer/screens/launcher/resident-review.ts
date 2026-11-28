@@ -23,7 +23,9 @@ type ReviewState =
   | "question"
   | "reviewing"
   | "unconfirmed"
-  | "too-long";
+  | "too-long"
+  | "blocked-lookalike"
+  | "blocked-unusual-path";
 type ReviewQuestion = {
   question: ResidentQuestion;
   scope?: AnswerScope;
@@ -241,7 +243,12 @@ export function useResidentReview(
   if (declined) state = "declined";
   else if (hostState) state = hostState;
   else if (current?.state === "unconfirmed") state = "unconfirmed";
-  else if (availability === "too-long") state = "too-long";
+  else if (
+    availability === "too-long" ||
+    availability === "blocked-lookalike" ||
+    availability === "blocked-unusual-path"
+  )
+    state = availability;
   else if (current?.state === "reviewing") state = "reviewing";
   else if (canReview && availability === "available")
     state = current?.state ?? "question";

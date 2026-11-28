@@ -39,6 +39,15 @@
     },
     {
       "error": {
+        "expected": 72,
+        "found": 71,
+        "kind": "incompatible"
+      },
+      "id": 0,
+      "kind": "failure"
+    },
+    {
+      "error": {
         "kind": "denied"
       },
       "id": 1,

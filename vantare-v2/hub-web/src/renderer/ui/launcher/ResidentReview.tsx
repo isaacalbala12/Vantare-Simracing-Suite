@@ -25,14 +25,22 @@ export function ResidentReview({
   const unconfirmed = state === "unconfirmed";
   const busy = state === "reviewing";
   const unavailable = state === "unavailable";
+  // Bloqueada a propósito (issue 2881): como «too-long», no se ofrece revisar.
+  const blocked =
+    state === "blocked-lookalike" || state === "blocked-unusual-path";
+  const noReview = state === "too-long" || blocked;
   const disabled = unavailable || (!busy && !review.open);
   const retry = state === "changed" || state === "expired";
   const notice = state === "question" ? undefined : t.states[state];
+  const noticeClass =
+    notice && `v-resident-review-notice v-callout v-callout--${notice.tone}`;
   const canCancel = !!scope && answer?.available("cancel");
   const showCancel = !unconfirmed || review.cancelOffered;
   return (
     <>
-      {!unconfirmed && <Dialog.Description>{t.description}</Dialog.Description>}
+      {!unconfirmed && !blocked && (
+        <Dialog.Description>{t.description}</Dialog.Description>
+      )}
       <section aria-label={t.profileLabel} className="v-resident-review-card">
         <span className="v-resident-review-chip">{t.chip}</span>
         {profile && (
@@ -42,13 +50,19 @@ export function ResidentReview({
           </>
         )}
       </section>
-      {!ended && !unconfirmed && (
+      {!ended && !unconfirmed && !blocked && (
         <p className="v-resident-review-note">{t.names}</p>
       )}
-      {notice && (
-        <div
-          className={`v-resident-review-notice v-callout v-callout--${notice.tone}`}
-        >
+      {notice && blocked && (
+        // El título y el motivo son la descripción del panel. Sin role="alert":
+        // la única zona viva de ResidentInbox ya lo anuncia con cortesía.
+        <Dialog.Description render={<div />} className={noticeClass}>
+          <strong>{notice.title}</strong>
+          <div>{notice.text}</div>
+        </Dialog.Description>
+      )}
+      {notice && !blocked && (
+        <div className={noticeClass}>
           <strong>{notice.title}</strong>
           {unconfirmed ? (
             <Dialog.Description render={<div />}>
@@ -61,7 +75,7 @@ export function ResidentReview({
       )}
       {!ended && (
         <>
-          {!unconfirmed && state !== "too-long" && (
+          {!unconfirmed && !noReview && (
             <Button
               ref={button}
               variant="primary"
@@ -76,7 +90,7 @@ export function ResidentReview({
               {retry ? t.reviewAgain : t.review}
             </Button>
           )}
-          {!unconfirmed && disabled && state !== "too-long" && (
+          {!unconfirmed && disabled && !noReview && (
             <p
               id={reason}
               className="v-resident-review-note v-resident-review-reason"

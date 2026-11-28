@@ -32,6 +32,13 @@ function Test-VantareTargetPath([string]$Path) {
     return [IO.Path]::GetPathRoot($full) -ieq [IO.Path]::GetPathRoot((Get-VantareTargetRoot))
 }
 
+# Only the drive may carry ':'. Anywhere else Windows reads an NTFS stream name:
+# `slot-1::$INDEX_ALLOCATION\rune` opens `slot-1\rune`, which no comparison of
+# slot paths would notice (#2862).
+function Test-VantareStreamPath([string]$Path) {
+    ($Path -replace '^[\\/]{2}[?.][\\/]', '' -replace '^[A-Za-z]:', '').Contains(':')
+}
+
 # True when `Path` is a queue slot (`slot-0`, `slot-1` or `ci`) or anything below
 # one, and is not exactly one of the `Allowed` paths. A slot's folders belong to
 # its reservation, whose lock and stamps only describe what that checkout builds

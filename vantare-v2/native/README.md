@@ -639,7 +639,16 @@ cerrojo. `compilar.ps1` rechaza, antes de pedir turno, un `--target-dir` o
 `-TargetDirectory` dentro de `slot-0`, `slot-1` o `ci`. Solo se admite nombrar la
 carpeta de la ranura que se obtiene y, desde dentro de la reserva, su `rune/`.
 Las carpetas hermanas (`slot-0-qa`) son destinos explícitos normales.
+Tampoco se admite `:` fuera de la unidad: es un flujo de NTFS y
+`slot-1::$INDEX_ALLOCATION\rune` abre `slot-1\rune`. Dentro de una reserva, las
+mismas reglas valen para `CARGO_TARGET_DIR`, que Cargo obedece cuando no hay
+`--target-dir` (`cargo clean`, `cargo +1.99.1 build`).
 `license-generation-rollback.ps1` necesita un destino fuera de las ranuras.
+
+`caller-target-tests.ps1` usa una raíz de targets propia, pero sus casos que
+entran en una reserva toman los cerrojos globales reales de la cola
+(`Global\VantareCargoSlot*`): en un servidor ocupado esperan turno sin plazo (solo
+los rechazos tienen un plazo de 120 s).
 
 Lo que la carpeta de Rune y ese rechazo **no** garantizan:
 
@@ -651,8 +660,9 @@ Lo que la carpeta de Rune y ese rechazo **no** garantizan:
 - El rechazo compara texto de rutas: una unión fuera que apunte dentro de una
   ranura pasa. Solo reconoce `--target-dir`, `--target-dir=` y `-TargetDirectory`
   (no abreviaturas, argumentos posicionales ni un `cargo` que un guion lance
-  directamente dentro de su reserva) y usa la raíz de targets de ese proceso: con
-  otro `VANTARE_TARGET_ROOT`, las ranuras de la máquina no cuentan.
+  directamente dentro de su reserva, con el destino o la `CARGO_TARGET_DIR` que
+  él ponga) y usa la raíz de targets de ese proceso: con otro
+  `VANTARE_TARGET_ROOT`, las ranuras de la máquina no cuentan.
 - `rune/` (unos 1,21 GB tras un candidato) cuenta en el límite de 20 GB de la
   limpieza automática. En ranuras ya usadas, los restos antiguos de Rune en la
   raíz siguen ocupando hasta esa limpieza.

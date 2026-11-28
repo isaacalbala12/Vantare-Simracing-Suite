@@ -45,11 +45,14 @@ function Get-VantareExplicitTargets {
         } elseif ($argument -like '-TargetDirectory:?*') { $argument.Substring(17) }
     }
 }
-# An explicit target never reaches into a queue slot: it would skip the slot's
-# stamps and lock (#2862). `Allowed` lists the exact paths this call may name.
+# No target reaches into a queue slot: it would skip the slot's stamps and lock
+# (#2862). `Allowed` lists the exact paths this call may name.
 function Assert-VantareOutsideSlots {
-    param([object[]]$Arguments, [string[]]$Allowed)
-    foreach ($target in @(Get-VantareExplicitTargets $Arguments)) {
+    param([string[]]$Targets, [string[]]$Allowed)
+    foreach ($target in $Targets) {
+        if (Test-VantareStreamPath $target) {
+            throw "Destino rechazado: '$target' lleva ':' fuera de la unidad (un flujo de NTFS, que puede abrir otra carpeta)."
+        }
         if (Test-VantareSlotPath -Path $target -Allowed $Allowed) {
             throw "Destino rechazado: '$target' cae en una ranura de la cola (slot-0, slot-1 o ci). No dirijas --target-dir a una ranura; la cola ya la asigna. Para otro destino usa una carpeta fuera de ellas."
         }
@@ -111,10 +114,14 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
         $ancestor = $process.ParentProcessId
     }
     if ($leased) {
-        if (-not (Test-VantareTargetPath $env:CARGO_TARGET_DIR)) { throw 'Target anidado fuera del volumen configurado.' }
-        # Inside a reservation: its own target and, for the candidate, `rune/` in it.
+        if (-not [IO.Path]::IsPathFullyQualified($env:CARGO_TARGET_DIR) -or -not (Test-VantareTargetPath $env:CARGO_TARGET_DIR)) {
+            throw 'Target anidado fuera del volumen configurado.'
+        }
+        # Inside a reservation: its own target and, for the candidate, `rune/` in
+        # it. `CARGO_TARGET_DIR` too: without --target-dir (`cargo clean`,
+        # `cargo +toolchain build`) Cargo writes or deletes there.
         $own = @(if ($env:VANTARE_SLOT_TARGET) { $env:VANTARE_SLOT_TARGET; Get-VantareRuneTarget $env:VANTARE_SLOT_TARGET })
-        Assert-VantareOutsideSlots -Arguments $args -Allowed $own
+        Assert-VantareOutsideSlots -Targets (@(Get-VantareExplicitTargets $args) + $env:CARGO_TARGET_DIR) -Allowed $own
         $cmd, $rest = $args
         Invoke-VantareQueuedCommand -CommandName $cmd -CommandArguments $rest
         exit $script:commandExitCode
@@ -122,7 +129,7 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
 }
 # Before taking any slot. Only a slot folder itself may be named here; the check
 # under the lease still rejects any slot other than the one acquired.
-Assert-VantareOutsideSlots -Arguments $args -Allowed @(
+Assert-VantareOutsideSlots -Targets @(Get-VantareExplicitTargets $args) -Allowed @(
     @('slot-0', 'slot-1', 'ci') | ForEach-Object { [IO.Path]::Combine((Get-VantareTargetRoot), $_) })
 if (-not $env:SCCACHE_DIR) {
     $cacheDirectory = if ($IsWindows) { [Environment]::GetEnvironmentVariable('SCCACHE_DIR', 'Machine') } else { $null }

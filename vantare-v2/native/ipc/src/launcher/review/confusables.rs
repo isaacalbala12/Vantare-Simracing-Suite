@@ -19,10 +19,11 @@
 //! («ＰＣゲーム», «第２章»). Los dígitos y números de estilo latino no cuentan
 //! como letras («Игра２», «F1 ⅓»).
 //!
-//! La ruta del programa se bloquea (sin tablas) si su extensión tiene algo que
-//! no es ASCII alfanumérico (`steam.ехе`), si lleva un punto o una barra que
-//! imitan a los ASCII, o si termina en espacio o punto o lleva `:` fuera de la
-//! unidad: Windows recorta lo último y `::$DATA` abre el mismo archivo.
+//! La ruta del programa se bloquea (sin tablas) si no tiene una extensión ASCII
+//! alfanumérica (`steam.ехе`, `steam·exe`, `steam`), si lleva un punto o una
+//! barra que imitan a los ASCII, o si termina en espacio o punto o lleva `:`
+//! fuera de la unidad: Windows recorta lo último y `::$DATA` abre el mismo
+//! archivo.
 //!
 //! Sin tablas Unicode completas: NFC y NFD dan el mismo veredicto porque las
 //! letras precompuestas de la lista ([`COMPOSED`]) se pliegan a su letra base y
@@ -227,23 +228,23 @@ fn runs(chars: &[char], keep: fn(char) -> bool) -> Vec<(usize, usize)> {
     spans
 }
 
-/// Extensión del programa con algo que no es ASCII alfanumérico: la parte tras
-/// el último punto del ÚLTIMO segmento (tras el último `\` o `/`). Un segmento
-/// sin punto no tiene extensión; `.exe` (punto inicial) sí la tiene. Ningún
-/// ejecutable legítimo de Windows la tiene no ASCII, así que no hay tablas.
+/// El programa no tiene una extensión ASCII: la parte tras el último punto del
+/// ÚLTIMO segmento (tras el último `\` o `/`) falta, está vacía o tiene algo
+/// que no es ASCII alfanumérico. Ningún ejecutable legítimo de Windows está así,
+/// y `CreateProcess` ejecuta un programa se llame como se llame, así que no hay
+/// tablas: `steam.ехе`, `steam·exe` (sin punto ASCII), `steam` o `C:\Juegos\`
+/// (segmento vacío) bloquean; `.exe` (punto inicial) no.
 ///
-/// No se recorta nada por el final: un espacio o un punto final ya bloquean en
-/// [`trimmed_by_windows`], y un invisible que quede en la extensión no es ASCII
-/// y la bloquea también (`steam.exe` + U+200B es otro archivo).
-fn foreign_extension(chars: &[char]) -> bool {
+/// No se recorta nada por el final: un invisible que quede en la extensión no
+/// es ASCII y la bloquea (`steam.exe` + U+200B es otro archivo).
+fn lacks_ascii_extension(chars: &[char]) -> bool {
     let segment = chars
         .iter()
         .rposition(|&c| matches!(c, '\\' | '/'))
         .map_or(chars, |i| &chars[i + 1..]);
-    segment.iter().rposition(|&c| c == '.').is_some_and(|dot| {
-        segment[dot + 1..]
-            .iter()
-            .any(|c| !c.is_ascii_alphanumeric())
+    segment.iter().rposition(|&c| c == '.').is_none_or(|dot| {
+        let ext = &segment[dot + 1..];
+        ext.is_empty() || ext.iter().any(|c| !c.is_ascii_alphanumeric())
     })
 }
 
@@ -310,12 +311,12 @@ pub(super) fn marked(text: &str) -> Vec<bool> {
     mark(&text.chars().collect::<Vec<_>>())
 }
 
-/// La ruta del programa se disfraza: su extensión no es ASCII, tiene un punto o
+/// La ruta del programa se disfraza: no tiene extensión ASCII, tiene un punto o
 /// una barra que imitan a los ASCII, o Windows la recorta. Bloquea la confianza.
 pub(super) fn disguised_path(text: &str) -> bool {
     let chars: Vec<char> = text.chars().collect();
     chars.iter().any(|c| PATH_PUNCTUATION.contains(c))
-        || foreign_extension(&chars)
+        || lacks_ascii_extension(&chars)
         || trimmed_by_windows(&chars)
 }
 

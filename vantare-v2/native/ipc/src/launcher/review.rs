@@ -109,7 +109,9 @@ fn lines(text: &str) -> usize {
 }
 
 impl Step {
-    fn format(&self, number: usize) -> Result<String, ReviewError> {
+    /// Demasiado largo y sin ruta van antes que el bloqueo: los tres impiden
+    /// confiar, pero así cada uno conserva su motivo.
+    fn check(&self) -> Result<(), ReviewError> {
         if self.path.chars().count() > 260 || self.args.iter().any(|arg| arg.chars().count() > 200)
         {
             return Err(ReviewError::TooLong);
@@ -117,6 +119,13 @@ impl Step {
         if self.path.is_empty() {
             return Err(ReviewError::Unavailable);
         }
+        if confusables::disguised_path(&self.path) {
+            return Err(ReviewError::Blocked);
+        }
+        Ok(())
+    }
+
+    fn format(&self, number: usize) -> String {
         let mut output = format!("{number}. {}", label(&self.app, 40));
         if self.steam {
             output.push_str(" (se abre con Steam)");
@@ -146,7 +155,7 @@ impl Step {
             }
             write!(output, "\n     {line}").expect("write to String");
         }
-        Ok(output)
+        output
     }
 }
 
@@ -218,12 +227,8 @@ pub fn review_pages(message: &str) -> Result<Vec<String>, ReviewError> {
         return Err(ReviewError::TooLong);
     }
     let profile: Profile = serde_json::from_str(message).map_err(|_| ReviewError::Unavailable)?;
-    if profile
-        .steps
-        .iter()
-        .any(|step| confusables::disguised_path(&step.path))
-    {
-        return Err(ReviewError::Blocked);
+    for step in &profile.steps {
+        step.check()?;
     }
     let header = profile.header();
     if profile.steps.is_empty() {
@@ -239,7 +244,7 @@ pub fn review_pages(message: &str) -> Result<Vec<String>, ReviewError> {
     let mut used = 0;
     let total = profile.steps.len();
     for (index, step) in profile.steps.iter().enumerate() {
-        let block = step.format(index + 1)?;
+        let block = step.format(index + 1);
         let needed = lines(&block);
         if needed > available {
             return Err(ReviewError::TooLong);

@@ -309,7 +309,7 @@ fn leaves_names_written_in_their_own_alphabet_alone() {
         "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{445}\u{43e}\u{440}.exe",
         "C:\\Users\\\u{41e}\u{43b}\u{435}\u{433}\\\u{441}\u{43e}\u{43a}.bat",
         "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{43a}\u{430}\u{43a}.exe",
-        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{432}\u{441}\u{435}",
+        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{432}\u{441}\u{435}.exe",
         "C:\\Users\\\u{418}\u{432}\u{430}\u{43d}\\\u{421}\u{421}\u{421}\u{420}.exe",
         "C:\\\u{422}\u{435}\u{441}\u{442} \u{438}\u{433}\u{440}\u{44b}\\\u{43e}\u{43d}\u{430}.exe",
         "C:\\Users\\\u{421}\u{435}\u{440}\u{433}\u{435}\u{439}\\\u{420}\u{41e}\u{421}\u{421}\u{418}\u{42f}.bat",
@@ -416,22 +416,63 @@ fn a_program_extension_that_is_not_ascii_blocks_the_review() {
         assert_blocked(&format!("C:\\Games\\{name}"));
         assert_blocked(&format!("C:/{games}/{name}"));
     }
-    // Sin falsos bloqueos: extensión ASCII, carpetas no ASCII o con punto, punto
-    // inicial y programa sin extensión.
+    // Sin falsos bloqueos: extensión ASCII, carpetas no ASCII o con punto y punto
+    // inicial.
     for path in [
         format!("C:\\{games}\\game.exe"),
         "C:\\Games\\caf\u{e9}.v2\\x.exe".into(),
         "C:\\\u{ff30}\u{ff23}\u{30b2}\u{30fc}\u{30e0}\\a.exe".into(),
         format!("C:\\Games\\my.{exe}\\x.exe"),
-        format!("C:\\Games\\my.{exe}\\steam"),
+        format!("C:\\Games\\my.{exe}\\x.y.exe"),
         "C:/Games/my.folder/x.tar.gz".into(),
         "C:\\Games\\.exe".into(),
-        "C:\\Games\\steam".into(),
-        format!("C:\\Games\\{games}"),
     ] {
         let pages = review_pages(&input_with_path(&path).to_string()).expect("no bloquea");
         assert!(can_trust(&pages), "{path}");
     }
+}
+
+#[test]
+fn a_program_without_an_ascii_extension_blocks_the_review() {
+    // C1: sin punto ASCII en el último segmento no hay extensión, y Windows
+    // ejecuta el programa igual. Casos medidos por el revisor y rutas sin archivo.
+    let games = "\u{418}\u{433}\u{440}\u{44b}";
+    let exe = "\u{435}\u{445}\u{435}";
+    for dot in [
+        '\u{b7}', '\u{387}', '\u{2027}', '\u{22c5}', '\u{ff61}', '\u{3002}', '\u{30fb}', '\u{323}',
+    ] {
+        assert_blocked(&format!("C:\\Program Files (x86)\\Steam\\steam{dot}exe"));
+    }
+    for path in [
+        "C:\\Games\\steam".to_owned(),
+        format!("C:\\Games\\{games}"),
+        format!("C:\\Games\\my.{exe}\\steam"),
+        format!("C:\\{games}\\steam.{exe}\\"),
+        format!("C:\\{games}\\steam.{exe}\\.\\"),
+        "C:\\Games\\steam.exe\\".into(),
+        "C:\\Games\\steam.".into(),
+        "C:".into(),
+        "C:\\".into(),
+        "D:x".into(),
+        "\\\\server\\share".into(),
+        "\\\\server\\share\\".into(),
+    ] {
+        assert_blocked(&path);
+    }
+    // Un nombre con «・» y extensión ASCII, y la unidad sin barra, pasan.
+    for path in [
+        "C:\\\u{30b2}\u{30fc}\u{30e0}\\\u{30b2}\u{30fc}\u{30e0}\u{30fb}\u{30e9}\u{30f3}\u{30c1}\u{30e3}\u{30fc}.exe",
+        "D:steam.exe",
+        "\\\\server\\share\\steam.exe",
+    ] {
+        let pages = review_pages(&input_with_path(path).to_string()).expect("no bloquea");
+        assert!(can_trust(&pages), "{path}");
+    }
+    // Una ruta vacía sigue siendo «no disponible», no «bloqueada».
+    assert_eq!(
+        review_pages(&input_with_path("").to_string()),
+        Err(ReviewError::Unavailable)
+    );
 }
 
 #[test]
@@ -692,8 +733,8 @@ fn lookalike_words_are_judged_against_their_own_alphabet() {
         "C:\\\u{7b2c}\u{ff12}\u{7ae0}\\x.exe",
         "C:\\\u{418}\u{433}\u{440}\u{430}\u{ff12}\\x.exe",
         "C:\\Games\\F1 \u{2153}\\x.exe",
-        "C:/\u{418}\u{433}\u{440}\u{44b}/x.\u{435}\u{445}/ru",
-        "C:\\\u{418}\u{433}\u{440}\u{44b}\\x.\u{435}\u{445}\\ru",
+        "C:/\u{418}\u{433}\u{440}\u{44b}/x.\u{435}\u{445}/ru.exe",
+        "C:\\\u{418}\u{433}\u{440}\u{44b}\\x.\u{435}\u{445}\\ru.exe",
     ] {
         let pages = with_path(path);
         assert!(pages.contains(path), "{path}");

@@ -4795,11 +4795,14 @@ fn a_build_without_channel_has_no_product_and_never_installs_as_beta() {
 
 /// Installs, writes data and uninstalls one product, leaving its retained data.
 fn retained_residue(fixture: &Fixture, channel: &'static str) -> Shell {
+    retained_residue_of(fixture, channel, "1.0.0")
+}
+fn retained_residue_of(fixture: &Fixture, channel: &'static str, version: &str) -> Shell {
     let shell = fixture.shell_with(channel, fixture.path.join("shell"), hive());
     fixture
         .setup(
             &shell,
-            &fixture.package_for(channel, "1.0.0"),
+            &fixture.package_for(channel, version),
             Mode::Auto,
             None,
         )
@@ -5107,29 +5110,49 @@ fn unreferenced_data_belong_to_the_channel_their_generation_declares() {
 }
 /// Ni beta ni nightly instalan; el árbol de la carpeta queda igual byte a byte.
 fn install_refused(fixture: &Fixture, channel: &'static str, why: &str, message: &str) {
-    let before = root_tree(fixture);
-    let error = fixture
-        .install(
-            &fixture.package_for(channel, "1.0.0"),
-            Mode::Auto,
-            false,
-            false,
-        )
-        .expect_err("the install is refused");
+    let error = refused_untouched(fixture, &fixture.package_for(channel, "1.0.0"));
+    assert_eq!(error.code, 1, "{channel}, {why}: {error}");
     assert!(
         error.to_string().contains(message),
         "{channel}, {why}: {error}"
     );
-    assert_eq!(root_tree(fixture), before, "{channel}, {why}");
+}
+/// El Setup se niega antes de `prepare()` (restos de una limpieza) y de Windows,
+/// y la carpeta queda igual byte a byte, sin temporal.
+fn refused_untouched(fixture: &Fixture, package: &Package) -> disk::WriteError {
+    let before = tree_without_staging(fixture);
+    let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+    let error = operations::install(
+        &fixture.root,
+        &package.borrowed(),
+        Mode::Auto,
+        &mut sink.control(&cancel),
+        |_, _, _| panic!("a refused install must not reach Windows"),
+        || panic!("a refused install must not touch cleanup leftovers"),
+    )
+    .expect_err("the install is refused");
+    assert_eq!(root_tree(fixture), before, "{}: {error}", package.version);
+    error
+}
+/// Sin la carpeta vacía de temporales que deja una instalación anterior, así se
+/// nota quien vuelva a escribir en ella.
+fn tree_without_staging(fixture: &Fixture) -> BTreeMap<String, Vec<u8>> {
+    let staging = fixture.root.join("staging");
+    if staging.exists() {
+        fs::remove_dir(&staging).expect("empty staging");
+    }
+    root_tree(fixture)
 }
 
 /// #2817 (F): sin manifiesto (lo que deja una desinstalación anterior a #2812)
-/// la copia es de beta: beta la adopta byte a byte y nightly la rechaza.
+/// la copia es de beta: beta la adopta byte a byte y nightly la rechaza. Sin él
+/// tampoco hay versión que comparar (#2882, límite conocido): la adopta incluso
+/// un Setup anterior al que la escribió.
 #[test]
 fn a_copy_without_manifest_is_adopted_byte_for_byte_by_beta_only() {
     let fixture = Fixture::new();
     fixture
-        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .install(&fixture.package("2.0.0"), Mode::Auto, false, false)
         .unwrap();
     fixture.write_data();
     let generation = fixture.active();
@@ -5178,19 +5201,26 @@ fn a_doubtful_manifest_keeps_the_copy_from_everyone() {
     fs::remove_file(fixture.root.join("state.json")).unwrap();
     let declared = fs::read(&manifest).unwrap();
     let text = String::from_utf8(declared.clone()).unwrap();
-    let with = |channel: serde_json::Value| {
+    let edited = |field: &str, to: serde_json::Value| {
         let mut value: serde_json::Value = serde_json::from_slice(&declared).unwrap();
-        value["channel"] = channel;
-        if value["channel"].is_null() {
-            value.as_object_mut().unwrap().remove("channel");
+        value[field] = to;
+        if value[field].is_null() {
+            value.as_object_mut().unwrap().remove(field);
         }
         serde_json::to_vec(&value).unwrap()
     };
+    let with = |channel: serde_json::Value| edited("channel", channel);
     let unreadable = "No se puede leer manifest.json de una copia de tus datos";
     let mut oversized = declared.clone();
     oversized.extend(std::iter::repeat_n(b' ', 65536));
-    let cases: [(&str, Vec<u8>, &str); 7] = [
+    let cases: [(&str, Vec<u8>, &str); 9] = [
         ("broken JSON", b"{roto".to_vec(), unreadable),
+        (
+            "two-part version",
+            edited("version", json!("2.0")),
+            unreadable,
+        ),
+        ("unknown field", edited("extra", json!(true)), unreadable),
         ("Nightly", with(json!("Nightly")), unreadable),
         ("no channel", with(serde_json::Value::Null), unreadable),
         ("numeric channel", with(json!(1)), unreadable),
@@ -5208,6 +5238,245 @@ fn a_doubtful_manifest_keeps_the_copy_from_everyone() {
             install_refused(&fixture, channel, why, message);
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// #2882: ninguna copia de datos se adopta con un Setup anterior a ella.
+
+const NEWER_DATA: &str = "Tus datos pertenecen a una versión más reciente";
+const SEVERAL_COPIES: &str =
+    "Hay varias copias antiguas diferentes de tus datos; se conservan todas";
+
+/// Copia sin referencia en `generations/<id…>`: los bytes dados (`None`, una
+/// instalación limpia cortada) y, con versión, el manifiesto beta que la declara.
+fn loose_copy(fixture: &Fixture, id: &str, version: Option<&str>, bytes: Option<&[u8]>) {
+    let generation = fixture.root.join("generations").join(id.repeat(32));
+    fs::create_dir_all(generation.join("data")).expect("copy");
+    if let Some(bytes) = bytes {
+        fs::write(generation.join("data/opaque.bin"), bytes).expect("copy bytes");
+    }
+    if let Some(version) = version {
+        fs::write(generation.join("manifest.json"), declared(version)).expect("manifest");
+    }
+}
+fn declared(version: &str) -> Vec<u8> {
+    serde_json::to_vec(&json!({"schema":1,"product":"vantare-native","candidate":true,"architecture":"windows-x64","data_schema":"opaque-v1","source_sha":"0".repeat(40),"source_dirty":false,"build_profile":"Debug","version":version,"channel":"beta","engine":2,"files":[{"path":"bin/vantare.exe","size":1,"sha256":"0".repeat(64)}]})).expect("manifest")
+}
+/// Una raíz reconocida sin estado, con los candados que ya tiene una real.
+fn stateless_root() -> Fixture {
+    let fixture = Fixture::new();
+    disk::open_root(&fixture.root, true).expect("recognized root");
+    for name in ["beta-session.lock", ".operation.lock"] {
+        drop(disk::lock(&fixture.root, name).expect("lock file"));
+    }
+    fixture
+}
+fn refused_as_newer(fixture: &Fixture, package: &Package, why: &str) {
+    let error = refused_untouched(fixture, package);
+    assert_eq!(error.code, 3, "{why}: {error}");
+    assert_eq!(error.to_string(), NEWER_DATA, "{why}");
+}
+
+/// Instalación cortada antes de escribir `state.json`: la copia conserva su
+/// manifiesto. Un Setup anterior la deja igual; el mismo o uno posterior la
+/// adopta byte a byte. Las versiones se comparan como números.
+#[test]
+fn a_newer_unreferenced_copy_is_refused_and_the_same_or_a_later_setup_adopts_it() {
+    for (channel, copy, older, adopts) in [
+        ("beta", "2.0.0", "1.0.0", "2.0.0"),
+        ("beta", "2.0.0", "1.9.9", "2.0.1"),
+        ("nightly", "2.0.0", "1.0.0", "2.0.0"),
+        ("nightly", "1.10.0", "1.9.0", "1.11.0"),
+    ] {
+        let why = format!("{channel} {copy}: {older}, {adopts}");
+        let fixture = Fixture::new();
+        fixture
+            .install(
+                &fixture.package_for(channel, copy),
+                Mode::Auto,
+                false,
+                false,
+            )
+            .unwrap();
+        fixture.write_data();
+        let data = fixture.data();
+        let written = index(&data);
+        fs::remove_file(fixture.root.join("state.json")).unwrap();
+        refused_as_newer(&fixture, &fixture.package_for(channel, older), &why);
+        fixture
+            .install(
+                &fixture.package_for(channel, adopts),
+                Mode::Auto,
+                false,
+                false,
+            )
+            .unwrap_or_else(|error| panic!("{why}: {error}"));
+        assert_ne!(fixture.data(), data, "{why}: adopting copies");
+        assert_eq!(index(&fixture.data()), written, "{why}");
+        assert_eq!(index(&data), written, "{why}: the copy stays");
+    }
+}
+
+/// El canal decide antes que la versión: los datos de otro producto no se
+/// anuncian como «más recientes».
+#[test]
+fn another_channel_wins_over_a_newer_version() {
+    for (owner, intruder) in [("beta", "nightly"), ("nightly", "beta")] {
+        let fixture = Fixture::new();
+        fixture
+            .install(
+                &fixture.package_for(owner, "2.0.0"),
+                Mode::Auto,
+                false,
+                false,
+            )
+            .unwrap();
+        fixture.write_data();
+        fs::remove_file(fixture.root.join("state.json")).unwrap();
+        install_refused(&fixture, intruder, owner, "otra instalación");
+    }
+}
+
+/// Varias copias: manda la versión mayor, esté en la primera o en la última, y
+/// aunque otra no tenga manifiesto. Idénticas, da igual cuál se copie;
+/// diferentes, sin ninguna posterior se conservan todas como antes.
+#[test]
+fn the_highest_version_of_several_copies_decides_before_they_are_compared() {
+    let (same, other): (&[u8], &[u8]) = (b"first", b"other");
+    for (versions, second) in [
+        ([Some("1.0.0"), Some("2.0.0")], same),
+        ([Some("2.0.0"), Some("1.0.0")], same),
+        ([None, Some("2.0.0")], same),
+        ([Some("2.0.0"), None], same),
+        ([Some("1.0.0"), Some("2.0.0")], other),
+        ([Some("2.0.0"), Some("1.0.0")], other),
+    ] {
+        let why = format!("{versions:?}, identical: {}", second == same);
+        let fixture = stateless_root();
+        loose_copy(&fixture, "a", versions[0], Some(same));
+        loose_copy(&fixture, "b", versions[1], Some(second));
+        refused_as_newer(&fixture, &fixture.package("1.0.0"), &why);
+        let package = fixture.package("2.0.0");
+        if second == same {
+            fixture
+                .install(&package, Mode::Auto, false, false)
+                .unwrap_or_else(|error| panic!("{why}: {error}"));
+            assert_eq!(read(&fixture.data().join("opaque.bin")), same, "{why}");
+        } else {
+            let error = refused_untouched(&fixture, &package);
+            assert_eq!(error.code, 1, "{why}: {error}");
+            assert_eq!(error.to_string(), SEVERAL_COPIES, "{why}");
+        }
+    }
+}
+
+/// Una instalación limpia cortada deja el manifiesto y `data` vacía: cuenta igual.
+#[test]
+fn a_cut_clean_install_with_empty_data_still_names_its_version() {
+    let fixture = stateless_root();
+    loose_copy(&fixture, "a", Some("2.0.0"), None);
+    refused_as_newer(&fixture, &fixture.package("1.0.0"), "empty data");
+    fixture
+        .install(&fixture.package("2.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    assert_eq!(children(&fixture.data()), 0);
+}
+
+/// Sin estado, la versión anunciada se lee antes de tocar nada; y anunciar una
+/// mayor que la del ZIP autenticado tampoco adopta.
+#[test]
+fn an_unreadable_or_forged_announced_version_adopts_nothing() {
+    let fixture = stateless_root();
+    loose_copy(&fixture, "a", Some("2.0.0"), Some(b"first"));
+    let mut package = fixture.package("1.0.0");
+    package.version = "3.0".into();
+    let error = refused_untouched(&fixture, &package);
+    assert_eq!(error.code, 1, "{error}");
+    assert_eq!(error.to_string(), "Versión del paquete incompatible");
+    package.version = "3.0.0".into();
+    let error = fixture
+        .install(&package, Mode::Auto, false, false)
+        .unwrap_err();
+    assert_eq!(error.to_string(), "Versión del paquete incompatible");
+    assert!(!fixture.root.join("state.json").exists());
+    assert_eq!(children(&fixture.root.join("generations")), 1);
+}
+
+/// Con una limpieza sin terminar (#2829), un Setup anterior a los datos de
+/// `retained-data.json` se niega sin retirar `Uninstall.exe` ni el marcador, que
+/// quedan para el Setup adecuado.
+#[test]
+fn an_older_setup_over_a_pending_cleanup_keeps_the_uninstaller_and_its_marker() {
+    for channel in ["beta", "nightly"] {
+        for uninstaller_left in [true, false] {
+            let why = format!("{channel}, left={uninstaller_left}");
+            let fixture = Fixture::new();
+            let shell = retained_residue_of(&fixture, channel, "2.0.0");
+            let uninstaller = fixture.root.join("Uninstall.exe");
+            let marker = fixture.root.join("installer-cleanup.json");
+            if !uninstaller_left {
+                fs::remove_file(&uninstaller).unwrap();
+            }
+            assert!(marker.is_file(), "{why}");
+            let before = tree_without_staging(&fixture);
+            let mut folders = BTreeMap::new();
+            files_below(&shell.folders, "link", &mut folders);
+            let error = fixture
+                .setup(
+                    &shell,
+                    &fixture.package_for(channel, "1.0.0"),
+                    Mode::Auto,
+                    None,
+                )
+                .unwrap_err();
+            assert_eq!(root_tree(&fixture), before, "{why}: {error}");
+            assert_eq!(error.code, 3, "{why}: {error}");
+            assert_eq!(error.to_string(), NEWER_DATA, "{why}");
+            assert_eq!(uninstaller.is_file(), uninstaller_left, "{why}");
+            let mut after = BTreeMap::new();
+            files_below(&shell.folders, "link", &mut after);
+            assert_eq!(after, folders, "{why}");
+            for key in [BETA_KEY, NIGHTLY_KEY] {
+                assert_eq!(registered(&shell, key, "InstallLocation"), None, "{why}");
+            }
+            fixture
+                .setup(
+                    &shell,
+                    &fixture.package_for(channel, "2.0.0"),
+                    Mode::Auto,
+                    None,
+                )
+                .unwrap_or_else(|error| panic!("{why}: {error}"));
+            assert!(!marker.exists(), "{why}");
+            assert_eq!(
+                read(&fixture.data().join("opaque.bin")),
+                b"opaque\0user\xffbytes",
+                "{why}"
+            );
+        }
+    }
+}
+
+/// Con `retained-data.json` (también si una adopción se cortó) manda ese archivo:
+/// los manifiestos de otras generaciones no se miran.
+#[test]
+fn retained_data_decide_whatever_other_generations_declare() {
+    let fixture = Fixture::new();
+    let shell = retained_residue(&fixture, "beta");
+    loose_copy(&fixture, "a", Some("2.0.0"), Some(b"newer"));
+    fixture
+        .setup(&shell, &fixture.package("1.0.0"), Mode::Auto, None)
+        .unwrap();
+    assert_eq!(
+        read(&fixture.data().join("opaque.bin")),
+        b"opaque\0user\xffbytes"
+    );
+    let other = fixture
+        .root
+        .join("generations")
+        .join("a".repeat(32))
+        .join("data/opaque.bin");
+    assert_eq!(read(&other), b"newer");
 }
 
 // ADR 0111 T3: Confirm and Uninstall gather the recordings of every generation:

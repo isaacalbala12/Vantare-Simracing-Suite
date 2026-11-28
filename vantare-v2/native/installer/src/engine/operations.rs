@@ -412,22 +412,32 @@ fn foreign_data(root: &Path, view: &Installation, channel: &str) -> Result<()> {
     }
     Ok(())
 }
-/// Dueño de una copia de datos sin `retained-data.json` (#2817): el canal que
-/// declara el `manifest.json` que aún conserve su generación (por ejemplo, una
-/// instalación cortada antes de escribir `state.json`), leído con el mismo
-/// lector cerrado y con tope que el resto del motor. Sin manifiesto, beta, el
-/// único producto anterior a que los datos declararan su canal. Un manifiesto
-/// que no se puede leer no dice de quién es: nadie la adopta, y se dice así.
-fn unreferenced_owner(generation: &Path) -> Result<String> {
+/// El `manifest.json` que aún conserve la generación de una copia de datos sin
+/// `retained-data.json` (por ejemplo, una instalación cortada antes de escribir
+/// `state.json`), leído con el mismo lector cerrado y con tope que el resto del
+/// motor. Uno que no se puede leer no dice de quién es la copia ni de qué
+/// versión: nadie la adopta, y se dice así.
+fn unreferenced_manifest(generation: &Path) -> Result<Option<super::Manifest>> {
     let path = generation.join("manifest.json");
     if !path.try_exists()? {
-        return Ok(product::UNDECLARED_CHANNEL.to_owned());
+        return Ok(None);
     }
     super::Manifest::read(&path)
-        .map(|manifest| manifest.channel)
+        .map(Some)
         .map_err(|_| WriteError::new(1, UNREADABLE_COPY))
 }
+/// Dueño de esa copia (#2817): el canal que declara su manifiesto. Sin él,
+/// beta, el único producto anterior a que los datos declararan su canal.
+fn unreferenced_owner(generation: &Path) -> Result<String> {
+    Ok(unreferenced_manifest(generation)?.map_or_else(
+        || product::UNDECLARED_CHANNEL.to_owned(),
+        |manifest| manifest.channel,
+    ))
+}
 const UNREADABLE_COPY: &str = "No se puede leer manifest.json de una copia de tus datos en esta carpeta, el archivo que dice de qué instalación es. No se ha borrado nada y tus datos siguen ahí. Instala en otra carpeta o escribe a soporte";
+const NEWER_DATA: &str = "Tus datos pertenecen a una versión más reciente";
+/// La copia de datos que adopta una instalación sin `state.json`. Ninguna se
+/// adopta si es de una versión posterior a la entrante (código 3).
 fn retained_source(
     root: &Path,
     incoming: [u16; 3],
@@ -435,10 +445,7 @@ fn retained_source(
 ) -> Result<Option<PathBuf>> {
     if let Some(saved) = &view.retained {
         if incoming < saved.version_parts {
-            return Err(WriteError::new(
-                3,
-                "Tus datos pertenecen a una versión más reciente",
-            ));
+            return Err(WriteError::new(3, NEWER_DATA));
         }
         ensure(
             view.data_path.is_dir(),
@@ -446,20 +453,29 @@ fn retained_source(
         )?;
         return Ok(Some(view.data_path.clone()));
     }
+    let mut copies = generations(root)?;
+    copies.retain(|(id, directory)| validation::hex(id, 32) && directory.join("data").is_dir());
+    // Primero todas las versiones (#2882): manda la mayor, aunque su copia sea
+    // idéntica a otra más antigua. Sin manifiesto no hay versión que comparar.
+    for (_, directory) in &copies {
+        if unreferenced_manifest(directory)?
+            .is_some_and(|manifest| incoming < manifest.version_parts)
+        {
+            return Err(WriteError::new(3, NEWER_DATA));
+        }
+    }
     let mut source = None;
     let mut index = None;
-    for (id, directory) in generations(root)? {
+    for (_, directory) in copies {
         let data = directory.join("data");
-        if validation::hex(&id, 32) && data.is_dir() {
-            let candidate = disk::data_index(&data)?;
-            ensure(
-                index.as_ref().is_none_or(|before| before == &candidate),
-                "Hay varias copias antiguas diferentes de tus datos; se conservan todas",
-            )?;
-            if source.is_none() {
-                source = Some(data);
-                index = Some(candidate);
-            }
+        let candidate = disk::data_index(&data)?;
+        ensure(
+            index.as_ref().is_none_or(|before| before == &candidate),
+            "Hay varias copias antiguas diferentes de tus datos; se conservan todas",
+        )?;
+        if source.is_none() {
+            source = Some(data);
+            index = Some(candidate);
         }
     }
     Ok(source)
@@ -512,6 +528,16 @@ pub fn install(
             "Reparar exige una instalación de la misma versión",
         ));
     }
+    // La copia de datos se elige antes de retirar restos o escribir el temporal
+    // (#2882): un Setup anterior a los datos deja la carpeta como estaba. La
+    // versión anunciada la confirma `expand` antes de copiar nada.
+    let adopted = if view.state.is_none() {
+        let incoming = validation::version(package.version)
+            .map_err(|_| WriteError::new(1, "Versión del paquete incompatible"))?;
+        retained_source(&root, incoming, &view)?
+    } else {
+        None
+    };
     prepare()?;
     let before = Before::capture(&root, &view)?;
     let stage = root.join("staging").join(format!("setup-{}", disk::id()?));
@@ -545,7 +571,7 @@ pub fn install(
             )
             .map_err(|e| WriteError::new(4, e.to_string()))?;
         } else {
-            source = retained_source(&root, incoming.version_parts, &view)?;
+            source = adopted;
             previous = None;
         }
         let _handles = disk::binary_guard(&root)?;

@@ -5,6 +5,7 @@ import { createMockHost } from "../src/mock/host";
 import {
   estimatedLap,
   lapDataKind,
+  lastSavedLap,
   summarizeLaps,
   validLapTime,
 } from "../src/renderer/app/analysis-laps";
@@ -72,4 +73,17 @@ it("keeps reduced signal quality visible without recalculating the host aggregat
     brake: { ...values[0].brake, stale: 1 },
   };
   expect(estimatedLap(stale)).toBe(true);
+});
+it("an incomplete recording keeps up to the lap of its last saved block", () => {
+  const values = laps();
+  const last = values.reduce((a, b) => (b.index > a.index ? b : a));
+  // Order by block, not by lap number: a new session starts again at lap 0.
+  expect(lastSavedLap([...values].reverse())).toBe(last.lap);
+  expect(
+    lastSavedLap([
+      { ...values[0], index: 9, lap: 0 },
+      { ...values[1], index: 3, lap: 12 },
+    ]),
+  ).toBe(0);
+  expect(lastSavedLap([])).toBeUndefined();
 });

@@ -74,7 +74,11 @@ function Write-HubNotices {throw 'FIN-DE-PRUEBA'}
         catch{if($_.Exception.Message -cne 'FIN-DE-PRUEBA'){throw};$reached=$true}
         if(-not $reached){throw 'La fase Rust no llegó a copiar los binarios.'}
     }finally{
-        foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$saved[$name],'Process')}
+        # PowerShell 7 turns a $null argument into an empty variable: remove it instead.
+        foreach($name in $names){
+            if($null -eq $saved[$name]){Remove-Item -LiteralPath "Env:$name" -ErrorAction SilentlyContinue}
+            else{[Environment]::SetEnvironmentVariable($name,$saved[$name],'Process')}
+        }
         Set-Location $location
     }
     $rune=Join-Path $slot 'rune'

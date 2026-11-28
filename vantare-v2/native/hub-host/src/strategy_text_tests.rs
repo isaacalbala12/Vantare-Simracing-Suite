@@ -452,3 +452,54 @@ fn a_changed_text_with_a_mark_is_reported_without_its_value() {
         assert_eq!(change.after, None, "{mark:?}: not shown");
     }
 }
+
+/// Right-to-left writing is a script, not a mark: Arabic and Hebrew names, Persian
+/// with its zero-width non-joiner U+200C, a mix with Latin and the Arabic-Indic
+/// digits are written as they are. Only the marks of the list are refused.
+const RTL: [&str; 5] = [
+    "محمد العلي",
+    "יעקב כהן",
+    "می\u{200c}خواهم",
+    "Dubai Autodrome · דובאי · دبي",
+    "٢٤ ساعة · GT3 ٠١٢٣٤٥٦٧٨٩",
+];
+
+#[test]
+fn right_to_left_text_is_written_and_the_same_text_with_a_mark_is_not() {
+    for text in RTL {
+        assert!(writable_text(text), "{text:?}");
+        for mark in MARKS {
+            let marked = format!("{mark}{text}");
+            assert!(valid_text(&marked) && !writable_text(&marked), "{mark:?} {text:?}");
+        }
+    }
+    let root = Root::new();
+    let mut state = root.state();
+    let empty = state.open().unwrap();
+    let mut form = clean_form();
+    form.fields.driver_name = RTL[0].into();
+    form.fields.team = RTL[1].into();
+    form.fields.variant_note = RTL[2].into();
+    form.fields.track = RTL[3].into();
+    form.fields.name = RTL[4].into();
+    let created = state
+        .create(&empty.revision, &form.fields, None, None, Some(&form.inputs), NOW)
+        .unwrap();
+    let saved = state.save(&created.revision).unwrap();
+    let shown = saved.form.unwrap().fields;
+    assert_eq!((shown.driver_name.as_str(), shown.track.as_str()), (RTL[0], RTL[3]));
+    assert!(compute(&mut state, &form).is_ok());
+    assert!(accept(&mut state).is_ok(), "the plan takes a right-to-left pilot");
+    let before = state.view();
+    form.fields.driver_name = format!("\u{202e}{}", RTL[0]);
+    assert_eq!(
+        state.compute(
+            before.active_event_id.as_deref().unwrap(),
+            before.active_strategy_id.as_deref().unwrap(),
+            &before.revision,
+            &form,
+        ),
+        Err(HostError::StrategyInvalidText)
+    );
+    assert_eq!(state.view(), before);
+}

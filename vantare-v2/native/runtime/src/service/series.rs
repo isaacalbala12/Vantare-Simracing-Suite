@@ -17,10 +17,11 @@ mod measurement_tests;
 mod recording_tests;
 
 const SERIES_QUEUE: usize = 32;
-/// #2871: se espera a storage mientras avance (10 s sin progreso, 30 s en
-/// total). El cierre de la app o de Windows puede matar antes al Core (3 s del
-/// supervisor, 4 s de su propio plazo): lo confirmado sigue en la base y el
-/// anfitrión muestra esa grabación como parada sin causa, nunca como error.
+/// #2871: se espera a storage mientras avance (10 s sin progreso, 15 s en
+/// total, dentro de los 16 s que el supervisor da al Core, #2873). Apagar o
+/// cerrar la sesión de Windows puede terminar antes al Core: lo confirmado
+/// sigue en la base y el anfitrión muestra esa grabación como parada sin
+/// causa, nunca como error.
 const SERIES_CLOSE_LIMITS: CloseLimits = CloseLimits::PRODUCT;
 #[cfg(test)]
 #[path = "series/session_capture_tests.rs"]
@@ -371,12 +372,12 @@ mod tests {
 
     #[test]
     fn the_recorder_waits_by_progress_with_the_decided_limits() {
-        // Decisión de la raíz (#2871): 10 s sin avanzar y 30 s de tope, nunca 1 s fijo.
+        // Decisión de la raíz (#2871, #2873): 10 s sin avanzar y 15 s de tope, nunca 1 s fijo.
         assert_eq!(
             SERIES_CLOSE_LIMITS,
             CloseLimits {
                 stall: std::time::Duration::from_secs(10),
-                cap: std::time::Duration::from_secs(30),
+                cap: std::time::Duration::from_secs(15),
             }
         );
     }

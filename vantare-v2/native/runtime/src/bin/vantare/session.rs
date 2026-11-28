@@ -8,6 +8,12 @@ pub(super) enum Restart {
     Never,
 }
 
+/// Margen del productor desde que se le pide cerrar (#2873): el Core espera a
+/// storage como mucho 15 s (`CloseLimits::PRODUCT`) y sale; 1 s de holgura.
+/// Al apagar o cerrar sesión, Windows termina estos procesos sin ventana sin
+/// esperar a este margen: lo confirmado sigue en el WAL de la grabación.
+pub(super) const PRODUCER_CLOSE: Duration = Duration::from_secs(16);
+
 #[derive(Clone, Copy, Debug)]
 pub(super) struct Policy {
     pub restart: Restart,
@@ -15,12 +21,15 @@ pub(super) struct Policy {
     pub producer: bool,
     pub close_order: u8,
     pub budget: u32,
+    /// Margen propio desde que se le pide cerrar; `None`, el de la sesión.
+    pub close_window: Option<Duration>,
 }
 
 impl Policy {
     pub fn core(budget: u32) -> Self {
         Self {
             producer: true,
+            close_window: Some(PRODUCER_CLOSE),
             ..Self::consumer(budget)
         }
     }
@@ -31,6 +40,7 @@ impl Policy {
             producer: false,
             close_order: 1,
             budget,
+            close_window: None,
         }
     }
     pub fn permitted(budget: u32) -> Self {
@@ -336,7 +346,10 @@ impl Session {
                     && (consumers_done || now >= core_at)
                 {
                     child.state = ChildState::Closing {
-                        deadline,
+                        deadline: child
+                            .policy
+                            .close_window
+                            .map_or(deadline, |window| now + window),
                         revoked: false,
                     };
                     actions.push(Action::Close(index));

@@ -245,12 +245,12 @@ pierde chunks y deja huecos visibles. Fallos desactivan esa grabación con un
 diagnóstico, sin reiniciarla ni parar fotos. Al salir del bucle, incluso con
 error, hace flush y finish manteniendo Core vivo. El cierre espera por progreso
 (#2871): cada respuesta del helper reinicia el margen; solo se le mata tras 10 s
-sin avanzar o a los 30 s en total. Con `finished` confirmado, el estado se
+sin avanzar o a los 15 s en total (el supervisor da 16 s al Core, #2873). Con `finished` confirmado, el estado se
 publica en ese momento y sin causa, aunque luego haya que matar al helper al
 cerrar la base. Sin confirmar, solo el prefijo ACK es conocido durable y el
-estado lo dice. EOF al morir Core cierra stdin del helper y su conexión; el
-cierre de la app o de Windows puede matar al Core antes de esos plazos (ver
-`series_close.rs`). No modifica el journal `--recording`.
+estado lo dice. EOF al morir Core cierra stdin del helper y su conexión;
+apagar o cerrar la sesión de Windows puede terminar al Core antes de esos
+plazos (ver `series_close.rs`). No modifica el journal `--recording`.
 
 La ruta del helper solo se resuelve cuando hay `--series-dir`; un fallo al
 resolverla desactiva únicamente la grabación. Si el helper falla al arrancar

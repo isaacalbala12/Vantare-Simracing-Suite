@@ -10,7 +10,7 @@ use std::sync::atomic::{AtomicPtr, Ordering};
 use std::time::Duration;
 
 use windows_sys::Win32::Foundation::{
-    ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS, HANDLE, WAIT_OBJECT_0, WAIT_TIMEOUT,
+    ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS, HANDLE, WAIT_ABANDONED, WAIT_OBJECT_0, WAIT_TIMEOUT,
 };
 use windows_sys::Win32::System::Console::SetConsoleCtrlHandler;
 use windows_sys::Win32::System::JobObjects::{
@@ -19,10 +19,12 @@ use windows_sys::Win32::System::JobObjects::{
     JobObjectExtendedLimitInformation, SetInformationJobObject,
 };
 use windows_sys::Win32::System::Threading::{
-    CreateEventW, CreateMutexW, EVENT_MODIFY_STATE, GetCurrentProcess, OpenEventW, SetEvent,
-    WaitForMultipleObjects,
+    CreateEventW, CreateMutexW, EVENT_MODIFY_STATE, GetCurrentProcess, OpenEventW,
+    SYNCHRONIZATION_SYNCHRONIZE, SetEvent, WaitForMultipleObjects, WaitForSingleObject,
 };
-use windows_sys::Win32::UI::WindowsAndMessaging::{IDYES, MB_ICONERROR, MB_YESNO, MessageBoxW};
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+    IDYES, MB_ICONERROR, MB_ICONINFORMATION, MB_OK, MB_YESNO, MessageBoxW,
+};
 
 const INFINITE: u32 = u32::MAX;
 
@@ -51,6 +53,28 @@ pub fn offer_repair() -> io::Result<()> {
         std::process::Command::new("explorer.exe")
             .arg("https://github.com/isaacalbala12/Vantare-Downloads/releases")
             .spawn()?;
+    }
+    Ok(())
+}
+
+/// #2873: la instancia anterior no terminó de cerrarse a tiempo. COPY NUEVO,
+/// pendiente de aprobación de la raíz.
+pub fn previous_still_closing() -> io::Result<()> {
+    let title = wide("Vantare");
+    let message = wide(
+        "Vantare todavía se está cerrando y guardando tu última grabación. Espera unos segundos y vuelve a abrirlo.",
+    );
+    // SAFETY: punteros a cadenas UTF-16 terminadas en NUL, válidos durante la llamada.
+    let choice = unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            message.as_ptr(),
+            title.as_ptr(),
+            MB_ICONINFORMATION | MB_OK,
+        )
+    };
+    if choice == 0 {
+        return Err(io::Error::last_os_error());
     }
     Ok(())
 }
@@ -100,22 +124,78 @@ pub fn adopt_self_in_job() -> io::Result<()> {
     Ok(())
 }
 
-/// Mutex con nombre: mientras exista un dueño, `acquire` devuelve `None`.
+/// Mutex con nombre: mientras exista un dueño, `acquire` devuelve `None`. El
+/// hilo principal lo posee desde que lo crea (#2873): al salir el proceso
+/// queda abandonado y `wait` despierta sin sondear.
 pub struct Instance(#[allow(dead_code)] OwnedHandle);
 
 impl Instance {
-    pub fn acquire(name: &str) -> io::Result<Option<Self>> {
+    fn create(name: &str) -> io::Result<Result<Self, Option<OwnedHandle>>> {
         let name = wide(name);
-        // SAFETY: `name` termina en NUL; sin atributos de seguridad.
-        let handle = unsafe { CreateMutexW(null(), 0, name.as_ptr()) };
+        // SAFETY: `name` termina en NUL; sin atributos de seguridad. Con
+        // dueño inicial: si ya existía, no se concede la propiedad.
+        let handle = unsafe { CreateMutexW(null(), 1, name.as_ptr()) };
         let already = io::Error::last_os_error().raw_os_error();
         let handle = match owned(handle) {
             Ok(handle) => handle,
             // Existe y no podemos abrirlo: es de otro contexto, luego hay instancia.
-            Err(_) if already == i32::try_from(ERROR_ACCESS_DENIED).ok() => return Ok(None),
+            Err(_) if already == i32::try_from(ERROR_ACCESS_DENIED).ok() => return Ok(Err(None)),
             Err(e) => return Err(e),
         };
-        Ok((already != i32::try_from(ERROR_ALREADY_EXISTS).ok()).then_some(Self(handle)))
+        Ok(if already == i32::try_from(ERROR_ALREADY_EXISTS).ok() {
+            Err(Some(handle))
+        } else {
+            Ok(Self(handle))
+        })
+    }
+
+    pub fn acquire(name: &str) -> io::Result<Option<Self>> {
+        Ok(Self::create(name)?.ok())
+    }
+
+    /// Espera como mucho `limit` a que la instancia anterior salga. Sin
+    /// permiso para esperarla (otro contexto) o si no sale, `None`.
+    pub fn wait(name: &str, limit: Duration) -> io::Result<Option<Self>> {
+        let handle = match Self::create(name)? {
+            Ok(instance) => return Ok(Some(instance)),
+            Err(None) => return Ok(None),
+            Err(Some(handle)) => handle,
+        };
+        // SAFETY: handle de mutex válido, con derecho de espera (lo creamos nosotros).
+        match unsafe { WaitForSingleObject(handle.as_raw_handle(), millis(limit)) } {
+            // Abandonado: la anterior salió sin soltarlo. Ahora es nuestro.
+            WAIT_OBJECT_0 | WAIT_ABANDONED => Ok(Some(Self(handle))),
+            WAIT_TIMEOUT => Ok(None),
+            _ => Err(io::Error::last_os_error()),
+        }
+    }
+}
+
+/// Evento con nombre que la instancia activa al empezar a cerrarse (#2873):
+/// una instancia nueva sabe así que debe esperarla y no pedirle abrir el Hub.
+pub struct Closing(OwnedHandle);
+
+impl Closing {
+    pub fn create(name: &str) -> io::Result<Self> {
+        Ok(Self(named_event(name, true)?))
+    }
+
+    pub fn set(&self) {
+        // SAFETY: evento propio y vivo.
+        if unsafe { SetEvent(self.0.as_raw_handle()) } == 0 {
+            eprintln!("vantare: avisar del cierre: {}", io::Error::last_os_error());
+        }
+    }
+
+    /// ¿Está cerrándose la instancia que lo creó? Sin evento, no.
+    pub fn signaled(name: &str) -> io::Result<bool> {
+        let name = wide(name);
+        // SAFETY: `name` termina en NUL.
+        let handle = unsafe { OpenEventW(SYNCHRONIZATION_SYNCHRONIZE, 0, name.as_ptr()) };
+        let Ok(event) = owned(handle) else {
+            return Ok(false);
+        };
+        Ok(wait_any(&[event.as_raw_handle()], Some(Duration::ZERO))?.is_some())
     }
 }
 

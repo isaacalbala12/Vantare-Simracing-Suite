@@ -121,19 +121,19 @@ fn timed_out(closed: &Closed) -> bool {
 
 #[test]
 fn a_slow_close_that_keeps_answering_is_never_killed() {
-    // Cada COMMIT tarda 3 s (disco muy ocupado): 20 s en total, nunca parado 10 s.
+    // Cada COMMIT tarda 3 s (disco muy ocupado): 14 s en total, nunca parado 10 s.
     let run = close(
         Script {
-            responses: every(3 * SECOND, 18 * SECOND),
-            confirms: Some(20 * SECOND),
-            exits: Some(27 * SECOND),
+            responses: every(3 * SECOND, 9 * SECOND),
+            confirms: Some(11 * SECOND),
+            exits: Some(14 * SECOND),
             exit_fails: false,
         },
         CloseLimits::PRODUCT,
     );
     assert!(matches!(run.closed, Closed::Clean(_)), "{:?}", run.closed);
-    assert_eq!(run.confirmed, Some(20 * SECOND));
-    assert_eq!(run.ended, 27 * SECOND);
+    assert_eq!(run.confirmed, Some(11 * SECOND));
+    assert_eq!(run.ended, 14 * SECOND);
 }
 
 #[test]
@@ -175,12 +175,13 @@ fn ten_seconds_without_progress_before_finished_stops_waiting_exactly_then() {
 
 #[test]
 fn progress_restarts_the_margin_every_time() {
-    // Avances a los 9, 18 y 27 s: nunca 10 s seguidos sin progreso.
+    // Avances a los 6 y 12 s: nunca 10 s seguidos sin progreso, aunque desde
+    // que se pidió cerrar pasen más de 10 s.
     let run = close(
         Script {
-            responses: every(9 * SECOND, 27 * SECOND),
-            confirms: Some(28 * SECOND),
-            exits: Some(29 * SECOND),
+            responses: every(6 * SECOND, 12 * SECOND),
+            confirms: Some(13 * SECOND),
+            exits: Some(14 * SECOND),
             exit_fails: false,
         },
         CloseLimits::PRODUCT,
@@ -205,7 +206,7 @@ fn the_absolute_cap_ends_a_close_that_never_stops_progressing() {
         run.closed
     );
     assert!(timed_out(&run.closed));
-    assert_eq!(run.ended, 30 * SECOND);
+    assert_eq!(run.ended, 15 * SECOND);
 }
 
 #[test]
@@ -269,15 +270,20 @@ fn a_fixed_timeout_ends_at_the_same_time_whatever_the_progress() {
 #[test]
 fn the_deadline_alone_counts_from_the_close_request_and_the_last_progress() {
     let start = Instant::now();
-    let mut deadline = Deadline::new(CloseLimits::PRODUCT, start, 0);
+    // Lejos del tope: aquí solo cuenta el margen sin progreso (10 s).
+    let roomy = CloseLimits {
+        stall: CloseLimits::PRODUCT.stall,
+        cap: 60 * SECOND,
+    };
+    let mut deadline = Deadline::new(roomy, start, 0);
     assert!(deadline.check(start + 9 * SECOND, 0).is_ok());
     assert!(deadline.check(start + 9 * SECOND, 1).is_ok());
     assert!(deadline.check(start + 18 * SECOND, 1).is_ok());
     assert!(deadline.check(start + 19 * SECOND, 1).is_err());
     let mut capped = Deadline::new(CloseLimits::PRODUCT, start, 0);
-    assert!(capped.check(start + 29 * SECOND, 3).is_ok());
+    assert!(capped.check(start + 14 * SECOND, 3).is_ok());
     // Al llegar al tope, ni un avance en ese mismo instante lo prorroga.
-    assert!(capped.check(start + 30 * SECOND, 4).is_err());
+    assert!(capped.check(start + 15 * SECOND, 4).is_err());
 }
 
 #[test]

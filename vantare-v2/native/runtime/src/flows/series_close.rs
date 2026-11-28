@@ -7,13 +7,13 @@
 //! de sesión, `finished`) y su salida. Sin señal ni protocolo nuevos: el cierre
 //! de la base (`stop` → checkpoint) es un único paso que debe caber en `stall`.
 //!
-//! Cierre de la app o de Windows: el supervisor da al Core 1–3 s y luego lo
-//! mata (el Core se mata solo a los 4 s tras una señal de Windows), antes de
-//! estos límites. Entonces el estado se queda en `recording` y el anfitrión lo
-//! muestra parado y sin causa; storage recibe EOF, termina el COMMIT en curso y
-//! cierra la base. Si el job del supervisor lo mata a mitad del checkpoint,
-//! `DuckDB` conserva lo confirmado en el `.wal` y lo reaplica al abrir. Solo se
-//! pierde lo que seguía en la cola del Core, y la base queda sin `finished`.
+//! Cierre de Vantare: el supervisor da al Core 16 s desde que le pide cerrar
+//! (#2873), más que este tope. Apagar o cerrar la sesión de Windows termina
+//! estos procesos sin ventana antes: el estado se queda en `recording` y el
+//! anfitrión lo muestra parado y sin causa; si storage muere a mitad del
+//! checkpoint, `DuckDB` conserva lo confirmado en el `.wal` y lo reaplica al
+//! abrir. Solo se pierde lo que seguía en la cola del Core, y la base queda
+//! sin `finished`.
 
 use std::io;
 use std::time::{Duration, Instant};
@@ -29,10 +29,11 @@ pub struct CloseLimits {
 }
 
 impl CloseLimits {
-    /// Producto: 10 s sin avanzar o 30 s en total.
+    /// Producto: 10 s sin avanzar o 15 s en total. El tope cabe en el margen
+    /// que el supervisor da al Core al cerrar Vantare (#2873, 16 s).
     pub const PRODUCT: Self = Self {
         stall: Duration::from_secs(10),
-        cap: Duration::from_secs(30),
+        cap: Duration::from_secs(15),
     };
 
     /// Plazo fijo: el mismo margen para todo el cierre, avance o no.

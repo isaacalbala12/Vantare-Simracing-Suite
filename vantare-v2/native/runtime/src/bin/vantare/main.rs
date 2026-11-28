@@ -39,6 +39,8 @@ mod child_shutdown;
 mod engine_tests;
 #[cfg(windows)]
 mod installed;
+#[cfg(windows)]
+mod previous;
 #[cfg(all(windows, feature = "qa-e2e"))]
 mod qa_e2e;
 mod recording;
@@ -490,7 +492,26 @@ fn resident_settings(explicit: Option<PathBuf>) -> io::Result<PathBuf> {
 #[cfg(windows)]
 #[allow(clippy::too_many_lines)] // Session setup keeps child ownership and shutdown in one scope.
 fn run(mut config: Config) -> io::Result<ExitCode> {
-    let Some(instance) = Instance::acquire(&object_name("launcher", &config.instance))? else {
+    let launcher = object_name("launcher", &config.instance);
+    let closing = win::Closing::signaled(&object_name("launcher-closing", &config.instance))?;
+    let mut waited = None;
+    let instance = match Instance::acquire(&launcher)? {
+        Some(instance) => Some(instance),
+        // #2873: si la anterior se está cerrando, se la espera sin ventana.
+        None => match previous::decide(closing, |limit| {
+            waited = Instance::wait(&launcher, limit)?;
+            Ok::<_, io::Error>(waited.is_some())
+        })? {
+            previous::Busy::OpenHub => None,
+            previous::Busy::Proceed => waited.take(),
+            previous::Busy::TooSlow => {
+                log("la instancia anterior no terminó de cerrarse a tiempo");
+                win::previous_still_closing()?;
+                return Ok(ExitCode::FAILURE);
+            }
+        },
+    };
+    let Some(instance) = instance else {
         if config.installation.is_some() {
             let _ = Stop::signal(&object_name("launcher-open-hub", &config.instance));
             return Ok(ExitCode::SUCCESS);
@@ -512,6 +533,10 @@ fn run(mut config: Config) -> io::Result<ExitCode> {
             .as_ref()
             .map(|_| win::OpenHub::create(&object_name("launcher-open-hub", &config.instance)))
             .transpose()?,
+        closing: Some(win::Closing::create(&object_name(
+            "launcher-closing",
+            &config.instance,
+        ))?),
         ..Default::default()
     };
     let _session_lock = config

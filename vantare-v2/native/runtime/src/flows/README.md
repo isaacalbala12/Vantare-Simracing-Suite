@@ -371,7 +371,7 @@ dueño del pipe, envía comando/ACK secuencial junto a los chunks y avisa una ve
 si pierde eventos o recibe rejected. unsupported meta desactiva esos envíos en
 DB v1 sin interrumpir chunks. SQL/I/O o protocolo roto siguen siendo fatales
 para la grabación. En finish se encola Close antes de worker.finish y se drenan
-los eventos antes de confirmar. Si el cierre se corta (10 s sin progreso, 30 s
+los eventos antes de confirmar. Si el cierre se corta (10 s sin progreso, 15 s
 en total o el Core muerto) pueden faltar vueltas o quedar una sesión SIN
 SELLAR; sealed/finished no garantizan cobertura.
 

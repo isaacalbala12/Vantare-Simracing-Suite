@@ -242,6 +242,39 @@ antiguas; consumir una petición no inicia un sondeo ni un bucle de diagnóstico
 
 Los rechazos launch-v2 también consumen huecos del único anillo de 32 eventos. La lectura no consume; una ráfaga de rechazos puede desalojar recibos o terminales. Sin recibo retenido (también tras reinicio o descarte sin extensión) significa **Unknown**, nunca éxito. El anfitrión debe conservar esta semántica.
 
+## Revisión de confianza de perfiles importados (#2579)
+
+`launcher::review` arma las páginas que se firman al confiar. Host y residente las
+calculan igual, así que su hash coincide. Los invisibles y las letras o signos que
+imitan a los latinos se muestran como `[U+XXXX]`, con un aviso en la cabecera.
+El marcado vive en `review/confusables.rs`, con tablas cortas y sin dependencias.
+
+`review_pages` devuelve `Err(ReviewError::Blocked)` y no se ofrece «Confiar» si la
+ruta del programa:
+
+- tiene una **extensión** con algo que no es ASCII alfanumérico. La extensión es lo
+  que va tras el último punto del **último segmento** (tras el último `\` o `/`).
+  Un segmento sin punto no tiene extensión, y `.exe`, con punto inicial, sí la tiene;
+- lleva un punto o una barra que imitan a los ASCII;
+- termina en espacio (cualquier blanco Unicode) o en punto, o lleva `:` fuera de la
+  unidad (`C:`, `\\?\C:`). Windows recorta lo primero y `::$DATA` abre el mismo
+  archivo.
+
+Consecuencias:
+
+- Un programa con extensión no ASCII o con símbolos bloquea siempre, también uno
+  legítimo: `игры.рф`, `game.café`, `app.appref-ms` o «Сезон 1.Этап 2» como último
+  segmento.
+- Las carpetas con nombre no ASCII o con punto no bloquean (`C:\Игры\game.exe`,
+  `C:\Games\café.v2\x.exe`).
+- No se recorta nada por el final antes de mirar la extensión: recortar nunca
+  añadiría un bloqueo y sí quitaría alguno. Por ejemplo, `steam.exe` seguido de
+  U+200B es otro archivo, que Windows ejecuta igual, y bloquea porque su extensión
+  no es ASCII.
+
+El perfil no se borra ni cambia. Hoy el Hub muestra la revisión como no
+disponible; el motivo en pantalla llega con #2881.
+
 ## Documento y fotos de overlays — ADR 0110, PR 3 (#2333)
 
 `layout` posee Layout/Instance, demanda del documento, normalización, Document y

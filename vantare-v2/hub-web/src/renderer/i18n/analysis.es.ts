@@ -42,6 +42,12 @@ export const analysisText = {
   state: "Estado",
   complete: "Completa",
   unconfirmed: "Incompleta",
+  reason: "Motivo",
+  // Issue 2884: sin coma, así que cada motivo se lee entero.
+  saveFailure: {
+    writerDown: unbroken("falló al guardar"),
+    finishTimeout: unbroken("el guardado no terminó a tiempo"),
+  },
   saved: "Se guardó",
   // Cada tramo se lee entero: el texto solo puede partirse antes de «·».
   savedUntil: (complete: number, partial?: number) =>
@@ -52,7 +58,6 @@ export const analysisText = {
       .map(unbroken)
       .join(" "),
   lost: "Se perdió",
-  // Copy nuevo (issue 2883), pendiente de aprobación de la raíz.
   // Cada tramo entero: solo se parte tras la coma.
   lostToLoad: {
     part: `${unbroken("una parte,")} ${unbroken("el PC iba muy cargado")}`,

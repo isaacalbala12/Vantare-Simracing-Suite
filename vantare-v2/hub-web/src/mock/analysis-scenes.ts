@@ -30,6 +30,16 @@ export function analysisScene(context: MockContext, clock = Date.now) {
     name === "sessions" || crossSessions ? create(context) : undefined;
   let useSessionsMock = false;
   const compare = comparisonScene(context, mock);
+  // Issue 2884: the indicator describes the latest recording (row 0) and why it
+  // ended; «cause-complete» is that same cause on a recording that is complete.
+  const closeCause = (
+    {
+      "cause-writer": "writerDown",
+      "cause-timeout": "finishTimeout",
+      "cause-complete": "writerDown",
+    } as const
+  )[name as "cause-writer"];
+  const cut = name === "cause-writer" || name === "cause-timeout";
   let pendingOpen: Extract<UiToHost, { kind: "request" }>["id"] | undefined;
   return (value: UiToHost): HostToUi | null | undefined => {
     if (
@@ -58,6 +68,24 @@ export function analysisScene(context: MockContext, clock = Date.now) {
       return undefined;
     const { id, request } = value;
     if (request.method === "analysis.status") {
+      if (closeCause)
+        return {
+          kind: "response",
+          id,
+          result: {
+            method: request.method,
+            status: {
+              state: "stopped",
+              cause: closeCause,
+              rowId: "0".padStart(64, "0"),
+              startedAtMs: clock() - 20 * 60_000,
+              durableWatermark: null,
+              attempted: null,
+              limits: { maxRecordings: 200, maxBytes: 5_000_000_000 },
+              lastPrune: { atMs: clock() - 40 * 60_000, items: [] },
+            },
+          },
+        };
       const active = [
         "status-recording",
         "status-recordingPreviousDay",
@@ -183,6 +211,7 @@ export function analysisScene(context: MockContext, clock = Date.now) {
                         : 22400000 - index * 1000000,
                     recording:
                       index === 0 &&
+                      !closeCause &&
                       ![
                         "status-idle",
                         "status-stopped",
@@ -228,8 +257,8 @@ export function analysisScene(context: MockContext, clock = Date.now) {
               "incompatible",
               "complete",
             ] as const
-          )[index % 10],
-          laps: 14,
+          )[cut && index === 0 ? 2 : index % 10],
+          laps: cut && index === 0 ? 9 : 14,
           sessions: [],
           bestLapApproxMs: [1, 2, 3, 5, 7, 9].includes(index) ? 111600 : null,
         },
@@ -296,9 +325,9 @@ export function analysisScene(context: MockContext, clock = Date.now) {
         const base = original.result.laps;
         // Issue 2871: the close was cut and storage kept the first 9 laps;
         // the last one half done, all of them sealed, or none sealed.
-        const incomplete = name.startsWith("incomplete");
+        const incomplete = name.startsWith("incomplete") || cut;
         const sealed = (i: number) =>
-          name === "incomplete"
+          name === "incomplete" || cut
             ? i !== 8
             : name === "incomplete-none"
               ? false

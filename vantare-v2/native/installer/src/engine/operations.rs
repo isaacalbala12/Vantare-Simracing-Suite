@@ -394,8 +394,7 @@ fn generations(root: &Path) -> Result<Vec<(String, PathBuf)>> {
     Ok(result)
 }
 /// Una raíz sin estado con datos de otro producto no se toca (#2812): ni sus
-/// datos conservados ni las copias antiguas sin referencia, que solo pueden ser
-/// de beta, el único producto anterior a que los datos declararan su canal.
+/// datos conservados ni las copias sin referencia de otro dueño (#2817).
 fn foreign_data(root: &Path, view: &Installation, channel: &str) -> Result<()> {
     if let Some(saved) = &view.retained {
         return ensure(
@@ -403,16 +402,29 @@ fn foreign_data(root: &Path, view: &Installation, channel: &str) -> Result<()> {
             "Los datos conservados en esta carpeta son de otro canal; se conservan",
         );
     }
-    if product::for_channel(channel).is_some_and(|product| product.legacy) {
-        return Ok(());
-    }
     for (id, directory) in generations(root)? {
-        ensure(
-            !(validation::hex(&id, 32) && directory.join("data").is_dir()),
-            "Hay datos de otra instalación en esta carpeta; se conservan",
-        )?;
+        if validation::hex(&id, 32) && directory.join("data").is_dir() {
+            ensure(
+                unreferenced_owner(&directory).as_deref() == Some(channel),
+                "Hay datos de otra instalación en esta carpeta; se conservan",
+            )?;
+        }
     }
     Ok(())
+}
+/// Dueño de una copia de datos sin `retained-data.json` (#2817): el canal que
+/// declara el `manifest.json` que aún conserve su generación (por ejemplo, una
+/// instalación cortada antes de escribir `state.json`). Sin manifiesto, beta,
+/// el único producto anterior a que los datos declararan su canal. Un manifiesto
+/// que no se puede leer no dice de quién es: `None`, y nadie la adopta.
+fn unreferenced_owner(generation: &Path) -> Option<String> {
+    let path = generation.join("manifest.json");
+    if !path.try_exists().ok()? {
+        return Some(product::UNDECLARED_CHANNEL.to_owned());
+    }
+    disk::read_json(&path, None).ok()?["channel"]
+        .as_str()
+        .map(str::to_owned)
 }
 fn retained_source(
     root: &Path,

@@ -4705,6 +4705,72 @@ fn an_unreadable_retained_data_stops_every_product_and_keeps_everything() {
     }
 }
 
+/// #2817 (F): una copia de datos sin `retained-data.json` es del canal que
+/// declara el manifiesto que aún conserva su generación (una instalación cortada
+/// antes de escribir `state.json`). Beta ya no adopta las de nightly y nightly
+/// recupera las suyas. Con un manifiesto ilegible o con copias de dos dueños,
+/// nadie adopta nada y todo se queda como estaba.
+#[test]
+fn unreferenced_data_belong_to_the_channel_their_generation_declares() {
+    let fixture = Fixture::new();
+    fixture
+        .install(
+            &fixture.package_for("nightly", "1.0.0"),
+            Mode::Auto,
+            false,
+            false,
+        )
+        .unwrap();
+    fixture.write_data();
+    let generation = fixture.active();
+    fs::remove_file(fixture.root.join("state.json")).unwrap();
+    let manifest = generation.join("manifest.json");
+    let declared = fs::read(&manifest).unwrap();
+    let refused = |channel: &'static str, why: &str| {
+        let before = root_tree(&fixture);
+        let error = fixture
+            .install(
+                &fixture.package_for(channel, "1.0.0"),
+                Mode::Auto,
+                false,
+                false,
+            )
+            .unwrap_err();
+        assert!(
+            error.to_string().contains("otra instalación"),
+            "{channel}, {why}: {error}"
+        );
+        assert_eq!(root_tree(&fixture), before, "{channel}, {why}");
+    };
+    refused("beta", "nightly manifest");
+    fs::write(&manifest, b"{roto").unwrap();
+    refused("beta", "unreadable manifest");
+    refused("nightly", "unreadable manifest");
+    fs::write(&manifest, &declared).unwrap();
+    // A second copy whose generation keeps no manifest is beta's: two owners.
+    let other = fixture
+        .root
+        .join("generations/0123456789abcdef0123456789abcdef/data");
+    fs::create_dir_all(&other).unwrap();
+    fs::write(other.join("opaque.bin"), b"opaque\0user\xffbytes").unwrap();
+    refused("beta", "two owners");
+    refused("nightly", "two owners");
+    fs::remove_dir_all(other.parent().unwrap()).unwrap();
+    fixture
+        .install(
+            &fixture.package_for("nightly", "1.0.0"),
+            Mode::Auto,
+            false,
+            false,
+        )
+        .unwrap();
+    assert_eq!(channel_of(&fixture), "nightly");
+    assert_eq!(
+        fs::read(fixture.data().join("opaque.bin")).unwrap(),
+        b"opaque\0user\xffbytes"
+    );
+}
+
 // ADR 0111 T3: Confirm and Uninstall gather the recordings of every generation:
 // the active one first, then the orphans from the newest, never `previous` nor
 // the generation an unconfirmed update staged; a recording moves only if whole.

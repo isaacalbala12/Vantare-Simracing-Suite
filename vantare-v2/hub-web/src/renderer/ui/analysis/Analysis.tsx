@@ -46,7 +46,7 @@ export function AnalysisRail({
   const row = state?.selected;
   const opened = state?.opened;
   const latest = orderedSessions(opened?.sessions)[0]?.session;
-  // #2871: lo que guardó una grabación sin cierre confirmado.
+  // Issue 2871: lo que guardó una grabación sin cierre confirmado.
   const saved =
     opened && !opened.finished ? lastSavedLap(opened.laps) : undefined;
   return (

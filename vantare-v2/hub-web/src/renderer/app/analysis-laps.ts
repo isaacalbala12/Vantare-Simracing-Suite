@@ -38,7 +38,7 @@ export function bestApproximateLapTime(laps: readonly AnalysisLap[]) {
   return best;
 }
 
-/** The lap of the last block saved: what an incomplete recording keeps (#2871). */
+/** The lap of the last block saved: what an incomplete recording keeps (issue 2871). */
 export function lastSavedLap(laps: readonly AnalysisLap[]) {
   let last: AnalysisLap | undefined;
   for (const lap of laps) if (!last || lap.index > last.index) last = lap;

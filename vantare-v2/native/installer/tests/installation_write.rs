@@ -4659,6 +4659,52 @@ fn foreign_data_are_refused_before_the_orphan_marker_or_any_staging() {
     }
 }
 
+/// #2817 (E): un `retained-data.json` ilegible no dice de quién son los datos.
+/// El Setup y el desinstalador de cualquier producto se detienen sin tocar
+/// nada (fallo cerrado) y lo explican: no se ha borrado nada.
+#[test]
+fn an_unreadable_retained_data_stops_every_product_and_keeps_everything() {
+    for owner in ["beta", "nightly"] {
+        let fixture = Fixture::new();
+        let _owner = retained_residue(&fixture, owner);
+        fs::write(fixture.root.join("retained-data.json"), b"{roto").unwrap();
+        let before = root_tree(&fixture);
+        let says_why = |error: &disk::WriteError, step: &str| {
+            assert_eq!(error.code, 1, "{owner}/{step}: {error}");
+            assert!(
+                error
+                    .to_string()
+                    .contains("No se puede leer retained-data.json"),
+                "{owner}/{step}: {error}"
+            );
+        };
+        for channel in ["beta", "nightly"] {
+            let folders = fixture.path.join(format!("shell-{channel}"));
+            let shell = fixture.shell_with(channel, folders, hive());
+            let package = fixture.package_for(channel, "1.0.0");
+            for mode in [Mode::Auto, Mode::Repair] {
+                let error = fixture.setup(&shell, &package, mode, None).unwrap_err();
+                says_why(&error, channel);
+            }
+            let (cancel, mut sink) = (AtomicBool::new(false), Sink::new());
+            let error =
+                operations::uninstall(&fixture.root, channel, &mut sink.control(&cancel), |_| {
+                    panic!("an unreadable residue must not reach Windows")
+                })
+                .unwrap_err();
+            says_why(&error, channel);
+            says_why(
+                &operations::residue_owned(&fixture.root, channel).unwrap_err(),
+                channel,
+            );
+            assert_eq!(root_tree(&fixture), before, "{owner}/{channel}");
+            for key in [BETA_KEY, NIGHTLY_KEY] {
+                assert_eq!(registered(&shell, key, "InstallLocation"), None, "{key}");
+            }
+        }
+    }
+}
+
 // ADR 0111 T3: Confirm and Uninstall gather the recordings of every generation:
 // the active one first, then the orphans from the newest, never `previous` nor
 // the generation an unconfirmed update staged; a recording moves only if whole.

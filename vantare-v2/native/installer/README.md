@@ -744,9 +744,13 @@ y al revés. Una copia de datos sin `retained-data.json` (en
 `generations/<id>/data`) es del canal que declara el `manifest.json` que aún
 conserve su generación (#2817): por ejemplo, una instalación nightly cortada
 antes de escribir `state.json` la recupera el Setup nightly, y beta no la
-adopta. Sin manifiesto es de beta, el único producto anterior a #2812. Un
-manifiesto ilegible, o copias de dos dueños en la misma carpeta, hacen que
-nadie adopte nada; todo se queda como estaba. Terminar una desinstalación a medias o
+adopta. Sin manifiesto es de beta, el único producto anterior a #2812. El
+manifiesto se lee con el mismo lector cerrado del motor (tope de 64 KiB, campos
+y canales cerrados): si no se puede leer, nadie adopta la copia y el usuario ve
+«No se puede leer manifest.json de una copia de tus datos en esta carpeta…»,
+sin culpar a otra instalación. Copias de dos dueños en la misma carpeta, o de un
+canal sin instalador, tampoco se adoptan; todo se queda como estaba. Esta
+adopción no compara la versión de la copia con la del Setup (issue aparte). Terminar una desinstalación a medias o
 ejecutar la limpieza del desinstalador exige también que los restos sean del
 mismo canal (`operations::residue_owned`). Si la sonda del Setup falla, la
 carpeta que propone «Reintentar» es la de su producto, nunca la de beta.

@@ -405,7 +405,7 @@ fn foreign_data(root: &Path, view: &Installation, channel: &str) -> Result<()> {
     for (id, directory) in generations(root)? {
         if validation::hex(&id, 32) && directory.join("data").is_dir() {
             ensure(
-                unreferenced_owner(&directory).as_deref() == Some(channel),
+                unreferenced_owner(&directory)? == channel,
                 "Hay datos de otra instalación en esta carpeta; se conservan",
             )?;
         }
@@ -414,18 +414,20 @@ fn foreign_data(root: &Path, view: &Installation, channel: &str) -> Result<()> {
 }
 /// Dueño de una copia de datos sin `retained-data.json` (#2817): el canal que
 /// declara el `manifest.json` que aún conserve su generación (por ejemplo, una
-/// instalación cortada antes de escribir `state.json`). Sin manifiesto, beta,
-/// el único producto anterior a que los datos declararan su canal. Un manifiesto
-/// que no se puede leer no dice de quién es: `None`, y nadie la adopta.
-fn unreferenced_owner(generation: &Path) -> Option<String> {
+/// instalación cortada antes de escribir `state.json`), leído con el mismo
+/// lector cerrado y con tope que el resto del motor. Sin manifiesto, beta, el
+/// único producto anterior a que los datos declararan su canal. Un manifiesto
+/// que no se puede leer no dice de quién es: nadie la adopta, y se dice así.
+fn unreferenced_owner(generation: &Path) -> Result<String> {
     let path = generation.join("manifest.json");
-    if !path.try_exists().ok()? {
-        return Some(product::UNDECLARED_CHANNEL.to_owned());
+    if !path.try_exists()? {
+        return Ok(product::UNDECLARED_CHANNEL.to_owned());
     }
-    disk::read_json(&path, None).ok()?["channel"]
-        .as_str()
-        .map(str::to_owned)
+    super::Manifest::read(&path)
+        .map(|manifest| manifest.channel)
+        .map_err(|_| WriteError::new(1, UNREADABLE_COPY))
 }
+const UNREADABLE_COPY: &str = "No se puede leer manifest.json de una copia de tus datos en esta carpeta, el archivo que dice de qué instalación es. No se ha borrado nada y tus datos siguen ahí. Instala en otra carpeta o escribe a soporte";
 fn retained_source(
     root: &Path,
     incoming: [u16; 3],

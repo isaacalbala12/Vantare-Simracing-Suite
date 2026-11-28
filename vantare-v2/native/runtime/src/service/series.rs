@@ -356,6 +356,18 @@ mod tests {
     };
 
     #[test]
+    fn the_recorder_waits_by_progress_with_the_decided_limits() {
+        // Decisión de la raíz (#2871): 10 s sin avanzar y 30 s de tope, nunca 1 s fijo.
+        assert_eq!(
+            SERIES_CLOSE_LIMITS,
+            CloseLimits {
+                stall: std::time::Duration::from_secs(10),
+                cap: std::time::Duration::from_secs(30),
+            }
+        );
+    }
+
+    #[test]
     fn a_confirmed_finish_is_never_an_error_even_if_closing_the_database_is_cut() {
         for closed in [
             Closed::Clean(FINISHED),

@@ -78,13 +78,12 @@ fn stopping_requests_consumers_in_policy_order_and_keeps_one_deadline() {
         actions,
         vec![
             Action::ForceWorkers,
-            Action::Kill(0),
             Action::Kill(1),
             Action::Kill(2),
             Action::Kill(3)
         ]
     );
-    for child in 0..4 {
+    for child in 1..4 {
         session.paso(
             Event::Killed {
                 child,
@@ -93,7 +92,83 @@ fn stopping_requests_consumers_in_policy_order_and_keeps_one_deadline() {
             now + grace,
         );
     }
+    // #2873: el Core tiene su propio margen desde que se le pidió cerrar (a los 2 s).
+    let core_closed = now + Duration::from_secs(2);
+    assert_eq!(
+        pulse(
+            &mut session,
+            core_closed + PRODUCER_CLOSE - Duration::from_millis(1),
+            false,
+            false
+        ),
+        [] as [crate::session::Action; 0]
+    );
+    assert_eq!(
+        pulse(&mut session, core_closed + PRODUCER_CLOSE, false, false),
+        vec![Action::Kill(0)]
+    );
+    session.paso(
+        Event::Killed {
+            child: 0,
+            reaped: true,
+        },
+        core_closed + PRODUCER_CLOSE,
+    );
     assert_eq!(session.phase, Phase::Finished(Reason::Stopped));
+}
+
+#[test]
+fn the_core_keeps_closing_while_storage_saves_and_consumers_keep_the_session_grace() {
+    // #2873: cerrar Vantare no mata al Core a los 3 s; los consumidores sí.
+    let grace = Duration::from_secs(3);
+    let (mut session, now) = running(grace);
+    session.paso(Event::Stop(Reason::Stopped), now);
+    for child in [1, 2, 3] {
+        session.paso(
+            Event::Exited {
+                child,
+                success: true,
+            },
+            now,
+        );
+    }
+    assert_eq!(
+        pulse(&mut session, now, false, true),
+        vec![Action::Close(0)]
+    );
+    // Sigue cerrando (storage guardando) a los 10 s: nadie lo mata.
+    assert_eq!(
+        pulse(&mut session, now + Duration::from_secs(10), false, true),
+        [] as [crate::session::Action; 0]
+    );
+    // Sale solo a los 12 s: la sesión termina sin matar a nadie.
+    assert_eq!(
+        session.paso(
+            Event::Exited {
+                child: 0,
+                success: true
+            },
+            now + Duration::from_secs(12)
+        ),
+        [] as [crate::session::Action; 0]
+    );
+    assert_eq!(session.phase, Phase::Finished(Reason::Stopped));
+}
+
+#[test]
+fn the_supervisor_outlasts_the_longest_close_of_the_core() {
+    // El Core se rinde con storage (tope) antes de que el supervisor lo mate.
+    let core = vantare_runtime::flows::CloseLimits::PRODUCT;
+    assert!(core.stall <= core.cap);
+    assert!(core.cap + Duration::from_secs(1) <= PRODUCER_CLOSE);
+    assert_eq!(Policy::core(1).close_window, Some(PRODUCER_CLOSE));
+    for consumer in [
+        Policy::consumer(1),
+        Policy::permitted(1),
+        Policy::observer(),
+    ] {
+        assert_eq!(consumer.close_window, None);
+    }
 }
 
 #[test]
@@ -380,7 +455,6 @@ fn kills_are_emitted_once_and_late_completion_cannot_reap_a_scheduled_child() {
         pulse(&mut session, at, false, true),
         vec![
             Action::Close(0),
-            Action::Kill(0),
             Action::Kill(1),
             Action::Kill(2),
             Action::Kill(3)

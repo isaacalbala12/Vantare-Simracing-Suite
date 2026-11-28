@@ -11,6 +11,9 @@ pub(super) struct Workers {
     pub feed: Option<Feed>,
     #[cfg(windows)]
     pub open_hub: Option<super::win::OpenHub>,
+    /// Avisa a una instancia nueva de que esta se está cerrando (#2873).
+    #[cfg(windows)]
+    pub closing: Option<super::win::Closing>,
     #[cfg(test)]
     pub fixture: Option<TestWorker>,
 }
@@ -60,6 +63,9 @@ impl Workers {
         }
         #[cfg(windows)]
         {
+            if let Some(closing) = &self.closing {
+                closing.set();
+            }
             if let Some(resident) = &self.resident {
                 resident.request_shutdown();
             }

@@ -645,9 +645,9 @@ grabaciones de las generaciones con `Duplicates::RemoveIdentical`:
   que se confirma o se desinstala, con su propio `state.json`; cada raíz es de
   un solo canal (beta o nightly), así que nunca toca grabaciones de otro
   producto. Desinstalar en nombre de otro canal se rechaza antes de recoger
-  nada, y una raíz sin estado (restos) no se recoge. La regla «las copias
-  antiguas sin referencia solo las adopta beta» es de la adopción de datos al
-  reinstalar, no de esta recogida.
+  nada, y una raíz sin estado (restos) no se recoge. La regla «una copia sin
+  referencia es del canal que declara su generación» (#2817) es de la adopción
+  de datos al reinstalar, no de esta recogida.
 - La primera Confirm con T3 es la de la **siguiente** actualización tras
   recibirlo: Confirm la ejecuta el lanzador que ya estaba en marcha.
 
@@ -740,8 +740,17 @@ puede ejercitar con carpetas QA inyectadas (cae dentro de su LocalAppData).
 idéntico y los Setup beta publicados lo leen igual (un documento sin canal es
 de beta). Un producto nunca adopta, mueve ni borra los datos conservados de
 otro: instalar nightly con `/D=` sobre una carpeta beta desinstalada se rechaza,
-y al revés. Las copias antiguas de datos sin `retained-data.json` (anteriores a
-este cambio) solo las adopta beta. Terminar una desinstalación a medias o
+y al revés. Una copia de datos sin `retained-data.json` (en
+`generations/<id>/data`) es del canal que declara el `manifest.json` que aún
+conserve su generación (#2817): por ejemplo, una instalación nightly cortada
+antes de escribir `state.json` la recupera el Setup nightly, y beta no la
+adopta. Sin manifiesto es de beta, el único producto anterior a #2812. El
+manifiesto se lee con el mismo lector cerrado del motor (tope de 64 KiB, campos
+y canales cerrados): si no se puede leer, nadie adopta la copia y el usuario ve
+«No se puede leer manifest.json de una copia de tus datos en esta carpeta…»,
+sin culpar a otra instalación. Copias de dos dueños en la misma carpeta, o de un
+canal sin instalador, tampoco se adoptan; todo se queda como estaba. Esta
+adopción no compara la versión de la copia con la del Setup (issue aparte). Terminar una desinstalación a medias o
 ejecutar la limpieza del desinstalador exige también que los restos sean del
 mismo canal (`operations::residue_owned`). Si la sonda del Setup falla, la
 carpeta que propone «Reintentar» es la de su producto, nunca la de beta.
@@ -757,3 +766,12 @@ siguiente se pararía igual al leer ese archivo. Lo que cambia es el mensaje,
 el mismo en todos esos pasos: «No se puede leer retained-data.json, el archivo
 que dice de quién son los datos guardados en esta carpeta. No se ha borrado
 nada y tus datos siguen ahí. Instala en otra carpeta o escribe a soporte».
+
+**Limitación conocida (#2817, F2 descartado).** Desinstalar nightly retira el
+`manifest.json` de su generación y deja `retained-data.json`, que es lo que
+dice que los datos son de nightly. Si además alguien borra a mano ese
+`retained-data.json`, la copia de datos ya no declara canal y un Setup beta con
+`/D=` en esa carpeta la adoptaría como suya (la copia, sin borrar nada en
+nightly). No se arregla porque exigiría que nightly dejara un `manifest.json`
+de más al desinstalar; el caso necesita borrar a mano un archivo de la
+instalación.

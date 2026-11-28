@@ -4559,14 +4559,15 @@ fn retained_data_of_another_channel_are_never_adopted_moved_or_removed() {
     }
 }
 
+/// Una copia sin `state.json` ni `retained-data.json` cuya generación conserva
+/// un manifiesto beta (#2817): solo beta la adopta.
 #[test]
-fn unreferenced_old_data_are_only_adopted_by_beta() {
+fn a_copy_whose_generation_declares_beta_is_only_adopted_by_beta() {
     let fixture = Fixture::new();
     fixture
         .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
         .unwrap();
     fixture.write_data();
-    // A generation with data and neither state nor retained-data: pre-#2812 residue.
     fs::remove_file(fixture.root.join("state.json")).unwrap();
     let before = root_tree(&fixture);
     let package = fixture.package_for("nightly", "1.0.0");
@@ -4701,6 +4702,154 @@ fn an_unreadable_retained_data_stops_every_product_and_keeps_everything() {
             for key in [BETA_KEY, NIGHTLY_KEY] {
                 assert_eq!(registered(&shell, key, "InstallLocation"), None, "{key}");
             }
+        }
+    }
+}
+
+/// #2817 (F): una copia de datos sin `retained-data.json` es del canal que
+/// declara el manifiesto que aún conserva su generación (una instalación cortada
+/// antes de escribir `state.json`). Beta ya no adopta las de nightly y nightly
+/// recupera las suyas. Con copias de dos dueños nadie adopta nada, y todo se
+/// queda como estaba.
+#[test]
+fn unreferenced_data_belong_to_the_channel_their_generation_declares() {
+    let fixture = Fixture::new();
+    fixture
+        .install(
+            &fixture.package_for("nightly", "1.0.0"),
+            Mode::Auto,
+            false,
+            false,
+        )
+        .unwrap();
+    fixture.write_data();
+    fs::remove_file(fixture.root.join("state.json")).unwrap();
+    install_refused(&fixture, "beta", "nightly manifest", "otra instalación");
+    // A second copy whose generation keeps no manifest is beta's: two owners.
+    let other = fixture
+        .root
+        .join("generations/0123456789abcdef0123456789abcdef/data");
+    fs::create_dir_all(&other).unwrap();
+    fs::write(other.join("opaque.bin"), b"opaque\0user\xffbytes").unwrap();
+    for channel in ["beta", "nightly"] {
+        install_refused(&fixture, channel, "two owners", "otra instalación");
+    }
+    fs::remove_dir_all(other.parent().unwrap()).unwrap();
+    fixture
+        .install(
+            &fixture.package_for("nightly", "1.0.0"),
+            Mode::Auto,
+            false,
+            false,
+        )
+        .unwrap();
+    assert_eq!(channel_of(&fixture), "nightly");
+    assert_eq!(
+        fs::read(fixture.data().join("opaque.bin")).unwrap(),
+        b"opaque\0user\xffbytes"
+    );
+}
+/// Ni beta ni nightly instalan; el árbol de la carpeta queda igual byte a byte.
+fn install_refused(fixture: &Fixture, channel: &'static str, why: &str, message: &str) {
+    let before = root_tree(fixture);
+    let error = fixture
+        .install(
+            &fixture.package_for(channel, "1.0.0"),
+            Mode::Auto,
+            false,
+            false,
+        )
+        .expect_err("the install is refused");
+    assert!(
+        error.to_string().contains(message),
+        "{channel}, {why}: {error}"
+    );
+    assert_eq!(root_tree(fixture), before, "{channel}, {why}");
+}
+
+/// #2817 (F): sin manifiesto (lo que deja una desinstalación anterior a #2812)
+/// la copia es de beta: beta la adopta byte a byte y nightly la rechaza.
+#[test]
+fn a_copy_without_manifest_is_adopted_byte_for_byte_by_beta_only() {
+    let fixture = Fixture::new();
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    fixture.write_data();
+    let generation = fixture.active();
+    fs::remove_file(fixture.root.join("state.json")).unwrap();
+    // Solo queda `data/` en la generación.
+    for entry in fs::read_dir(&generation).unwrap() {
+        let path = entry.unwrap().path();
+        if path.file_name().unwrap() == "data" {
+            continue;
+        }
+        if path.is_dir() {
+            fs::remove_dir_all(&path).unwrap();
+        } else {
+            fs::remove_file(&path).unwrap();
+        }
+    }
+    let mut copy = BTreeMap::new();
+    files_below(&generation.join("data"), "data", &mut copy);
+    install_refused(&fixture, "nightly", "no manifest", "otra instalación");
+    fixture
+        .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+        .unwrap();
+    assert_eq!(channel_of(&fixture), "beta");
+    let mut adopted = BTreeMap::new();
+    files_below(&fixture.data(), "data", &mut adopted);
+    assert_eq!(adopted, copy);
+}
+
+/// #2817 (F): el manifiesto se lee con el lector cerrado del motor (tope de
+/// 64 KiB, campos y canales cerrados). Uno que no se puede leer no dice de quién
+/// es la copia: nadie la adopta y el mensaje lo dice sin culpar a otra
+/// instalación. Un canal válido sin instalador (testers) es de otro producto.
+#[test]
+fn a_doubtful_manifest_keeps_the_copy_from_everyone() {
+    let fixture = Fixture::new();
+    fixture
+        .install(
+            &fixture.package_for("nightly", "1.0.0"),
+            Mode::Auto,
+            false,
+            false,
+        )
+        .unwrap();
+    fixture.write_data();
+    let manifest = fixture.active().join("manifest.json");
+    fs::remove_file(fixture.root.join("state.json")).unwrap();
+    let declared = fs::read(&manifest).unwrap();
+    let text = String::from_utf8(declared.clone()).unwrap();
+    let with = |channel: serde_json::Value| {
+        let mut value: serde_json::Value = serde_json::from_slice(&declared).unwrap();
+        value["channel"] = channel;
+        if value["channel"].is_null() {
+            value.as_object_mut().unwrap().remove("channel");
+        }
+        serde_json::to_vec(&value).unwrap()
+    };
+    let unreadable = "No se puede leer manifest.json de una copia de tus datos";
+    let mut oversized = declared.clone();
+    oversized.extend(std::iter::repeat_n(b' ', 65536));
+    let cases: [(&str, Vec<u8>, &str); 7] = [
+        ("broken JSON", b"{roto".to_vec(), unreadable),
+        ("Nightly", with(json!("Nightly")), unreadable),
+        ("no channel", with(serde_json::Value::Null), unreadable),
+        ("numeric channel", with(json!(1)), unreadable),
+        (
+            "duplicated channel",
+            text.replacen('{', "{\"channel\":\"beta\",", 1).into_bytes(),
+            unreadable,
+        ),
+        ("over 64 KiB", oversized, unreadable),
+        ("testers", with(json!("testers")), "otra instalación"),
+    ];
+    for (why, bytes, message) in cases {
+        fs::write(&manifest, bytes).unwrap();
+        for channel in ["beta", "nightly"] {
+            install_refused(&fixture, channel, why, message);
         }
     }
 }

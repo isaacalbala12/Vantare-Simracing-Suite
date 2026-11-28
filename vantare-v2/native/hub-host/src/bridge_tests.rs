@@ -336,19 +336,11 @@ fn owner_peer(mode: &str, name: &str, token: &str, done: &Signal) {
         let _joined = child.0.wait();
     }
 }
-/// Releases the helpers even when an assertion fails: a failing run must not
-/// leave its own processes behind either (they wait for this event).
-struct Release<'a>(&'a Signal);
-impl Drop for Release<'_> {
-    fn drop(&mut self) {
-        self.0.set();
-    }
-}
 #[test]
 fn a_clean_ui_exit_leaves_no_descendant_once_the_host_lets_it_go() {
     let root = Root::new();
+    // Dropped by its creator only: releases the helpers even if an assertion fails.
     let done = Signal::new().expect("stop");
-    let _release = Release(&done);
     let ready = Signal::new().expect("ready");
     let path = root.path.join("left-pids.json");
     let command = command("leave-descendant", "", "", &done.name, &ready.name, &path);
@@ -360,6 +352,9 @@ fn a_clean_ui_exit_leaves_no_descendant_once_the_host_lets_it_go() {
     assert_eq!(ids.first(), Some(&ui.0.id()));
     let descendant = test_support::process(ids[1]).expect("our descendant");
     assert!(ui.0.wait().expect("UI exit").success());
+    // Nobody but this test may release the helper: otherwise it stops by itself
+    // (racing the check below) and the job is never what ends it.
+    assert!(!done.is_set(), "the exiting UI released its helper");
     assert!(
         test_support::running(&descendant),
         "a helper outlives the UI"

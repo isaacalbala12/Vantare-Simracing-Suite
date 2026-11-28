@@ -25,9 +25,13 @@ fn owned(handle: HANDLE) -> io::Result<OwnedHandle> {
     // SAFETY: fresh owned kernel handle, never a pseudo-handle.
     Ok(unsafe { OwnedHandle::from_raw_handle(handle) })
 }
+/// A named manual-reset event. Only its creator releases the peers on drop; a
+/// peer that merely opened it must signal explicitly, or finishing one helper
+/// would stop every other helper waiting on the same event (#2865).
 pub struct Signal {
     handle: OwnedHandle,
     pub name: String,
+    owner: bool,
 }
 impl Signal {
     pub fn new() -> io::Result<Self> {
@@ -38,7 +42,11 @@ impl Signal {
         let text: Vec<_> = name.encode_utf16().chain([0]).collect();
         // SAFETY: NUL-terminated name; default user DACL, non-inherited handle.
         let handle = owned(unsafe { CreateEventW(ptr::null(), 1, 0, text.as_ptr()) })?;
-        Ok(Self { handle, name })
+        Ok(Self {
+            handle,
+            name,
+            owner: true,
+        })
     }
     pub fn open(name: String) -> io::Result<Self> {
         let text: Vec<_> = name.encode_utf16().chain([0]).collect();
@@ -50,7 +58,11 @@ impl Signal {
                 text.as_ptr(),
             )
         })?;
-        Ok(Self { handle, name })
+        Ok(Self {
+            handle,
+            name,
+            owner: false,
+        })
     }
     pub fn set(&self) {
         // SAFETY: the owned event remains live for this call.
@@ -59,6 +71,10 @@ impl Signal {
             0,
             "signal test peer"
         );
+    }
+    pub fn is_set(&self) -> bool {
+        // SAFETY: zero-time observation; a manual-reset event is not consumed.
+        unsafe { WaitForSingleObject(self.handle.as_raw_handle(), 0) == WAIT_OBJECT_0 }
     }
     pub fn wait_or_exit(&self, process: &impl AsRawHandle) {
         let handles = [self.handle.as_raw_handle(), process.as_raw_handle()];
@@ -79,7 +95,9 @@ impl Signal {
 }
 impl Drop for Signal {
     fn drop(&mut self) {
-        self.set();
+        if self.owner {
+            self.set();
+        }
     }
 }
 pub fn anonymous_pipe() -> io::Result<(OwnedHandle, OwnedHandle)> {

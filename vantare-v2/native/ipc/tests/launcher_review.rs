@@ -423,6 +423,7 @@ fn a_program_extension_that_is_not_ascii_blocks_the_review() {
         "C:\\Games\\caf\u{e9}.v2\\x.exe".into(),
         "C:\\\u{ff30}\u{ff23}\u{30b2}\u{30fc}\u{30e0}\\a.exe".into(),
         format!("C:\\Games\\my.{exe}\\x.exe"),
+        format!("C:\\Games\\my.{exe}\\steam"),
         "C:/Games/my.folder/x.tar.gz".into(),
         "C:\\Games\\.exe".into(),
         "C:\\Games\\steam".into(),
@@ -640,6 +641,9 @@ fn a_program_path_that_windows_would_trim_is_blocked() {
         "C:\\Games\\steam.exe ".to_owned(),
         "C:\\Games\\steam.exe.".into(),
         "C:\\Games\\steam.exe\u{a0}".into(),
+        // Sin extensión, solo B1 los para: NBSP y U+3000 son blancos también.
+        "C:\\Games\\steam\u{a0}".into(),
+        "C:\\Games\\steam\u{3000}".into(),
         "C:\\Games\\steam.exe:stream".into(),
         "\\\\?\\C:\\Games\\steam.exe::$DATA".into(),
     ] {

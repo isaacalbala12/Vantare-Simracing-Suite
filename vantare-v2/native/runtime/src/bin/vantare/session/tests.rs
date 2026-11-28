@@ -97,7 +97,7 @@ fn stopping_requests_consumers_in_policy_order_and_keeps_one_deadline() {
     assert_eq!(
         pulse(
             &mut session,
-            core_closed + PRODUCER_CLOSE - Duration::from_millis(1),
+            core_closed + PRODUCER_CLOSE.saturating_sub(Duration::from_millis(1)),
             false,
             false
         ),

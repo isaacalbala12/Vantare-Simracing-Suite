@@ -10,12 +10,15 @@ const MAX_PAGES: usize = 3;
 pub const AUTHORIZATION_MS: u64 = 10_000;
 /// Propuesta de texto pendiente del visto bueno de la raíz (#2579).
 const CONFUSABLE_NOTICE: &str =
-    "\nAtención: contiene letras que imitan a las latinas; se muestran como [U+…].";
+    "\nAtención: hay letras o signos que imitan a los latinos; se ven como [U+…].";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReviewError {
     Unavailable,
     TooLong,
+    /// La ruta de un programa se disfraza con letras o signos que imitan a los
+    /// latinos (#2579): no se ofrece «Confiar». El perfil no cambia.
+    Blocked,
 }
 
 #[derive(Deserialize)]
@@ -51,24 +54,47 @@ fn invisible(c: char) -> bool {
     )
 }
 
-fn visible(text: &str) -> String {
-    let mut output = String::new();
-    for (c, confusable) in text.chars().zip(confusables::marked(text)) {
-        if confusable || invisible(c) {
-            write!(output, "[U+{:04X}]", u32::from(c)).expect("write to String");
-        } else {
-            output.push(c);
-        }
-    }
-    output
+/// Lo que se muestra de cada carácter: él mismo, o `[U+XXXX]` si es invisible o
+/// imita a uno latino.
+fn shown(text: &str, marks: Vec<bool>) -> Vec<String> {
+    text.chars()
+        .zip(marks)
+        .map(|(c, marked)| {
+            if marked || invisible(c) {
+                format!("[U+{:04X}]", u32::from(c))
+            } else {
+                c.to_string()
+            }
+        })
+        .collect()
 }
 
+fn visible(text: &str) -> String {
+    shown(text, confusables::marked(text)).concat()
+}
+
+fn visible_path(text: &str) -> String {
+    shown(text, confusables::marked_path(text)).concat()
+}
+
+/// Recorta sin partir un `[U+XXXX]`.
 fn label(text: &str, limit: usize) -> String {
-    let text = visible(text);
-    if text.chars().count() > limit {
-        return text.chars().take(limit - 1).chain(['…']).collect();
+    let parts = shown(text, confusables::marked(text));
+    if parts.iter().map(|part| part.chars().count()).sum::<usize>() <= limit {
+        return parts.concat();
     }
-    text
+    let mut output = String::new();
+    let mut used = 0;
+    for part in parts {
+        let width = part.chars().count();
+        if used + width > limit - 1 {
+            break;
+        }
+        output.push_str(&part);
+        used += width;
+    }
+    output.push('…');
+    output
 }
 
 fn argument(value: &str) -> String {
@@ -102,7 +128,7 @@ impl Step {
         if self.delay > 0 {
             write!(output, " · espera {} s", self.delay).expect("write to String");
         }
-        write!(output, "\n   Programa: {}", visible(&self.path)).expect("write to String");
+        write!(output, "\n   Programa: {}", visible_path(&self.path)).expect("write to String");
         let arguments: Vec<_> = self.args.iter().map(|arg| argument(arg)).collect();
         let single_line = format!("   Argumentos: {}", arguments.join(" "));
         if arguments.is_empty() {
@@ -147,9 +173,16 @@ impl Profile {
                 "\nAtención: contiene caracteres invisibles; aquí se muestran como [U+…].",
             );
         }
-        if texts
-            .iter()
-            .any(|text| confusables::marked(text).contains(&true))
+        let mut other_text = [&self.name, &self.hotkey].into_iter().chain(
+            self.steps
+                .iter()
+                .flat_map(|step| [&step.app].into_iter().chain(&step.args)),
+        );
+        if other_text.any(|text| confusables::marked(text).contains(&true))
+            || self
+                .steps
+                .iter()
+                .any(|step| confusables::marked_path(&step.path).contains(&true))
         {
             header.push_str(CONFUSABLE_NOTICE);
         }
@@ -196,6 +229,13 @@ pub fn review_pages(message: &str) -> Result<Vec<String>, ReviewError> {
         return Err(ReviewError::TooLong);
     }
     let profile: Profile = serde_json::from_str(message).map_err(|_| ReviewError::Unavailable)?;
+    if profile
+        .steps
+        .iter()
+        .any(|step| confusables::disguised_path(&step.path))
+    {
+        return Err(ReviewError::Blocked);
+    }
     let header = profile.header();
     if profile.steps.is_empty() {
         return Ok(vec![format!(

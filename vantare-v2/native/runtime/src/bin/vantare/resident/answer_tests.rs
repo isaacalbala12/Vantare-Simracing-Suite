@@ -330,6 +330,42 @@ fn legacy_trust_with_the_current_question_is_rejected_without_answering() {
 }
 
 #[test]
+fn a_disguised_program_path_rejects_trust_even_with_a_proof() {
+    // #2579: la prueba se calcula sobre la ruta limpia; la pregunta lleva «.ехе»
+    // cirílica o un punto U+2024. La revisión queda bloqueada y no se confía.
+    use vantare_ipc::launcher::{
+        answer::ReviewProof,
+        review::{frame_pages, review_pages},
+    };
+    let profile = |path: &str| {
+        serde_json::json!({
+            "name": "QA", "startup": false, "hotkey": "", "firstDelay": 0, "retries": 0,
+            "steps": [{"app": "QA", "path": path, "args": [], "steam": false, "delay": 0}]
+        })
+        .to_string()
+    };
+    let pages_digest = vantare_services::content_hash(&frame_pages(
+        &review_pages(&profile("QA/app.exe")).unwrap(),
+    ));
+    for path in ["QA/app.\u{435}\u{445}\u{435}", "QA/app\u{2024}exe"] {
+        let mut f = fixture();
+        let question = f.owner.status.decision.as_mut().unwrap();
+        question.actions.push(Action::Trust);
+        question.message = profile(path);
+        f.request.action = Action::Trust;
+        f.request.review = Some(ReviewProof {
+            pages_digest: pages_digest.clone(),
+            issued_ms: 1_000,
+        });
+        assert_eq!(
+            f.owner.checked_answer_target(&f.request),
+            Err(AnswerRejection::Unavailable),
+            "{path}"
+        );
+    }
+}
+
+#[test]
 fn matching_review_proof_expires_before_the_resident_answers() {
     use vantare_ipc::launcher::{
         answer::ReviewProof,

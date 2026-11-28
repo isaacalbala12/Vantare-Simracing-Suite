@@ -1,16 +1,21 @@
-//! Letras de otros alfabetos que se parecen a las latinas (#2579).
+//! Letras y signos que imitan a los latinos (#2579).
 //!
-//! El texto se parte en segmentos (entre `\ / = , ; "` y espacios) y cada
-//! segmento en palabras (letras, cifras y acentos). Se muestran como
-//! `[U+XXXX]`:
-//! - (A) todo carácter no ASCII de la extensión del segmento («steam.ехе»):
-//!   las extensiones son latinas por convención;
-//! - (B) las letras de la lista dentro de una palabra con alguna latina
-//!   («Stеam» con «е» cirílica);
-//! - (C) las de una palabra hecha solo de letras de la lista («АРР») cuando el
-//!   resto del segmento, sin la extensión, es latino («`Game_АРР`»).
+//! Se muestran como `[U+XXXX]`:
+//! - siempre, los puntos, barras, guiones y el `;` griego que imitan a los
+//!   ASCII (`steam․exe` con U+2024);
+//! - (B) en una palabra con alguna letra latina o de estilo latino, toda letra
+//!   de un bloque de riesgo (cirílico, griego, armenio, cherokee, lisu, IPA,
+//!   anchos completos…): «Stеam», «obs６４»;
+//! - (C) si el texto entero tiene latín y ninguna letra propia de otro
+//!   alfabeto, toda letra de riesgo: `C:\common\АСС\асс.exe`, `C:\СССР.exe`;
+//! - en una palabra que mezcla dos alfabetos de riesgo («Ѕκуре»: cirílico y
+//!   griego), todas sus letras de riesgo;
+//! - (A) en la ruta del programa, la extensión que parece latina sin serlo
+//!   (`steam.ехе`), aunque el resto de la ruta tenga letras propias.
 //!
-//! No se toca un nombre entero en su alfabeto: «Игра», «хор.exe», «ΟΧΙ.bat».
+//! No se toca un texto con letras propias de su alfabeto
+//! (`C:\Users\Иван\Игры\хор.exe`, «Касперский», «Παιχνίδι») salvo sus palabras
+//! mezcladas con latín. CJK, kana y hangul no son de riesgo («PCゲーム»).
 //!
 //! Sin tablas Unicode completas: NFC y NFD dan el mismo veredicto porque las
 //! letras precompuestas de la lista ([`COMPOSED`]) se pliegan a su letra base y
@@ -18,9 +23,10 @@
 
 use super::invisible;
 
-/// Carácter y la letra latina a la que se parece.
+/// Letras de otro alfabeto que se confunden con una latina. Lo que no está aquí
+/// es una letra «propia», que decide el contexto de (C) y de (A).
 #[rustfmt::skip]
-const PAIRS: [(char, char); 55] = [
+const PAIRS: [(char, char); 56] = [
     ('\u{0430}', 'a'), ('\u{0435}', 'e'), ('\u{043E}', 'o'), ('\u{0440}', 'p'),
     ('\u{0441}', 'c'), ('\u{0445}', 'x'), ('\u{0443}', 'y'), ('\u{0456}', 'i'),
     ('\u{0458}', 'j'), ('\u{0455}', 's'), ('\u{0501}', 'd'), ('\u{051B}', 'q'),
@@ -31,7 +37,7 @@ const PAIRS: [(char, char); 55] = [
     ('\u{0408}', 'J'), ('\u{0405}', 'S'), ('\u{04AE}', 'Y'),
     ('\u{03BF}', 'o'), ('\u{03B1}', 'a'), ('\u{03BD}', 'v'), ('\u{03C1}', 'p'),
     ('\u{03C5}', 'u'), ('\u{03B9}', 'i'), ('\u{03BA}', 'k'), ('\u{03C7}', 'x'),
-    ('\u{03F2}', 'c'),
+    ('\u{03F2}', 'c'), ('\u{03BC}', 'u'),
     ('\u{0391}', 'A'), ('\u{0392}', 'B'), ('\u{0395}', 'E'), ('\u{0396}', 'Z'),
     ('\u{0397}', 'H'), ('\u{0399}', 'I'), ('\u{039A}', 'K'), ('\u{039C}', 'M'),
     ('\u{039D}', 'N'), ('\u{039F}', 'O'), ('\u{03A1}', 'P'), ('\u{03A4}', 'T'),
@@ -58,8 +64,56 @@ const COMPOSED: [(char, char); 34] = [
 ];
 
 /// Letras con acento cuya base no se parece sola, pero sí con el acento
-/// («ӱ» ≈ «ü»): se marcan aunque la base no esté en [`PAIRS`].
+/// («ӱ» ≈ «ü»).
 const LOOKALIKE_BASES: [char; 2] = ['\u{0423}', '\u{0443}'];
+
+/// Puntos y barras que imitan `.`, `\` y `/`: se marcan siempre y, en la ruta
+/// del programa, bloquean la confianza.
+#[rustfmt::skip]
+const PATH_PUNCTUATION: [char; 15] = [
+    '\u{2024}', '\u{FF0E}', '\u{FE52}', '\u{A4F8}', '\u{0701}', '\u{0702}',
+    '\u{2215}', '\u{2044}', '\u{29F5}', '\u{29F8}', '\u{29F9}', '\u{2216}',
+    '\u{FF0F}', '\u{FF3C}', '\u{FE68}',
+];
+
+/// Guiones que imitan `-` y el `;` griego: se marcan siempre.
+#[rustfmt::skip]
+const OTHER_PUNCTUATION: [char; 7] = [
+    '\u{2010}', '\u{2011}', '\u{2012}', '\u{2212}', '\u{FE63}', '\u{FF0D}', '\u{037E}',
+];
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Script {
+    Cyrillic,
+    Greek,
+    Armenian,
+    Cherokee,
+    Lisu,
+    LatinLike,
+}
+
+/// Bloque de riesgo: letras que pueden pasar por latinas en una ruta.
+fn script(c: char) -> Option<Script> {
+    Some(match c {
+        '\u{0400}'..='\u{052F}' | '\u{1C80}'..='\u{1C8F}' | '\u{A640}'..='\u{A69F}' => {
+            Script::Cyrillic
+        }
+        '\u{0370}'..='\u{03FF}' | '\u{1F00}'..='\u{1FFF}' => Script::Greek,
+        '\u{0530}'..='\u{058F}' => Script::Armenian,
+        '\u{13A0}'..='\u{13FF}' | '\u{AB70}'..='\u{ABBF}' => Script::Cherokee,
+        '\u{A4D0}'..='\u{A4FF}' => Script::Lisu,
+        '\u{0131}'
+        | '\u{01C0}'..='\u{01C3}'
+        | '\u{0250}'..='\u{02AF}'
+        | '\u{1D00}'..='\u{1DBF}'
+        | '\u{2100}'..='\u{218F}'
+        | '\u{FF10}'..='\u{FF19}'
+        | '\u{FF21}'..='\u{FF3A}'
+        | '\u{FF41}'..='\u{FF5A}'
+        | '\u{1D400}'..='\u{1D7FF}' => Script::LatinLike,
+        _ => return None,
+    })
+}
 
 fn base(c: char) -> char {
     COMPOSED
@@ -68,29 +122,23 @@ fn base(c: char) -> char {
         .map_or(c, |&(_, base)| base)
 }
 
-/// Letras latinas escritas con otra forma: anchos completos (U+FF21–FF3A,
-/// U+FF41–FF5A) y latinas matemáticas (U+1D400–1D6A3). Están en la lista y
-/// además cuentan como latinas para (B).
-fn styled_latin(c: char) -> bool {
-    matches!(c, '\u{FF21}'..='\u{FF3A}' | '\u{FF41}'..='\u{FF5A}' | '\u{1D400}'..='\u{1D6A3}')
-}
-
+/// Se confunde con una latina: está en [`PAIRS`] (o es su forma precompuesta)
+/// o es de estilo latino (IPA, anchos completos, matemáticas…).
 fn is_confusable(c: char) -> bool {
     let folded = base(c);
     PAIRS.iter().any(|&(other, _)| other == folded)
         || (folded != c && LOOKALIKE_BASES.contains(&folded))
-        || styled_latin(c)
+        || script(c) == Some(Script::LatinLike)
 }
 
 fn is_latin(c: char) -> bool {
     c.is_ascii_alphabetic()
-        || styled_latin(c)
         || ((('\u{C0}'..='\u{24F}').contains(&c) || ('\u{1E00}'..='\u{1EFF}').contains(&c))
             && c.is_alphabetic()
-            && !is_confusable(c))
+            && script(c).is_none())
 }
 
-/// Letra propia de otro alfabeto: ni latina ni de la lista («И», «π», «ゲ»).
+/// Letra propia de otro alfabeto: no latina ni confundible («И», «π», «ゲ»).
 fn own_letter(c: char) -> bool {
     c.is_alphabetic() && !combining(c) && !is_latin(c) && !is_confusable(c)
 }
@@ -110,8 +158,22 @@ fn in_word(c: char) -> bool {
     c.is_alphanumeric() || combining(c) || (invisible(c) && !c.is_whitespace())
 }
 
-fn in_segment(c: char) -> bool {
-    !c.is_whitespace() && !matches!(c, '\\' | '/' | '=' | ',' | ';' | '"')
+/// Letras del turco junto a las que la «ı» sin punto es legítima («Işık»).
+fn turkish(c: char) -> bool {
+    matches!(
+        c,
+        '\u{15E}'
+            | '\u{15F}'
+            | '\u{11E}'
+            | '\u{11F}'
+            | '\u{C7}'
+            | '\u{E7}'
+            | '\u{130}'
+            | '\u{D6}'
+            | '\u{F6}'
+            | '\u{DC}'
+            | '\u{FC}'
+    )
 }
 
 /// Tramos `[inicio, fin)` máximos de caracteres que cumplen `keep`.
@@ -134,43 +196,76 @@ fn runs(chars: &[char], keep: fn(char) -> bool) -> Vec<(usize, usize)> {
     spans
 }
 
-/// Dónde empieza la extensión: tras el último punto, con algo delante y de 1 a
-/// 5 caracteres de palabra. Una más larga se trata como parte del nombre.
-fn extension(segment: &[char]) -> Option<usize> {
-    let dot = segment.iter().rposition(|&c| c == '.')?;
-    let ext = &segment[dot + 1..];
-    (dot > 0 && (1..=5).contains(&ext.len()) && ext.iter().all(|&c| in_word(c))).then_some(dot + 1)
+/// (A) Extensión del último segmento de la ruta (tras el último punto, con algo
+/// delante y de 1 a 5 caracteres de palabra) con alguna letra de riesgo y
+/// ninguna propia: «.ехе» sí; «.рф», «.конф» o «.café» no.
+fn latin_looking_extension(chars: &[char]) -> Option<usize> {
+    let segment = chars
+        .iter()
+        .rposition(|&c| matches!(c, '\\' | '/'))
+        .map_or(0, |i| i + 1);
+    let dot = segment + chars[segment..].iter().rposition(|&c| c == '.')?;
+    let ext = &chars[dot + 1..];
+    (dot > segment
+        && (1..=5).contains(&ext.len())
+        && ext.iter().all(|&c| in_word(c))
+        && ext.iter().any(|&c| script(c).is_some())
+        && !ext.iter().any(|&c| own_letter(c)))
+    .then_some(dot + 1)
 }
 
-fn mark_segment(segment: &[char], marks: &mut [bool]) {
-    let stem_len = extension(segment).unwrap_or(segment.len());
-    for (mark, &c) in marks[stem_len..].iter_mut().zip(&segment[stem_len..]) {
-        *mark = !c.is_ascii();
-    }
-    let stem = &segment[..stem_len];
-    let latin_context = stem.iter().any(|&c| is_latin(c)) && !stem.iter().any(|&c| own_letter(c));
-    for (start, end) in runs(stem, in_word) {
-        let word = &stem[start..end];
-        let latin = word.iter().any(|&c| is_latin(c));
-        let only_listed = !latin && !word.iter().any(|&c| own_letter(c));
-        if latin || (only_listed && latin_context) {
+fn mark(chars: &[char]) -> Vec<bool> {
+    let mut marks = vec![false; chars.len()];
+    let latin_text = chars.iter().any(|&c| is_latin(c)) && !chars.iter().any(|&c| own_letter(c));
+    for (start, end) in runs(chars, in_word) {
+        let word = &chars[start..end];
+        let turkish_word = word.iter().any(|&c| turkish(c));
+        let risky = |c: char| script(c).is_some() && !(c == '\u{131}' && turkish_word);
+        let mut scripts = word
+            .iter()
+            .copied()
+            .filter(|&c| risky(c))
+            .filter_map(script);
+        let first = scripts.next();
+        let two_scripts = scripts.any(|other| Some(other) != first);
+        let latin = word
+            .iter()
+            .any(|&c| is_latin(c) || (risky(c) && script(c) == Some(Script::LatinLike)));
+        if latin_text || two_scripts || latin {
             for i in start..end {
-                marks[i] =
-                    is_confusable(stem[i]) || (i > start && marks[i - 1] && combining(stem[i]));
+                marks[i] = risky(chars[i]) || (i > start && marks[i - 1] && combining(chars[i]));
             }
         }
     }
-}
-
-/// Por carácter: `true` si se muestra como `[U+XXXX]` por parecer latino. Los
-/// acentos que siguen a uno marcado se marcan con él para no montarse en «]».
-pub(super) fn marked(text: &str) -> Vec<bool> {
-    let chars: Vec<char> = text.chars().collect();
-    let mut marks = vec![false; chars.len()];
-    for (start, end) in runs(&chars, in_segment) {
-        mark_segment(&chars[start..end], &mut marks[start..end]);
+    for (flag, c) in marks.iter_mut().zip(chars) {
+        *flag |= PATH_PUNCTUATION.contains(c) || OTHER_PUNCTUATION.contains(c);
     }
     marks
+}
+
+/// Por carácter: `true` si se muestra como `[U+XXXX]` por imitar a uno latino.
+/// Los acentos que siguen a uno marcado se marcan con él para no montarse en «]».
+pub(super) fn marked(text: &str) -> Vec<bool> {
+    mark(&text.chars().collect::<Vec<_>>())
+}
+
+/// Como [`marked`], más la extensión de la ruta del programa que parece latina.
+pub(super) fn marked_path(text: &str) -> Vec<bool> {
+    let chars: Vec<char> = text.chars().collect();
+    let mut marks = mark(&chars);
+    if let Some(start) = latin_looking_extension(&chars) {
+        for (flag, c) in marks[start..].iter_mut().zip(&chars[start..]) {
+            *flag |= !c.is_ascii();
+        }
+    }
+    marks
+}
+
+/// La ruta del programa se disfraza: su extensión parece latina sin serlo, o
+/// tiene un punto o una barra que imitan a los ASCII. Bloquea la confianza.
+pub(super) fn disguised_path(text: &str) -> bool {
+    let chars: Vec<char> = text.chars().collect();
+    chars.iter().any(|c| PATH_PUNCTUATION.contains(c)) || latin_looking_extension(&chars).is_some()
 }
 
 #[cfg(test)]
@@ -182,13 +277,15 @@ mod tests {
     }
 
     #[test]
-    fn the_lists_are_well_formed_and_not_silently_shortened() {
-        assert_eq!(PAIRS.len(), 55);
+    fn the_lists_have_no_duplicates_and_point_at_known_letters() {
         for (i, &(c, latin)) in PAIRS.iter().enumerate() {
-            assert!(!c.is_ascii() && latin.is_ascii_alphabetic(), "{}", code(c));
+            assert!(
+                script(c).is_some() && latin.is_ascii_alphabetic(),
+                "{}",
+                code(c)
+            );
             assert!(!PAIRS[..i].iter().any(|&(o, _)| o == c), "{}", code(c));
         }
-        assert_eq!(COMPOSED.len(), 34);
         for (i, &(composed, base)) in COMPOSED.iter().enumerate() {
             let known = PAIRS.iter().any(|&(o, _)| o == base) || LOOKALIKE_BASES.contains(&base);
             assert!(known, "{}", code(composed));
@@ -197,32 +294,28 @@ mod tests {
                 "{}",
                 code(composed)
             );
-            assert!(
-                !PAIRS.iter().any(|&(o, _)| o == composed),
-                "{}",
-                code(composed)
-            );
         }
     }
 
     #[test]
-    fn every_pair_and_composed_form_is_marked_next_to_a_latin_letter() {
+    fn every_listed_letter_and_sign_is_marked_next_to_a_latin_letter() {
         let listed = PAIRS.iter().chain(&COMPOSED).map(|&(c, _)| c);
-        for c in listed {
+        for c in listed.chain(PATH_PUNCTUATION).chain(OTHER_PUNCTUATION) {
+            let marks = marked(&format!("x{c}y"));
+            assert_eq!(marks, [false, true, false], "{}", code(c));
+        }
+    }
+
+    #[test]
+    fn every_listed_letter_counts_as_lookalike_for_the_whole_text_rule() {
+        // (C): una palabra hecha solo de una letra de la lista, en un texto latino.
+        for c in PAIRS.iter().chain(&COMPOSED).map(|&(c, _)| c) {
             assert_eq!(
-                marked(&format!("x{c}y")),
-                [false, true, false],
+                marked(&format!("ab {c}")),
+                [false, false, false, true],
                 "{}",
                 code(c)
             );
         }
-        assert_eq!(
-            marked("x\u{FF42}\u{FF3A}\u{1D41E}"),
-            [false, true, true, true]
-        );
-        assert_eq!(
-            marked("x\u{FF20}\u{FF5B}\u{0423}"),
-            [false, false, false, false]
-        );
     }
 }

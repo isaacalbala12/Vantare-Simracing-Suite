@@ -1,3 +1,29 @@
+## Releases y migración · topes del paquete y orden de publicación (#2863, #2864)
+
+- Estado: fusionado en nightly `997abf43d` (#2864). El tope por miembro de
+  `stage` y de Setup es **384 MiB**; el ZIP (256 MiB) y el total expandido
+  (768 MiB) no cambian y ahora son constantes públicas de `engine::package`. Antes de
+  escribir nada, `expand` exige que el tamaño declarado en el directorio central
+  de cada miembro coincida con el `size` del manifiesto firmado, y corta cada
+  miembro en `declarado + 1`.
+- Gate de capacidad sobre el candidato Release real (`verify-package --capacity`
+  lee las constantes compiladas; `check-qa-distribution.ps1` y
+  `verify-build-package.ps1`): aviso al 90 % de cada tope y fallo por encima.
+  Medida del 27-nov: ZIP 184,1/256 MiB, expandido 432,7/768 MiB, miembro más grande
+  (Electron) 238,3/384 MiB (62 %). Revisión de seguridad independiente: apta, sin P0.
+- Clientes: los beta publicados **0.0.975 y 0.0.988 no tienen `stage`**; actualizan por
+  `native-beta` con PowerShell (ZIP ≤128, miembro ≤256, total ≤512 MiB) y no pueden
+  recibir Electron por el feed `hub-beta` (el ZIP de Electron mide ~184 MiB). Migran con
+  Setup nuevo (ADR 0103, acta de Isaac). El tope de 384 solo aplica a clientes que ya
+  tienen `stage`.
+- **Orden de publicación:** primero Setup nuevo; después, paquetes Electron por `hub-beta`.
+  Publicar Electron también en `native-beta` exigiría caber en 128/256/512 MiB y una
+  decisión expresa.
+- Límite conocido: en el workflow de publicación la línea `[capacidad]` de
+  `verify-build-package.ps1` solo se verá si quien llama a `build-candidate` no captura su
+  salida (en el job de distribución la imprime `check-qa-distribution.ps1`); sin verificar
+  en publicación. Seguimiento en una issue de prioridad baja.
+
 ## VANTA-142 / #2247 — Rust 1.99.1 en nightly; seguimiento #2263 (2026-11-13)
 
 - Worker H; rama `vantareapp/isa-2247-rust-estable`, base nightly

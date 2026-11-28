@@ -1,3 +1,5 @@
+> Releases y migración (topes del paquete, orden de publicación Setup nuevo → Electron por `hub-beta`): ver [platform-commercial.md](platform-commercial.md), primera sección (#2863, #2864).
+
 ## VANTA-144 · Standings Eficiencia E4 (17/11/2026)
 
 PR #2506 a nightly, no draft; CI Windows y Sonnet pendientes.

@@ -8,8 +8,9 @@ const WRAP: usize = 76;
 const BUDGET: usize = 26;
 const MAX_PAGES: usize = 3;
 pub const AUTHORIZATION_MS: u64 = 10_000;
-/// Texto fijado por la raíz (#2579). Ocupa dos líneas de la página.
-const CONFUSABLE_NOTICE: &str = "\nAtención: hay letras o signos de otros alfabetos que se parecen a los normales. Están marcados así: [U+…].";
+/// Texto fijado por la raíz (#2579). Cabe en una línea de la página.
+const CONFUSABLE_NOTICE: &str =
+    "\nAtención: letras o signos que imitan a los normales, marcados así: [U+…].";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReviewError {

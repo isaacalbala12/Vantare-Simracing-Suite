@@ -121,7 +121,20 @@ fn with_path(path: &str) -> String {
     shown(&input_with_path(path))
 }
 
-const NOTICE: &str = "\nAtención: hay letras o signos de otros alfabetos que se parecen a los normales. Están marcados así: [U+…].\n";
+/// La línea completa del aviso, con sus saltos de línea.
+const NOTICE: &str =
+    "\nAtención: letras o signos que imitan a los normales, marcados así: [U+…].\n";
+
+#[test]
+fn the_lookalike_notice_is_one_page_line() {
+    let pages = with_path("C:\\Games\\St\u{435}am\\steam.exe");
+    let line = pages
+        .lines()
+        .find(|line| line.starts_with("Atención: letras"))
+        .expect("aviso");
+    assert_eq!(format!("\n{line}\n"), NOTICE);
+    assert!(line.chars().count() <= 76, "{line}");
+}
 
 #[test]
 fn marks_a_lookalike_in_every_field() {

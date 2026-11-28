@@ -795,11 +795,53 @@ manifiesto se lee con el mismo lector cerrado del motor (tope de 64 KiB, campos
 y canales cerrados): si no se puede leer, nadie adopta la copia y el usuario ve
 «No se puede leer manifest.json de una copia de tus datos en esta carpeta…»,
 sin culpar a otra instalación. Copias de dos dueños en la misma carpeta, o de un
-canal sin instalador, tampoco se adoptan; todo se queda como estaba. Esta
-adopción no compara la versión de la copia con la del Setup (issue aparte). Terminar una desinstalación a medias o
-ejecutar la limpieza del desinstalador exige también que los restos sean del
-mismo canal (`operations::residue_owned`). Si la sonda del Setup falla, la
-carpeta que propone «Reintentar» es la de su producto, nunca la de beta.
+canal sin instalador, tampoco se adoptan; todo se queda como estaba. Terminar una
+desinstalación a medias o ejecutar la limpieza del desinstalador exige también
+que los restos sean del mismo canal (`operations::residue_owned`). Si la sonda
+del Setup falla, la carpeta que propone «Reintentar» es la de su producto, nunca
+la de beta.
+
+**Versión de los datos antes de adoptarlos (#2882).** Sin `state.json`, un Setup
+anterior a los datos se rechaza con el código 3 («Tus datos pertenecen a una
+versión más reciente»). La elección de la copia se hace **antes** de retirar
+restos de una limpieza (#2829) y de escribir `staging/`. En el rechazo se abren
+o crean los candados; no se toca nada más, así que `Uninstall.exe` y
+`installer-cleanup.json` siguen ahí para el Setup adecuado.
+
+**Cambio de código con una limpieza pendiente.** Sin `state.json`, con el
+registro y `installer-cleanup.json` todavía presentes, y datos más nuevos o que
+no se pueden adoptar (falta la carpeta de datos, un archivo no se deja leer o hay
+varias copias distintas), el usuario ve ahora el código 3 (o el 1) en lugar del 2
+(«Espera a que termine la limpieza del desinstalador anterior»), que da
+`prepare_orphan`. El 3 es la respuesta definitiva: tras el 2, reintentar llevaría
+al mismo 3. Un `manifest.json` o `retained-data.json` ilegible ya daba el 1 antes.
+
+| Copias sin `state.json` | Resultado |
+| --- | --- |
+| Con `retained-data.json` | Manda la versión de ese archivo (también tras una adopción cortada); los manifiestos no se miran |
+| Sin él, copia de la versión del Setup o anterior | Se adopta |
+| Sin él, copia posterior | Código 3 |
+| Varias copias, alguna posterior | Código 3, sean iguales o distintas y esté donde esté |
+| Varias distintas, ninguna posterior | «Hay varias copias antiguas diferentes…», se conservan todas |
+| Instalación limpia cortada (manifiesto y `data/` vacía) | Cuenta igual que cualquier copia (véase el falso positivo) |
+| Generación sin `data/` | No es una copia: su manifiesto no cuenta |
+| Manifiesto ilegible o con versión inválida | Código 1, nadie la adopta |
+| Copia de otro canal | Código 1 «otra instalación», aunque además sea posterior |
+| Sin manifiesto | Beta la adopta sin aviso; nightly no (código 1) |
+
+La versión que anuncia el Setup se comprueba contra el manifiesto autenticado del
+ZIP antes de copiar nada.
+
+**Falso positivo conocido (#2882).** Una instalación limpia cortada deja el
+manifiesto y `data/` vacía. No hay datos que perder, pero cuenta como copia: si
+se cortó la 2.0.0, un Setup 1.0.0 recibe el código 3. Salida: usar el Setup 2.0.0
+(o uno posterior) o instalar en otra carpeta.
+
+**Límite conocido (#2882).** Una copia sin manifiesto no declara versión. Es lo
+normal tras desinstalar, y entonces la acompaña `retained-data.json`. Si alguien
+borra a mano `state.json` y `retained-data.json`, una copia más nueva sin
+manifiesto no se detecta y un Setup beta anterior la adopta (como copia: la
+original no se mueve ni se borra). No adoptarla instalaría con datos vacíos.
 
 **`retained-data.json` ilegible (#2817).** Si ese archivo está roto (JSON
 inválido, esquema, generación o versión que no valen), no se sabe de quién son

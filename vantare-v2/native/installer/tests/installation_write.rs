@@ -4629,6 +4629,87 @@ fn a_root_with_this_product_state_stays_its_own_whatever_the_other_registry_says
     assert_eq!(beta_values(), beta_before);
 }
 
+/// #2817 (D): una carpeta solo es «tuya» frente al registro del otro producto
+/// si es la MISMA carpeta y lo prueba un `state.json` legible de tu canal o,
+/// sin estado, un `retained-data.json` legible de tu canal (sin canal es de
+/// beta). Uno roto, el de otro canal, o una carpeta dentro de la del otro o que
+/// la contiene, nunca valen.
+#[test]
+fn only_the_same_folder_with_readable_proof_of_this_channel_is_its_own() {
+    let fixture = Fixture::new();
+    let (folders, registry) = (fixture.path.join("shell"), hive());
+    let beta = fixture.shell_with("beta", folders.clone(), registry.clone());
+    let nightly = fixture.shell_with("nightly", folders, registry);
+    fixture
+        .setup(&beta, &fixture.package("1.0.0"), Mode::Auto, None)
+        .unwrap();
+    let root = disk::path(&fixture.root).unwrap();
+    let register = |shell: &Shell, key: &str, value: &Path| {
+        windows_registry::CURRENT_USER
+            .create(format!("{}\\{key}", shell.registry))
+            .and_then(|hive| hive.set_string("InstallLocation", value.to_string_lossy()))
+            .unwrap();
+    };
+    let resolve = |shell: &Shell, folder: &Path| {
+        let arguments = Args {
+            root: Some(folder.to_path_buf()),
+            ..Args::default()
+        };
+        shell.context.resolve_root(&engine::Request::new(
+            &arguments,
+            engine::Operation::Install,
+        ))
+    };
+    let refused = |shell: &Shell, folder: &Path, why: &str| {
+        let error = resolve(shell, folder).expect_err(why);
+        assert!(error.to_string().contains(CLAIMED), "{why}: {error}");
+    };
+    let retained = |folder: &Path, channel: Option<&str>| {
+        let mut saved = json!({
+            "schema": 1,
+            "generation": "0123456789abcdef0123456789abcdef",
+            "version": "1.0.0"
+        });
+        if let Some(channel) = channel {
+            saved["channel"] = channel.into();
+        }
+        fs::create_dir_all(folder).unwrap();
+        fs::write(folder.join("retained-data.json"), saved.to_string()).unwrap();
+    };
+    // (d) Datos conservados de nightly junto al `state.json` de beta.
+    retained(&root, Some("nightly"));
+    refused(&nightly, &root, "nightly retained beside the beta state");
+    // (e) Con prueba propia, pero dentro de la carpeta de beta…
+    let inside = root.join("nightly");
+    retained(&inside, Some("nightly"));
+    refused(&nightly, &inside, "own retained inside the beta root");
+    // …o conteniéndola.
+    fs::remove_file(root.join("state.json")).unwrap();
+    register(&beta, BETA_KEY, &root.join("beta-dentro"));
+    refused(&nightly, &root, "own retained around the beta root");
+    // La misma carpeta con sus datos conservados sí es de nightly (N1).
+    register(&beta, BETA_KEY, &root);
+    assert_eq!(resolve(&nightly, &root).unwrap(), root);
+    // (b) Datos conservados ilegibles no prueban nada.
+    fs::write(root.join("retained-data.json"), b"{roto").unwrap();
+    refused(&nightly, &root, "unreadable retained");
+    // (a) Ni un `state.json` ilegible, aunque los datos conservados sean de nightly.
+    retained(&root, Some("nightly"));
+    fs::write(root.join("state.json"), b"{roto").unwrap();
+    refused(&nightly, &root, "unreadable state");
+    fs::remove_file(root.join("state.json")).unwrap();
+    // (c) Sin canal, los datos conservados son de beta, no de nightly.
+    retained(&root, None);
+    refused(&nightly, &root, "undeclared retained");
+    // Con solo la clave vieja de nightly nombrándola, beta sí la usa.
+    windows_registry::CURRENT_USER
+        .create(format!("{}\\{BETA_KEY}", beta.registry))
+        .and_then(|hive| hive.remove_value("InstallLocation"))
+        .unwrap();
+    register(&nightly, NIGHTLY_KEY, &root);
+    assert_eq!(resolve(&beta, &root).unwrap(), root);
+}
+
 #[test]
 fn testers_and_master_have_no_installer_yet() {
     for channel in ["testers", "master"] {

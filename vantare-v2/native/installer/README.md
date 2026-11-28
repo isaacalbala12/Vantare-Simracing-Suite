@@ -730,7 +730,11 @@ carpeta; no se ha cambiado nada».
   actualiza y desinstala como siempre, y beta sigue rechazado sin tocar nada
   suyo. Su clave vieja se queda en el registro. Recién desinstalada, sin
   `state.json`, la carpeta sigue siendo suya si su `retained-data.json` se lee y
-  es de su canal: así la limpieza del desinstalador (`schedule_cleanup`) termina.
+  es de su canal (uno sin canal es de beta): así la limpieza del desinstalador
+  (`schedule_cleanup`) termina. Esta excepción vale solo para la **misma**
+  carpeta y con una prueba legible: un `state.json` o `retained-data.json` roto,
+  de otro canal, o una carpeta dentro de la del otro producto o que la contiene,
+  se rechazan siempre.
 - **Fallo cerrado.** Si el registro del otro producto no se puede leer (un valor
   que no es texto o REG_EXPAND_SZ), el Setup se detiene: «No se puede leer la
   carpeta registrada de otra instalación de Vantare (…)».

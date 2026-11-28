@@ -205,10 +205,11 @@ impl Context {
     }
     /// La raíz registrada de otro producto nunca se usa, ni vaciada a mano ni
     /// borrada, ni una carpeta dentro de ella o que la contenga (#2817): su
-    /// registro seguiría apuntando a lo que se instale. Una raíz con el
-    /// `state.json` de este producto es suya, y el registro del otro es el viejo:
-    /// se repara y se desinstala como siempre. Recién desinstalada, sin estado,
-    /// lo es si su `retained-data.json` es de este canal: así termina la limpieza.
+    /// registro seguiría apuntando a lo que se instale. Solo si es la misma
+    /// carpeta y tiene el `state.json` de este producto es suya, y el registro
+    /// del otro es el viejo: se repara y se desinstala como siempre. Recién
+    /// desinstalada, sin estado, lo es si su `retained-data.json` es de este
+    /// canal: así termina la limpieza. Anidada nunca vale.
     fn claimed_by_another_product(&self, root: &Path) -> Result<()> {
         let own = self.product()?;
         let owned = match super::State::read(root) {
@@ -219,9 +220,6 @@ impl Context {
                 .is_some_and(|saved| saved.channel() == own.channel),
             Err(_) => false,
         };
-        if owned {
-            return Ok(());
-        }
         for other in product::ALL.into_iter().filter(|other| *other != own) {
             // Un registro del otro producto que no se puede leer falla cerrado.
             let unreadable = |cause: &dyn std::fmt::Display| {
@@ -246,8 +244,9 @@ impl Context {
                 }
                 continue;
             };
+            let relation = folder_relation(Path::new(&location), root);
             ensure(
-                !shares_folder(Path::new(&location), root),
+                relation == Relation::Apart || (relation == Relation::Same && owned),
                 &format!(
                     "Esta carpeta es de otra instalación de Vantare ({}). Elige otra carpeta; no se ha cambiado nada",
                     other.display_name
@@ -326,16 +325,27 @@ pub fn same_path(left: &Path, right: &Path) -> Result<bool> {
     super::windows::paths_equal(&left, &right)
 }
 
-/// La misma carpeta, o una dentro de la otra (#2817), aunque se escriba
-/// distinto: `\\?\` delante, mayúsculas, `/`, `.`, `..`, puntos y espacios
-/// finales, enlaces y nombres cortos.
-fn shares_folder(registered: &Path, root: &Path) -> bool {
+/// Cómo está una carpeta registrada respecto a la raíz (#2817).
+#[derive(Debug, PartialEq, Eq)]
+enum Relation {
+    Apart,
+    Same,
+    /// Una dentro de la otra, en cualquier sentido.
+    Nested,
+}
+/// Se compara aunque se escriba distinto: `\\?\` delante, mayúsculas, `/`,
+/// `.`, `..`, puntos y espacios finales, enlaces y nombres cortos.
+fn folder_relation(registered: &Path, root: &Path) -> Relation {
     let (Some(left), Some(right)) = (folder_key(registered), folder_key(root)) else {
-        return false;
+        return Relation::Apart;
     };
-    left == right
-        || left.starts_with(&format!("{right}/"))
-        || right.starts_with(&format!("{left}/"))
+    if left == right {
+        Relation::Same
+    } else if left.starts_with(&format!("{right}/")) || right.starts_with(&format!("{left}/")) {
+        Relation::Nested
+    } else {
+        Relation::Apart
+    }
 }
 /// Ruta canónica de una carpeta para compararla. Si aún no existe, se resuelve
 /// la parte que existe y se añade el resto. `None` si no es una ruta de unidad

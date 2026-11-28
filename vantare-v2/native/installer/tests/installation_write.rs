@@ -1311,6 +1311,8 @@ fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
         "declared one byte, wrote {} bytes",
         written.len()
     );
+    // It stops at the forged member: nothing after it reaches the disk.
+    assert!(!destination.join(&test_members()[1]).exists());
 }
 
 #[test]
@@ -1426,6 +1428,7 @@ fn a_real_deflate_bomb_is_bounded_whether_its_size_is_signed_or_forged() {
         .expect("streaming started")
         .len();
     assert!(written <= 4097, "declared 4096, wrote {written} bytes");
+    assert!(!destination.join(&test_members()[1]).exists());
 }
 
 /// The feed update of `package` in an owned child that exits abruptly at

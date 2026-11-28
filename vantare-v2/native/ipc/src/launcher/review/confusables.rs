@@ -34,7 +34,7 @@ use super::invisible;
 /// (ni es lisu, cherokee o de estilo latino, que se confunden siempre) es una
 /// letra «propia», que decide el contexto de (C) y de (A).
 #[rustfmt::skip]
-const PAIRS: [(char, char); 72] = [
+const PAIRS: [(char, char); 73] = [
     ('\u{04C0}', 'l'), ('\u{A646}', 'I'), ('\u{A647}', 'i'), ('\u{051A}', 'Q'),
     ('\u{051C}', 'W'), ('\u{04BA}', 'h'), ('\u{04AF}', 'y'),
     ('\u{037F}', 'J'), ('\u{03F3}', 'j'),

@@ -32,6 +32,23 @@ function Test-VantareTargetPath([string]$Path) {
     return [IO.Path]::GetPathRoot($full) -ieq [IO.Path]::GetPathRoot((Get-VantareTargetRoot))
 }
 
+# True when `Path` is a queue slot (`slot-0`, `slot-1` or `ci`) or anything below
+# one, and is not exactly one of the `Allowed` paths. A slot's folders belong to
+# its reservation, whose lock and stamps only describe what that checkout builds
+# (#2862). Compares spellings without following links: `..`, case, slashes,
+# trailing separators and the `\\?\` prefix do not change the answer.
+function Test-VantareSlotPath {
+    param([Parameter(Mandatory)][string]$Path, [string[]]$Allowed = @(), [string]$Root = (Get-VantareTargetRoot))
+    $separator = [IO.Path]::DirectorySeparatorChar
+    $spell = { param($value) [IO.Path]::GetFullPath(($value -replace '^[\\/]{2}[?.][\\/]', '')).TrimEnd('\', '/') + $separator }
+    $full = & $spell $Path
+    if (@($Allowed | Where-Object { (& $spell $_) -ieq $full }).Count) { return $false }
+    foreach ($name in @('slot-0', 'slot-1', 'ci')) {
+        if ($full.StartsWith((& $spell ([IO.Path]::Combine($Root, $name))), [StringComparison]::OrdinalIgnoreCase)) { return $true }
+    }
+    $false
+}
+
 # Rune builds with a private CARGO_HOME, so it needs a target directory of its
 # own: sharing one makes each side overwrite the other's units and rebuild all
 # that depends on them (#2862). It lives inside the build target, so a slot's

@@ -8,7 +8,7 @@
 //! - (B) las letras de la lista dentro de una palabra con alguna latina
 //!   («Stеam» con «е» cirílica);
 //! - (C) las de una palabra hecha solo de letras de la lista («АРР») cuando el
-//!   resto del segmento, sin la extensión, es latino («Game_АРР»).
+//!   resto del segmento, sin la extensión, es latino («`Game_АРР`»).
 //!
 //! No se toca un nombre entero en su alfabeto: «Игра», «хор.exe», «ΟΧΙ.bat».
 //!

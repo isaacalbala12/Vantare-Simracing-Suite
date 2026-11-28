@@ -229,8 +229,10 @@ La señal de readiness es una fixture; el arranque live requiere otro SID/VM.
 ## Escritura Rust — #1840, pasos4–5
 
 `operations` comparte instalación/actualización/reparación y retirada; `package`
-conserva SHA externo, miembros exactos, hashes/PE/sidecars, límites 256/256/768 MiB
-(ZIP, miembro y total expandido; #2528)
+conserva SHA externo, miembros exactos, hashes/PE/sidecars, límites 256/384/768 MiB
+(ZIP, miembro y total expandido; #2528, miembro subido en #2863; el tamaño del
+directorio debe coincidir con el del manifiesto firmado antes de escribir; quién
+aplica cada tope en `packaging/README.md`)
 y rechazo de enlaces. Comprueba también las entradas crudas del directorio ZIP,
 porque un índice por nombre podría ocultar duplicados. `write_fs` mantiene
 NTFS/replace atómico, locks, guarda de imágenes vivas y copias verificadas con

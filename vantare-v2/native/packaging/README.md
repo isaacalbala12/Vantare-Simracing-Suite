@@ -115,8 +115,39 @@ un candidato real ya construido, sin compilar ni cambiar el guard gráfico:
 
 La primera ejecución real de esta comprobación se registra en el PR del
 seguimiento M4; los tests de fixtures y del lock no sustituyen esa evidencia.
-Los límites nuevos son ZIP <=256 MiB, miembro <=256 MiB y total <=768 MiB.
-El primer relevo requiere Setup nuevo: el actualizador antiguo conserva 128 MiB.
+### Topes del paquete y clientes que los aplican (#2863)
+
+Los topes de `expand` (`installer/src/engine/package.rs`), que aplican Setup y
+`stage` del feed `hub-beta`, son ZIP <=256 MiB, miembro <=384 MiB y total
+<=768 MiB. Se comprueban con los tamaños declarados del directorio central, que
+deben coincidir con el `size` del manifiesto firmado, antes de escribir nada; la
+extracción corta además cada miembro en su tamaño declarado. El miembro subió de
+256 a 384 MiB en #2863 porque el EXE de Electron ya pesa 238 MiB.
+
+`check-qa-distribution.ps1` mide el candidato Release real con
+`verify-package --capacity`, que imprime los topes compilados: escribe una línea
+`[capacidad]` con las tres medidas y su porcentaje, avisa (`::warning::`) al 90 %
+de cada tope y falla por encima o si falta el paquete o el verificador.
+`verify-build-package.ps1` aplica el mismo gate en candidato y publicación.
+Medida de la CI del 27-nov: ZIP 184,1 MiB (72 %), expandido 432,7 MiB (56 %),
+miembro más grande 238,3 MiB (62 %).
+
+Quién aplica qué tope:
+
+1. Los clientes beta publicados (GPUI 0.0.975 y 0.0.988, motor 1) **no tienen
+   `stage`**. Actualizan por el feed antiguo `native-beta-v<versión>` con
+   PowerShell (`beta.ps1` + `candidate.ps1`), cuyos topes son ZIP <=128 MiB,
+   miembro <=256 MiB y total <=512 MiB (`candidate.ps1`, líneas 227 y 241 del
+   tag `native-beta-v0.0.975`). No pueden recibir Electron por el feed
+   `hub-beta`, que no leen; migran con **Setup nuevo** (ADR 0103, con el acta de
+   Isaac sobre raíces 0.0.975 y 0.0.988 reales).
+2. El tope de 384 MiB por miembro solo aplica a clientes que **ya tienen
+   `stage`**, es decir, instalados con el Setup nuevo.
+3. Orden de publicación: primero el Setup nuevo para migrar a esos clientes;
+   después, los paquetes Electron por `hub-beta`. Si algún día se quisiera
+   publicar Electron **también** en `native-beta`, el paquete tendría que caber
+   en 128/256/512 MiB (hoy no cabe: ZIP 184 > 128) y habría que decidirlo
+   expresamente.
 
 Este candidato no autoriza publicación. El feed nuevo queda fuera de P3: usará
 `hub-beta-v<versión>` / `vantare-hub-beta.json`, nunca el publicador heredado

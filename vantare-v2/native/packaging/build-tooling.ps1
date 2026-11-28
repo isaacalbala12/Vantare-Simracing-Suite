@@ -67,6 +67,32 @@ function Test-BuildPackage([string]$Archive,[string]$Version,[string]$Channel,[s
     }
     $null=Invoke-BuildProcess $Verifier @($archive,(Get-NativeHash $archive),$Version,$Channel) $null 120000
 }
+# #2863: margen frente a los topes de stage/Setup. Los topes llegan del verificador
+# (constantes de package.rs); aquí no hay copia. Aviso al 90 %, fallo por encima.
+function Get-PackageCapacityReport([object]$Capacity,[string]$Name) {
+    $fields=@('compressed','compressed_limit','expanded','expanded_limit','largest','largest_limit')
+    if((@($Capacity.PSObject.Properties.Name|Sort-Object) -join ',') -cne (@($fields|Sort-Object) -join ',')){throw 'Medidas de capacidad incompatibles'}
+    foreach($field in $fields){if(($Capacity.$field -isnot [int] -and $Capacity.$field -isnot [long]) -or $Capacity.$field -lt 0){throw "Medida de capacidad inválida: $field"}}
+    $culture=[Globalization.CultureInfo]::GetCultureInfo('es-ES')
+    $parts=@();$warnings=@();$failures=@()
+    foreach($measure in @(@('ZIP','compressed'),@('expandido','expanded'),@('miembro más grande','largest'))){
+        $value=[uint64]$Capacity.($measure[1]);$limit=[uint64]$Capacity.($measure[1]+'_limit')
+        if(-not $limit){throw 'Tope de capacidad nulo'}
+        $text=[string]::Format($culture,'{0} {1:N1} de {2:N0} MiB ({3:N1} %)',$measure[0],$value/1MB,$limit/1MB,100.0*$value/$limit)
+        $parts+=$text
+        if($value -gt $limit){$failures+=$text}elseif($value*10 -ge $limit*9){$warnings+=$text}
+    }
+    [pscustomobject]@{Line="[capacidad] ${Name}: $($parts -join '; ')";Warnings=$warnings;Failures=$failures}
+}
+function Assert-PackageCapacity([string]$Verifier,[string]$Archive) {
+    $archive=Assert-BuildPath $Archive
+    if(-not (Test-Path -LiteralPath $archive -PathType Leaf) -or -not $Verifier -or -not (Test-Path -LiteralPath $Verifier -PathType Leaf)){throw 'Gate de capacidad (#2863): falta el paquete o el verificador real'}
+    $raw=Invoke-BuildProcess $Verifier @('--capacity',$archive) $null 120000
+    $report=Get-PackageCapacityReport ($raw|ConvertFrom-Json) ([IO.Path]::GetFileName($archive))
+    $report.Line
+    foreach($warning in $report.Warnings){"::warning::Paquete al 90 % o más de un tope de stage: $warning"}
+    if($report.Failures.Count){throw "Paquete por encima del tope de stage: $($report.Failures -join '; ')"}
+}
 function Get-NativeDumpbin {
     $command=Get-Command dumpbin.exe -ErrorAction SilentlyContinue
     if($command){return $command.Source}

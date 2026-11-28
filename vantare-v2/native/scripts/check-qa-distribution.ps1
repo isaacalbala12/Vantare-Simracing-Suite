@@ -65,6 +65,9 @@ try {
     $phase=[Diagnostics.Stopwatch]::StartNew()
     $null=& (Join-Path $native 'packaging/build-candidate.ps1') -Version '0.0.0' -Channel nightly -OutputDirectory (Join-Path $target 'release-package') -BuildProfile Release -AllowDirty
     Save-DistributionPhase 'clean-candidate' $phase
+    # #2863: margen del paquete real (con Electron) frente a los topes de stage.
+    # En este job ambos existen siempre: si faltan, Assert-PackageCapacity falla.
+    Assert-PackageCapacity (Join-Path $target 'x86_64-pc-windows-msvc/debug/examples/verify-package.exe') (Join-Path $target 'release-package/vantare-native-amd64-package.zip')
     Assert-NativeDistributionTree (Join-Path $target 'release-package/payload')
     # Rune is shipped as an ordinary product image; packaging does not select it.
     Assert-ExecutableSidecar (Join-Path $target 'release-package/payload/bin/vantare-overlays-rune.exe')

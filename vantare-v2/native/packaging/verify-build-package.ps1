@@ -9,5 +9,7 @@ try{
     & pwsh -NoProfile -File scripts/compilar.ps1 cargo build -p vantare-installer --example verify-package --no-default-features --features write-engine --target x86_64-pc-windows-msvc --locked --offline
     if($LASTEXITCODE){throw 'Falló la compilación del verificador Rust'}
     $verifier=Join-Path $env:CARGO_TARGET_DIR 'x86_64-pc-windows-msvc/debug/examples/verify-package.exe'
+    # Línea [capacidad] y avisos del 90 % visibles en candidato y publicación (#2863).
+    Assert-PackageCapacity $verifier $Archive | Write-Host
     Test-BuildPackage $Archive $Version $Channel $verifier
 }finally{Pop-Location}

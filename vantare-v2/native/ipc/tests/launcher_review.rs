@@ -327,6 +327,8 @@ fn leaves_names_written_in_their_own_alphabet_alone() {
     input["steps"][0]["args"] =
         serde_json::json!(["--\u{438}\u{43c}\u{44f}=\u{445}\u{43e}\u{440}"]);
     input["name"] = "\u{418}\u{433}\u{440}\u{44b} \u{445}\u{43e}\u{440}".into();
+    // Un punto fuera de la ruta no es una extensión: «Игры.рас» no se marca.
+    input["steps"][0]["app"] = "\u{418}\u{433}\u{440}\u{44b}.\u{440}\u{430}\u{441}".into();
     let pages = shown(&input);
     assert!(!pages.contains("[U+") && !pages.contains(NOTICE), "{pages}");
 }

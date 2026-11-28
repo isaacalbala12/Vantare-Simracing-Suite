@@ -234,7 +234,13 @@ fn fixture_session() -> ! {
         ],
     };
     let mut services = [
-        Service::new("núcleo", program(), 0).with_policy(Policy::core(0)),
+        // Esta prueba mide el plazo global (1 s) con un núcleo colgado: usa la
+        // gracia de la sesión. El margen propio del Core al cerrar (#2873) se
+        // prueba en session/tests.rs.
+        Service::new("núcleo", program(), 0).with_policy(Policy {
+            close_window: None,
+            ..Policy::core(0)
+        }),
         Service::new("overlays", program(), 0),
         Service::new("diagnóstico", program(), 0).with_policy(Policy::observer()),
     ];

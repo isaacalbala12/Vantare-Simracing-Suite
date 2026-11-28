@@ -166,12 +166,18 @@ fn marks_a_lookalike_in_every_field() {
     }
 }
 
+fn assert_marked(attacks: &[(String, &str)]) {
+    for (path, marked) in attacks {
+        let pages = with_path(path);
+        assert!(pages.contains(marked), "{marked}: {pages}");
+        assert!(pages.contains(NOTICE), "{marked}");
+        assert!(!pages.contains(path.as_str()), "{marked}");
+    }
+}
+
 #[test]
-fn marks_the_corpus_of_lookalike_attacks() {
-    let ivan = "\u{418}\u{432}\u{430}\u{43d}";
-    let skype = "\u{405}\u{3ba}\u{443}\u{440}\u{435}";
-    let skype_marked = "[U+0405][U+03BA][U+0443][U+0440][U+0435]";
-    let attacks = [
+fn marks_lookalikes_mixed_with_latin_in_a_word() {
+    assert_marked(&[
         // (B) mezcla con latín dentro de una palabra.
         (
             "C:\\Program Files (x86)\\St\u{435}am\\steam.exe".to_owned(),
@@ -238,6 +244,15 @@ fn marks_the_corpus_of_lookalike_attacks() {
             "C:\\Games\\obs\u{2011}studio\\x.exe".into(),
             "obs[U+2011]studio\\",
         ),
+    ]);
+}
+
+#[test]
+fn marks_lookalike_forms_and_whole_lookalike_words_in_a_latin_path() {
+    let ivan = "\u{418}\u{432}\u{430}\u{43d}";
+    let skype = "\u{405}\u{3ba}\u{443}\u{440}\u{435}";
+    let skype_marked = "[U+0405][U+03BA][U+0443][U+0440][U+0435]";
+    assert_marked(&[
         // Formas precompuestas (NFC) y descompuestas (NFD).
         (
             "C:\\Games\\M\u{4e7}torsport.exe".into(),
@@ -271,13 +286,7 @@ fn marks_the_corpus_of_lookalike_attacks() {
         ),
         // Dos alfabetos de la lista en una palabra, aunque haya letras propias.
         (format!("C:\\Users\\{ivan}\\{skype}\\a.exe"), skype_marked),
-    ];
-    for (path, marked) in &attacks {
-        let pages = with_path(path);
-        assert!(pages.contains(marked), "{marked}: {pages}");
-        assert!(pages.contains(NOTICE), "{marked}");
-        assert!(!pages.contains(path.as_str()), "{marked}");
-    }
+    ]);
 }
 
 #[test]

@@ -4759,7 +4759,7 @@ fn install_refused(fixture: &Fixture, channel: &'static str, why: &str, message:
             false,
             false,
         )
-        .unwrap_err();
+        .expect_err("the install is refused");
     assert!(
         error.to_string().contains(message),
         "{channel}, {why}: {error}"

@@ -352,6 +352,8 @@ fn a_disguised_program_path_rejects_trust_even_with_a_proof() {
         "QA/app\u{2024}exe",
         "QA/app.exe::$DATA",
         "QA/app.\u{435}\u{445}\u{435}.",
+        "QA/app.\u{13ac}\u{13a0}\u{13ac}",
+        "QA/app.\u{435}\u{445}\u{435}\u{fe0f}\u{fe0f}\u{fe0f}",
     ] {
         let mut f = fixture();
         let question = f.owner.status.decision.as_mut().unwrap();

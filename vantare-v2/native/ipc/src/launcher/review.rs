@@ -73,10 +73,6 @@ fn visible(text: &str) -> String {
     shown(text, confusables::marked(text)).concat()
 }
 
-fn visible_path(text: &str) -> String {
-    shown(text, confusables::marked_path(text)).concat()
-}
-
 /// Recorta sin partir un `[U+XXXX]`.
 fn label(text: &str, limit: usize) -> String {
     let parts = shown(text, confusables::marked(text));
@@ -128,7 +124,7 @@ impl Step {
         if self.delay > 0 {
             write!(output, " · espera {} s", self.delay).expect("write to String");
         }
-        write!(output, "\n   Programa: {}", visible_path(&self.path)).expect("write to String");
+        write!(output, "\n   Programa: {}", visible(&self.path)).expect("write to String");
         let arguments: Vec<_> = self.args.iter().map(|arg| argument(arg)).collect();
         let single_line = format!("   Argumentos: {}", arguments.join(" "));
         if arguments.is_empty() {
@@ -173,16 +169,9 @@ impl Profile {
                 "\nAtención: contiene caracteres invisibles; aquí se muestran como [U+…].",
             );
         }
-        let mut other_text = [&self.name, &self.hotkey].into_iter().chain(
-            self.steps
-                .iter()
-                .flat_map(|step| [&step.app].into_iter().chain(&step.args)),
-        );
-        if other_text.any(|text| confusables::marked(text).contains(&true))
-            || self
-                .steps
-                .iter()
-                .any(|step| confusables::marked_path(&step.path).contains(&true))
+        if texts
+            .iter()
+            .any(|text| confusables::marked(text).contains(&true))
         {
             header.push_str(CONFUSABLE_NOTICE);
         }

@@ -618,6 +618,8 @@ fn a_disguised_program_path_cannot_be_trusted_or_issue_a_ticket() {
         "QA/private\u{2024}exe",
         "QA/private.exe::$DATA",
         "QA/private.\u{435}\u{445}\u{435} ",
+        "QA/private.\u{a4f0}\u{a4eb}\u{a4f0}",
+        "QA/private.exe\u{200b}",
     ] {
         let (mut f, allowed, target) = review_fixture();
         let mut message: serde_json::Value =

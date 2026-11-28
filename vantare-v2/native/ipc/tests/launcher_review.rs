@@ -325,12 +325,13 @@ fn leaves_names_written_in_their_own_alphabet_alone() {
         "C:\\\u{418}\u{433}\u{440}\u{430}\\game.exe",
         "C:\\\u{418}\u{433}\u{440}\u{430}_v2.exe",
         "C:\\\u{418}\u{433}\u{440}\u{430}-2024.bat",
-        // Extensiones no latinas o con letras propias, que no bloquean.
-        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{438}\u{433}\u{440}\u{44b}.\u{440}\u{444}",
-        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{43d}\u{430}\u{441}\u{442}\u{440}\u{43e}\u{439}\u{43a}\u{438}.\u{43a}\u{43e}\u{43d}\u{444}",
-        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{421}\u{435}\u{437}\u{43e}\u{43d} 1.\u{42d}\u{442}\u{430}\u{43f} 2",
-        "C:\\\u{30b2}\u{30fc}\u{30e0}\\ver1.\u{30b2}\u{30fc}\u{30e0}",
-        "C:\\Users\\Jos\u{e9}\\caf\u{e9}.caf\u{e9}",
+        // Carpetas con punto y «extensión» no ASCII: solo cuenta el último segmento.
+        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{438}\u{433}\u{440}\u{44b}.\u{440}\u{444}\\run.exe",
+        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{43d}\u{430}\u{441}\u{442}\u{440}\u{43e}\u{439}\u{43a}\u{438}.\u{43a}\u{43e}\u{43d}\u{444}\\run.exe",
+        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{421}\u{435}\u{437}\u{43e}\u{43d} 1.\u{42d}\u{442}\u{430}\u{43f} 2\\run.exe",
+        "C:\\\u{30b2}\u{30fc}\u{30e0}\\ver1.\u{30b2}\u{30fc}\u{30e0}\\run.exe",
+        "C:\\Users\\Jos\u{e9}\\caf\u{e9}.v2\\x.exe",
+        "C:\\Users\\Jos\u{e9}\\caf\u{e9}.caf\u{e9}\\x.exe",
         // Latín con tildes (NFC y NFD), turco, japonés, «µ» (micro).
         "C:\\Users\\Jose\u{301}\\Fa\u{e7}ade.exe",
         "C:\\\u{d1}and\u{fa}\\M\u{f6}torsport.exe",
@@ -370,6 +371,106 @@ fn a_whole_lookalike_name_in_a_latin_path_is_marked() {
         (
             "C:\\\u{39f}\u{3a7}\u{399}.bat",
             "[U+039F][U+03A7][U+0399].bat",
+        ),
+    ] {
+        let pages = with_path(path);
+        assert!(pages.contains(marked) && pages.contains(NOTICE), "{pages}");
+    }
+}
+
+fn assert_blocked(path: &str) {
+    let input = input_with_path(path);
+    assert_eq!(
+        review_pages(&input.to_string()),
+        Err(ReviewError::Blocked),
+        "{path}"
+    );
+}
+
+#[test]
+fn a_program_extension_that_is_not_ascii_blocks_the_review() {
+    // Regla de la raíz: extensión del último segmento con algo que no es ASCII
+    // alfanumérico. Casos medidos por el revisor, con y sin letras propias.
+    let games = "\u{418}\u{433}\u{440}\u{44b}";
+    let exe = "\u{435}\u{445}\u{435}";
+    for name in [
+        "steam.\u{a4f0}\u{a4eb}\u{a4f0}".to_owned(),
+        "steam.\u{13ac}\u{13a0}\u{13ac}".into(),
+        "steam.\u{585}\u{57d}".into(),
+        "steam.\u{ff45}\u{ff58}\u{ff45}".into(),
+        "steam.\u{435}xe".into(),
+        format!("steam.{exe}\u{200b}\u{200b}\u{200b}"),
+        format!("steam.{exe}\u{fe0f}\u{fe0f}\u{fe0f}"),
+        format!("steam.{exe}\u{301}\u{301}\u{301}"),
+        format!("steam.{exe} \u{200b}"),
+        format!("steam.{exe} .\u{200b}"),
+        format!("steam.{exe}\u{3000}"),
+        format!("steam.{exe}\u{a0}"),
+        format!("steam.{exe} ."),
+        "steam.exe\u{200b}".into(),
+        "steam.ex e".into(),
+        ".\u{435}\u{445}\u{435}".into(),
+        "game.caf\u{e9}".into(),
+        "\u{438}\u{433}\u{440}\u{44b}.\u{440}\u{444}".into(),
+    ] {
+        assert_blocked(&format!("C:\\Games\\{name}"));
+        assert_blocked(&format!("C:/{games}/{name}"));
+    }
+    // Sin falsos bloqueos: extensión ASCII, carpetas no ASCII o con punto, punto
+    // inicial y programa sin extensión.
+    for path in [
+        format!("C:\\{games}\\game.exe"),
+        "C:\\Games\\caf\u{e9}.v2\\x.exe".into(),
+        "C:\\\u{ff30}\u{ff23}\u{30b2}\u{30fc}\u{30e0}\\a.exe".into(),
+        format!("C:\\Games\\my.{exe}\\x.exe"),
+        "C:/Games/my.folder/x.tar.gz".into(),
+        "C:\\Games\\.exe".into(),
+        "C:\\Games\\steam".into(),
+        format!("C:\\Games\\{games}"),
+    ] {
+        let pages = review_pages(&input_with_path(&path).to_string()).expect("no bloquea");
+        assert!(can_trust(&pages), "{path}");
+    }
+}
+
+#[test]
+fn letters_outside_the_pair_list_still_count_as_lookalikes() {
+    // B2: lisu y cherokee se confunden siempre; las armenias, «Ӏ», «Ꙇ» y «Ϳ»
+    // están en la lista. Ninguna es «propia», así que no apagan la regla C.
+    for (path, marked) in [
+        (
+            "C:\\Program Files (x86)\\\u{a4e2}\u{a4d4}\u{a4f0}\u{a4ee}\u{a4df}\\steam.exe",
+            "[U+A4E2][U+A4D4][U+A4F0][U+A4EE][U+A4DF]",
+        ),
+        (
+            "C:\\Program Files (x86)\\\u{13da}\u{13a2}\u{13ac}\u{13aa}\u{13b7}\\steam.exe",
+            "[U+13DA][U+13A2][U+13AC][U+13AA][U+13B7]",
+        ),
+        (
+            "C:\\Games\\\u{a4e2}\u{a4d4}\u{a4f0}\u{a4ee}\u{a4df}.exe",
+            "[U+A4E2][U+A4D4][U+A4F0][U+A4EE][U+A4DF].exe",
+        ),
+        (
+            "C:\\Games\\\u{585}\u{57d}\\x.exe",
+            "[U+0585][U+057D]\\x.exe",
+        ),
+        (
+            "C:\\Games\\\u{410}\u{421}\u{421} \u{4c0}\\\u{430}\u{441}\u{441}.exe",
+            "[U+0410][U+0421][U+0421] [U+04C0]\\[U+0430][U+0441][U+0441].exe",
+        ),
+        (
+            "C:\\Games\\\u{4c0}\u{410}\u{421}\u{421}\\x.exe",
+            "[U+04C0][U+0410][U+0421][U+0421]",
+        ),
+        (
+            "C:\\Games\\\u{a646}\u{410}\u{421}\u{421}\\x.exe",
+            "[U+A646][U+0410][U+0421][U+0421]",
+        ),
+        ("C:\\Games\\\u{37f}ava\\x.exe", "[U+037F]ava"),
+        // N-b: con una letra ASCII, una kana no esconde el ancho completo.
+        (
+            "C:\\Games\\St\u{ff45}am\u{30fc}\\steam.exe",
+            "St[U+FF45]am\u{30fc}",
         ),
     ] {
         let pages = with_path(path);

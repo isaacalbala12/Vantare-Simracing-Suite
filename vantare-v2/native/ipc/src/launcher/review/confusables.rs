@@ -10,19 +10,19 @@
 //!   latín, sus letras de riesgo si el texto tiene latín y ninguna letra propia
 //!   de ESE alfabeto: `C:\common\АСС\асс.exe`, `C:\СССР.exe`, `АССー2024`;
 //! - en una palabra que mezcla dos alfabetos de riesgo («Ѕκуре»: cirílico y
-//!   griego), todas sus letras de riesgo;
-//! - (A) en la ruta del programa, la extensión que parece latina sin serlo
-//!   (`steam.ехе`), aunque el resto de la ruta tenga letras propias.
+//!   griego), todas sus letras de riesgo.
 //!
 //! No se toca un texto con letras propias del mismo alfabeto
 //! (`C:\Users\Иван\Игры\хор.exe`, «Касперский», «Παιχνίδι») salvo sus palabras
 //! mezcladas con latín. CJK, kana y hangul no son de riesgo («PCゲーム»), y el
-//! ancho completo junto a ellos tampoco («ＰＣゲーム», «第２章»). Los dígitos y
-//! números de estilo latino no cuentan como letras («Игра２», «F1 ⅓»).
+//! ancho completo junto a ellos, en una palabra sin letras ASCII, tampoco
+//! («ＰＣゲーム», «第２章»). Los dígitos y números de estilo latino no cuentan
+//! como letras («Игра２», «F1 ⅓»).
 //!
-//! La ruta del programa se bloquea si termina en espacio o punto o lleva `:`
-//! fuera de la unidad: Windows recorta lo primero y `::$DATA` abre el mismo
-//! archivo, así que esconderían una extensión disfrazada.
+//! La ruta del programa se bloquea (sin tablas) si su extensión tiene algo que
+//! no es ASCII alfanumérico (`steam.ехе`), si lleva un punto o una barra que
+//! imitan a los ASCII, o si termina en espacio o punto o lleva `:` fuera de la
+//! unidad: Windows recorta lo último y `::$DATA` abre el mismo archivo.
 //!
 //! Sin tablas Unicode completas: NFC y NFD dan el mismo veredicto porque las
 //! letras precompuestas de la lista ([`COMPOSED`]) se pliegan a su letra base y
@@ -31,9 +31,15 @@
 use super::invisible;
 
 /// Letras de otro alfabeto que se confunden con una latina. Lo que no está aquí
-/// es una letra «propia», que decide el contexto de (C) y de (A).
+/// (ni es lisu, cherokee o de estilo latino, que se confunden siempre) es una
+/// letra «propia», que decide el contexto de (C) y de (A).
 #[rustfmt::skip]
-const PAIRS: [(char, char); 56] = [
+const PAIRS: [(char, char); 72] = [
+    ('\u{04C0}', 'l'), ('\u{A646}', 'I'), ('\u{A647}', 'i'), ('\u{051A}', 'Q'),
+    ('\u{051C}', 'W'), ('\u{04BA}', 'h'), ('\u{04AF}', 'y'),
+    ('\u{037F}', 'J'), ('\u{03F3}', 'j'),
+    ('\u{0585}', 'o'), ('\u{0555}', 'O'), ('\u{057D}', 'u'), ('\u{054D}', 'U'),
+    ('\u{0570}', 'h'), ('\u{0578}', 'n'), ('\u{0566}', 'q'), ('\u{0581}', 'g'),
     ('\u{0430}', 'a'), ('\u{0435}', 'e'), ('\u{043E}', 'o'), ('\u{0440}', 'p'),
     ('\u{0441}', 'c'), ('\u{0445}', 'x'), ('\u{0443}', 'y'), ('\u{0456}', 'i'),
     ('\u{0458}', 'j'), ('\u{0455}', 's'), ('\u{0501}', 'd'), ('\u{051B}', 'q'),
@@ -136,7 +142,10 @@ fn is_confusable(c: char) -> bool {
     let folded = base(c);
     PAIRS.iter().any(|&(other, _)| other == folded)
         || (folded != c && LOOKALIKE_BASES.contains(&folded))
-        || script(c) == Some(Script::LatinLike)
+        || matches!(
+            script(c),
+            Some(Script::LatinLike | Script::Lisu | Script::Cherokee)
+        )
 }
 
 fn is_latin(c: char) -> bool {
@@ -218,17 +227,24 @@ fn runs(chars: &[char], keep: fn(char) -> bool) -> Vec<(usize, usize)> {
     spans
 }
 
-/// (A) Extensión: tras el último punto, de 1 a 5 caracteres de palabra (así no
-/// cruza `\` ni `/` y es la del último segmento), con alguna letra de riesgo y
-/// ninguna propia: «.ехе» sí; «.рф», «.конф» o «.café» no.
-fn latin_looking_extension(chars: &[char]) -> Option<usize> {
-    let dot = chars.iter().rposition(|&c| c == '.')?;
-    let ext = &chars[dot + 1..];
-    ((1..=5).contains(&ext.len())
-        && ext.iter().all(|&c| in_word(c))
-        && ext.iter().any(|&c| script(c).is_some())
-        && !ext.iter().any(|&c| own_letter(c)))
-    .then_some(dot + 1)
+/// Extensión del programa con algo que no es ASCII alfanumérico: la parte tras
+/// el último punto del ÚLTIMO segmento (tras el último `\` o `/`). Un segmento
+/// sin punto no tiene extensión; `.exe` (punto inicial) sí la tiene. Ningún
+/// ejecutable legítimo de Windows la tiene no ASCII, así que no hay tablas.
+///
+/// No se recorta nada por el final: un espacio o un punto final ya bloquean en
+/// [`trimmed_by_windows`], y un invisible que quede en la extensión no es ASCII
+/// y la bloquea también (`steam.exe` + U+200B es otro archivo).
+fn foreign_extension(chars: &[char]) -> bool {
+    let segment = chars
+        .iter()
+        .rposition(|&c| matches!(c, '\\' | '/'))
+        .map_or(chars, |i| &chars[i + 1..]);
+    segment.iter().rposition(|&c| c == '.').is_some_and(|dot| {
+        segment[dot + 1..]
+            .iter()
+            .any(|c| !c.is_ascii_alphanumeric())
+    })
 }
 
 /// Windows recorta el espacio o el punto final y `:` fuera de la unidad abre un
@@ -258,7 +274,8 @@ fn mark(chars: &[char]) -> Vec<bool> {
     for (start, end) in runs(chars, in_word) {
         let word = &chars[start..end];
         let turkish_word = word.iter().any(|&c| turkish(c));
-        let cjk_word = word.iter().any(|&c| cjk(c));
+        // Con una letra ASCII la palabra es latina: una kana no esconde «Stｅamー».
+        let cjk_word = word.iter().any(|&c| cjk(c)) && !word.iter().any(char::is_ascii_alphabetic);
         let risky = |c: char| {
             script(c).is_some() && !(c == '\u{131}' && turkish_word) && !(full_width(c) && cjk_word)
         };
@@ -293,25 +310,12 @@ pub(super) fn marked(text: &str) -> Vec<bool> {
     mark(&text.chars().collect::<Vec<_>>())
 }
 
-/// Como [`marked`], más la extensión de la ruta del programa que parece latina.
-pub(super) fn marked_path(text: &str) -> Vec<bool> {
-    let chars: Vec<char> = text.chars().collect();
-    let mut marks = mark(&chars);
-    if let Some(start) = latin_looking_extension(&chars) {
-        for (flag, c) in marks[start..].iter_mut().zip(&chars[start..]) {
-            *flag |= !c.is_ascii();
-        }
-    }
-    marks
-}
-
-/// La ruta del programa se disfraza: su extensión parece latina sin serlo,
-/// tiene un punto o una barra que imitan a los ASCII, o Windows la recorta.
-/// Bloquea la confianza.
+/// La ruta del programa se disfraza: su extensión no es ASCII, tiene un punto o
+/// una barra que imitan a los ASCII, o Windows la recorta. Bloquea la confianza.
 pub(super) fn disguised_path(text: &str) -> bool {
     let chars: Vec<char> = text.chars().collect();
     chars.iter().any(|c| PATH_PUNCTUATION.contains(c))
-        || latin_looking_extension(&chars).is_some()
+        || foreign_extension(&chars)
         || trimmed_by_windows(&chars)
 }
 

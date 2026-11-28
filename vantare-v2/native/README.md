@@ -634,6 +634,38 @@ límite de la ranura. Si `rune/` o alguna carpeta suya hasta
 `<triple>/<perfil>/<carpeta>/` es un enlace, la reserva falla sin limpiar. Un
 comando que compile Rune sin `--target-dir` sigue usando la raíz de la ranura.
 
+Ningún destino explícito puede entrar en una ranura: saltaría su sello y su
+cerrojo. `compilar.ps1` rechaza, antes de pedir turno, un `--target-dir` o
+`-TargetDirectory` dentro de `slot-0`, `slot-1` o `ci`. Solo se admite nombrar la
+carpeta de la ranura que se obtiene y, desde dentro de la reserva, su `rune/`.
+Las carpetas hermanas (`slot-0-qa`) son destinos explícitos normales.
+`license-generation-rollback.ps1` necesita un destino fuera de las ranuras.
+
+Lo que la carpeta de Rune y ese rechazo **no** garantizan:
+
+- Los enlaces dentro de `rune/` solo se revisan al tomar la reserva y hasta
+  `<triple>/<perfil>/<carpeta>`. Más abajo (por ejemplo
+  `build/<paquete>-<hash>/out`) se confía en que `cargo clean` y
+  `Remove-Item -Recurse` de PowerShell 7 no los sigan; es el mismo riesgo que en
+  la raíz de la ranura (#2890).
+- El rechazo compara texto de rutas: una unión fuera que apunte dentro de una
+  ranura pasa. Solo reconoce `--target-dir`, `--target-dir=` y `-TargetDirectory`
+  (no abreviaturas, argumentos posicionales ni un `cargo` que un guion lance
+  directamente dentro de su reserva) y usa la raíz de targets de ese proceso: con
+  otro `VANTARE_TARGET_ROOT`, las ranuras de la máquina no cuentan.
+- `rune/` (unos 1,21 GB tras un candidato) cuenta en el límite de 20 GB de la
+  limpieza automática. En ranuras ya usadas, los restos antiguos de Rune en la
+  raíz siguen ocupando hasta esa limpieza.
+- Cada reserva con cambios añade un `cargo clean` por perfil en `rune/`; si
+  cambia una entrada externa limpia allí todos los miembros nativos (inofensivo).
+- Un checkout sin este cambio avisa de que `rune/` «contiene artefactos que la
+  invalidación no cubre» (inofensivo) y, si construye un candidato, sigue pisando
+  la raíz: el siguiente candidato nuevo rehace una vez lo pisado.
+- La integridad entre checkouts distintos solo está probada con fixtures (la cola
+  antigua se simula copiando su sello, sin ejecutar el guion viejo). El ahorro
+  medido (#2862) es de carpetas nuevas: falta medir un candidato real en una
+  ranura ya usada.
+
 La limpieza es persistente: un build parcial que no compile un paquete limpiado no
 puede dejar un artefacto obsoleto. El sello (`schema` 2; uno anterior obliga a
 limpiar todo una vez) se escribe tras limpiar y antes de compilar, y tras limpiar
@@ -718,7 +750,8 @@ paquete seleccionado que defina la feature: los tests de `ipc` la necesitan y no
 dependen de que otro crate la unifique. `gates.ps1 -ListOnly` imprime los
 argumentos sin compilar.
 Un CARGO_TARGET_DIR ya definido en el entorno se trata como target explícito:
-se valida y reserva con su propio lease, en vez de usar slot-N. Es el caso de packaging.
+se valida (fuera de las ranuras) y reserva con su propio lease, en vez de usar
+slot-N. Es el caso de packaging.
 
 Antes de usar un slot, se limpia si lleva 14 días sin uso o supera 20 GB.
 El tamaño se mide como máximo una vez por hora; entre medidas se usa su sello.

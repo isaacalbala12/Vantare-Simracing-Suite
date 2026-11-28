@@ -8,6 +8,7 @@ use std::sync::{Arc, Mutex, mpsc};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+use super::series_close::{self, CloseLimits, CloseProbe, Closed};
 use super::{
     LapSummary, MAX_ANALYZED_LAPS, MAX_CHUNK_BYTES, SeriesAnalysis, SeriesChunk, SessionEvent,
 };
@@ -114,6 +115,8 @@ fn publish_analysis(
 struct Pipe {
     input: ChildStdin,
     output: BufReader<ChildStdout>,
+    /// Respuestas completas leídas: el progreso que mira el cierre (#2871).
+    progress: Arc<AtomicU64>,
 }
 
 impl Pipe {
@@ -140,6 +143,7 @@ impl Pipe {
         if bytes.len() > MAX_RESPONSE_BYTES || bytes.last() != Some(&b'\n') {
             return Err(invalid("respuesta truncada o fuera de límites"));
         }
+        self.progress.fetch_add(1, Ordering::Release);
         Ok(serde_json::from_slice(&bytes)?)
     }
 
@@ -251,7 +255,11 @@ impl Process {
                 .take()
                 .ok_or_else(|| invalid("stdout ausente"))?,
         );
-        process.pipe = Some(Pipe { input, output });
+        process.pipe = Some(Pipe {
+            input,
+            output,
+            progress: Arc::default(),
+        });
         Ok(process)
     }
 
@@ -267,25 +275,6 @@ impl Process {
             self.child.wait()?;
         }
         Ok(())
-    }
-
-    fn wait_until(&mut self, deadline: Instant) -> io::Result<()> {
-        loop {
-            if Instant::now() >= deadline {
-                return Err(io::Error::new(
-                    io::ErrorKind::TimedOut,
-                    "cierre de storage agotó plazo",
-                ));
-            }
-            if let Some(status) = self.child.try_wait()? {
-                return if status.success() {
-                    Ok(())
-                } else {
-                    Err(io::Error::other("storage terminó con error"))
-                };
-            }
-            thread::sleep(Duration::from_millis(5));
-        }
     }
 }
 
@@ -309,7 +298,15 @@ pub struct SeriesWorker {
     cancelled: Arc<AtomicBool>,
     session_events: mpsc::SyncSender<SessionEvent>,
     session_delivery: Arc<SessionDelivery>,
+    progress: Arc<AtomicU64>,
     pub(crate) database: Arc<ArcSwap<PathBuf>>,
+}
+
+/// Resultado de `close`: cómo terminó y el último prefijo confirmado por ACK.
+#[derive(Debug)]
+pub struct SeriesClose {
+    pub closed: Closed,
+    pub analysis: Arc<RecordedSeriesSummary>,
 }
 
 impl SeriesWorker {
@@ -341,6 +338,7 @@ impl SeriesWorker {
             .pipe
             .take()
             .ok_or_else(|| invalid("pipes ausentes"))?;
+        let progress = Arc::clone(&pipe.progress);
         let process = Arc::new(Mutex::new(process));
         let child = Arc::clone(&process);
         let executable = executable.to_owned();
@@ -408,6 +406,7 @@ impl SeriesWorker {
             cancelled,
             session_events,
             session_delivery,
+            progress,
             database: current_database,
         })
     }
@@ -457,42 +456,96 @@ impl SeriesWorker {
             .expect("matar helper real");
     }
 
+    /// Plazo fijo para todo el cierre; error si storage no sale a tiempo.
     pub fn finish(
-        mut self,
+        self,
         attempted: u64,
         timeout: Duration,
     ) -> io::Result<(SeriesStorageState, Arc<RecordedSeriesSummary>)> {
-        let deadline = Instant::now()
-            .checked_add(timeout)
-            .ok_or_else(|| invalid("plazo inválido"))?;
-        if timeout.is_zero() {
-            return Err(io::Error::new(
+        let close = self.close(attempted, CloseLimits::fixed(timeout), |_| {});
+        match close.closed {
+            Closed::Clean(state) => Ok((state, close.analysis)),
+            Closed::ConfirmedUnclosed(_, error) | Closed::Unconfirmed(error) => Err(error),
+        }
+    }
+
+    /// Cierre por progreso (#2871): `on_confirmed` corre en cuanto `finished`
+    /// está en disco. Si hay que dejar de esperar, `Drop` mata a storage: lo
+    /// confirmado por ACK sigue en la base (DuckDB lo conserva en su WAL).
+    pub fn close(
+        mut self,
+        attempted: u64,
+        limits: CloseLimits,
+        on_confirmed: impl FnOnce(&SeriesStorageState),
+    ) -> SeriesClose {
+        let closed = if limits.stall.is_zero() || limits.cap.is_zero() {
+            Closed::Unconfirmed(io::Error::new(
                 io::ErrorKind::TimedOut,
                 "plazo de cierre agotado",
-            ));
-        }
-        self.finish.send(Some(attempted)).map_err(|_| {
-            io::Error::new(io::ErrorKind::BrokenPipe, "worker terminó antes de finish")
-        })?;
-        let state = self.done.recv_timeout(timeout).map_err(|error| {
-            io::Error::new(
-                if matches!(error, mpsc::RecvTimeoutError::Timeout) {
-                    io::ErrorKind::TimedOut
-                } else {
-                    io::ErrorKind::BrokenPipe
-                },
-                "worker de storage no confirmó cierre",
+            ))
+        } else if self.finish.send(Some(attempted)).is_err() {
+            Closed::Unconfirmed(io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "worker terminó antes de finish",
+            ))
+        } else {
+            series_close::run(
+                &mut LiveClose(&mut self),
+                &mut Instant::now,
+                limits,
+                on_confirmed,
             )
-        })??;
-        if let Some(task) = self.thread.take() {
-            task.join()
-                .map_err(|_| io::Error::other("worker de storage panicked"))?;
+        };
+        SeriesClose {
+            closed,
+            analysis: self.analysis.load_full(),
         }
-        self.process
+    }
+}
+
+/// El cierre real: el hilo del pump y el proceso de storage.
+struct LiveClose<'a>(&'a mut SeriesWorker);
+
+impl CloseProbe for LiveClose<'_> {
+    fn progress(&self) -> u64 {
+        self.0.progress.load(Ordering::Acquire)
+    }
+
+    fn confirmation(&mut self, wait: Duration) -> Option<io::Result<SeriesStorageState>> {
+        let result = match self.0.done.recv_timeout(wait) {
+            Ok(result) => result,
+            Err(mpsc::RecvTimeoutError::Timeout) => return None,
+            Err(mpsc::RecvTimeoutError::Disconnected) => Err(io::Error::new(
+                io::ErrorKind::BrokenPipe,
+                "worker de storage no confirmó cierre",
+            )),
+        };
+        // El pump ya entregó su resultado: el hilo termina sin esperar a nadie.
+        if let Some(task) = self.0.thread.take()
+            && task.join().is_err()
+        {
+            return Some(Err(io::Error::other("worker de storage panicked")));
+        }
+        Some(result)
+    }
+
+    fn exit(&mut self, wait: Duration) -> Option<io::Result<()>> {
+        let status = self
+            .0
+            .process
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .wait_until(deadline)?;
-        Ok((state, self.analysis.load_full()))
+            .child
+            .try_wait();
+        match status {
+            Ok(Some(status)) if status.success() => Some(Ok(())),
+            Ok(Some(_)) => Some(Err(io::Error::other("storage terminó con error"))),
+            Ok(None) => {
+                thread::sleep(wait);
+                None
+            }
+            Err(error) => Some(Err(error)),
+        }
     }
 }
 
@@ -641,10 +694,13 @@ fn retry_creation(
         ));
         *process = Process::spawn(executable, &path, Some("--create"))?;
         current_database.store(Arc::new(path));
+        let progress = Arc::clone(&pipe.progress);
         *pipe = process
             .pipe
             .take()
             .ok_or_else(|| invalid("pipes ausentes"))?;
+        // El cierre sigue leyendo el mismo contador tras recrear el proceso.
+        pipe.progress = progress;
         drop(process);
         ready = pipe.state("ready");
     }
@@ -722,6 +778,7 @@ mod poison_tests {
         let mut pipe = Pipe {
             input: child.stdin.take().expect("stdin"),
             output: BufReader::new(child.stdout.take().expect("stdout")),
+            progress: Arc::default(),
         };
         let process = Arc::new(Mutex::new(Process { child, pipe: None }));
         let (finish, _control) = mpsc::channel();
@@ -741,6 +798,7 @@ mod poison_tests {
             cancelled: Arc::new(AtomicBool::new(false)),
             session_events: mpsc::sync_channel(SESSION_QUEUE).0,
             session_delivery: Arc::new(SessionDelivery::default()),
+            progress: Arc::default(),
             database: Arc::new(ArcSwap::from_pointee(PathBuf::new())),
         };
         let poisoned = Arc::clone(&process);

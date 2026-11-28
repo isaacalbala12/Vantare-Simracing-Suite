@@ -396,7 +396,10 @@ fn verify(fixture: &Fixture, helper: PathBuf, interrupted: bool) {
     assert_eq!(total, lap_count.to_string());
     assert_eq!(finished, !interrupted);
     // #2883: sin carga no se pierde ningún bloque, ni en medio ni al final.
-    assert_eq!((lost_blocks.as_str(), lost_tail_blocks.as_str()), ("0", "0"));
+    assert_eq!(
+        (lost_blocks.as_str(), lost_tail_blocks.as_str()),
+        ("0", "0")
+    );
     for (number, official_ms) in OFFICIAL_MS.into_iter().take(completed).enumerate() {
         let lap = laps
             .iter()

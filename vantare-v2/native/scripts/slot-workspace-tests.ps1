@@ -302,7 +302,59 @@ try {
     Assert-Shared $built 'x-release' 'x-b' $false 'sello antiguo'
     Assert-Shared $built 'w-release' 'w-b-b' $false 'sello antiguo'
 
-    'PASS: sello de contenido, perfiles, dependiente, sin seguimiento, externo, parcial, git, sello ausente, --target, workspace aparte y sello antiguo.'
+    # --- fallo cerrado (#2887) ---
+    # compilar.ps1 no fija 'Stop': un error de lectura o de borrado debe parar la
+    # limpieza antes de escribir el sello, no quedar en un aviso.
+    function Assert-Stops([scriptblock]$Action, [string]$Case) {
+        $ErrorActionPreference = 'Continue'
+        $stopped = $false
+        try { & $Action 2>$null | Out-Null } catch { $stopped = $true }
+        if (-not $stopped) { throw "fallo cerrado: $Case no detiene la limpieza." }
+    }
+    # A junction whose target is gone: Cargo's folder exists but cannot be listed.
+    function Assert-StopsBroken([string]$Path, [scriptblock]$Action, [string]$Case) {
+        if (Test-Path -LiteralPath $Path) { [IO.Directory]::Delete($Path, $true) }
+        [IO.Directory]::CreateDirectory("$Path.target") | Out-Null
+        $null = New-Item -ItemType Junction -Path $Path -Target "$Path.target"
+        [IO.Directory]::Delete("$Path.target")
+        try { Assert-Stops $Action $Case }
+        finally { [IO.Directory]::Delete($Path) }
+    }
+    function New-ClosedSlot([string]$Name) {
+        $slot = Join-Path $base "closed-$Name/slot-0"
+        foreach ($folder in @('.fingerprint', 'deps')) {
+            [IO.Directory]::CreateDirectory((Join-Path $slot "x86_64-pc-windows-msvc/release/$folder")) | Out-Null
+        }
+        $slot
+    }
+    $package = [pscustomobject]@{ name = 'vantare-w'; binaries = @('vantare-w') }
+
+    $closed = New-ClosedSlot 'root'
+    Assert-StopsBroken $closed { Get-VantareBuildLayouts -Target $closed } 'ranura ilegible'
+
+    $closed = New-ClosedSlot 'triple'
+    Assert-StopsBroken (Join-Path $closed 'x86_64-pc-windows-msvc') {
+        Get-VantareBuildLayouts -Target $closed } 'carpeta de triple ilegible'
+
+    $closed = New-ClosedSlot 'check'
+    $release = Join-Path $closed 'x86_64-pc-windows-msvc/release'
+    $layout = [pscustomobject]@{ triple = 'x86_64-pc-windows-msvc'; profile = 'release'; path = $release; label = 'prueba' }
+    Assert-StopsBroken (Join-Path $release '.fingerprint') {
+        Assert-VantareNoFingerprints -Layouts @($layout) -Names @('vantare-w') } 'comprobación ilegible'
+
+    $closed = New-ClosedSlot 'deps'
+    Assert-StopsBroken (Join-Path $closed 'x86_64-pc-windows-msvc/release/deps') {
+        Remove-VantareForeignArtifacts -Target $closed -Packages @($package) } 'deps ilegible'
+
+    $closed = New-ClosedSlot 'locked'
+    $locked = Join-Path $closed 'x86_64-pc-windows-msvc/release/vantare-w.exe'
+    [IO.File]::WriteAllText($locked, 'en uso')
+    $handle = [IO.File]::Open($locked, 'Open', 'Read', 'None')
+    try { Assert-Stops { Remove-VantareForeignArtifacts -Target $closed -Packages @($package) } 'ejecutable en uso' }
+    finally { $handle.Dispose() }
+    # --- fin fallo cerrado ---
+
+    'PASS: sello de contenido, perfiles, dependiente, sin seguimiento, externo, parcial, git, sello ausente, --target, workspace aparte, sello antiguo y fallo cerrado.'
 } finally {
     if (Test-Path -LiteralPath $base) { Remove-Item -LiteralPath $base -Recurse -Force }
 }

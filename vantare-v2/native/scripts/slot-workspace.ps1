@@ -148,12 +148,12 @@ function Initialize-VantareCargoTag {
 function Get-VantareBuildLayouts {
     param([Parameter(Mandatory)][string]$Target)
     $triples = $null
-    foreach ($directory in @(Get-ChildItem -LiteralPath $Target -Directory -Force)) {
+    foreach ($directory in @(Get-ChildItem -LiteralPath $Target -Directory -Force -ErrorAction Stop)) {
         if (Test-Path -LiteralPath (Join-Path $directory.FullName '.fingerprint')) {
             [pscustomobject]@{ triple = $null; profile = $directory.Name; path = $directory.FullName; label = $directory.Name }
             continue
         }
-        $profileDirectories = @(Get-ChildItem -LiteralPath $directory.FullName -Directory -Force | Where-Object {
+        $profileDirectories = @(Get-ChildItem -LiteralPath $directory.FullName -Directory -Force -ErrorAction Stop | Where-Object {
                 Test-Path -LiteralPath (Join-Path $_.FullName '.fingerprint')
             })
         if (-not $profileDirectories.Count) { continue }
@@ -178,7 +178,8 @@ function Assert-VantareNoFingerprints {
         $fingerprints = Join-Path $layout.path '.fingerprint'
         foreach ($name in $Names) {
             $pattern = '^' + [regex]::Escape($name) + '-[0-9a-f]+$'
-            $left = @(Get-ChildItem -LiteralPath $fingerprints -Force -ErrorAction SilentlyContinue | Where-Object {
+            if (-not (Test-Path -LiteralPath $fingerprints)) { continue }
+            $left = @(Get-ChildItem -LiteralPath $fingerprints -Force -ErrorAction Stop | Where-Object {
                     $_.Name -match $pattern
                 })
             if ($left.Count) {
@@ -226,15 +227,16 @@ function Remove-VantareForeignArtifacts {
         foreach ($package in $Packages) {
             $unit = '^' + [regex]::Escape($package.name) + '-[0-9a-f]+$'
             $found = @(foreach ($folder in @('.fingerprint', 'build')) {
-                    Get-ChildItem -LiteralPath (Join-Path $layout.path $folder) -Force -ErrorAction SilentlyContinue |
-                        Where-Object { $_.Name -match $unit }
+                    $path = Join-Path $layout.path $folder
+                    if (-not (Test-Path -LiteralPath $path)) { continue }
+                    Get-ChildItem -LiteralPath $path -Force -ErrorAction Stop | Where-Object { $_.Name -match $unit }
                 })
             foreach ($binary in $package.binaries) {
                 $names = (@($binary, $binary.Replace('-', '_')) | ForEach-Object { [regex]::Escape($_) }) -join '|'
                 $file = "^($names)(-[0-9a-f]+)?(\.(exe|pdb|d))?$"
                 $found += @(foreach ($folder in @($layout.path, (Join-Path $layout.path 'deps'))) {
-                        Get-ChildItem -LiteralPath $folder -File -Force -ErrorAction SilentlyContinue |
-                            Where-Object { $_.Name -match $file }
+                        if (-not (Test-Path -LiteralPath $folder)) { continue }
+                        Get-ChildItem -LiteralPath $folder -File -Force -ErrorAction Stop | Where-Object { $_.Name -match $file }
                     })
             }
             foreach ($item in $found) {
@@ -242,7 +244,8 @@ function Remove-VantareForeignArtifacts {
                 if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
                     throw "Hay un enlace en $($layout.label); no se invalidan paquetes."
                 }
-                Remove-Item -LiteralPath $item.FullName -Recurse -Force
+                # The queue runs with 'Continue': a locked file must not be skipped.
+                Remove-Item -LiteralPath $item.FullName -Recurse -Force -ErrorAction Stop
             }
         }
     }

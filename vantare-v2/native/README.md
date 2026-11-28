@@ -552,6 +552,41 @@ retírala con `Remove-Item Env:DUCKDB_LIB_DIR` en la terminal de distribución.
 En Linux/macOS, la biblioteca oficial equivalente debe estar también en la ruta
 de bibliotecas del cargador de su sistema; esta variante se verificó en Windows.
 
+## Candidatos: carpeta de compilación (#2887)
+
+**Todo candidato que vaya a testers o a master se construye en una carpeta de
+compilación nueva y vacía (`CARGO_TARGET_DIR` propio), de un solo uso. Los
+candidatos de QA nightly pueden usar la ranura de la cola.** La ranura se comparte
+entre checkouts y su invalidación tiene límites (ver más abajo).
+
+`build-candidate.ps1` no tiene parámetro para esa carpeta y la cola le asigna la
+ranura, así que se llama desde un guion propio, guardado fuera del repositorio:
+
+```powershell
+# candidato.ps1
+param([Parameter(Mandatory)][string]$Channel, [Parameter(Mandatory)][string]$Version,
+    [Parameter(Mandatory)][string]$Salida, [Parameter(Mandatory)][string]$TargetDirectory,
+    [string]$ConfigFile)
+$ErrorActionPreference = 'Stop'
+if (Get-ChildItem -LiteralPath $TargetDirectory -Force) { throw 'La carpeta de compilación debe estar vacía.' }
+$env:CARGO_TARGET_DIR = $TargetDirectory
+$comun = @{ Channel = $Channel; Version = $Version; OutputDirectory = $Salida }
+if ($ConfigFile) { $comun.ConfigFile = $ConfigFile }
+& ./native/packaging/build-candidate.ps1 @comun
+& ./native/packaging/build-installer.ps1 @comun
+```
+
+Desde `vantare-v2/` de un checkout limpio, con rutas en el volumen de los targets:
+
+```powershell
+pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File D:/ruta/candidato.ps1 `
+  -Channel testers -Version X.Y.Z -Salida D:/ruta/salida -TargetDirectory D:/ruta/target-nuevo
+```
+
+Un candidato así compila en frío: en P8 fueron unos 53 minutos y 17 GB. Este
+guion sale de la lectura de `compilar.ps1` y de los dos empaquetadores; todavía no
+se ha construido ningún candidato con él.
+
 ## Workers: caché y limpieza (#1993)
 
 Desde `vantare-v2/`:
@@ -591,7 +626,10 @@ se huellan enteros y, si cambian, se retiran sus fingerprints y ejecutables. La
 limpieza es persistente: un build parcial que no compile un paquete limpiado no
 puede dejar un artefacto obsoleto. El sello (`schema` 2; uno anterior obliga a
 limpiar todo una vez) se escribe tras limpiar y antes de compilar, y tras limpiar
-se verifica que no quedan fingerprints del paquete. No cubre: targets explícitos
+se verifica que no quedan fingerprints del paquete. Si no puede leer una carpeta
+o borrar un artefacto (por ejemplo, un ejecutable en marcha), la reserva falla sin
+escribir el sello. Tampoco detecta fuentes editadas a mano en `CARGO_HOME`
+(`registry/src`, `git/checkouts`). No cubre: targets explícitos
 (mediciones, QA y empaquetado en carpeta propia), carpetas de build anidadas
 dentro de la ranura (se avisa si aparecen en el primer nivel) ni un segundo
 checkout compilado dentro de la misma reserva. `include_inputs.py` recorre los

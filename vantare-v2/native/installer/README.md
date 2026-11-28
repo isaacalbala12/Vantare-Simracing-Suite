@@ -738,11 +738,23 @@ carpeta; no se ha cambiado nada».
 - **Fallo cerrado.** Si el registro del otro producto no se puede leer (un valor
   que no es texto o REG_EXPAND_SZ), el Setup se detiene: «No se puede leer la
   carpeta registrada de otra instalación de Vantare (…)».
-- **Límite.** Una carpeta registrada que no existe en una unidad `subst` o de
-  red que ya no está montada no se puede resolver: se compara tal como está
-  escrita. Y si el registro del otro producto, estropeado, apunta a la raíz de
-  una unidad (`C:\`), toda esa unidad cuenta como su carpeta y ningún Setup
-  instala en ella hasta que se corrija ese registro.
+- **Qué no cubre (límites conocidos, #2891).** Ninguno borra nada; todos se
+  detienen sin cambiar nada.
+  - Una carpeta registrada que no existe, en una unidad `subst` o de red que ya
+    no está montada, no se puede resolver: se compara tal como está escrita.
+  - **Instalación propia anidada con la del otro.** Si una instalación viva
+    está dentro de la del otro producto, o la contiene (por ejemplo, beta en `X`
+    y nightly en `X\nightly` con su `state.json`), su Setup y su desinstalador
+    ya no la reparan ni la desinstalan: reciben «Esta carpeta es de otra
+    instalación de Vantare…». Hay que mover o arreglar la otra instalación. La
+    excepción por `state.json` propio solo vale para la misma carpeta. Nightly
+    es un canal interno: el impacto es bajo.
+  - **Registro del otro producto ilegible o en la raíz de una unidad.** Si el
+    `InstallLocation` del otro no se puede leer (por ejemplo, un `REG_DWORD`
+    estropeado), la comprobación falla cerrado también para una raíz propia,
+    desinstalar incluido. Y si apunta a la raíz de una unidad (`C:\`), toda
+    carpeta de esa unidad queda anidada en ella: nada se instala ni se
+    desinstala ahí hasta que se corrija ese registro.
 
 **Convivencia.** Raíz, registro y accesos distintos; además cada acceso y el
 registro se siguen comprobando por propiedad de la raíz. Los datos viven en la

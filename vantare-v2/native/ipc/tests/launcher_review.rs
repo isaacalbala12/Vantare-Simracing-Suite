@@ -121,7 +121,7 @@ fn with_path(path: &str) -> String {
     shown(&input_with_path(path))
 }
 
-const NOTICE: &str = "Atención: hay letras o signos que imitan a los latinos";
+const NOTICE: &str = "\nAtención: hay letras o signos de otros alfabetos que se parecen a los normales. Están marcados así: [U+…].\n";
 
 #[test]
 fn marks_a_lookalike_in_every_field() {

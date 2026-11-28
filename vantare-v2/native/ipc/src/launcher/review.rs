@@ -8,9 +8,8 @@ const WRAP: usize = 76;
 const BUDGET: usize = 26;
 const MAX_PAGES: usize = 3;
 pub const AUTHORIZATION_MS: u64 = 10_000;
-/// Propuesta de texto pendiente del visto bueno de la raíz (#2579).
-const CONFUSABLE_NOTICE: &str =
-    "\nAtención: hay letras o signos que imitan a los latinos; se ven como [U+…].";
+/// Texto fijado por la raíz (#2579). Ocupa dos líneas de la página.
+const CONFUSABLE_NOTICE: &str = "\nAtención: hay letras o signos de otros alfabetos que se parecen a los normales. Están marcados así: [U+…].";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReviewError {

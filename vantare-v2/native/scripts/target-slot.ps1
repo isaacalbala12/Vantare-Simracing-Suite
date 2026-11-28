@@ -31,6 +31,13 @@ function Test-VantareTargetPath([string]$Path) {
     }
     return [IO.Path]::GetPathRoot($full) -ieq [IO.Path]::GetPathRoot((Get-VantareTargetRoot))
 }
+
+# Rune builds with a private CARGO_HOME, so it needs a target directory of its
+# own: sharing one makes each side overwrite the other's units and rebuild all
+# that depends on them (#2862). It lives inside the build target, so a slot's
+# lock, size limit and cleanup cover it.
+function Get-VantareRuneTarget([Parameter(Mandatory)][string]$Target) { Join-Path $Target 'rune' }
+
 function Initialize-VantareSlotTarget {
     param(
         [Parameter(Mandatory)][ValidateRange(0, 1)][int]$Slot,

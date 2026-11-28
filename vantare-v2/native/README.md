@@ -622,20 +622,31 @@ cambió se limpian con `cargo clean -p` en todos los perfiles presentes, tanto e
 `<perfil>/` como en `<triple>/<perfil>/` (builds con `--target`, incluido el
 candidato; #2887); si cambia una entrada externa se limpian todos. Los otros
 workspaces de `native/` (`workspaces` en `slot-inputs.json`: Rune y sus pruebas)
-se huellan enteros y, si cambian, se retiran sus fingerprints y ejecutables. La
-limpieza es persistente: un build parcial que no compile un paquete limpiado no
+se huellan enteros y, si cambian, se retiran sus fingerprints y ejecutables.
+
+El candidato compila Rune en `<destino>/rune/` (#2862). Rune usa otro
+`CARGO_HOME`, y en una carpeta compartida cada lado pisaba los paquetes comunes
+del otro y los dos rehacían en cada candidato todo lo que dependía de ellos. La
+cola crea `<ranura>/rune/` antes del primer build y la invalida igual que la raíz,
+pero con **su propio sello** (`rune/.vantare-workspace`): un guion anterior a
+#2862 reescribe el sello de la ranura sin tocar esa carpeta. Su disco cuenta en el
+límite de la ranura. Si `rune/` o alguna carpeta suya hasta
+`<triple>/<perfil>/<carpeta>/` es un enlace, la reserva falla sin limpiar. Un
+comando que compile Rune sin `--target-dir` sigue usando la raíz de la ranura.
+
+La limpieza es persistente: un build parcial que no compile un paquete limpiado no
 puede dejar un artefacto obsoleto. El sello (`schema` 2; uno anterior obliga a
 limpiar todo una vez) se escribe tras limpiar y antes de compilar, y tras limpiar
 se verifica que no quedan fingerprints del paquete. Si no puede leer una carpeta
 o borrar un artefacto (por ejemplo, un ejecutable en marcha), la reserva falla sin
 escribir el sello. Tampoco detecta fuentes editadas a mano en `CARGO_HOME`
 (`registry/src`, `git/checkouts`). No cubre: targets explícitos
-(mediciones, QA y empaquetado en carpeta propia), carpetas de build anidadas
-dentro de la ranura (se avisa si aparecen en el primer nivel) ni un segundo
-checkout compilado dentro de la misma reserva. `include_inputs.py` recorre los
-`include_*!` y falla si una ruta queda fuera de la lista, o si un workspace no
-está declarado; no sigue `#[path]` ni `fs::read`, y un include dentro de un
-comentario falla a propósito.
+(mediciones, QA y empaquetado en carpeta propia), otras carpetas de build
+anidadas dentro de la ranura (se avisa si aparecen en el primer nivel) ni un
+segundo checkout compilado dentro de la misma reserva. `include_inputs.py`
+recorre los `include_*!` y falla si una ruta queda fuera de la lista, o si un
+workspace no está declarado; no sigue `#[path]` ni `fs::read`, y un include
+dentro de un comentario falla a propósito.
 
 El target `ci` (`VANTARE_CI_TARGET=1`) no usa sello ni invalidación: solo es
 seguro con un `RUNNER_TEMP` nuevo por job (GitHub-hosted). No reutilizar `ci`

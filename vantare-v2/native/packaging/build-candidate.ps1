@@ -14,6 +14,7 @@ $ErrorActionPreference='Stop'
 . (Join-Path $PSScriptRoot 'build-tooling.ps1')
 . (Join-Path $PSScriptRoot 'build-config.ps1')
 . (Join-Path $PSScriptRoot 'no-qa.ps1')
+. (Join-Path $PSScriptRoot '../scripts/target-slot.ps1')
 if($env:DUCKDB_LIB_DIR){throw 'Empaquetado exige DuckDB bundled'}
 if($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\z'){throw 'Versión inválida'}
 if(@($Version.Split('.')|Where-Object {[int]$_ -gt 65535}).Count){throw 'Versión fuera de rango'}
@@ -73,6 +74,8 @@ try{
     $ui=Join-Path $web 'release/package/vantare-hub-ui-win32-x64'
     $receipt=Assert-HubPackage $ui (Join-Path $web 'release/package/package-inventory.json') $Version $sourceSha $dirty
     Assert-HubSource $web
+    # Rune uses a private CARGO_HOME: its own target keeps it from rebuilding ours (#2862).
+    $runeTarget=Get-VantareRuneTarget ([IO.Path]::GetFullPath($env:CARGO_TARGET_DIR))
 
     Push-Location $native
     try{
@@ -100,7 +103,7 @@ try{
             }finally{$env:CARGO_NET_OFFLINE=$oldOffline}
             $null=Assert-RuneLock $runeLock $runeHash
             Assert-RuneNoSubmodules $env:CARGO_HOME
-            $runeArgs=@('build','--manifest-path','overlays-rune/Cargo.toml','--target','x86_64-pc-windows-msvc','--offline','--locked')
+            $runeArgs=@('build','--manifest-path','overlays-rune/Cargo.toml','--target','x86_64-pc-windows-msvc','--target-dir',$runeTarget,'--offline','--locked')
             if($BuildProfile -ceq 'Release'){$runeArgs+='--release'}
             & pwsh -NoProfile -File scripts/compilar.ps1 cargo @runeArgs | Out-Host
             if($LASTEXITCODE){throw 'Falló la compilación offline de Rune'}
@@ -119,11 +122,13 @@ try{
     [IO.Directory]::CreateDirectory($binDirectory)|Out-Null
     [IO.Directory]::CreateDirectory((Join-Path $payload 'licenses'))|Out-Null
     $dumpbin=Get-NativeDumpbin
-    $target=Join-Path ([IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) ('x86_64-pc-windows-msvc/'+$BuildProfile.ToLowerInvariant())
+    $outputs='x86_64-pc-windows-msvc/'+$BuildProfile.ToLowerInvariant()
+    $target=Join-Path ([IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) $outputs
     foreach($bin in $bins){
         $name="$bin.exe"
         $artifact=Get-PublicArtifact $name $inventory
-        $source=Join-Path $target $artifact
+        # The only external executable is Rune.
+        $source=Join-Path $(if($name -cin $inventory.external_bins){Join-Path $runeTarget $outputs}else{$target}) $artifact
         Assert-NativeDistributionBinary $source
         Assert-NativeStaticCrt $source $dumpbin
         if($bin -ceq 'vantare-overlays-rune' -and $BuildProfile -ceq 'Release'){

@@ -131,7 +131,7 @@ function Initialize-VantareCargoTag {
     $allowed = @(
         '.vantare-last-build', '.vantare-workspace', 'tmp', 'debug', 'release', 'prueba', 'ci',
         '.rustc_info.json', '.vantare-target-size.json', 'qa-data', 'nextest-tests.tar.zst',
-        'hub-build-tmp', 'cargo-timings', 'rune-measurement-qa')
+        'hub-build-tmp', 'cargo-timings', 'rune-measurement-qa', 'rune')
     $unknown = @(Get-ChildItem -LiteralPath $Target -Force | Where-Object {
         $_.Name -notin $allowed -and $_.Name -notlike 'msvc-probe-*'
     })
@@ -149,6 +149,8 @@ function Get-VantareBuildLayouts {
     param([Parameter(Mandatory)][string]$Target)
     $triples = $null
     foreach ($directory in @(Get-ChildItem -LiteralPath $Target -Directory -Force -ErrorAction Stop)) {
+        # Rune's folder is a target directory of its own, invalidated apart.
+        if ($directory.Name -ieq 'rune') { continue }
         if (Test-Path -LiteralPath (Join-Path $directory.FullName '.fingerprint')) {
             [pscustomobject]@{ triple = $null; profile = $directory.Name; path = $directory.FullName; label = $directory.Name }
             continue
@@ -252,6 +254,90 @@ function Remove-VantareForeignArtifacts {
     Assert-VantareNoFingerprints -Layouts $layouts -Names @($Packages | ForEach-Object { $_.name })
 }
 
+# Creates Rune's folder before its first build, so that it has a stamp from the
+# start. Cargo and the cleanup must never follow a link out of the slot: no
+# directory down to `<triple>/<perfil>/<carpeta>` may be one.
+function Initialize-VantareRuneTarget {
+    param([Parameter(Mandatory)][string]$Target)
+    $rune = Get-VantareRuneTarget $Target
+    if (-not (Test-Path -LiteralPath $rune)) { [IO.Directory]::CreateDirectory($rune) | Out-Null }
+    $root = Get-Item -LiteralPath $rune -Force -ErrorAction Stop
+    $unsafe = -not $root.PSIsContainer -or ($root.Attributes -band [IO.FileAttributes]::ReparsePoint)
+    if (-not $unsafe) {
+        $unsafe = @(Get-ChildItem -LiteralPath $rune -Directory -Recurse -Depth 2 -Force -ErrorAction Stop | Where-Object {
+                $_.Attributes -band [IO.FileAttributes]::ReparsePoint
+            }).Count
+    }
+    if ($unsafe) { throw "$rune no es una carpeta normal o contiene un enlace; no se invalidan paquetes." }
+    Initialize-VantareCargoTag -Target $rune
+    $rune
+}
+
+# Compares one target directory's stamp with the current inputs, removes the
+# artifacts of what changed and writes the new stamp.
+function Update-VantareTargetStamp {
+    param(
+        [Parameter(Mandatory)][string]$Target,
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$Manifest,
+        [Parameter(Mandatory)]$Hashes,
+        [object[]]$Packages = @(),
+        [object[]]$Workspaces = @(),
+        [object[]]$ExternalPackages = @(),
+        [string]$Label = ''
+    )
+    $stampPath = Join-Path $Target '.vantare-workspace'
+    $previous = $null
+    if (Test-Path -LiteralPath $stampPath) {
+        try { $previous = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json } catch { $previous = $null }
+    }
+    # Stamps written before schema 2 claim packages were cleaned while their
+    # `--target` artifacts survived: distrust them once.
+    if ($previous -and (-not $previous.PSObject.Properties['schema'] -or $previous.schema -ne 2)) { $previous = $null }
+    $changed = @()
+    $externalChanged = -not $previous -or -not $previous.PSObject.Properties['external'] -or $previous.external -ne $Hashes.external
+    foreach ($package in $Packages + $Workspaces) {
+        $old = $null
+        if ($previous -and $previous.PSObject.Properties['packages']) {
+            $property = $previous.packages.PSObject.Properties[$package.name]
+            if ($property) { $old = $property.Value }
+        }
+        if ($old -ne $Hashes.packages[$package.name]) { $changed += $package.name }
+    }
+    $names = @($changed | Where-Object { $_ -notin @($Workspaces | ForEach-Object { $_.name }) })
+    if ($externalChanged) {
+        $names = @($Packages | ForEach-Object { $_.name })
+        foreach ($name in $ExternalPackages) { if ($name) { $names += $name } }
+    }
+    $names = @($names | Select-Object -Unique)
+    Invoke-VantareCleanPackages -Names $names -Target $Target -Manifest $Manifest
+
+    $foreignPackages = @(foreach ($workspace in $Workspaces) {
+            if (-not $externalChanged -and $workspace.name -notin $changed) { continue }
+            $foreignManifest = Join-Path $RepoRoot "$($workspace.path)/Cargo.toml"
+            if (-not (Test-Path -LiteralPath $foreignManifest)) { throw "Falta el workspace declarado: $($workspace.path)." }
+            # --no-deps neither resolves the lock nor needs its dependencies.
+            $foreignJson = & cargo metadata --manifest-path $foreignManifest --no-deps --offline --format-version 1
+            if ($LASTEXITCODE) { throw "No se pudo identificar el workspace $($workspace.path)." }
+            foreach ($package in ($foreignJson | ConvertFrom-Json).packages) {
+                [pscustomobject]@{
+                    name = $package.name
+                    binaries = @($package.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name })
+                }
+            }
+        })
+    Remove-VantareForeignArtifacts -Target $Target -Packages $foreignPackages
+    $invalidated = @($names + @($foreignPackages | ForEach-Object { $_.name }) | Select-Object -Unique)
+    if ($invalidated.Count) { Write-Host "[cola] paquetes invalidados${Label}: $($invalidated -join ', ')" }
+
+    # Safe before the build: cleaned packages have no artifact left.
+    [ordered]@{
+        schema = 2
+        packages = $Hashes.packages
+        external = $Hashes.external
+    } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $stampPath -Encoding utf8
+}
+
 function Set-VantareSlotWorkspace {
     param([Parameter(Mandatory)][string]$Target, [Parameter(Mandatory)][string]$NativeRoot)
     $target = [IO.Path]::GetFullPath($Target)
@@ -265,6 +351,8 @@ function Set-VantareSlotWorkspace {
     # are not shared between checkouts.
     if ($slotName -notmatch '^slot-[01]$') { return }
     Initialize-VantareCargoTag -Target $target
+    # Checked first: an unsafe folder stops the reservation before any cleanup.
+    $rune = Initialize-VantareRuneTarget -Target $target
 
     $manifest = Join-Path $native 'Cargo.toml'
     Push-Location $native
@@ -287,55 +375,12 @@ function Set-VantareSlotWorkspace {
             })
         $hashes = Get-VantareInputHashes -RepoRoot $repo -Packages ($packages + $foreign) -ExternalPaths $externalPaths
 
-        $stampPath = Join-Path $target '.vantare-workspace'
-        $previous = $null
-        if (Test-Path -LiteralPath $stampPath) {
-            try { $previous = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json } catch { $previous = $null }
-        }
-        # Stamps written before schema 2 claim packages were cleaned while their
-        # `--target` artifacts survived: distrust them once.
-        if ($previous -and (-not $previous.PSObject.Properties['schema'] -or $previous.schema -ne 2)) { $previous = $null }
-        $changed = @()
-        $externalChanged = -not $previous -or -not $previous.PSObject.Properties['external'] -or $previous.external -ne $hashes.external
-        foreach ($package in $packages + $foreign) {
-            $old = $null
-            if ($previous -and $previous.PSObject.Properties['packages']) {
-                $property = $previous.packages.PSObject.Properties[$package.name]
-                if ($property) { $old = $property.Value }
-            }
-            if ($old -ne $hashes.packages[$package.name]) { $changed += $package.name }
-        }
-        $names = @($changed | Where-Object { $_ -notin @($foreign | ForEach-Object { $_.name }) })
-        if ($externalChanged) {
-            $names = @($packages | ForEach-Object { $_.name })
-            foreach ($name in @($inputs.externalPackages)) { if ($name) { $names += $name } }
-        }
-        $names = @($names | Select-Object -Unique)
-        Invoke-VantareCleanPackages -Names $names -Target $target -Manifest $manifest
-
-        $foreignPackages = @(foreach ($workspace in $foreign) {
-                if (-not $externalChanged -and $workspace.name -notin $changed) { continue }
-                $foreignManifest = Join-Path $repo "$($workspace.path)/Cargo.toml"
-                if (-not (Test-Path -LiteralPath $foreignManifest)) { throw "Falta el workspace declarado: $($workspace.path)." }
-                # --no-deps neither resolves the lock nor needs its dependencies.
-                $foreignJson = & cargo metadata --manifest-path $foreignManifest --no-deps --offline --format-version 1
-                if ($LASTEXITCODE) { throw "No se pudo identificar el workspace $($workspace.path)." }
-                foreach ($package in ($foreignJson | ConvertFrom-Json).packages) {
-                    [pscustomobject]@{
-                        name = $package.name
-                        binaries = @($package.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name })
-                    }
-                }
-            })
-        Remove-VantareForeignArtifacts -Target $target -Packages $foreignPackages
-        $invalidated = @($names + @($foreignPackages | ForEach-Object { $_.name }) | Select-Object -Unique)
-        if ($invalidated.Count) { Write-Host "[cola] paquetes invalidados: $($invalidated -join ', ')" }
-
-        # Safe before the build: cleaned packages have no artifact left.
-        [ordered]@{
-            schema = 2
-            packages = $hashes.packages
-            external = $hashes.external
-        } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $stampPath -Encoding utf8
+        # Each target directory has its own stamp, describing only what is built
+        # into it: queue scripts older than #2862 rewrite the slot's stamp and
+        # never touch Rune's folder.
+        $common = @{ RepoRoot = $repo; Manifest = $manifest; Hashes = $hashes; Packages = $packages
+            Workspaces = $foreign; ExternalPackages = @($inputs.externalPackages) }
+        Update-VantareTargetStamp -Target $target @common
+        Update-VantareTargetStamp -Target $rune -Label ' en rune/' @common
     } finally { Pop-Location }
 }

@@ -25,6 +25,15 @@ pub(crate) fn typescript() -> String {
     constants!(&mut text, "demoNameMax", crate::protocol::DEMO_NAME_LIMIT);
     text
 }
+fn incompatible(id: u32, found: u32) -> HostToUi {
+    HostToUi::Failure {
+        id,
+        error: HostError::Incompatible {
+            expected: VERSION,
+            found,
+        },
+    }
+}
 pub(crate) fn corpus() -> serde_json::Value {
     let settings = settings_sample();
     let mut host: Vec<HostToUi> = vec![
@@ -44,21 +53,9 @@ pub(crate) fn corpus() -> serde_json::Value {
             id: 1,
             error: HostError::Unsupported,
         },
-        HostToUi::Failure {
-            id: 1,
-            error: HostError::Incompatible {
-                expected: VERSION,
-                found: VERSION + 1,
-            },
-        },
+        incompatible(1, VERSION + 1),
         // The refusal a UI built for the previous protocol receives.
-        HostToUi::Failure {
-            id: 0,
-            error: HostError::Incompatible {
-                expected: VERSION,
-                found: VERSION - 1,
-            },
-        },
+        incompatible(0, VERSION - 1),
         HostToUi::Failure {
             id: 1,
             error: HostError::Denied,

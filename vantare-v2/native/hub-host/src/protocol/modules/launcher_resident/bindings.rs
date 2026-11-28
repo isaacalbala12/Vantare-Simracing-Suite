@@ -160,16 +160,7 @@ pub(crate) fn corpus() -> serde_json::Value {
             },
         },
     ];
-    for review in [
-        crate::launcher_resident::ResidentReview::BlockedLookalike,
-        crate::launcher_resident::ResidentReview::BlockedUnusualPath,
-    ] {
-        let mut blocked = value.clone();
-        blocked.decision.as_mut().expect("question fixture").review = review;
-        host.push(HostToUi::Event {
-            event: Event::LauncherResident { value: blocked },
-        });
-    }
+    host.extend(blocked_samples(&value));
     host.extend(
         crate::launcher_resident::ResidentAnswerRejection::ALL
             .into_iter()
@@ -199,6 +190,22 @@ pub(crate) fn corpus() -> serde_json::Value {
     result_samples(&mut host, &mut ui);
     ownership_samples(&mut host, &mut ui);
     serde_json::json!({"host":host,"ui":ui})
+}
+
+/// The same question, blocked for each reason.
+fn blocked_samples(value: &ResidentView) -> [HostToUi; 2] {
+    use crate::launcher_resident::ResidentReview;
+    [
+        ResidentReview::BlockedLookalike,
+        ResidentReview::BlockedUnusualPath,
+    ]
+    .map(|review| {
+        let mut blocked = value.clone();
+        blocked.decision.as_mut().expect("question fixture").review = review;
+        HostToUi::Event {
+            event: Event::LauncherResident { value: blocked },
+        }
+    })
 }
 
 fn review_samples(host: &mut Vec<HostToUi>, ui: &mut Vec<UiToHost>) {

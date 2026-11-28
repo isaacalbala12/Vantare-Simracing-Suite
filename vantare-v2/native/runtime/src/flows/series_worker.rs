@@ -446,6 +446,12 @@ impl SeriesWorker {
         self.failed.load(Ordering::Acquire)
     }
 
+    /// Respuestas completas de storage hasta ahora (también tras recrear el
+    /// proceso al crear la base): el progreso que mira `close` (#2871).
+    pub fn responses(&self) -> u64 {
+        self.progress.load(Ordering::Acquire)
+    }
+
     #[cfg(all(test, windows))]
     pub(crate) fn kill_for_test(&self) {
         self.process
@@ -509,7 +515,7 @@ struct LiveClose<'a>(&'a mut SeriesWorker);
 
 impl CloseProbe for LiveClose<'_> {
     fn progress(&self) -> u64 {
-        self.0.progress.load(Ordering::Acquire)
+        self.0.responses()
     }
 
     fn confirmation(&mut self, wait: Duration) -> Option<io::Result<SeriesStorageState>> {

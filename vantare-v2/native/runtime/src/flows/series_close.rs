@@ -124,7 +124,13 @@ pub(super) fn run(
     let mut deadline = Deadline::new(limits, now(), probe.progress());
     let state = loop {
         if let Err(error) = deadline.check(now(), probe.progress()) {
-            return Closed::Unconfirmed(error);
+            // Al vencer, se mira una vez más sin esperar: un `finished` que ya
+            // llegó cuenta, aunque llegase en el mismo instante que el límite.
+            match probe.confirmation(Duration::ZERO) {
+                Some(Ok(state)) => break state,
+                Some(Err(failure)) => return Closed::Unconfirmed(failure),
+                None => return Closed::Unconfirmed(error),
+            }
         }
         match probe.confirmation(POLL) {
             None => {}
@@ -135,7 +141,12 @@ pub(super) fn run(
     on_confirmed(&state);
     loop {
         if let Err(error) = deadline.check(now(), probe.progress()) {
-            return Closed::ConfirmedUnclosed(state, error);
+            // Igual con la salida: si storage ya salió, el cierre fue limpio.
+            return match probe.exit(Duration::ZERO) {
+                Some(Ok(())) => Closed::Clean(state),
+                Some(Err(failure)) => Closed::ConfirmedUnclosed(state, failure),
+                None => Closed::ConfirmedUnclosed(state, error),
+            };
         }
         match probe.exit(POLL) {
             None => {}

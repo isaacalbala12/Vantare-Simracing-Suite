@@ -673,6 +673,15 @@ fn new_worker_retries_collision_without_touching_original_and_finishes_feed() {
     .unwrap();
     acquire(&mut core, 128);
     let attempted = core.series().publication_status().unwrap().attempted;
+    let deadline = Instant::now() + Duration::from_secs(10);
+    while worker.watermark() < attempted {
+        assert!(!worker.failed());
+        assert!(Instant::now() < deadline, "ACK del helper real");
+        std::thread::yield_now();
+    }
+    // #2871: el cierre mide el progreso con este contador; tras recrear el
+    // proceso sigue contando las respuestas del nuevo (`ready` y cada ACK).
+    assert!(worker.responses() > attempted, "{}", worker.responses());
     let (state, _) = worker.finish(attempted, Duration::from_secs(10)).unwrap();
     assert!(state.finished);
     assert_eq!(state.attempted, attempted);

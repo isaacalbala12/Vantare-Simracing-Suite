@@ -163,7 +163,20 @@ impl SeriesRecording {
         }
     }
 
-    fn finish(mut self, core: &mut Core) {
+    fn finish(self, core: &mut Core) {
+        self.finish_with(core, |worker, attempted, publish| {
+            worker.close(attempted, SERIES_CLOSE_LIMITS, publish)
+        });
+    }
+
+    /// `close` cierra el worker y llama a `publish` en cuanto `finished` está
+    /// confirmado. Los tests lo envuelven para ver qué estado encontraría el
+    /// anfitrión en ese momento (revisión de #2876).
+    fn finish_with(
+        mut self,
+        core: &mut Core,
+        close: impl FnOnce(SeriesWorker, u64, &mut dyn FnMut(&SeriesStorageState)) -> SeriesClose,
+    ) {
         // El bucle ya no llama al adaptador. Core conserva el sender hasta terminar finish.
         self.check_with_delay(core, None);
         if !self.failed
@@ -197,7 +210,7 @@ impl SeriesRecording {
                 drop(worker);
             } else {
                 let status = &mut self.status;
-                let close = worker.close(attempted, SERIES_CLOSE_LIMITS, |state| {
+                let mut publish = |state: &SeriesStorageState| {
                     // `finished` ya está en disco: se publica antes de esperar
                     // el cierre de la base, por si el cierre de la app mata al Core.
                     if let Some(status) = status.as_mut() {
@@ -207,7 +220,8 @@ impl SeriesRecording {
                         status.write_with_gate(gate.as_deref());
                     }
                     written = true;
-                });
+                };
+                let close = close(worker, attempted, &mut publish);
                 match &close.closed {
                     Closed::Clean(_) => {}
                     Closed::ConfirmedUnclosed(_, error) => {

@@ -49,6 +49,9 @@ fn an_unconfirmed_close_reports_the_last_acknowledged_block_not_other_answers() 
     core.series_mut().flush();
     let attempted = core.series().publication_status().unwrap().attempted;
     await_watermark(&worker, attempted);
+    // El contador real que mira el cierre crece con cada respuesta (`ready`,
+    // ACK de bloque y de evento): más respuestas que bloques confirmados.
+    assert!(worker.responses() > attempted, "{}", worker.responses());
     // Sin margen no se llega a pedir `finish`: storage se corta con lo que tenía ACK.
     let close = worker.close(attempted, CloseLimits::fixed(Duration::ZERO), |_| {
         panic!("sin finish no hay confirmación")

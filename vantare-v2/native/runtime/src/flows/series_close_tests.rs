@@ -279,3 +279,41 @@ fn the_deadline_alone_counts_from_the_close_request_and_the_last_progress() {
     // Al llegar al tope, ni un avance en ese mismo instante lo prorroga.
     assert!(capped.check(start + 30 * SECOND, 4).is_err());
 }
+
+#[test]
+fn a_finished_that_arrives_just_as_the_cap_is_reached_still_counts() {
+    // Revisión de #2876 (P2-2): `finished` ya está esperando cuando vence el tope.
+    let cap = CloseLimits::PRODUCT.cap;
+    let run = close(
+        Script {
+            responses: every(SECOND, cap * 2),
+            confirms: Some(cap),
+            exits: None,
+            exit_fails: false,
+        },
+        CloseLimits::PRODUCT,
+    );
+    assert!(
+        matches!(run.closed, Closed::ConfirmedUnclosed(state, _) if state.finished),
+        "{:?}",
+        run.closed
+    );
+    assert_eq!(run.confirmed, Some(cap));
+    assert_eq!(run.ended, cap);
+}
+
+#[test]
+fn an_exit_that_arrives_just_as_the_cap_is_reached_is_a_clean_close() {
+    let cap = CloseLimits::PRODUCT.cap;
+    let run = close(
+        Script {
+            responses: every(SECOND, cap * 2),
+            confirms: Some(SECOND),
+            exits: Some(cap),
+            exit_fails: false,
+        },
+        CloseLimits::PRODUCT,
+    );
+    assert!(matches!(run.closed, Closed::Clean(_)), "{:?}", run.closed);
+    assert_eq!(run.ended, cap);
+}

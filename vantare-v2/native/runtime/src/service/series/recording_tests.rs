@@ -120,6 +120,31 @@ fn start_and_finish_persist_status_with_real_helper() {
 }
 
 #[test]
+fn the_confirmed_status_is_published_before_waiting_for_storage_to_exit() {
+    // Revisión de #2876: si el cierre de la app matase al Core mientras storage
+    // cierra la base, el estado ya diría lo confirmado, sin causa.
+    let dir = Directory::new();
+    let mut core = Core::new(46);
+    let recording = SeriesRecording::start(&mut core, Some(&dir.0), 46, || Ok(helper()));
+    let name = dir.state()["file"].as_str().unwrap().to_owned();
+    wait_for(|| dir.0.join(&name).exists());
+    let seen = std::cell::RefCell::new(None);
+    recording.finish_with(&mut core, |worker, attempted, publish| {
+        worker.close(attempted, SERIES_CLOSE_LIMITS, |state| {
+            publish(state);
+            // Lo que leería el anfitrión si ahora terminaran al Core.
+            *seen.borrow_mut() = Some(dir.state());
+        })
+    });
+    let state = seen.into_inner().expect("finished confirmado");
+    assert_eq!(state["state"], "stopped");
+    assert!(state["cause"].is_null());
+    assert_eq!(state["durableWatermark"], "0");
+    assert_eq!(state["file"], name.as_str());
+    ready(&dir.0.join(name));
+}
+
+#[test]
 fn existing_recording_name_is_preserved_and_status_names_the_new_database() {
     let dir = Directory::new();
     let original = dir

@@ -41,7 +41,10 @@ export const analysisText = {
   complete: "Completa",
   unconfirmed: "Incompleta",
   saved: "Se guardó",
-  savedUntil: (lap: number) => `hasta la vuelta ${lap}`,
+  savedUntil: (complete: number, partial?: number) =>
+    partial === undefined
+      ? `hasta la vuelta ${complete} completa`
+      : `hasta la vuelta ${complete} completa · la ${partial} a medias`,
   locked: "Abierta por otro programa",
   incompatible: "De otra versión",
   unreadable: "No se puede leer",

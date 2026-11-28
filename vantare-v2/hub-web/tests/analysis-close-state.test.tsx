@@ -16,11 +16,11 @@ const signal = {
   mean: 1,
   max: 1,
 };
-const lap = (index: number, number: number): AnalysisLap => ({
+const lap = (index: number, number: number, sealed = true): AnalysisLap => ({
   index,
   lap: number,
   car: 0,
-  sealed: true,
+  sealed,
   gap: false,
   samples: 10,
   lapTimeApproxMs: 90_000,
@@ -63,15 +63,28 @@ it("says complete only when storage confirmed the end (#2871)", () => {
   expect(screen.getByText("Completa")).toBeTruthy();
   expect(screen.queryByText(/Incompleta|Se guardó/)).toBeNull();
 });
+const saved = () =>
+  screen.queryByText("Se guardó")?.closest("div")?.textContent;
+
 it("an incomplete recording says up to which lap it was saved, never an error", () => {
-  rail(opened(false, [lap(2, 5), lap(1, 4)]));
+  rail(opened(false, [lap(1, 4), lap(2, 5)]));
   expect(screen.getByText("Incompleta")).toBeTruthy();
-  const saved = screen.getByText("Se guardó").closest("div");
-  expect(saved?.textContent).toBe("Se guardóhasta la vuelta 5");
+  expect(saved()).toBe("Se guardóhasta la vuelta 5 completa");
   expect(screen.queryByText(/error/i)).toBeNull();
 });
-it("an incomplete recording with no lap saved says only incomplete", () => {
-  rail(opened(false, []));
+it("a half lap after the last sealed one is named apart", () => {
+  rail(opened(false, [lap(1, 8), lap(2, 9, false)]));
+  expect(saved()).toBe("Se guardóhasta la vuelta 8 completa · la 9 a medias");
+});
+it("lap 0 is a lap like any other", () => {
+  rail(opened(false, [lap(1, 0), lap(2, 1, false)]));
+  expect(saved()).toBe("Se guardóhasta la vuelta 0 completa · la 1 a medias");
+});
+it("without a sealed lap the saved row does not appear", () => {
+  rail(opened(false, [lap(1, 3, false)]));
   expect(screen.getByText("Incompleta")).toBeTruthy();
-  expect(screen.queryByText("Se guardó")).toBeNull();
+  expect(saved()).toBeUndefined();
+  cleanup();
+  rail(opened(false, []));
+  expect(saved()).toBeUndefined();
 });

@@ -5,7 +5,7 @@ import { createMockHost } from "../src/mock/host";
 import {
   estimatedLap,
   lapDataKind,
-  lastSavedLap,
+  savedLaps,
   summarizeLaps,
   validLapTime,
 } from "../src/renderer/app/analysis-laps";
@@ -74,16 +74,29 @@ it("keeps reduced signal quality visible without recalculating the host aggregat
   };
   expect(estimatedLap(stale)).toBe(true);
 });
-it("an incomplete recording keeps up to the lap of its last saved block", () => {
-  const values = laps();
-  const last = values.reduce((a, b) => (b.index > a.index ? b : a));
-  // Order by block, not by lap number: a new session starts again at lap 0.
-  expect(lastSavedLap([...values].reverse())).toBe(last.lap);
+it("an incomplete recording keeps up to its last sealed lap and names a half one after it", () => {
+  const base = laps()[0];
+  const lap = (index: number, number: number, sealed: boolean) => ({
+    ...base,
+    index,
+    lap: number,
+    sealed,
+  });
+  // Solo selladas: la última sellada, sin parcial.
+  expect(savedLaps([lap(0, 7, true), lap(1, 8, true)])).toEqual({
+    complete: 8,
+    partial: undefined,
+  });
+  // Sellada + parcial: la parcial va aparte; el orden es el de la grabación.
   expect(
-    lastSavedLap([
-      { ...values[0], index: 9, lap: 0 },
-      { ...values[1], index: 3, lap: 12 },
-    ]),
-  ).toBe(0);
-  expect(lastSavedLap([])).toBeUndefined();
+    savedLaps([lap(2, 9, false), lap(0, 7, true), lap(1, 8, true)]),
+  ).toEqual({ complete: 8, partial: 9 });
+  // Una sesión nueva vuelve a la vuelta 0: cuenta la posición, no el número.
+  expect(savedLaps([lap(0, 12, true), lap(1, 0, true)])).toEqual({
+    complete: 0,
+    partial: undefined,
+  });
+  // Ninguna sellada: no hay nada que decir.
+  expect(savedLaps([lap(0, 1, false)])).toBeUndefined();
+  expect(savedLaps([])).toBeUndefined();
 });

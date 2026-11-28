@@ -11,9 +11,9 @@ import {
   recordingZone,
 } from "../../app/analysis-dates";
 import {
-  lastSavedLap,
   orderedSessions,
   recordingBestTime,
+  savedLaps,
 } from "../../app/analysis-laps";
 import { folderUnusable } from "../../app/analysis-recording-status";
 import { Icon, type IconName } from "../../assets/icons/Icon";
@@ -47,8 +47,7 @@ export function AnalysisRail({
   const opened = state?.opened;
   const latest = orderedSessions(opened?.sessions)[0]?.session;
   // Issue 2871: lo que guardó una grabación sin cierre confirmado.
-  const saved =
-    opened && !opened.finished ? lastSavedLap(opened.laps) : undefined;
+  const saved = opened && !opened.finished ? savedLaps(opened.laps) : undefined;
   return (
     <>
       {row && opened && (
@@ -66,7 +65,9 @@ export function AnalysisRail({
                   {opened.finished ? t.complete : t.unconfirmed}
                 </Badge>,
               ],
-              ...(saved === undefined ? [] : [[t.saved, t.savedUntil(saved)]]),
+              ...(saved
+                ? [[t.saved, t.savedUntil(saved.complete, saved.partial)]]
+                : []),
             ].map(([label, value]) => (
               <div key={String(label)}>
                 <dt>{label}</dt>

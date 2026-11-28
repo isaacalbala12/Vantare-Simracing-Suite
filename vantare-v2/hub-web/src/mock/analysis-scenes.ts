@@ -294,18 +294,28 @@ export function analysisScene(context: MockContext, clock = Date.now) {
         original.result.method === "analysis.open"
       ) {
         const base = original.result.laps;
+        // Issue 2871: the close was cut and storage kept the first 9 laps;
+        // the last one half done, all of them sealed, or none sealed.
+        const incomplete = name.startsWith("incomplete");
+        const sealed = (i: number) =>
+          name === "incomplete"
+            ? i !== 8
+            : name === "incomplete-none"
+              ? false
+              : i !== 13;
         return {
           ...original,
           result: {
             ...original.result,
-            watermark: "18446744073709551615",
-            laps: Array.from({ length: 14 }, (_, i) => {
+            watermark: incomplete ? "9" : "18446744073709551615",
+            finished: !incomplete,
+            laps: Array.from({ length: incomplete ? 9 : 14 }, (_, i) => {
               const lap = base[i % base.length];
               return {
                 ...lap,
                 index: i,
                 lap: i + 1,
-                sealed: i !== 13,
+                sealed: sealed(i),
                 gap: i === 4,
                 lapTimeApproxMs: [
                   null,

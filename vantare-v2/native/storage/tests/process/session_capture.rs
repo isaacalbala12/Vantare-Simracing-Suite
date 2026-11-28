@@ -1,5 +1,5 @@
 use super::*;
-use vantare_runtime::flows::{SessionEvent, SessionTracker};
+use vantare_runtime::flows::{CloseLimits, Closed, SessionEvent, SessionTracker};
 
 #[path = "../support/session_frames.rs"]
 mod fixture;
@@ -23,6 +23,49 @@ fn rows(db: &Path, command: &Value) -> Value {
     assert_eq!(reader.response()[0], "ready");
     reader.send(command);
     reader.response()
+}
+
+#[test]
+fn an_unconfirmed_close_reports_the_last_acknowledged_block_not_other_answers() {
+    // #2871: el estado dice lo que de verdad está en la base. Storage también
+    // responde a `ready` y a cada evento de sesión; eso es progreso, no bloques.
+    let db = Database::new();
+    let mut core = Core::new(17);
+    let receiver = core.series_mut().subscribe(32).unwrap();
+    let worker = SeriesWorker::start_new(
+        Path::new(env!("CARGO_BIN_EXE_vantare-storage")),
+        &db.0,
+        receiver,
+    )
+    .unwrap();
+    let mut tracker = SessionTracker::default();
+    for (index, frame) in frames().into_iter().enumerate() {
+        core.observe(frame).unwrap();
+        send(
+            &worker,
+            tracker.observe(&core.snapshot(), u64::try_from(index).unwrap() * 100 + 100),
+        );
+    }
+    core.series_mut().flush();
+    let attempted = core.series().publication_status().unwrap().attempted;
+    await_watermark(&worker, attempted);
+    // El contador real que mira el cierre crece con cada respuesta (`ready`,
+    // ACK de bloque y de evento): más respuestas que bloques confirmados.
+    assert!(worker.responses() > attempted, "{}", worker.responses());
+    // Sin margen no se llega a pedir `finish`: storage se corta con lo que tenía ACK.
+    let close = worker.close(attempted, CloseLimits::fixed(Duration::ZERO), |_| {
+        panic!("sin finish no hay confirmación")
+    });
+    assert!(
+        matches!(&close.closed, Closed::Unconfirmed(error) if error.kind() == std::io::ErrorKind::TimedOut),
+        "{:?}",
+        close.closed
+    );
+    assert_eq!(close.analysis.watermark, attempted);
+    let reader =
+        SeriesReader::open(Path::new(env!("CARGO_BIN_EXE_vantare-storage")), &db.0).unwrap();
+    assert_eq!(reader.state().watermark, attempted);
+    assert!(!reader.state().finished);
 }
 
 #[test]

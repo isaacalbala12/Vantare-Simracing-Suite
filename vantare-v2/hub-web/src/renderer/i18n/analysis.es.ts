@@ -1,5 +1,7 @@
 import type { AnalysisSessionSummary } from "../../contract/generated/analysis";
 import { recordingGroup, recordingZone } from "../app/analysis-dates";
+/** Espacios de no separación (U+00A0): el tramo no se corta al ajustar líneas. */
+export const unbroken = (text: string) => text.replaceAll(" ", "\u00a0");
 export const analysisText = {
   title: "Análisis",
   recordings: "Grabaciones",
@@ -39,7 +41,16 @@ export const analysisText = {
   size: "Tamaño",
   state: "Estado",
   complete: "Completa",
-  unconfirmed: "Cierre sin confirmar",
+  unconfirmed: "Incompleta",
+  saved: "Se guardó",
+  // Cada tramo se lee entero: el texto solo puede partirse antes de «·».
+  savedUntil: (complete: number, partial?: number) =>
+    [
+      `hasta la vuelta ${complete} completa`,
+      ...(partial === undefined ? [] : [`· la ${partial} a medias`]),
+    ]
+      .map(unbroken)
+      .join(" "),
   locked: "Abierta por otro programa",
   incompatible: "De otra versión",
   unreadable: "No se puede leer",

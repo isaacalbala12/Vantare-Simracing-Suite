@@ -1,7 +1,7 @@
 use super::recording_tests::{Directory, helper, wait_for};
 use super::*;
 use std::fs::{self, File};
-use std::time::{Instant, UNIX_EPOCH};
+use std::time::{Duration, Instant, UNIX_EPOCH};
 
 fn populate(dir: &Directory, count: u64, large: bool) {
     use std::os::windows::process::CommandExt;

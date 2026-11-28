@@ -1,9 +1,10 @@
 //! Propietario de una grabación por arranque, fuera del camino de adquisición.
 use crate::core::Core;
-use crate::flows::{SeriesWorker, SessionTracker};
+use crate::flows::{
+    CloseLimits, Closed, SeriesClose, SeriesStorageState, SeriesWorker, SessionTracker,
+};
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
-use std::time::Duration;
 use vantare_domain::Adapter;
 mod prune;
 mod status;
@@ -16,12 +17,11 @@ mod measurement_tests;
 mod recording_tests;
 
 const SERIES_QUEUE: usize = 32;
-/// Dentro de los 3 s del supervisor y los 4 s del watchdog del Core.
-#[cfg(not(test))]
-const SERIES_FINISH_TIMEOUT: Duration = Duration::from_secs(1);
-// Solo el arnés unitario amplía el plazo; el producto conserva 1 s.
-#[cfg(test)]
-const SERIES_FINISH_TIMEOUT: Duration = session_capture_tests::FINISH_TIMEOUT;
+/// #2871: se espera a storage mientras avance (10 s sin progreso, 30 s en
+/// total). El cierre de la app o de Windows puede matar antes al Core (3 s del
+/// supervisor, 4 s de su propio plazo): lo confirmado sigue en la base y el
+/// anfitrión muestra esa grabación como parada sin causa, nunca como error.
+const SERIES_CLOSE_LIMITS: CloseLimits = CloseLimits::PRODUCT;
 #[cfg(test)]
 #[path = "series/session_capture_tests.rs"]
 mod session_capture_tests;
@@ -163,7 +163,20 @@ impl SeriesRecording {
         }
     }
 
-    fn finish(mut self, core: &mut Core) {
+    fn finish(self, core: &mut Core) {
+        self.finish_with(core, |worker, attempted, publish| {
+            worker.close(attempted, SERIES_CLOSE_LIMITS, publish)
+        });
+    }
+
+    /// `close` cierra el worker y llama a `publish` en cuanto `finished` está
+    /// confirmado. Los tests lo envuelven para ver qué estado encontraría el
+    /// anfitrión en ese momento (revisión de #2876).
+    fn finish_with(
+        mut self,
+        core: &mut Core,
+        close: impl FnOnce(SeriesWorker, u64, &mut dyn FnMut(&SeriesStorageState)) -> SeriesClose,
+    ) {
         // El bucle ya no llama al adaptador. Core conserva el sender hasta terminar finish.
         self.check_with_delay(core, None);
         if !self.failed
@@ -175,8 +188,16 @@ impl SeriesRecording {
             }
         }
         core.series_mut().flush();
+        let gate = self.pending_status.take().map(PendingStatus::finish);
+        let mut written = false;
         if let Some(worker) = self.worker.take() {
             let database = worker.database.clone();
+            let file = || {
+                database
+                    .load_full()
+                    .file_name()
+                    .map(|name| name.to_string_lossy().into_owned())
+            };
             let attempted = core
                 .series()
                 .publication_status()
@@ -188,37 +209,60 @@ impl SeriesRecording {
             if self.failed {
                 drop(worker);
             } else {
-                match worker.finish(attempted, SERIES_FINISH_TIMEOUT) {
-                    Ok((state, _)) => {
-                        if let Some(status) = self.status.as_mut() {
-                            status.durable_watermark = Some(state.watermark.to_string());
-                            status.attempted = Some(state.attempted.to_string());
-                        }
+                let status = &mut self.status;
+                let mut publish = |state: &SeriesStorageState| {
+                    // `finished` ya está en disco: se publica antes de esperar
+                    // el cierre de la base, por si el cierre de la app mata al Core.
+                    if let Some(status) = status.as_mut() {
+                        confirmed(status, state);
+                        status.file = file();
+                        status.state = "stopped";
+                        status.write_with_gate(gate.as_deref());
                     }
-                    Err(error) => {
+                    written = true;
+                };
+                let close = close(worker, attempted, &mut publish);
+                match &close.closed {
+                    Closed::Clean(_) => {}
+                    Closed::ConfirmedUnclosed(_, error) => {
+                        eprintln!("cierre de grabación de series: datos confirmados; {error}");
+                    }
+                    Closed::Unconfirmed(error) => {
                         eprintln!("cierre de grabación de series: {error}");
-                        if let Some(status) = self.status.as_mut() {
-                            status.cause = Some(if error.kind() == std::io::ErrorKind::TimedOut {
-                                "finish vencido"
-                            } else {
-                                "writer caído"
-                            });
-                        }
                     }
+                }
+                if let Some(status) = self.status.as_mut() {
+                    settle(status, &close);
                 }
             }
             if let Some(status) = self.status.as_mut() {
-                status.file = database
-                    .load_full()
-                    .file_name()
-                    .map(|name| name.to_string_lossy().into_owned());
+                status.file = file();
             }
         }
-        let gate = self.pending_status.take().map(PendingStatus::finish);
-        if let Some(status) = self.status.as_mut() {
+        if !written && let Some(status) = self.status.as_mut() {
             status.state = "stopped";
             status.write_with_gate(gate.as_deref());
         }
+    }
+}
+
+/// Lo que storage confirmó al terminar: el prefijo final y los intentos.
+fn confirmed(status: &mut Status, state: &SeriesStorageState) {
+    status.durable_watermark = Some(state.watermark.to_string());
+    status.attempted = Some(state.attempted.to_string());
+}
+
+/// Tras el cierre (#2871). Lo confirmado ya se publicó y nunca pasa a error.
+/// Sin confirmar, el estado dice el último bloque con ACK (lo que de verdad
+/// está en la base) y por qué: límite agotado o storage caído.
+fn settle(status: &mut Status, close: &SeriesClose) {
+    if let Closed::Unconfirmed(error) = &close.closed {
+        status.durable_watermark = Some(close.analysis.watermark.to_string());
+        status.cause = Some(if error.kind() == std::io::ErrorKind::TimedOut {
+            "finish vencido"
+        } else {
+            "writer caído"
+        });
     }
 }
 
@@ -300,6 +344,77 @@ mod tests {
         assert_eq!(names, ["notas.txt"]);
         assert_eq!(std::fs::read(&recordings).unwrap(), b"not a folder");
         std::fs::remove_dir_all(base).unwrap();
+    }
+
+    fn closed_status() -> Status {
+        let mut status = Status::new(Path::new("."), 1, prune::PruneReport::default());
+        status.attempted = Some("3".into());
+        status.durable_watermark = Some("1".into());
+        status
+    }
+
+    fn close(closed: Closed, acked: u64) -> SeriesClose {
+        SeriesClose {
+            closed,
+            analysis: std::sync::Arc::new(crate::flows::RecordedSeriesSummary {
+                watermark: acked,
+                ..Default::default()
+            }),
+        }
+    }
+
+    const FINISHED: SeriesStorageState = SeriesStorageState {
+        watermark: 3,
+        finished: true,
+        attempted: 3,
+    };
+
+    #[test]
+    fn the_recorder_waits_by_progress_with_the_decided_limits() {
+        // Decisión de la raíz (#2871): 10 s sin avanzar y 30 s de tope, nunca 1 s fijo.
+        assert_eq!(
+            SERIES_CLOSE_LIMITS,
+            CloseLimits {
+                stall: std::time::Duration::from_secs(10),
+                cap: std::time::Duration::from_secs(30),
+            }
+        );
+    }
+
+    #[test]
+    fn a_confirmed_finish_is_never_an_error_even_if_closing_the_database_is_cut() {
+        for closed in [
+            Closed::Clean(FINISHED),
+            Closed::ConfirmedUnclosed(
+                FINISHED,
+                std::io::Error::new(std::io::ErrorKind::TimedOut, "sin progreso"),
+            ),
+            Closed::ConfirmedUnclosed(FINISHED, std::io::Error::other("salió con error")),
+        ] {
+            let mut status = closed_status();
+            confirmed(&mut status, &FINISHED);
+            settle(&mut status, &close(closed, 3));
+            assert_eq!(status.cause, None);
+            assert_eq!(status.durable_watermark.as_deref(), Some("3"));
+            assert_eq!(status.attempted.as_deref(), Some("3"));
+        }
+    }
+
+    #[test]
+    fn an_unconfirmed_finish_reports_the_last_acknowledged_block_and_why() {
+        let mut status = closed_status();
+        let timed_out = std::io::Error::new(std::io::ErrorKind::TimedOut, "sin progreso");
+        // El estado decía 1 al empezar el cierre; storage confirmó un bloque más.
+        settle(&mut status, &close(Closed::Unconfirmed(timed_out), 2));
+        assert_eq!(status.cause, Some("finish vencido"));
+        assert_eq!(status.durable_watermark.as_deref(), Some("2"));
+        // Lo que el Core intentó no cambia: la diferencia es la cola perdida.
+        assert_eq!(status.attempted.as_deref(), Some("3"));
+        let mut status = closed_status();
+        let broken = std::io::Error::new(std::io::ErrorKind::BrokenPipe, "storage murió");
+        settle(&mut status, &close(Closed::Unconfirmed(broken), 0));
+        assert_eq!(status.cause, Some("writer caído"));
+        assert_eq!(status.durable_watermark.as_deref(), Some("0"));
     }
 
     #[test]

@@ -1,4 +1,4 @@
-//! Real-helper product-path test; its finish deadline is independent of scheduling at startup.
+//! Real-helper product-path test; the close waits by progress (#2871), not by scheduling.
 use super::*;
 use serde_json::{Value, json};
 use std::collections::VecDeque;
@@ -6,13 +6,12 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 use vantare_domain::{AdapterError, Observation};
 
 #[path = "../../../tests/support/session_frames.rs"]
 mod fixture;
 use fixture::frames;
-
-pub(super) const FINISH_TIMEOUT: Duration = Duration::from_secs(10);
 
 struct Directory(PathBuf);
 impl Directory {

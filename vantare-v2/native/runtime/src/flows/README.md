@@ -371,8 +371,9 @@ dueño del pipe, envía comando/ACK secuencial junto a los chunks y avisa una ve
 si pierde eventos o recibe rejected. unsupported meta desactiva esos envíos en
 DB v1 sin interrumpir chunks. SQL/I/O o protocolo roto siguen siendo fatales
 para la grabación. En finish se encola Close antes de worker.finish y se drenan
-los eventos antes de confirmar. Vencido el plazo de 1 s pueden faltar vueltas
-o quedar una sesión SIN SELLAR; sealed/finished no garantizan cobertura.
+los eventos antes de confirmar. Si el cierre se corta (10 s sin progreso, 30 s
+en total o el Core muerto) pueden faltar vueltas o quedar una sesión SIN
+SELLAR; sealed/finished no garantizan cobertura.
 
 El tiempo oficial (best_lap_s/last_lap_s del juego) está PENDIENTE DE VERIFICAR
 con LMU real; medición en el PC de juego con Isaac. Los tests sintéticos y con

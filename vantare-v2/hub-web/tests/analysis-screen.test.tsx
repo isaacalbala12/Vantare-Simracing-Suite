@@ -276,7 +276,7 @@ it("renders every row state including current recording without opening it", asy
   });
   for (const text of [
     "Completa",
-    "Cierre sin confirmar",
+    "Incompleta",
     "No se puede leer",
     "Abierta por otro programa",
     "De otra versión",

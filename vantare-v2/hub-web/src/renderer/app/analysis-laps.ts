@@ -38,6 +38,23 @@ export function bestApproximateLapTime(laps: readonly AnalysisLap[]) {
   return best;
 }
 
+/**
+ * What an incomplete recording keeps (issue 2871): the number of its last
+ * sealed lap and, when an unsealed lap follows it, that one too. `index` is
+ * the position of the lap in the recording (a new session restarts lap
+ * numbers, so laps are ordered by it). No sealed lap: nothing to say.
+ */
+export function savedLaps(laps: readonly AnalysisLap[]) {
+  const ordered = [...laps].sort((a, b) => a.index - b.index);
+  const sealed = ordered.findLast((lap) => lap.sealed);
+  if (!sealed) return undefined;
+  const last = ordered.at(-1);
+  return {
+    complete: sealed.lap,
+    partial: last && last !== sealed && !last.sealed ? last.lap : undefined,
+  };
+}
+
 export const validLapTime = (lap: AnalysisLap) => lapTime(lap).ms;
 
 // The reply's original position is what lap.session refers to.

@@ -348,6 +348,24 @@ acreditar el inicio de sesión, el pase de tester y la continuidad de sesión (D
 Cuando existan, necesitará candidato con configuración QA, su propio plan y otra ventana. Tampoco entra abrir beta
 y nightly a la vez (modificaría datos de la beta): requiere permiso aparte.
 
+## Barra de título del Hub (#2854)
+
+Se comprueba con la nightly abierta en el paso 4, antes de cerrarla. El navegador no puede probar el arrastre ni
+el clic de la ventana real: solo Electron en Windows. La primera casilla exige que sea la **primera ejecución** de
+esta instalación (asistente en el paso 0). Isaac mueve el ratón; quien guía anota cada casilla y hace captura.
+
+- [ ] Primera ejecución: en el paso 0 del asistente **no** aparece el marco rosa (oscuro) o granate (claro)
+      alrededor de la ventana.
+- [ ] Asistente: «— □ ×» quedan a la misma altura que «Saltar».
+- [ ] Hub, en Inicio: arrastrar desde el hueco vacío del centro de la barra mueve la ventana.
+- [ ] Hub, en Ajustes: pulsar cada pestaña cambia de pestaña y **no** mueve la ventana; lo mismo con la campana,
+      el botón del panel y los tres botones de ventana.
+- [ ] Doble clic en el hueco de la barra maximiza la ventana, y otro doble clic la restaura.
+- [ ] Cerrar se pone rojo al pasar el ratón, con la × blanca visible, en claro y en oscuro.
+- [ ] Minimizar y maximizar/restaurar funcionan con un clic.
+- [ ] Cerrar cierra la ventana normal, y también con la ventana maximizada (clic en la esquina superior derecha).
+- [ ] A 1280×720 y a 1440×1000: «— □ ×» no pisan «Esperando simulador», la campana ni «Saltar», y no se corta texto.
+
 ## 8. Resultado
 
 Estados: `PASS`, `FAIL`, `NO OBSERVADO`, `NO EJECUTADO`; solo `PASS` acredita. Anotar fecha, hora real, SHA, versiones.
@@ -372,3 +390,4 @@ Estados: `PASS`, `FAIL`, `NO OBSERVADO`, `NO EJECUTADO`; solo `PASS` acredita. A
 | 16 | Beta y `%LOCALAPPDATA%\Vantare` idénticas antes y después (4, 10) | | |
 | 17 | Defender sin detecciones; sin procesos ni tareas nuestras; evidencia verificada (10) | | |
 | 18 | Cuenta de tester (§7) | NO EJECUTADO | pendiente de cuentas QA |
+| 19 | Barra de título del Hub, casillas de #2854 (4) | | |

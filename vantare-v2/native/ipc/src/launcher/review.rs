@@ -2,10 +2,14 @@
 use serde::Deserialize;
 use std::fmt::Write as _;
 
+mod confusables;
+
 const WRAP: usize = 76;
 const BUDGET: usize = 26;
 const MAX_PAGES: usize = 3;
 pub const AUTHORIZATION_MS: u64 = 10_000;
+const CONFUSABLE_NOTICE: &str =
+    "\nAtención: letras de otro alfabeto parecidas a las latinas: [U+…]";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReviewError {
@@ -48,8 +52,8 @@ fn invisible(c: char) -> bool {
 
 fn visible(text: &str) -> String {
     let mut output = String::new();
-    for c in text.chars() {
-        if invisible(c) {
+    for (c, confusable) in text.chars().zip(confusables::marked(text)) {
+        if confusable || invisible(c) {
             write!(output, "[U+{:04X}]", u32::from(c)).expect("write to String");
         } else {
             output.push(c);
@@ -129,18 +133,24 @@ impl Profile {
             "Perfil: «{}»\nOrigen: importado. Vantare no sabe quién lo creó y no puede comprobar que sea fiable.",
             label(&self.name, 60)
         );
-        if [&self.name, &self.hotkey]
+        let texts: Vec<&String> = [&self.name, &self.hotkey]
             .into_iter()
             .chain(
                 self.steps
                     .iter()
                     .flat_map(|step| [&step.app, &step.path].into_iter().chain(&step.args)),
             )
-            .any(|text| text.chars().any(invisible))
-        {
+            .collect();
+        if texts.iter().any(|text| text.chars().any(invisible)) {
             header.push_str(
                 "\nAtención: contiene caracteres invisibles; aquí se muestran como [U+…].",
             );
+        }
+        if texts
+            .iter()
+            .any(|text| confusables::marked(text).contains(&true))
+        {
+            header.push_str(CONFUSABLE_NOTICE);
         }
         header
     }

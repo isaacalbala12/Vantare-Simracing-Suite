@@ -630,7 +630,9 @@ fn a_disguised_program_path_cannot_be_trusted_or_issue_a_ticket() {
         ("QA/private.\u{435}\u{445}\u{435} ", lookalike),
         ("QA/private.\u{a4f0}\u{a4eb}\u{a4f0}", lookalike),
         ("QA/private.exe\u{200b}", unusual),
-        ("QA/private\u{b7}exe", unusual),
+        ("QA/private\u{b7}exe", lookalike),
+        ("QA/private\u{30fb}exe", lookalike),
+        ("QA/private\u{323}exe", unusual),
         ("QA/private.appref-ms", unusual),
         ("QA/private", unusual),
     ] {
@@ -695,6 +697,88 @@ fn a_ticket_cannot_trust_a_question_that_became_blocked() {
             "{path}"
         );
         assert!(!native::request_path(&f.path).exists(), "{path}");
+    }
+}
+
+/// Dos pasos: el primero con un error propio y el segundo con la ruta dada.
+fn later_step_message(field: &str, value: serde_json::Value, path: &str) -> String {
+    let mut message: serde_json::Value =
+        serde_json::from_str(&review_message("--private")).unwrap();
+    let mut later = message["steps"][0].clone();
+    later["path"] = path.into();
+    message["steps"][0][field] = value;
+    message["steps"].as_array_mut().unwrap().push(later);
+    message.to_string()
+}
+
+#[test]
+fn a_block_after_a_failing_step_wins_and_cannot_be_trusted() {
+    // #2903: el motivo del paso bloqueado viaja aunque otro paso falle antes, y
+    // la pregunta que cambia a bloqueada llega con su resultado y su motivo.
+    use super::super::{
+        ResidentReview, ResidentReviewState, ReviewChoice, ReviewDecision, ReviewFailure, State,
+        review::Review,
+    };
+    use std::time::Instant;
+    for (field, value) in [
+        ("path", serde_json::json!("")),
+        ("path", serde_json::json!("x".repeat(261))),
+        ("args", serde_json::json!(["a".repeat(201)])),
+        // No cabe en la revisión, pero sí en el estado del residente.
+        ("args", serde_json::json!(["a".repeat(70_000)])),
+    ] {
+        for (path, reason) in [
+            ("QA/private\u{2024}exe", ResidentReview::BlockedLookalike),
+            ("QA/private.appref-ms", ResidentReview::BlockedUnusualPath),
+        ] {
+            let (mut f, allowed, target) = review_fixture();
+            // Una revisión abierta que el host observa y otra que se confirma.
+            let mut state = State::new(f.path.clone());
+            let mut review = Review::default();
+            let now = Instant::now();
+            state
+                .review
+                .open(&f.path, Some(&allowed), &target)
+                .unwrap();
+            let ticket = review
+                .open(&f.path, Some(&allowed), &target)
+                .unwrap()
+                .ticket;
+            review
+                .content(&f.path, Some(&allowed), &ticket, now)
+                .unwrap();
+            f.status.decision.as_mut().unwrap().message =
+                later_step_message(field, value.clone(), path);
+            f.save();
+            let view = state.view_for_account(Some(&allowed));
+            assert_eq!(view.decision.as_ref().unwrap().review, reason, "{field}");
+            assert_eq!(
+                view.review_outcome.unwrap().state,
+                ResidentReviewState::Changed,
+                "{field}"
+            );
+            // Ni el ticket anterior ni uno nuevo pueden confiar.
+            let trust = ReviewDecision {
+                ticket,
+                decision: ReviewChoice::Trust,
+                issued_ms: Some(1_000),
+            };
+            assert_eq!(
+                review.decide(&f.path, Some(&allowed), &trust, now, Some(1_000)),
+                Err(ReviewFailure::Unavailable),
+                "{field}"
+            );
+            assert!(
+                review.open(&f.path, Some(&allowed), &target).is_err(),
+                "{field}"
+            );
+            assert_eq!(
+                checked_review(&f.path, Some(&allowed), &target).err(),
+                Some(rejected(AnswerRejection::Unavailable)),
+                "{field}"
+            );
+            assert!(!native::request_path(&f.path).exists(), "{field}");
+        }
     }
 }
 

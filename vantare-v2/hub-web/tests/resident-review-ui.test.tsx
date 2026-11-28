@@ -11,10 +11,14 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ResidentView } from "../src/contract/generated/contract";
+import type {
+  ResidentView,
+  ResidentReviewState as ReviewResult,
+} from "../src/contract/generated/contract";
 import * as host from "../src/renderer/app/Host";
 import { type Client, HostFailure } from "../src/renderer/bridge/client";
 import { residentReviewText as t } from "../src/renderer/i18n/launcher-review";
+import type { ResidentAnswerController } from "../src/renderer/screens/launcher/resident-answer";
 import {
   type ResidentReviewPanel,
   useResidentReview,
@@ -324,8 +328,150 @@ it("does not force retry focus when another question replaces the open drawer", 
   );
 });
 
+// Issue 2903: el bloqueo gana a cualquier resultado anterior de la pregunta.
+describe.each(blockedPhrases)("a question that turns %s", (review, phrase) => {
+  const turned = (
+    value: ResidentView,
+    outcome: ResidentView["reviewOutcome"] = null,
+  ): ResidentView => ({
+    ...structuredClone(value),
+    decision: { ...question, review },
+    reviewOutcome: outcome,
+  });
+  const host = (state: ReviewResult) => ({ question: scope.decision, state });
+  const expectBlocked = (panel: ResidentReviewPanel | undefined) => {
+    if (!panel) throw new Error("Missing review panel");
+    expect(panel.state).toBe(review);
+    expect(panel.open).toBeUndefined();
+    const mounted = render(view(panel));
+    const drawer = within(screen.getByRole("dialog"));
+    expect(drawer.getByText("Bloqueado por seguridad")).toBeTruthy();
+    expect(drawer.getByText(phrase)).toBeTruthy();
+    expect(
+      drawer.getAllByRole("button").map((button) => button.textContent),
+    ).toEqual(["×", "Cancelar"]);
+    expect(screen.getByRole("status").textContent).toBe(
+      "Perfil bloqueado por seguridad. No se ha abierto ninguna aplicación.",
+    );
+    mounted.unmount();
+  };
+
+  it.each(["changed", "expired", "unavailable"] as const)(
+    "wins over the host's earlier %s result, live and after it leaves",
+    (state) => {
+      const { hook, value } = reviewHook();
+      hook.rerender({ current: { ...value, reviewOutcome: host(state) } });
+      expect(hook.result.current?.state).toBe(state);
+      const blocked = turned(value, host(state));
+      hook.rerender({ current: blocked });
+      expectBlocked(hook.result.current);
+      const gone = structuredClone(blocked);
+      gone.decision = null;
+      if (gone.execution) gone.execution.question = null;
+      hook.rerender({ current: gone });
+      expectBlocked(hook.result.current);
+    },
+  );
+
+  it.each(["changed", "expired", "unavailable"] as const)(
+    "wins over Main's earlier %s reply",
+    async (state) => {
+      const { hook, value, reviewTrust } = reviewHook();
+      reviewTrust.mockResolvedValueOnce(state);
+      await act(async () => {
+        await hook.result.current?.open?.();
+      });
+      expect(hook.result.current?.state).toBe(state);
+      hook.rerender({ current: turned(value) });
+      expectBlocked(hook.result.current);
+    },
+  );
+
+  it("wins over a rejected reviewOpen", async () => {
+    const { hook, value, request } = reviewHook();
+    request.mockRejectedValueOnce(
+      new HostFailure({
+        kind: "residentAnswerRejected",
+        reason: "stale-question",
+      }),
+    );
+    await act(async () => {
+      await hook.result.current?.open?.();
+    });
+    expect(hook.result.current?.state).toBe("changed");
+    hook.rerender({ current: turned(value) });
+    expectBlocked(hook.result.current);
+  });
+
+  it.each(["too-long", "unavailable"] as const)(
+    "wins over the earlier %s question",
+    (earlier) => {
+      const { hook, value } = reviewHook({ ...question, review: earlier });
+      expect(hook.result.current?.state).toBe(earlier);
+      hook.rerender({ current: turned(value) });
+      expectBlocked(hook.result.current);
+    },
+  );
+
+  it("wins while the native dialog is open and after it answers", async () => {
+    const { hook, value, reviewTrust } = reviewHook();
+    let settle = (_result: string) => {};
+    reviewTrust.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          settle = resolve;
+        }),
+    );
+    let finished: Promise<void> | undefined;
+    await act(async () => {
+      finished = hook.result.current?.open?.();
+    });
+    hook.rerender({ current: turned(value, host("changed")) });
+    expectBlocked(hook.result.current);
+    await act(async () => {
+      settle("changed");
+      await finished;
+    });
+    expectBlocked(hook.result.current);
+  });
+
+  it("waits for the host before replacing a decision already sent", async () => {
+    const { hook, value } = reviewHook();
+    await act(async () => {
+      await hook.result.current?.open?.();
+    });
+    hook.rerender({ current: turned(value) });
+    expect(hook.result.current?.state).toBe("unconfirmed");
+    hook.rerender({ current: turned(value, host("unavailable")) });
+    expectBlocked(hook.result.current);
+  });
+
+  it.each(["trusted", "declined"] as const)(
+    "never rewrites a %s result",
+    (state) => {
+      const { hook, value } = reviewHook();
+      hook.rerender({ current: turned(value, host(state)) });
+      expect(hook.result.current?.state).toBe(state);
+    },
+  );
+
+  it("keeps an accepted cancellation", () => {
+    const { hook, value } = reviewHook(question, {
+      ...answer,
+      attempt: {
+        target: { ...scope, action: "cancel" },
+        cursor: 1n,
+        phase: { kind: "accepted", request: "d".repeat(32) },
+      },
+    });
+    hook.rerender({ current: turned(value, host("changed")) });
+    expect(hook.result.current?.state).toBe("declined");
+  });
+});
+
 function reviewHook(
   initialQuestion: NonNullable<ResidentView["decision"]> = question,
+  controller: ResidentAnswerController = answer,
 ) {
   const request = vi.fn(async () => ({
     method: "launcher.resident.reviewOpen",
@@ -370,12 +516,15 @@ function reviewHook(
     reviewOutcome: null,
     registrations: [],
   };
-  const hook = renderHook(({ current }) => useResidentReview(current, answer), {
-    initialProps: { current: value },
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={cache}>{children}</QueryClientProvider>
-    ),
-  });
+  const hook = renderHook(
+    ({ current }) => useResidentReview(current, controller),
+    {
+      initialProps: { current: value },
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={cache}>{children}</QueryClientProvider>
+      ),
+    },
+  );
   return { hook, value, request, reviewTrust };
 }
 

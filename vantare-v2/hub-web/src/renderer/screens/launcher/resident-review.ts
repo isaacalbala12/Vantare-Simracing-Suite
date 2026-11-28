@@ -239,16 +239,21 @@ export function useResidentReview(
     (cancellation?.kind === "finished" &&
       cancellation.outcome.kind === "cancelled");
   const availability = panel.question.review;
+  const blocked =
+    availability === "blocked-lookalike" ||
+    availability === "blocked-unusual-path";
+  // El bloqueo gana a cualquier resultado anterior de la misma pregunta (issue
+  // 2903). Solo se le adelanta lo que ya está aceptado o enviado.
+  const settled =
+    hostState === "trusted" ||
+    hostState === "declined" ||
+    (!hostState && current?.state === "unconfirmed");
   let state: ReviewState = "unavailable";
   if (declined) state = "declined";
+  else if (blocked && !settled) state = availability;
   else if (hostState) state = hostState;
   else if (current?.state === "unconfirmed") state = "unconfirmed";
-  else if (
-    availability === "too-long" ||
-    availability === "blocked-lookalike" ||
-    availability === "blocked-unusual-path"
-  )
-    state = availability;
+  else if (availability === "too-long") state = availability;
   else if (current?.state === "reviewing") state = "reviewing";
   else if (canReview && availability === "available")
     state = current?.state ?? "question";

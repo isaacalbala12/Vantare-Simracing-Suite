@@ -23,7 +23,8 @@
 //! alfanumérica (`steam.ехе`, `steam·exe`, `steam`), si lleva un punto o una
 //! barra que imitan a los ASCII, o si termina en espacio o punto o lleva `:`
 //! fuera de la unidad: Windows recorta lo último y `::$DATA` abre el mismo
-//! archivo. El motivo (#2881) no cambia qué se bloquea, solo qué se explica.
+//! archivo. El motivo (#2881) no cambia qué se bloquea, solo qué se explica;
+//! los puntos de [`DOT_LOOKALIKES`] solo cuentan para el motivo (#2903).
 //!
 //! Sin tablas Unicode completas: NFC y NFD dan el mismo veredicto porque las
 //! letras precompuestas de la lista ([`COMPOSED`]) se pliegan a su letra base y
@@ -89,6 +90,16 @@ const PATH_PUNCTUATION: [char; 19] = [
     '\u{0660}', '\u{06F0}',
     '\u{2215}', '\u{2044}', '\u{29F5}', '\u{29F8}', '\u{29F9}', '\u{2216}',
     '\u{FF0F}', '\u{FF3C}', '\u{FE68}', '\u{2571}', '\u{2572}',
+];
+
+/// Puntos que se confunden con `.` pero se usan en nombres legítimos (kana,
+/// chino, el «l·l» catalán): ni se marcan ni bloquean. Si la ruta ya está
+/// bloqueada, el motivo es la imitación (#2903). Falta a propósito U+0323, el
+/// punto que se combina bajo una letra: es un acento vietnamita y la letra
+/// precompuesta no lo lleva.
+#[rustfmt::skip]
+const DOT_LOOKALIKES: [char; 7] = [
+    '\u{00B7}', '\u{0387}', '\u{2027}', '\u{22C5}', '\u{FF61}', '\u{3002}', '\u{30FB}',
 ];
 
 /// Guiones que imitan `-` y el `;` griego: se marcan siempre.
@@ -338,7 +349,8 @@ pub(super) fn blocked_path(text: &str) -> Option<BlockedReason> {
     if !(sign || lacks_ascii_extension(&chars) || trimmed_by_windows(&chars)) {
         return None;
     }
-    Some(if sign || imitating_name(&chars) {
+    let dot = chars.iter().any(|c| DOT_LOOKALIKES.contains(c));
+    Some(if sign || dot || imitating_name(&chars) {
         BlockedReason::Lookalike
     } else {
         BlockedReason::UnusualPath

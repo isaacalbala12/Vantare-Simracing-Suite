@@ -858,3 +858,9 @@ rechazando un perfil bloqueado y no escriben ninguna orden; el residente no camb
 de comportamiento (rechaza ante cualquier error de la revisión). El perfil no se
 borra ni se modifica. Un cliente v72 saluda con su versión y el anfitrión v73 lo
 rechaza al negociar, así que nunca recibe un valor que no conozca.
+
+Desde #2903 (sin protocolo nuevo) el motivo sale aunque otro paso falle antes;
+las reglas están en `ipc` («El bloqueo gana a los demás errores»). La pregunta
+puede llevar a la vez `blocked-*` y un `reviewOutcome` anterior (`changed`,
+`expired`, `unavailable`) de la revisión que estaba abierta: la interfaz muestra
+el bloqueo.

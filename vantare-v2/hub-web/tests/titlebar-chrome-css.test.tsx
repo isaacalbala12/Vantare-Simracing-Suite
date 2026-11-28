@@ -8,12 +8,20 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   SectionChrome,
   SectionChromeProvider,
 } from "../src/renderer/app/SectionChrome";
+import { shellText } from "../src/renderer/i18n/shell.es";
 import { windowText } from "../src/renderer/i18n/window.es";
 import { IconButton } from "../src/renderer/ui/Button";
 import { TitleBar } from "../src/renderer/ui/Frame";
@@ -54,6 +62,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   document.documentElement.removeAttribute("data-palette");
   document.documentElement.removeAttribute("data-scheme");
 });
@@ -194,6 +203,48 @@ describe("zona de arrastre de la barra (-webkit-app-region)", () => {
       expect(region(within(actions as HTMLElement).getByRole("button"))).toBe(
         "no-drag",
       );
+    },
+  );
+
+  it.each(viewports)(
+    "Hub $width×$height: «⋯» y su menú (issue 2896) reciben el clic; la lista y el hueco siguen arrastrando",
+    async (viewport) => {
+      // La segunda pestaña no cabe: aparece «⋯». jsdom no tiene layout, así que
+      // se fijan las cajas (lista de 100 px, Apariencia de 150 a 220 px).
+      vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(
+        function (this: Element) {
+          const left = this.matches('[role="tab"]:last-of-type') ? 150 : 0;
+          const width = this.matches(".v-section-tab-list") ? 100 : 70;
+          return { left, right: left + width, width } as DOMRect;
+        },
+      );
+      const bar = renderHub(true);
+      const region = (element: Element) => cascade.appRegion(element, viewport);
+      const name = shellText.moreSectionTabs("Ajustes");
+      const more = within(bar as HTMLElement).getByRole("button", { name });
+      expect(region(more)).toBe("no-drag");
+      // Con el teclado, «⋯» enseña el anillo de foco de los botones del Hub.
+      focusVisible(more, () =>
+        expect(cascade.outline(more, viewport).visible).toBe(true),
+      );
+      expect(region(bar.querySelector(".v-section-tabs-slot") as Element)).toBe(
+        "drag",
+      );
+      expect(region(bar.querySelector(".v-section-tab-list") as Element)).toBe(
+        "drag",
+      );
+      for (const tab of within(bar as HTMLElement).getAllByRole("tab"))
+        expect(region(tab)).toBe("no-drag");
+      await userEvent.setup().click(more);
+      const menu = await screen.findByRole("menu", { name });
+      // El menú se pinta fuera de la barra, pero asoma 2-3 px sobre ella.
+      expect(bar.contains(menu)).toBe(false);
+      expect(region(menu)).toBe("no-drag");
+      const items = within(menu).getAllByRole("menuitem");
+      expect(items.map((item) => item.textContent)).toEqual(["Apariencia"]);
+      for (const item of items) expect(region(item)).toBe("no-drag");
+      await userEvent.setup().keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
     },
   );
 

@@ -270,6 +270,10 @@ async function runPaginas() {
   await timed("checkSettingsHeading", () =>
     checkSettingsHeading(page, server.resolvedUrls?.local[0] ?? ""),
   );
+  const { checkSectionTabs } = await import("./check-section-tabs.ts");
+  await timed("checkSectionTabs", () =>
+    checkSectionTabs(page, server.resolvedUrls?.local[0] ?? ""),
+  );
   await timed("checkAccountDensity", () =>
     checkAccountDensity(page, server.resolvedUrls?.local[0] ?? ""),
   );

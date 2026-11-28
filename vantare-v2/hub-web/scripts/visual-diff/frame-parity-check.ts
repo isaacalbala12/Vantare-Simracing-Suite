@@ -13,8 +13,9 @@ export async function checkFrameParity(page: Page, expanded: boolean) {
         return [...node.querySelectorAll<HTMLElement>('[role="tab"]')].every(
           (tab) => {
             const box = tab.getBoundingClientRect();
+            // Issue 2896: 1 px de margen, como SectionChrome (zoom fraccionario).
             const clipped =
-              box.left < bounds.left - 0.25 || box.right > bounds.right + 0.25;
+              box.left < bounds.left - 1 || box.right > bounds.right + 1;
             return (getComputedStyle(tab).opacity === "0") === clipped;
           },
         );
@@ -24,6 +25,14 @@ export async function checkFrameParity(page: Page, expanded: boolean) {
   );
   const last = list.getByRole("tab").last();
   if (expanded) assert.equal(await last.getAttribute("data-clipped"), "");
+  // Issue 2896: a 1440 con la barra lateral abierta no caben las 8 pestañas y
+  // aparece «⋯» con las que faltan; plegada caben todas y no aparece.
+  const more = page.locator(".v-section-tabs-more");
+  await until(
+    async () => (await more.isVisible()) === expanded,
+    5000,
+    "«⋯» only with the expanded sidebar",
+  );
   await page.getByRole("tab", { name: "General", exact: true }).focus();
   await page.keyboard.press("End");
   await page
@@ -74,6 +83,7 @@ export async function checkFrameParity(page: Page, expanded: boolean) {
     expanded,
     keyboardLastTab: true,
     wholeTabClipping: true,
+    moreTabsMenu: expanded,
     panelIcon: "v-side",
     activeShadow: shadow,
   };

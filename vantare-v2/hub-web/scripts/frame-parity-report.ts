@@ -62,7 +62,7 @@ await writeFile(
 );
 const report = `# Marco: paridad del barrido
 
-M01: silueta v-side en el panel y en los controles compartidos del raíl. M02: pestañas parcialmente recortadas ocultas enteras; siguen en el orden del teclado, y End/Home desplazan la pestaña enfocada hasta mostrarla completa. M03: misma luz, borde y sombra del GPUI en el raíl contraído, con los tokens existentes. No cambia la API SectionChrome ni las pantallas de otros workers.
+M01: silueta v-side en el panel y en los controles compartidos del raíl. M02: pestañas parcialmente recortadas ocultas enteras; siguen en el orden del teclado, y End/Home desplazan la pestaña enfocada hasta mostrarla completa. M03: misma luz, borde y sombra del GPUI en el raíl contraído, con los tokens existentes. Desde la issue 2896, con el raíl expandido M02 muestra «⋯» con las pestañas que no caben: es una diferencia intencionada con el GPUI congelado (docs/visual-diff.md). No cambia la API SectionChrome ni las pantallas de otros workers.
 
 Capturas reales HWND 1440×900, Vantare, escala 1, oscuro/claro y raíl contraído/expandido, de una en una con captura.lock. Antes: producto nightly 3be885989; después: este cambio. Referencias y recibos del barrido #2114 sin modificar. Pixelmatch umbral 0,1, antialias incluido, imagen completa sin máscaras; las diferencias restantes de contenido y otras pantallas no se disimulan.
 

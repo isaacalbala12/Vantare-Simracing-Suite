@@ -12,6 +12,12 @@ import { resolve } from "node:path";
 export interface Viewport {
   width: number;
   height: number;
+  /**
+   * Ancho de cada contenedor con nombre (`container: nombre / inline-size`).
+   * jsdom no tiene layout: el test fija el ancho que mide Chromium. Una regla
+   * `@container` sin ancho declarado aquí hace fallar el test (issue 2896).
+   */
+  containers?: Readonly<Record<string, number>>;
 }
 interface Declaration {
   property: string;
@@ -192,7 +198,33 @@ function compareSpecificity(
   return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
 }
 
+/** `@container nombre (width < 760px)`: solo el ancho, como usa el Hub. */
+function containerMatches(condition: string, viewport: Viewport) {
+  const query =
+    /^container:([\w-]+)\s+\(\s*width\s*(<=|>=|<|>)\s*(\d+(?:\.\d+)?)px\s*\)$/.exec(
+      condition,
+    );
+  if (!query)
+    throw new Error(`@container no soportado por el test: ${condition}`);
+  const [, name, operator, raw] = query as unknown as [
+    string,
+    string,
+    string,
+    string,
+  ];
+  const size = viewport.containers?.[name];
+  if (size === undefined)
+    throw new Error(`El test debe dar el ancho del contenedor ${name}`);
+  const limit = Number(raw);
+  if (operator === "<") return size < limit;
+  if (operator === "<=") return size <= limit;
+  if (operator === ">") return size > limit;
+  return size >= limit;
+}
+
 function mediaMatches(condition: string, viewport: Viewport) {
+  if (condition.startsWith("container:"))
+    return containerMatches(condition, viewport);
   return condition.split(/\s+and\s+/).every((part) => {
     const feature = /^\(\s*([\w-]+)\s*:\s*([^)]+?)\s*\)$/.exec(part.trim());
     if (!feature) throw new Error(`@media no soportado por el test: ${part}`);
@@ -229,6 +261,11 @@ export class Cascade {
         this.collect(file, body, [...media, prelude.slice(6).trim()]);
         continue;
       }
+      if (prelude.startsWith("@container")) {
+        const query = prelude.slice(10).trim();
+        this.collect(file, body, [...media, `container:${query}`]);
+        continue;
+      }
       if (prelude.startsWith("@")) continue; // @keyframes, @font-face…
       const decls = declarations(body, `${file}: ${prelude}`);
       for (const selector of splitTop(prelude, ",")) {
@@ -263,12 +300,13 @@ export class Cascade {
       order: number;
     } | null = null;
     for (const rule of this.rules) {
-      if (!rule.media.every((condition) => mediaMatches(condition, viewport)))
-        continue;
       const declaration = rule.declarations.findLast(
         (item) => item.property === property,
       );
       if (!declaration || !element.matches(rule.matcher)) continue;
+      // Después del selector: un `@container` solo exige su ancho si aplica.
+      if (!rule.media.every((condition) => mediaMatches(condition, viewport)))
+        continue;
       const better =
         !best ||
         (declaration.important && !best.important) ||

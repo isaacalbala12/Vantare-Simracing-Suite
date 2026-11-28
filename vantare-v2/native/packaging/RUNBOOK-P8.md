@@ -366,6 +366,22 @@ esta instalación (asistente en el paso 0). Isaac mueve el ratón; quien guía a
 - [ ] Cerrar cierra la ventana normal, y también con la ventana maximizada (clic en la esquina superior derecha).
 - [ ] A 1280×720 y a 1440×1000: «— □ ×» no pisan «Esperando simulador», la campana ni «Saltar», y no se corta texto.
 
+## Pestañas de Ajustes (#2896)
+
+También con la nightly abierta en el paso 4. La build web solo emula las fuentes, el zoom y el arrastre: esto
+solo se acredita en Electron real en Windows. Quien guía anota cada casilla y hace captura de la barra.
+
+- [ ] Ventana a 1280×720, barra lateral plegada: en Ajustes se ven las 8 pestañas enteras con las fuentes reales
+      (de «Cuenta» a «Diagnóstico»), sin «⋯» y sin pisar «Esperando simulador».
+- [ ] `hub-web/scripts/check-window-controls.ts` (`hitTest`): el hueco libre de la barra en Ajustes da HTCAPTION; «⋯», el
+      menú abierto (también en los 2-3 px que asoma sobre la barra) y la caja de una pestaña recortada dan HTCLIENT.
+- [ ] Windows al 125 % y zoom de la interfaz al 110 %: con las flechas, Inicio y Fin, la pestaña enfocada siempre
+      se ve; ninguna queda invisible con el foco.
+- [ ] Pantalla pequeña real (~1093×583 o 1024×592 DIP, zoom 90 % automático): aparece «⋯», su menú lista las
+      pestañas que faltan y al elegir una queda seleccionada, con el foco y a la vista.
+- [ ] Barra lateral abierta (Ctrl B) a 1280: aparece «⋯» y «Cuenta» está en su menú si no se ve en la barra.
+- [ ] Tras usar «⋯» y su menú, arrastrar desde el hueco libre de la barra sigue moviendo la ventana.
+
 ## 8. Resultado
 
 Estados: `PASS`, `FAIL`, `NO OBSERVADO`, `NO EJECUTADO`; solo `PASS` acredita. Anotar fecha, hora real, SHA, versiones.
@@ -391,3 +407,4 @@ Estados: `PASS`, `FAIL`, `NO OBSERVADO`, `NO EJECUTADO`; solo `PASS` acredita. A
 | 17 | Defender sin detecciones; sin procesos ni tareas nuestras; evidencia verificada (10) | | |
 | 18 | Cuenta de tester (§7) | NO EJECUTADO | pendiente de cuentas QA |
 | 19 | Barra de título del Hub, casillas de #2854 (4) | | |
+| 20 | Pestañas de Ajustes, casillas de #2896 (4) | | |

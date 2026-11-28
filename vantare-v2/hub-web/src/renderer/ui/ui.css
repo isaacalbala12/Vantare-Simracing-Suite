@@ -808,14 +808,22 @@ textarea.v-input:read-only {
   /* Issue 2854: el hueco libre de la barra arrastra la ventana; las pestañas y los
      botones siguen siendo no-drag por sus propias reglas. */
   -webkit-app-region: drag;
+  /* Issue 2896: el hueco entre pestañas se estrecha cuando falta sitio. */
+  container: section-tabs / inline-size;
 }
 .v-section-tabs,
 .v-section-tab-list {
   height: 100%;
   min-width: 0;
 }
+.v-section-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
 .v-section-tab-list {
   display: flex;
+  flex: 0 1 auto;
   flex-wrap: nowrap;
   gap: 20px;
   overflow-x: auto;
@@ -842,6 +850,38 @@ textarea.v-input:read-only {
 .v-section-tab[data-clipped] {
   opacity: 0;
   pointer-events: none;
+}
+/* Issue 2896 (A1): con menos de 760 px de hueco, 16 px entre pestañas en todas
+   las pantallas. A 1280 caben las 8 de Ajustes; a 1440 sigue en 20 px. */
+@container section-tabs (width < 760px) {
+  .v-section-tab-list {
+    gap: 16px;
+  }
+}
+/* Issue 2896: «⋯» ofrece las pestañas que no caben (también con el ratón). Va
+   fuera de la tablist y solo se ve si falta alguna (atributo hidden). */
+.v-titlebar .v-section-tabs-more {
+  flex: none;
+  align-self: center;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  color: var(--text-3);
+  font-size: 18px;
+  line-height: 1;
+  /* Issue 2854: «⋯» recibe el clic; no arrastra la ventana. */
+  -webkit-app-region: no-drag;
+}
+.v-titlebar .v-section-tabs-more[hidden] {
+  display: none;
+}
+.v-titlebar .v-section-tabs-more:hover,
+.v-titlebar .v-section-tabs-more[data-popup-open] {
+  color: var(--text-1);
+}
+/* El menú puede asomar sobre la barra arrastrable: que reciba el clic. */
+.v-section-tabs-menu {
+  -webkit-app-region: no-drag;
 }
 .v-section-tab[data-active] {
   color: var(--text-1);

@@ -200,7 +200,61 @@ impl Context {
         }
         root = disk::path(&root)?;
         self.validate_root(&root)?;
+        self.claimed_by_another_product(&root)?;
         Ok(root)
+    }
+    /// La raíz registrada de otro producto nunca se usa, ni vaciada a mano ni
+    /// borrada, ni una carpeta dentro de ella o que la contenga (#2817): su
+    /// registro seguiría apuntando a lo que se instale. Una raíz con el
+    /// `state.json` de este producto es suya, y el registro del otro es el viejo:
+    /// se repara y se desinstala como siempre. Recién desinstalada, sin estado,
+    /// lo es si su `retained-data.json` es de este canal: así termina la limpieza.
+    fn claimed_by_another_product(&self, root: &Path) -> Result<()> {
+        let own = self.product()?;
+        let owned = match super::State::read(root) {
+            Ok(Some(state)) => state.channel == own.channel,
+            Ok(None) => Installation::read(root)
+                .ok()
+                .and_then(|view| view.retained)
+                .is_some_and(|saved| saved.channel() == own.channel),
+            Err(_) => false,
+        };
+        if owned {
+            return Ok(());
+        }
+        for other in product::ALL.into_iter().filter(|other| *other != own) {
+            // Un registro del otro producto que no se puede leer falla cerrado.
+            let unreadable = |cause: &dyn std::fmt::Display| {
+                WriteError::new(
+                    1,
+                    format!(
+                        "No se puede leer la carpeta registrada de otra instalación de Vantare ({}): {cause}. No se ha cambiado nada",
+                        other.display_name
+                    ),
+                )
+            };
+            let location = self
+                .registry(other.uninstall_key, "InstallLocation")
+                .map_err(|cause| unreadable(&cause))?;
+            let Some(location) = location else {
+                if super::windows::registry_value_exists(
+                    &self.registry_prefix,
+                    other.uninstall_key,
+                    "InstallLocation",
+                ) {
+                    return Err(unreadable(&"el valor no es texto"));
+                }
+                continue;
+            };
+            ensure(
+                !shares_folder(Path::new(&location), root),
+                &format!(
+                    "Esta carpeta es de otra instalación de Vantare ({}). Elige otra carpeta; no se ha cambiado nada",
+                    other.display_name
+                ),
+            )?;
+        }
+        Ok(())
     }
     /// Raíz anterior al Setup GPUI con una instalación o datos dentro. Solo beta
     /// existió entonces: ningún otro producto la adopta.
@@ -270,6 +324,48 @@ pub fn same_path(left: &Path, right: &Path) -> Result<bool> {
     let left: PathBuf = disk::path(left)?.components().collect();
     let right: PathBuf = disk::path(right)?.components().collect();
     super::windows::paths_equal(&left, &right)
+}
+
+/// La misma carpeta, o una dentro de la otra (#2817), aunque se escriba
+/// distinto: `\\?\` delante, mayúsculas, `/`, `.`, `..`, puntos y espacios
+/// finales, enlaces y nombres cortos.
+fn shares_folder(registered: &Path, root: &Path) -> bool {
+    let (Some(left), Some(right)) = (folder_key(registered), folder_key(root)) else {
+        return false;
+    };
+    left == right
+        || left.starts_with(&format!("{right}/"))
+        || right.starts_with(&format!("{left}/"))
+}
+/// Ruta canónica de una carpeta para compararla. Si aún no existe, se resuelve
+/// la parte que existe y se añade el resto. `None` si no es una ruta de unidad
+/// local: no puede ser la raíz, que siempre lo es (`disk::path`).
+fn folder_key(path: &Path) -> Option<String> {
+    let text = path.as_os_str().to_string_lossy();
+    let path = text
+        .strip_prefix(r"\\?\")
+        .filter(|rest| rest.as_bytes().get(1) == Some(&b':'))
+        .map_or(path, Path::new);
+    let absolute = std::path::absolute(path).ok()?;
+    let Some(std::path::Component::Prefix(prefix)) = absolute.components().next() else {
+        return None;
+    };
+    if !matches!(prefix.kind(), std::path::Prefix::Disk(_)) {
+        return None;
+    }
+    let mut missing = Vec::new();
+    let mut existing = absolute.as_path();
+    let mut real = loop {
+        if let Ok(real) = std::fs::canonicalize(existing) {
+            break real;
+        }
+        missing.push(existing.file_name()?);
+        existing = existing.parent()?;
+    };
+    real.extend(missing.into_iter().rev());
+    let text = real.to_string_lossy();
+    let text = text.strip_prefix(r"\\?\").unwrap_or(&text);
+    Some(text.replace('\\', "/").trim_end_matches('/').to_lowercase())
 }
 
 fn overlap(left: &Path, right: &Path) -> Result<bool> {

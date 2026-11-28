@@ -475,6 +475,13 @@ pub fn registry_string(
         },
     )
 }
+/// El valor existe, sea del tipo que sea: `registry_string` devuelve `None`
+/// también para uno que no es texto (#2817).
+pub fn registry_value_exists(prefix: &str, path: &str, name: &str) -> bool {
+    windows_registry::CURRENT_USER
+        .open(registry_path(prefix, path))
+        .is_ok_and(|key| key.get_value(name).is_ok())
+}
 pub fn registry_exists(prefix: &str, path: &str) -> bool {
     windows_registry::CURRENT_USER
         .open(registry_path(prefix, path))

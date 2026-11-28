@@ -710,6 +710,36 @@ instalar, reparar o actualizar sobre una raíz de otro canal; desinstalar una
 raíz de otro canal (un `Uninstall.exe /D=` nightly apuntado a la raíz beta);
 proyectar en Windows un estado de otro canal (se restaura el estado anterior).
 
+**La carpeta registrada de otro producto (#2817).** Si una carpeta es la
+`InstallLocation` de otro producto en el registro, o está dentro de ella o la
+contiene, ningún Setup, desinstalador ni limpieza la usa, ni siquiera vaciada a
+mano o ya borrada: su registro seguiría apuntando a lo que se instalara. Se
+comprueba al elegir la raíz (`Context::resolve_root`), antes de crear nada. El
+usuario ve «Esta carpeta es de otra instalación de Vantare (…). Elige otra
+carpeta; no se ha cambiado nada».
+
+- **Cómo se compara.** Por ruta canónica (`std::fs::canonicalize`: enlaces,
+  nombres cortos y unidades `subst` resueltos), sin distinguir mayúsculas. Si la
+  carpeta aún no existe, se resuelve la parte que existe y se añade el resto.
+  Antes se quitan un `\\?\` delante y la forma de escribirla (`/`, `.`, `..`,
+  puntos y espacios finales). Una ruta que no es de una unidad local (vacía, de
+  red) no puede ser la raíz, que siempre lo es, y no bloquea nada.
+- **La carpeta es tuya si tiene tu `state.json`.** Antes de #2817 nightly podía
+  quedar instalado en la carpeta vaciada de beta, y entonces las dos claves
+  apuntan ahí. Esa carpeta tiene el estado de nightly: nightly repara,
+  actualiza y desinstala como siempre, y beta sigue rechazado sin tocar nada
+  suyo. Su clave vieja se queda en el registro. Recién desinstalada, sin
+  `state.json`, la carpeta sigue siendo suya si su `retained-data.json` se lee y
+  es de su canal: así la limpieza del desinstalador (`schedule_cleanup`) termina.
+- **Fallo cerrado.** Si el registro del otro producto no se puede leer (un valor
+  que no es texto o REG_EXPAND_SZ), el Setup se detiene: «No se puede leer la
+  carpeta registrada de otra instalación de Vantare (…)».
+- **Límite.** Una carpeta registrada que no existe en una unidad `subst` o de
+  red que ya no está montada no se puede resolver: se compara tal como está
+  escrita. Y si el registro del otro producto, estropeado, apunta a la raíz de
+  una unidad (`C:\`), toda esa unidad cuenta como su carpeta y ningún Setup
+  instala en ella hasta que se corrija ese registro.
+
 **Convivencia.** Raíz, registro y accesos distintos; además cada acceso y el
 registro se siguen comprobando por propiedad de la raíz. Los datos viven en la
 generación de cada raíz. Los candados (`beta-session.lock`, `.operation.lock`)

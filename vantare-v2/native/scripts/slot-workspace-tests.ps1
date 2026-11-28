@@ -354,7 +354,122 @@ try {
     finally { $handle.Dispose() }
     # --- fin fallo cerrado ---
 
-    'PASS: sello de contenido, perfiles, dependiente, sin seguimiento, externo, parcial, git, sello ausente, --target, workspace aparte, sello antiguo y fallo cerrado.'
+    # --- #2862: Rune compila en `<ranura>/rune`, con su propio sello ---
+    $runeSlot = Join-Path $base 'rune/slot-0'
+    $runeTarget = Join-Path $runeSlot 'rune'
+
+    function Switch-Rune([string]$Name) {
+        Set-VantareSlotWorkspace -Target $runeSlot -NativeRoot $checkouts[$Name] *>&1 | ForEach-Object { "$_" }
+    }
+
+    # Like the candidate: the separate workspace, with --target, into `rune/`.
+    function Build-Rune {
+        $lines = & cargo build --manifest-path (Join-Path $checkouts['a'] 'w/Cargo.toml') --release --target $triple `
+            --target-dir $runeTarget --locked --offline --message-format=json -q
+        if ($LASTEXITCODE) { throw 'Falló el build de Rune.' }
+        $built = @{}
+        foreach ($line in $lines) {
+            try { $message = $line | ConvertFrom-Json } catch { continue }
+            if ($message.reason -ne 'compiler-artifact') { continue }
+            $built[$message.target.name.Replace('-', '_')] = [pscustomobject]@{ fresh = [bool]$message.fresh
+                output = if ($message.executable) { [string](& $message.executable) } else { '' } }
+        }
+        $built
+    }
+
+    function Assert-Rune($Built, [string]$Expected, [bool]$Fresh, [string]$Case) {
+        $item = $Built['vantare_w']
+        if ($item.output -cne $Expected) { throw "${Case}: Rune dice '$($item.output)'; esperado '$Expected' (artefacto de otro checkout)." }
+        if ($item.fresh -ne $Fresh) { throw "${Case}: Rune fresh=$($item.fresh); esperado $Fresh." }
+    }
+
+    # Same path, new content and an OLD date: without invalidation Cargo reports
+    # `Fresh` and keeps the previous code.
+    function Set-Older([string]$File, [string]$Content) {
+        $path = Join-Path $checkouts['a'] $File
+        [IO.File]::WriteAllText($path, $Content)
+        (Get-Item -LiteralPath $path).LastWriteTimeUtc = [datetime]'2020-01-01Z'
+    }
+    function Set-Library([string]$Value) { Set-Older 'x/src/lib.rs' "pub fn version() -> &'static str { `"$Value`" }" }
+
+    Update-Timestamps 'a'
+    $null = Switch-Rune 'a'
+    if (-not (Test-Path -LiteralPath (Join-Path $runeTarget 'CACHEDIR.TAG'))) { throw 'rune: la cola no preparó la carpeta antes del primer build.' }
+    Assert-Rune (Build-Rune) 'w-a-a' $false 'rune, primer build'
+
+    Set-Library 'a2'
+    $log = Switch-Rune 'a'
+    if (@(Get-ChildItem -LiteralPath (Join-Path $runeTarget "$triple/release/.fingerprint") -Filter 'vantare-x-*' -Force).Count) {
+        throw 'rune, cambia el crate nativo: quedan huellas de vantare-x tras la invalidación.'
+    }
+    if ($log -match 'rune/ contiene artefactos') { throw 'rune: la invalidación avisa de que no cubre rune/.' }
+    Assert-Rune (Build-Rune) 'w-a-a2' $false 'rune, cambia el crate nativo'
+
+    $null = Switch-Rune 'a'
+    Assert-Rune (Build-Rune) 'w-a-a2' $true 'rune, mismo contenido'
+
+    # Only the separate workspace changes: the native path dependency is reused.
+    Set-Older 'w/src/main.rs' "fn main() { println!(`"w-w2-{}`", vantare_x::version()); }"
+    $null = Switch-Rune 'a'
+    if (Test-Path -LiteralPath (Join-Path $runeTarget "$triple/release/vantare-w.exe")) {
+        throw 'rune, solo cambia su workspace: queda el ejecutable de Rune tras la invalidación.'
+    }
+    $built = Build-Rune
+    Assert-Rune $built 'w-w2-a2' $false 'rune, solo cambia su workspace'
+    if (-not $built['vantare_x'].fresh) { throw 'rune, solo cambia su workspace: se recompiló vantare-x sin cambios.' }
+
+    # A queue older than #2862 runs between two uses of this one: it rewrites the
+    # slot stamp with the new content and never touches `rune/`.
+    Set-Library 'a3'
+    $other = Join-Path $base 'rune-old-queue/slot-0'
+    Set-VantareSlotWorkspace -Target $other -NativeRoot $checkouts['a'] | Out-Null
+    Copy-Item -LiteralPath (Join-Path $other '.vantare-workspace') -Destination (Join-Path $runeSlot '.vantare-workspace') -Force
+    $null = Switch-Rune 'a'
+    Assert-Rune (Build-Rune) 'w-w2-a3' $false 'rune, tras una cola antigua'
+
+    # A slot without tag that only holds Rune's folder is still a queue target.
+    $untagged = Join-Path $base 'rune-untagged/slot-0'
+    [IO.Directory]::CreateDirectory((Join-Path $untagged 'rune')) | Out-Null
+    Set-VantareSlotWorkspace -Target $untagged -NativeRoot $checkouts['a'] | Out-Null
+
+    # No link may take the cleanup out of the slot, at any depth it traverses.
+    # Each case plants a link and, outside, artifacts that the cleanup would match.
+    $depths = @('', "$triple", "$triple/release", "$triple/release/.fingerprint")
+    for ($case = 0; $case -lt $depths.Count; $case++) {
+        $slot = Join-Path $base "rune-link-$case/slot-0"
+        $outside = Join-Path $base "rune-link-$case/outside"
+        $link = Join-Path $slot (("rune/" + $depths[$case]).TrimEnd('/'))
+        # The full tree outside, seen through the link from any depth.
+        $tree = Join-Path $outside 'tree'
+        $sentinels = @("$triple/release/.fingerprint/vantare-w-0123456789abcdef/dep", "$triple/release/.fingerprint/vantare-x-0123456789abcdef/dep",
+            "$triple/release/vantare-w.exe", "$triple/release/vantare-x.exe")
+        foreach ($sentinel in $sentinels) {
+            $file = Join-Path $tree $sentinel
+            [IO.Directory]::CreateDirectory((Split-Path $file)) | Out-Null
+            [IO.File]::WriteAllText($file, 'fuera de la ranura')
+        }
+        [IO.File]::WriteAllText((Join-Path $tree 'CACHEDIR.TAG'), 'Signature: 8a477f597d28d172789f06886806bc55')
+        [IO.Directory]::CreateDirectory((Split-Path $link)) | Out-Null
+        # A real `rune/` has its tag: only the link may stop the cleanup.
+        if ($depths[$case]) { Copy-Item -LiteralPath (Join-Path $tree 'CACHEDIR.TAG') -Destination (Join-Path $slot 'rune') }
+        $linkTarget = if ($depths[$case]) { Join-Path $tree $depths[$case] } else { $tree }
+        $null = New-Item -ItemType Junction -Path $link -Target $linkTarget
+        try {
+            Assert-Stops { Set-VantareSlotWorkspace -Target $slot -NativeRoot $checkouts['a'] } "enlace en rune/$($depths[$case])"
+            foreach ($sentinel in $sentinels) {
+                if (-not (Test-Path -LiteralPath (Join-Path $tree $sentinel))) { throw "enlace en rune/$($depths[$case]): se borró $sentinel fuera de la ranura." }
+            }
+            if (Test-Path -LiteralPath (Join-Path $slot '.vantare-workspace')) { throw "enlace en rune/$($depths[$case]): se escribió el sello." }
+        } finally { [IO.Directory]::Delete($link) }
+    }
+
+    $closed = Join-Path $base 'rune-file/slot-0'
+    [IO.Directory]::CreateDirectory($closed) | Out-Null
+    [IO.File]::WriteAllText((Join-Path $closed 'rune'), 'no es una carpeta')
+    Assert-Stops { Set-VantareSlotWorkspace -Target $closed -NativeRoot $checkouts['a'] } 'rune es un fichero'
+    # --- fin #2862 ---
+
+    'PASS: sello de contenido, perfiles, dependiente, sin seguimiento, externo, parcial, git, sello ausente, --target, workspace aparte, sello antiguo, fallo cerrado y carpeta de Rune.'
 } finally {
     if (Test-Path -LiteralPath $base) { Remove-Item -LiteralPath $base -Recurse -Force }
 }

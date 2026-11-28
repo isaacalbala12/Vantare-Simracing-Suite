@@ -70,3 +70,4 @@ Reject-Rune {Assert-NativeDistributionTree (Join-Path $root 'tree')}
 'PASS Rune inventory, lock sources/hash and distribution byte gate'
 
 & (Join-Path $PSScriptRoot 'rune-cargo-home-tests.ps1') -QaRoot $root
+& (Join-Path $PSScriptRoot 'rune-target-tests.ps1') -QaRoot $root

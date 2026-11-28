@@ -622,20 +622,73 @@ cambió se limpian con `cargo clean -p` en todos los perfiles presentes, tanto e
 `<perfil>/` como en `<triple>/<perfil>/` (builds con `--target`, incluido el
 candidato; #2887); si cambia una entrada externa se limpian todos. Los otros
 workspaces de `native/` (`workspaces` en `slot-inputs.json`: Rune y sus pruebas)
-se huellan enteros y, si cambian, se retiran sus fingerprints y ejecutables. La
-limpieza es persistente: un build parcial que no compile un paquete limpiado no
+se huellan enteros y, si cambian, se retiran sus fingerprints y ejecutables.
+
+El candidato compila Rune en `<destino>/rune/` (#2862). Rune usa otro
+`CARGO_HOME`, y en una carpeta compartida cada lado pisaba los paquetes comunes
+del otro y los dos rehacían en cada candidato todo lo que dependía de ellos. La
+cola crea `<ranura>/rune/` antes del primer build y la invalida igual que la raíz,
+pero con **su propio sello** (`rune/.vantare-workspace`): un guion anterior a
+#2862 reescribe el sello de la ranura sin tocar esa carpeta. Su disco cuenta en el
+límite de la ranura. Si `rune/` o alguna carpeta suya hasta
+`<triple>/<perfil>/<carpeta>/` es un enlace, la reserva falla sin limpiar. Un
+comando que compile Rune sin `--target-dir` sigue usando la raíz de la ranura.
+
+Ningún destino explícito puede entrar en una ranura: saltaría su sello y su
+cerrojo. `compilar.ps1` rechaza, antes de pedir turno, un `--target-dir` o
+`-TargetDirectory` dentro de `slot-0`, `slot-1` o `ci`. Solo se admite nombrar la
+carpeta de la ranura que se obtiene y, desde dentro de la reserva, su `rune/`.
+Las carpetas hermanas (`slot-0-qa`) son destinos explícitos normales.
+Tampoco se admite `:` fuera de la unidad: es un flujo de NTFS y
+`slot-1::$INDEX_ALLOCATION\rune` abre `slot-1\rune`. Dentro de una reserva, las
+mismas reglas valen para `CARGO_TARGET_DIR`, que Cargo obedece cuando no hay
+`--target-dir` (`cargo clean`, `cargo +1.99.1 build`).
+`license-generation-rollback.ps1` necesita un destino fuera de las ranuras.
+
+`caller-target-tests.ps1` usa una raíz de targets propia, pero sus casos que
+entran en una reserva toman los cerrojos globales reales de la cola
+(`Global\VantareCargoSlot*`): en un servidor ocupado esperan turno sin plazo (solo
+los rechazos tienen un plazo de 120 s).
+
+Lo que la carpeta de Rune y ese rechazo **no** garantizan:
+
+- Los enlaces dentro de `rune/` solo se revisan al tomar la reserva y hasta
+  `<triple>/<perfil>/<carpeta>`. Más abajo (por ejemplo
+  `build/<paquete>-<hash>/out`) se confía en que `cargo clean` y
+  `Remove-Item -Recurse` de PowerShell 7 no los sigan; es el mismo riesgo que en
+  la raíz de la ranura (#2890).
+- El rechazo compara texto de rutas: una unión fuera que apunte dentro de una
+  ranura pasa. Solo reconoce `--target-dir`, `--target-dir=` y `-TargetDirectory`
+  (no abreviaturas, argumentos posicionales ni un `cargo` que un guion lance
+  directamente dentro de su reserva, con el destino o la `CARGO_TARGET_DIR` que
+  él ponga) y usa la raíz de targets de ese proceso: con otro
+  `VANTARE_TARGET_ROOT`, las ranuras de la máquina no cuentan.
+- `rune/` (unos 1,21 GB tras un candidato) cuenta en el límite de 20 GB de la
+  limpieza automática. En ranuras ya usadas, los restos antiguos de Rune en la
+  raíz siguen ocupando hasta esa limpieza.
+- Cada reserva con cambios añade un `cargo clean` por perfil en `rune/`; si
+  cambia una entrada externa limpia allí todos los miembros nativos (inofensivo).
+- Un checkout sin este cambio avisa de que `rune/` «contiene artefactos que la
+  invalidación no cubre» (inofensivo) y, si construye un candidato, sigue pisando
+  la raíz: el siguiente candidato nuevo rehace una vez lo pisado.
+- La integridad entre checkouts distintos solo está probada con fixtures (la cola
+  antigua se simula copiando su sello, sin ejecutar el guion viejo). El ahorro
+  medido (#2862) es de carpetas nuevas: falta medir un candidato real en una
+  ranura ya usada.
+
+La limpieza es persistente: un build parcial que no compile un paquete limpiado no
 puede dejar un artefacto obsoleto. El sello (`schema` 2; uno anterior obliga a
 limpiar todo una vez) se escribe tras limpiar y antes de compilar, y tras limpiar
 se verifica que no quedan fingerprints del paquete. Si no puede leer una carpeta
 o borrar un artefacto (por ejemplo, un ejecutable en marcha), la reserva falla sin
 escribir el sello. Tampoco detecta fuentes editadas a mano en `CARGO_HOME`
 (`registry/src`, `git/checkouts`). No cubre: targets explícitos
-(mediciones, QA y empaquetado en carpeta propia), carpetas de build anidadas
-dentro de la ranura (se avisa si aparecen en el primer nivel) ni un segundo
-checkout compilado dentro de la misma reserva. `include_inputs.py` recorre los
-`include_*!` y falla si una ruta queda fuera de la lista, o si un workspace no
-está declarado; no sigue `#[path]` ni `fs::read`, y un include dentro de un
-comentario falla a propósito.
+(mediciones, QA y empaquetado en carpeta propia), otras carpetas de build
+anidadas dentro de la ranura (se avisa si aparecen en el primer nivel) ni un
+segundo checkout compilado dentro de la misma reserva. `include_inputs.py`
+recorre los `include_*!` y falla si una ruta queda fuera de la lista, o si un
+workspace no está declarado; no sigue `#[path]` ni `fs::read`, y un include
+dentro de un comentario falla a propósito.
 
 El target `ci` (`VANTARE_CI_TARGET=1`) no usa sello ni invalidación: solo es
 seguro con un `RUNNER_TEMP` nuevo por job (GitHub-hosted). No reutilizar `ci`
@@ -707,7 +760,8 @@ paquete seleccionado que defina la feature: los tests de `ipc` la necesitan y no
 dependen de que otro crate la unifique. `gates.ps1 -ListOnly` imprime los
 argumentos sin compilar.
 Un CARGO_TARGET_DIR ya definido en el entorno se trata como target explícito:
-se valida y reserva con su propio lease, en vez de usar slot-N. Es el caso de packaging.
+se valida (fuera de las ranuras) y reserva con su propio lease, en vez de usar
+slot-N. Es el caso de packaging.
 
 Antes de usar un slot, se limpia si lleva 14 días sin uso o supera 20 GB.
 El tamaño se mide como máximo una vez por hora; entre medidas se usa su sello.

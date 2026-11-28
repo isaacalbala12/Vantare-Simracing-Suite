@@ -34,11 +34,34 @@ if ($env:CARGO_TARGET_DIR -and $args.Count -gt 1 -and
     '--target-dir' -notin $args) {
     $args = Add-VantareTargetArgument -Arguments $args -SubcommandIndex 1 -Target $env:CARGO_TARGET_DIR
 }
-for ($index = 0; $index -lt $args.Count; $index++) {
-    if ($args[$index] -in @('--target-dir', '-TargetDirectory')) {
-        if ($index + 1 -ge $args.Count -or -not (Test-VantareTargetPath $args[$index + 1])) {
-            throw 'El target explícito debe ser absoluto y respetar la raíz configurada.'
+# Every explicit target of a command: `--target-dir X`, `-TargetDirectory X` and
+# the `-TargetDirectory:X` spellings that PowerShell keeps when forwarding.
+function Get-VantareExplicitTargets {
+    param([object[]]$Arguments)
+    for ($index = 0; $index -lt $Arguments.Count; $index++) {
+        $argument = [string]$Arguments[$index]
+        if ($argument -in @('--target-dir', '-TargetDirectory', '-TargetDirectory:')) {
+            if ($index + 1 -lt $Arguments.Count) { [string]$Arguments[$index + 1] } else { '' }
+        } elseif ($argument -like '-TargetDirectory:?*') { $argument.Substring(17) }
+    }
+}
+# No target reaches into a queue slot: it would skip the slot's stamps and lock
+# (#2862). `Allowed` lists the exact paths this call may name.
+function Assert-VantareOutsideSlots {
+    param([string[]]$Targets, [string[]]$Allowed)
+    foreach ($target in $Targets) {
+        if (Test-VantareStreamPath $target) {
+            throw "Destino rechazado: '$target' lleva ':' fuera de la unidad (un flujo de NTFS, que puede abrir otra carpeta)."
         }
+        if (Test-VantareSlotPath -Path $target -Allowed $Allowed) {
+            throw "Destino rechazado: '$target' cae en una ranura de la cola (slot-0, slot-1 o ci). No dirijas --target-dir a una ranura; la cola ya la asigna. Para otro destino usa una carpeta fuera de ellas."
+        }
+    }
+}
+foreach ($target in @(Get-VantareExplicitTargets $args)) {
+    # Drive-relative paths would resolve differently here and in the command.
+    if (-not [IO.Path]::IsPathFullyQualified($target) -or -not (Test-VantareTargetPath $target)) {
+        throw 'El target explícito debe ser absoluto y respetar la raíz configurada.'
     }
 }
 function Invoke-VantareQueuedCommand {
@@ -91,12 +114,23 @@ if ($env:VANTARE_CARGO_QUEUE_OWNER) {
         $ancestor = $process.ParentProcessId
     }
     if ($leased) {
-        if (-not (Test-VantareTargetPath $env:CARGO_TARGET_DIR)) { throw 'Target anidado fuera del volumen configurado.' }
+        if (-not [IO.Path]::IsPathFullyQualified($env:CARGO_TARGET_DIR) -or -not (Test-VantareTargetPath $env:CARGO_TARGET_DIR)) {
+            throw 'Target anidado fuera del volumen configurado.'
+        }
+        # Inside a reservation: its own target and, for the candidate, `rune/` in
+        # it. `CARGO_TARGET_DIR` too: without --target-dir (`cargo clean`,
+        # `cargo +toolchain build`) Cargo writes or deletes there.
+        $own = @(if ($env:VANTARE_SLOT_TARGET) { $env:VANTARE_SLOT_TARGET; Get-VantareRuneTarget $env:VANTARE_SLOT_TARGET })
+        Assert-VantareOutsideSlots -Targets (@(Get-VantareExplicitTargets $args) + $env:CARGO_TARGET_DIR) -Allowed $own
         $cmd, $rest = $args
         Invoke-VantareQueuedCommand -CommandName $cmd -CommandArguments $rest
         exit $script:commandExitCode
     }
 }
+# Before taking any slot. Only a slot folder itself may be named here; the check
+# under the lease still rejects any slot other than the one acquired.
+Assert-VantareOutsideSlots -Targets @(Get-VantareExplicitTargets $args) -Allowed @(
+    @('slot-0', 'slot-1', 'ci') | ForEach-Object { [IO.Path]::Combine((Get-VantareTargetRoot), $_) })
 if (-not $env:SCCACHE_DIR) {
     $cacheDirectory = if ($IsWindows) { [Environment]::GetEnvironmentVariable('SCCACHE_DIR', 'Machine') } else { $null }
     $env:SCCACHE_DIR = $cacheDirectory ?? $(if ($env:RUNNER_ENVIRONMENT -eq 'github-hosted') {
@@ -296,21 +330,19 @@ try {
     if ($queueClass -ne 'direct') { $env:VANTARE_BUILD_JOBS = [string]$buildJobs }
     $cmd, $rest = $args
     # Explicit targets for measurements/distribution stay on the configured volume.
-    for ($index = 0; $index -lt $rest.Count; $index++) {
-        if ($rest[$index] -in @('--target-dir', '-TargetDirectory')) {
-            if ($index + 1 -ge $rest.Count -or -not (Test-VantareTargetPath $rest[$index + 1])) {
-                throw 'El target explícito debe ser absoluto y respetar la raíz configurada.'
-            }
-            $explicitTarget = [IO.Path]::GetFullPath($rest[$index + 1]).ToLowerInvariant()
-            $reserved = @('slot-0', 'slot-1', 'ci') | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $targetRoot $_)) }
-            if ($explicitTarget -iin $reserved -and $explicitTarget -ine $slotTarget) {
-                throw 'No se puede usar explícitamente el target reservado a otro slot o al runner.'
-            }
-            $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($explicitTarget)))
-            if ($targetLease) { throw 'Un solo target explícito por invocación.' }
-            $targetLease = [Threading.Mutex]::new($false, "Global\VantareCargoTarget-$digest")
-            try { $null = $targetLease.WaitOne() } catch [Threading.AbandonedMutexException] { }
+    foreach ($target in @(Get-VantareExplicitTargets $rest)) {
+        if (-not (Test-VantareTargetPath $target)) {
+            throw 'El target explícito debe ser absoluto y respetar la raíz configurada.'
         }
+        $explicitTarget = [IO.Path]::GetFullPath($target).TrimEnd('\', '/').ToLowerInvariant()
+        $reserved = @('slot-0', 'slot-1', 'ci') | ForEach-Object { [IO.Path]::GetFullPath((Join-Path $targetRoot $_)) }
+        if ($explicitTarget -iin $reserved -and $explicitTarget -ine $slotTarget) {
+            throw 'No se puede usar explícitamente el target reservado a otro slot o al runner.'
+        }
+        $digest = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($explicitTarget)))
+        if ($targetLease) { throw 'Un solo target explícito por invocación.' }
+        $targetLease = [Threading.Mutex]::new($false, "Global\VantareCargoTarget-$digest")
+        try { $null = $targetLease.WaitOne() } catch [Threading.AbandonedMutexException] { }
     }
     if ($targetLease) { $env:CARGO_TARGET_DIR = $explicitTarget; $env:VANTARE_SLOT_TARGET = $explicitTarget }
     . (Join-Path $PSScriptRoot 'slot-workspace.ps1')

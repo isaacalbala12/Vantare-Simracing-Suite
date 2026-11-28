@@ -50,6 +50,21 @@ try {
     if (-not $rejected -or -not (Test-Path -LiteralPath $sentinel)) { throw 'No se protegió el enlace.' }
 } finally { Remove-Item -LiteralPath $junction -Force }
 'PASS: limpieza por antigüedad, target ocupado y enlaces protegidos.'
+# #2862: Rune's folder lives inside the slot, so it counts toward the size limit
+# and goes with an expired slot.
+$sizeStamp = Join-Path $target '.vantare-target-size.json'
+$runeFile = Join-Path $target 'rune/release/artifact.bin'
+[IO.Directory]::CreateDirectory((Split-Path $runeFile)) | Out-Null
+[IO.File]::WriteAllBytes($runeFile, [byte[]]::new(1MB))
+[IO.File]::WriteAllText($tag, 'Signature: 8a477f597d28d172789f06886806bc55')
+Remove-Item -LiteralPath $sizeStamp -ErrorAction SilentlyContinue
+[IO.File]::SetLastWriteTimeUtc($stamp, [DateTime]::UtcNow)
+$null = Initialize-VantareSlotTarget -Slot 0 -Root $root
+if ((Get-Content -LiteralPath $sizeStamp -Raw | ConvertFrom-Json).bytes -lt 1MB) { throw 'El tamaño del slot no cuenta rune/.' }
+[IO.File]::SetLastWriteTimeUtc($stamp, [DateTime]::UtcNow.AddDays(-15))
+$null = Initialize-VantareSlotTarget -Slot 0 -Root $root
+if (Test-Path -LiteralPath $runeFile) { throw 'La limpieza del slot dejó artefactos en rune/.' }
+'PASS: rune/ cuenta en el tamaño del slot y se limpia con él.'
 $runnerBefore = $env:RUNNER_ENVIRONMENT
 $temporaryBefore = $env:RUNNER_TEMP
 try {

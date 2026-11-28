@@ -106,10 +106,8 @@ fn close(script: Script, limits: CloseLimits) -> Run {
 }
 
 fn every(step: Duration, until: Duration) -> Vec<Duration> {
-    (1..)
-        .map(|n| step * n)
-        .take_while(|at| *at <= until)
-        .collect()
+    let count = u32::try_from(until.as_nanos() / step.as_nanos()).unwrap();
+    (1..=count).map(|n| step * n).collect()
 }
 
 fn timed_out(closed: &Closed) -> bool {

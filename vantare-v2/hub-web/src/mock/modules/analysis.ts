@@ -211,6 +211,8 @@ export function create({ core, sceneName }: MockContext): MockHandler {
             finished: true,
             attempted: "28800",
             total: "4",
+            lostBlocks: "0",
+            lostTailBlocks: "0",
             sessions: legacy ? [] : structuredClone(sessionRows),
             laps: legacy
               ? laps.map((lap) => ({

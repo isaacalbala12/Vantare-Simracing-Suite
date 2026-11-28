@@ -51,6 +51,13 @@ export const analysisText = {
     ]
       .map(unbroken)
       .join(" "),
+  lost: "Se perdió",
+  // Copy nuevo (issue 2883), pendiente de aprobación de la raíz.
+  lostToLoad: {
+    part: "una parte, el PC iba muy cargado",
+    end: "el final, el PC iba muy cargado",
+    both: "una parte y el final, el PC iba muy cargado",
+  },
   locked: "Abierta por otro programa",
   incompatible: "De otra versión",
   unreadable: "No se puede leer",

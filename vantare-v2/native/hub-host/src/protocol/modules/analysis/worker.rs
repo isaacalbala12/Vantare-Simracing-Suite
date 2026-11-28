@@ -194,7 +194,7 @@ fn execute(
             let result = read(helper, path, *created, job);
             let reply = match result {
                 Ok((_, summary, sessions)) => Reply::AnalysisInspect {
-                    state: if summary.finished {
+                    state: if summary.complete() {
                         AnalysisState::Complete
                     } else {
                         AnalysisState::Unconfirmed
@@ -276,6 +276,8 @@ fn open_reply(
         finished: summary.finished,
         attempted: summary.attempted.to_string(),
         total: summary.total.to_string(),
+        lost_blocks: summary.lost.to_string(),
+        lost_tail_blocks: summary.lost_tail().to_string(),
         laps,
         sessions: metadata::project_sessions(sessions)?,
     };

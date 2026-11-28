@@ -202,6 +202,8 @@ fn full_catalog_and_open_with_256_sessions_and_laps_fit_the_frame() {
         watermark: u64::MAX.to_string(),
         attempted: u64::MAX.to_string(),
         total: u64::MAX.to_string(),
+        lost_blocks: u64::MAX.to_string(),
+        lost_tail_blocks: u64::MAX.to_string(),
         finished: true,
         laps: vec![lap.clone(); 256],
         sessions: (0..256)
@@ -276,6 +278,8 @@ fn full_channel_is_busy_and_late_results_cannot_resurrect_tokens() {
             watermark: "1".into(),
             attempted: "1".into(),
             total: "0".into(),
+            lost_blocks: "0".into(),
+            lost_tail_blocks: "0".into(),
             finished: false,
             laps: vec![],
             sessions: vec![],

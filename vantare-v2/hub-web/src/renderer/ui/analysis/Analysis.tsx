@@ -11,6 +11,7 @@ import {
   recordingZone,
 } from "../../app/analysis-dates";
 import {
+  lostToLoad,
   orderedSessions,
   recordingBestTime,
   savedLaps,
@@ -48,6 +49,9 @@ export function AnalysisRail({
   const latest = orderedSessions(opened?.sessions)[0]?.session;
   // Issue 2871: lo que guardó una grabación sin cierre confirmado.
   const saved = opened && !opened.finished ? savedLaps(opened.laps) : undefined;
+  // Issue 2883: «Completa» solo si se confirmó el final y no se perdió nada.
+  const lost = opened && lostToLoad(opened);
+  const complete = !!opened?.finished && !lost;
   return (
     <>
       {row && opened && (
@@ -61,13 +65,14 @@ export function AnalysisRail({
               [t.size, size(row.sizeBytes)],
               [
                 t.state,
-                <Badge key="state" dot tone={opened.finished ? "ok" : "warn"}>
-                  {opened.finished ? t.complete : t.unconfirmed}
+                <Badge key="state" dot tone={complete ? "ok" : "warn"}>
+                  {complete ? t.complete : t.unconfirmed}
                 </Badge>,
               ],
               ...(saved
                 ? [[t.saved, t.savedUntil(saved.complete, saved.partial)]]
                 : []),
+              ...(lost ? [[t.lost, t.lostToLoad[lost]]] : []),
             ].map(([label, value]) => (
               <div key={String(label)}>
                 <dt>{label}</dt>

@@ -309,6 +309,11 @@ export function analysisScene(context: MockContext, clock = Date.now) {
             ...original.result,
             watermark: incomplete ? "9" : "18446744073709551615",
             finished: !incomplete,
+            // Issue 2883: blocks dropped under load, in the middle and/or at the end.
+            lostBlocks:
+              name === "lost-part" || name === "lost-both" ? "3" : "0",
+            lostTailBlocks:
+              name === "lost-end" || name === "lost-both" ? "2" : "0",
             laps: Array.from({ length: incomplete ? 9 : 14 }, (_, i) => {
               const lap = base[i % base.length];
               return {

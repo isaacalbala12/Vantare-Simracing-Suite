@@ -5,6 +5,7 @@ import { createMockHost } from "../src/mock/host";
 import {
   estimatedLap,
   lapDataKind,
+  lostToLoad,
   savedLaps,
   summarizeLaps,
   validLapTime,
@@ -99,4 +100,13 @@ it("an incomplete recording keeps up to its last sealed lap and names a half one
   // Ninguna sellada: no hay nada que decir.
   expect(savedLaps([lap(0, 1, false)])).toBeUndefined();
   expect(savedLaps([])).toBeUndefined();
+});
+it("names what was lost to load: a part, the end or both (#2883)", () => {
+  const lost = (lostBlocks: string, lostTailBlocks: string) =>
+    lostToLoad({ lostBlocks, lostTailBlocks });
+  expect(lost("0", "0")).toBeUndefined();
+  expect(lost("3", "0")).toBe("part");
+  expect(lost("0", "2")).toBe("end");
+  expect(lost("3", "2")).toBe("both");
+  expect(lost("18446744073709551615", "0")).toBe("part");
 });

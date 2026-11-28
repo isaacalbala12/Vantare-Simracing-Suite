@@ -72,7 +72,13 @@ export function isReply(v: Record<string, unknown>): boolean {
       return (
         exact(v, [...analysisOpenKeys]) &&
         token(v.session) &&
-        [v.watermark, v.attempted, v.total].every(decimal) &&
+        [
+          v.watermark,
+          v.attempted,
+          v.total,
+          v.lostBlocks,
+          v.lostTailBlocks,
+        ].every(decimal) &&
         typeof v.finished === "boolean" &&
         Array.isArray(v.laps) &&
         v.laps.length <= analysisMax &&

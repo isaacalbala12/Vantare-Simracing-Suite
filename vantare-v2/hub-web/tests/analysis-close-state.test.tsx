@@ -39,6 +39,8 @@ const opened = (finished: boolean, laps: AnalysisLap[]): Opened => ({
   finished,
   attempted: "3",
   total: String(laps.length),
+  lostBlocks: "0",
+  lostTailBlocks: "0",
   laps,
   sessions: [],
 });
@@ -94,4 +96,23 @@ it("without a sealed lap the saved row does not appear", () => {
   cleanup();
   rail(opened(false, []));
   expect(saved()).toBeUndefined();
+});
+
+it("a finished recording that lost blocks under load is not complete and says what (#2883)", () => {
+  for (const [lostBlocks, lostTailBlocks, text] of [
+    ["3", "0", "una parte, el PC iba muy cargado"],
+    ["0", "2", "el final, el PC iba muy cargado"],
+    ["3", "2", "una parte y el final, el PC iba muy cargado"],
+  ] as const) {
+    rail({ ...opened(true, [lap(1, 4)]), lostBlocks, lostTailBlocks });
+    expect(screen.getByText("Incompleta")).toBeTruthy();
+    expect(screen.queryByText("Completa")).toBeNull();
+    expect(screen.getByText("Se perdió").closest("div")?.textContent).toBe(
+      `Se perdió${text}`,
+    );
+    cleanup();
+  }
+  rail(opened(true, [lap(1, 4)]));
+  expect(screen.getByText("Completa")).toBeTruthy();
+  expect(screen.queryByText("Se perdió")).toBeNull();
 });

@@ -137,6 +137,26 @@ pub struct Summary {
     pub attempted: u64,
     pub total: u64,
     pub laps: Vec<Lap>,
+    /// Bloques que el Core descartó por carga antes de uno guardado (#2883).
+    pub lost: u64,
+}
+
+impl Summary {
+    /// La cola final que el Core descartó y nunca llegó a la base. Solo se
+    /// sabe con `finished`: entonces `attempted` es el total intentado.
+    pub fn lost_tail(&self) -> u64 {
+        if self.finished {
+            self.attempted.saturating_sub(self.watermark)
+        } else {
+            0
+        }
+    }
+
+    /// «Completa» es verdad solo si storage confirmó el final y no se perdió
+    /// ningún bloque, ni en medio ni al final (#2883).
+    pub fn complete(&self) -> bool {
+        self.finished && self.lost == 0 && self.lost_tail() == 0
+    }
 }
 /// El cursor se conserva en el host, nunca se reconstruye a partir del renderer.
 pub struct Cursor {
@@ -246,6 +266,7 @@ impl Reader {
                 attempted: 0,
                 total: 0,
                 laps: vec![],
+                lost: 0,
             },
         };
         let result = (|| {
@@ -338,9 +359,13 @@ impl Reader {
             if laps.len() > MAX_RECORDINGS {
                 return Err(error(ErrorCode::Limit, "Más de 256 resúmenes"));
             }
+            let lost = frame[4]
+                .as_u64()
+                .ok_or_else(|| invalid("Bloques perdidos inválidos"))?;
             self.unchanged(deadline)?;
             self.summary.total = total;
             self.summary.laps = laps;
+            self.summary.lost = lost;
             Ok(self.summary.clone())
         })();
         self.finish_result(result)

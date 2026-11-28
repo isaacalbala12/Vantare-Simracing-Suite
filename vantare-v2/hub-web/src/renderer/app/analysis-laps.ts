@@ -55,6 +55,19 @@ export function savedLaps(laps: readonly AnalysisLap[]) {
   };
 }
 
+/**
+ * What a recording lost to load (issue 2883): blocks the Core dropped in the
+ * middle, the end that never reached the disk, or both. Nothing lost: none.
+ */
+export function lostToLoad(opened: {
+  lostBlocks: string;
+  lostTailBlocks: string;
+}) {
+  const middle = opened.lostBlocks !== "0";
+  const end = opened.lostTailBlocks !== "0";
+  return middle && end ? "both" : middle ? "part" : end ? "end" : undefined;
+}
+
 export const validLapTime = (lap: AnalysisLap) => lapTime(lap).ms;
 
 // The reply's original position is what lap.session refers to.

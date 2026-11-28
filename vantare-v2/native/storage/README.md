@@ -69,7 +69,9 @@ Protocolo local UTF-8, array JSON por línea, entrada acotada a 32 KiB+128:
   arbitrarios. Leer páginas y consumir con `SeriesAnalysis` (flows) reproduce
   el mismo cálculo que live. Las pérdidas de índice/offset siguen siendo huecos.
 - Solo en modo read-only: `["summaries"]` devuelve
-  `["summaries", "series-summary.v1", total_segmentos, resúmenes]`.
+  `["summaries", "series-summary.v1", total_segmentos, resúmenes, perdidos]`;
+  `perdidos` suma los `lost_before` de los bloques guardados (descartes por
+  cola llena en medio; la cola final es `attempted − watermark`, #2883).
   Recorre páginas de 16 mediante `SeriesAnalysis`, con 255 recientes + una
   activa como máximo; total permite mostrar la retención explícitamente.
   Cada resumen expone identidad completa, `first_chunk`, `next_chunk` (null

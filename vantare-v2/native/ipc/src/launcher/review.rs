@@ -16,9 +16,20 @@ const CONFUSABLE_NOTICE: &str =
 pub enum ReviewError {
     Unavailable,
     TooLong,
-    /// La ruta de un programa se disfraza con letras o signos que imitan a los
-    /// latinos (#2579): no se ofrece «Confiar». El perfil no cambia.
-    Blocked,
+    /// La ruta de un programa no es de fiar (#2579): no se ofrece «Confiar».
+    /// El perfil no cambia.
+    Blocked(BlockedReason),
+}
+
+/// Por qué se bloquea (#2881). Cerrado: el Hub tiene una frase para cada uno.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BlockedReason {
+    /// La ruta lleva un punto o una barra que imitan a los normales, o el
+    /// nombre del archivo tiene una letra marcada como imitación.
+    Lookalike,
+    /// Todo lo demás que bloquea: la ruta no tiene la forma de un programa
+    /// normal de Windows.
+    UnusualPath,
 }
 
 #[derive(Deserialize)]
@@ -119,10 +130,8 @@ impl Step {
         if self.path.is_empty() {
             return Err(ReviewError::Unavailable);
         }
-        if confusables::disguised_path(&self.path) {
-            return Err(ReviewError::Blocked);
-        }
-        Ok(())
+        confusables::blocked_path(&self.path)
+            .map_or(Ok(()), |reason| Err(ReviewError::Blocked(reason)))
     }
 
     fn format(&self, number: usize) -> String {

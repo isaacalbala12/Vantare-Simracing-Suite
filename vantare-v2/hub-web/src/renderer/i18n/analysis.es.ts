@@ -52,7 +52,6 @@ export const analysisText = {
       .map(unbroken)
       .join(" "),
   lost: "Se perdió",
-  // Copy nuevo (issue 2883), pendiente de aprobación de la raíz.
   // Cada tramo entero: solo se parte tras la coma.
   lostToLoad: {
     part: `${unbroken("una parte,")} ${unbroken("el PC iba muy cargado")}`,

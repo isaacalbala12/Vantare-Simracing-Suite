@@ -1,3 +1,4 @@
+import { Menu } from "@base-ui/react/menu";
 import { Tabs } from "@base-ui/react/tabs";
 import {
   createContext,
@@ -98,6 +99,19 @@ export function SectionChrome({
   }, [active, hidden, setActive, setHidden]);
   const visibleTabs = tabs?.filter((tab) => tab.visible) ?? [];
   const tabList = useRef<HTMLDivElement>(null);
+  // Issue 2896: pestañas que no caben enteras; el menú «⋯» las ofrece al ratón.
+  const [clipped, setClipped] = useState<readonly string[]>([]);
+  const chosen = useRef<HTMLElement | null>(null);
+  // The selected tab is revealed when the selection or the row width changes
+  // (menu, keyboard, sidebar rail links, search, window or sidebar resize),
+  // never on a scroll: a scroll is the user (or a click) reaching another tab.
+  const selected = useRef(activeTab);
+  const width = useRef<number>(undefined);
+  useLayoutEffect(() => {
+    selected.current = activeTab;
+    if (activeTab)
+      revealClipped(document.getElementById(sectionTabId(activeTab)));
+  }, [activeTab]);
   useLayoutEffect(() => {
     if (!targets.tabs || !tabs?.length) return;
     const list = tabList.current;
@@ -106,24 +120,43 @@ export function SectionChrome({
     const observedTabs = list.querySelectorAll('[role="tab"]');
     const update = () => {
       const bounds = list.getBoundingClientRect();
+      const next: string[] = [];
       for (const tab of observedTabs) {
         const box = tab.getBoundingClientRect();
-        tab.toggleAttribute(
-          "data-clipped",
-          box.left < bounds.left - 0.25 || box.right > bounds.right + 0.25,
-        );
+        // 1 px of slack: with fractional zoom (90 %, 110 %, Windows 125 %) the
+        // scroll snaps to device pixels and a whole tab can sit ~0.5 px out.
+        const out = box.left < bounds.left - 1 || box.right > bounds.right + 1;
+        tab.toggleAttribute("data-clipped", out);
+        const id = tab.getAttribute("data-tab-id");
+        if (out && id) next.push(id);
       }
+      setClipped((current) =>
+        current.join(" ") === next.join(" ") ? current : next,
+      );
+      return bounds.width;
     };
-    const observer = new ResizeObserver(update);
+    const resize = () => {
+      const current = update();
+      if (current === width.current) return;
+      width.current = current;
+      if (selected.current)
+        revealClipped(document.getElementById(sectionTabId(selected.current)));
+    };
+    const observer = new ResizeObserver(resize);
     observer.observe(list);
     for (const tab of observedTabs) observer.observe(tab);
     list.addEventListener("scroll", update, { passive: true });
-    update();
+    resize();
     return () => {
       observer.disconnect();
       list.removeEventListener("scroll", update);
     };
   }, [targets.tabs, tabs]);
+  const hiddenTabs = visibleTabs.filter((tab) => clipped.includes(tab.id));
+  // «Más pestañas de Ajustes»: el nombre de la pantalla es su título de sección.
+  const moreLabel = title
+    ? shellText.moreSectionTabs(title)
+    : shellText.sectionTabs;
   return (
     <>
       {targets.tabs && visibleTabs.length
@@ -163,6 +196,7 @@ export function SectionChrome({
                       }
                       title={tab.description}
                       value={tab.id}
+                      data-tab-id={tab.id}
                       className="v-section-tab"
                       id={sectionTabId(tab.id)}
                       aria-controls={
@@ -184,6 +218,52 @@ export function SectionChrome({
                   </Fragment>
                 ))}
               </Tabs.List>
+              {/* Fuera de la tablist: una tablist solo contiene pestañas. */}
+              <Menu.Root
+                modal={false}
+                onOpenChange={(open) => {
+                  if (open) chosen.current = null;
+                }}
+              >
+                <Menu.Trigger
+                  className="v-button v-button--ghost v-section-tabs-more"
+                  aria-label={moreLabel}
+                  title={moreLabel}
+                  hidden={!hiddenTabs.length}
+                >
+                  <span aria-hidden="true">{shellText.moreSymbol}</span>
+                </Menu.Trigger>
+                <Menu.Portal>
+                  <Menu.Positioner
+                    className="v-positioner"
+                    align="end"
+                    sideOffset={6}
+                  >
+                    <Menu.Popup
+                      className="v-popup v-section-tabs-menu"
+                      aria-label={moreLabel}
+                      // The chosen tab receives focus, so it scrolls into view.
+                      finalFocus={() => chosen.current ?? true}
+                    >
+                      {hiddenTabs.map((tab) => (
+                        <Menu.Item
+                          key={tab.id}
+                          className="v-option"
+                          disabled={tab.ariaDisabled}
+                          onClick={() => {
+                            chosen.current = document.getElementById(
+                              sectionTabId(tab.id),
+                            );
+                            onTabChange?.(tab.id);
+                          }}
+                        >
+                          {tab.etiqueta}
+                        </Menu.Item>
+                      ))}
+                    </Menu.Popup>
+                  </Menu.Positioner>
+                </Menu.Portal>
+              </Menu.Root>
             </Tabs.Root>,
             targets.tabs,
           )
@@ -191,6 +271,15 @@ export function SectionChrome({
       {targets.rail && rail ? createPortal(rail, targets.rail) : null}
     </>
   );
+}
+/** Scrolls a clipped tab fully into the tab list, without moving the page. */
+function revealClipped(tab: HTMLElement | null) {
+  if (!tab?.hasAttribute("data-clipped")) return;
+  tab.scrollIntoView?.({
+    block: "nearest",
+    inline: "nearest",
+    container: "nearest",
+  } as ScrollIntoViewOptions);
 }
 const sectionTabId = (id: string) =>
   `hub-section-tab-${encodeURIComponent(id)}`;

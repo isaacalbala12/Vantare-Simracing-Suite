@@ -13,8 +13,9 @@ export async function checkFrameParity(page: Page, expanded: boolean) {
         return [...node.querySelectorAll<HTMLElement>('[role="tab"]')].every(
           (tab) => {
             const box = tab.getBoundingClientRect();
+            // Issue 2896: 1 px de margen, como SectionChrome (zoom fraccionario).
             const clipped =
-              box.left < bounds.left - 0.25 || box.right > bounds.right + 0.25;
+              box.left < bounds.left - 1 || box.right > bounds.right + 1;
             return (getComputedStyle(tab).opacity === "0") === clipped;
           },
         );

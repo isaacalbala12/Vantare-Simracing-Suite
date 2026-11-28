@@ -14,6 +14,7 @@ export const CHECKS_PAGINAS = [
   "checkTestingDensity",
   "checkSettingsDensity",
   "checkSettingsHeading",
+  "checkSectionTabs",
   "checkAccountDensity",
   "checkLauncherDensity",
   "checkSidebarProfiles",

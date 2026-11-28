@@ -627,11 +627,14 @@
   background: var(--ob-raw-ffffff);
 }
 
+/* Issue 2854: los botones de ventana ocupan toda la cabecera (sin su línea
+   inferior), como una barra de título alta de Windows; sus símbolos quedan a
+   la altura de «Saltar» y el cierre llega a la esquina. */
 .v-onboarding > .v-window-controls {
   position: absolute;
-  top: 6px;
+  top: 0;
   right: 0;
-  height: 24px;
+  height: calc(68 * var(--ob-unit) - 1px);
 }
 .v-ob-header {
   -webkit-app-region: drag;
@@ -727,11 +730,16 @@
   color: var(--text-3);
   font-size: calc(13.6 * var(--ob-unit));
 }
-/* Keep the existing caption glyph centers at y=18 while leaving the lower
-   header's Skip target clear, as in the native full-window assistant. */
 .v-onboarding > .v-window-controls .v-window-button {
-  height: 24px;
-  min-height: 24px;
+  height: 100%;
+  min-height: 0;
+}
+/* Issue 2854: el asistente recibe el foco al abrirse para que el teclado y el
+   lector de pantalla empiecen dentro; es un contenedor fuera del orden de
+   tabulación (tabindex=-1), así que no dibuja el anillo alrededor de la
+   ventana. Los botones conservan el suyo. */
+.v-onboarding:focus-visible {
+  outline: none;
 }
 
 .v-ob-helmet[data-surprised="true"] .v-ob-eye--second {

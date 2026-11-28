@@ -805,7 +805,9 @@ textarea.v-input:read-only {
   align-self: stretch;
   margin-left: 12px;
   overflow: hidden;
-  -webkit-app-region: no-drag;
+  /* Issue 2854: el hueco libre de la barra arrastra la ventana; las pestañas y los
+     botones siguen siendo no-drag por sus propias reglas. */
+  -webkit-app-region: drag;
 }
 .v-section-tabs,
 .v-section-tab-list {
@@ -1286,9 +1288,23 @@ textarea.v-input:read-only {
 .v-window-button:hover:not(:disabled) {
   background: var(--hover);
 }
-.v-window-button--close:hover:not(:disabled) {
+/* Issue 2854: más específica que .v-button--ghost:hover, que pintaba un gris y
+   dejaba la × blanca casi invisible en claro. */
+.v-window-controls
+  .v-window-button--close:hover:not(:disabled):not([aria-disabled="true"]) {
   color: var(--switch-thumb-on);
   background: var(--window-close-hover);
+}
+
+/* Issue 2854: en la barra de 52 px los botones de ventana ocupan toda la altura;
+   sus símbolos quedan a la altura del título y de las acciones. */
+.v-titlebar > .v-window-controls {
+  align-self: stretch;
+  height: auto;
+}
+.v-titlebar > .v-window-controls .v-window-button {
+  height: 100%;
+  min-height: 0;
 }
 
 /* Frameless chrome must remain draggable, including its static section title. */

@@ -173,7 +173,188 @@ try {
     }
     if (-not $threw) { throw 'Un checkout sin git debe fallar visiblemente.' }
 
-    'PASS: sello de contenido, perfiles, dependiente, sin seguimiento, externo, parcial, git y sello ausente.'
+    # --- #2887: artefactos con --target (el candidato) y workspaces aparte ---
+    # Tres checkouts con los mismos nombres comparten una ranura. `b` y `c` tienen
+    # ficheros MÁS ANTIGUOS que cualquier artefacto: sin invalidar, Cargo los da
+    # por «Fresh» y enlaza código de `a`. `x` no tiene build.rs ni dependencias.
+    $triple = 'x86_64-pc-windows-msvc'
+    $shared = Join-Path $base 'shared/slot-0'
+    $checkouts = @{}
+    foreach ($case in @(@('a', 'a', 'a'), @('b', 'b', 'b'), @('c', 'b', 'c'))) {
+        $name, $library, $separate = $case
+        $checkout = Join-Path $base "checkouts/$name"
+        $directory = Join-Path $checkout 'vantare-v2/native'
+        $checkouts[$name] = $directory
+        foreach ($folder in @('x/src', 'w/src', 'scripts')) {
+            [IO.Directory]::CreateDirectory((Join-Path $directory $folder)) | Out-Null
+        }
+        [IO.File]::WriteAllText((Join-Path $directory 'Cargo.toml'), "[workspace]`nmembers = [`"x`"]`nresolver = `"3`"`n")
+        [IO.File]::WriteAllText((Join-Path $directory 'x/Cargo.toml'),
+            "[package]`nname = 'vantare-x'`nversion = '0.0.0'`nedition = '2024'`n")
+        [IO.File]::WriteAllText((Join-Path $directory 'x/src/lib.rs'), "pub fn version() -> &'static str { `"$library`" }")
+        [IO.File]::WriteAllText((Join-Path $directory 'x/src/main.rs'), 'fn main() { println!("x-{}", vantare_x::version()); }')
+        # Same shape as overlays-rune: its own workspace, path dependency outside it.
+        [IO.File]::WriteAllText((Join-Path $directory 'w/Cargo.toml'),
+            "[workspace]`n[package]`nname = 'vantare-w'`nversion = '0.0.0'`nedition = '2024'`n[dependencies]`nvantare-x = { path = `"../x`" }`n")
+        [IO.File]::WriteAllText((Join-Path $directory 'w/src/main.rs'),
+            "fn main() { println!(`"w-$separate-{}`", vantare_x::version()); }")
+        foreach ($file in @('target-slot.ps1', 'slot-workspace.ps1')) {
+            Copy-Item -LiteralPath (Join-Path $PSScriptRoot $file) -Destination (Join-Path $directory "scripts/$file")
+        }
+        [IO.File]::WriteAllText((Join-Path $directory 'scripts/slot-inputs.json'), (@'
+{
+  "external": [],
+  "rootFiles": ["vantare-v2/native/Cargo.toml", "vantare-v2/native/Cargo.lock"],
+  "externalPackages": [],
+  "workspaces": ["vantare-v2/native/w"]
+}
+'@))
+        foreach ($manifest in @('Cargo.toml', 'w/Cargo.toml')) {
+            & cargo generate-lockfile --manifest-path (Join-Path $directory $manifest) --offline -q
+            if ($LASTEXITCODE) { throw "lockfile $name/$manifest" }
+        }
+        Push-Location $checkout
+        try {
+            & git init -q
+            & git -c user.email=test@example.invalid -c user.name=test add -A
+            & git -c user.email=test@example.invalid -c user.name=test commit -qm initial
+            if ($LASTEXITCODE) { throw "No se pudo preparar el checkout $name." }
+        } finally { Pop-Location }
+    }
+    foreach ($name in @('b', 'c')) {
+        foreach ($file in Get-ChildItem -LiteralPath $checkouts[$name] -Recurse -File) {
+            $file.LastWriteTimeUtc = [datetime]'2020-01-01Z'
+        }
+    }
+    . (Join-Path $checkouts['a'] 'scripts/slot-workspace.ps1')
+
+    function Switch-Shared([string]$Name) { Set-VantareSlotWorkspace -Target $shared -NativeRoot $checkouts[$Name] }
+
+    # Debug and release of the native workspace plus the separate one, all with --target.
+    function Build-Shared([string]$Name) {
+        $directory = $checkouts[$Name]
+        foreach ($build in @(@('Cargo.toml', 'x-debug', @()), @('Cargo.toml', 'x-release', @('--release')),
+                @('w/Cargo.toml', 'w-release', @('--release')))) {
+            $manifest, $label, $extra = $build
+            $lines = & cargo build --manifest-path (Join-Path $directory $manifest) --target $triple `
+                --target-dir $shared --locked --offline --message-format=json -q @extra
+            if ($LASTEXITCODE) { throw "Falló el build $label de $Name." }
+            foreach ($line in $lines) {
+                try { $message = $line | ConvertFrom-Json } catch { continue }
+                if ($message.reason -eq 'compiler-artifact' -and $message.executable) {
+                    [pscustomobject]@{ label = $label; fresh = [bool]$message.fresh; output = [string](& $message.executable) }
+                }
+            }
+        }
+    }
+
+    function Assert-Shared([object[]]$Built, [string]$Label, [string]$Expected, [bool]$Fresh, [string]$Case) {
+        $item = @($Built | Where-Object label -eq $Label)
+        if ($item.Count -ne 1) { throw "${Case}: falta $Label." }
+        if ($item[0].output -cne $Expected) { throw "${Case}: $Label dice '$($item[0].output)'; esperado '$Expected' (artefacto de otro checkout)." }
+        if ($item[0].fresh -ne $Fresh) { throw "${Case}: $Label fresh=$($item[0].fresh); esperado $Fresh." }
+    }
+
+    function Update-Timestamps([string]$Name) {
+        foreach ($file in Get-ChildItem -LiteralPath $checkouts[$Name] -Recurse -File) { $file.LastWriteTimeUtc = [datetime]::UtcNow }
+    }
+
+    Update-Timestamps 'a'
+    Switch-Shared 'a'
+    $built = @(Build-Shared 'a')
+    Assert-Shared $built 'x-release' 'x-a' $false 'primer checkout'
+    Assert-Shared $built 'w-release' 'w-a-a' $false 'primer checkout'
+
+    Switch-Shared 'b'
+    foreach ($leftover in @('debug/vantare-x.exe', 'release/vantare-x.exe', 'release/vantare-w.exe')) {
+        if (Test-Path -LiteralPath (Join-Path $shared "$triple/$leftover")) {
+            throw "otro checkout: queda $triple/$leftover tras la invalidación."
+        }
+    }
+    $built = @(Build-Shared 'b')
+    Assert-Shared $built 'x-debug' 'x-b' $false 'otro checkout'
+    Assert-Shared $built 'x-release' 'x-b' $false 'otro checkout'
+    Assert-Shared $built 'w-release' 'w-b-b' $false 'otro checkout'
+
+    Switch-Shared 'b'
+    $built = @(Build-Shared 'b')
+    Assert-Shared $built 'x-release' 'x-b' $true 'mismo contenido con --target'
+    Assert-Shared $built 'w-release' 'w-b-b' $true 'mismo contenido con --target'
+
+    # Only the separate workspace differs: it is rebuilt, the native one is reused.
+    Switch-Shared 'c'
+    $built = @(Build-Shared 'c')
+    Assert-Shared $built 'x-release' 'x-b' $true 'solo cambia el workspace aparte'
+    Assert-Shared $built 'w-release' 'w-c-b' $false 'solo cambia el workspace aparte'
+
+    # A stamp written by the previous queue claims `b` is clean while the
+    # `--target` artifacts of `a` are still there.
+    Switch-Shared 'b'
+    $legacy = Get-Content -LiteralPath (Join-Path $shared '.vantare-workspace') -Raw | ConvertFrom-Json
+    $legacy.PSObject.Properties.Remove('schema')
+    Update-Timestamps 'a'
+    $built = @(Build-Shared 'a')
+    Assert-Shared $built 'x-release' 'x-a' $false 'preparar sello antiguo'
+    $legacy | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $shared '.vantare-workspace') -Encoding utf8
+    Switch-Shared 'b'
+    $built = @(Build-Shared 'b')
+    Assert-Shared $built 'x-debug' 'x-b' $false 'sello antiguo'
+    Assert-Shared $built 'x-release' 'x-b' $false 'sello antiguo'
+    Assert-Shared $built 'w-release' 'w-b-b' $false 'sello antiguo'
+
+    # --- fallo cerrado (#2887) ---
+    # compilar.ps1 no fija 'Stop': un error de lectura o de borrado debe parar la
+    # limpieza antes de escribir el sello, no quedar en un aviso.
+    function Assert-Stops([scriptblock]$Action, [string]$Case) {
+        $ErrorActionPreference = 'Continue'
+        $stopped = $false
+        try { & $Action 2>$null | Out-Null } catch { $stopped = $true }
+        if (-not $stopped) { throw "fallo cerrado: $Case no detiene la limpieza." }
+    }
+    # A junction whose target is gone: Cargo's folder exists but cannot be listed.
+    function Assert-StopsBroken([string]$Path, [scriptblock]$Action, [string]$Case) {
+        if (Test-Path -LiteralPath $Path) { [IO.Directory]::Delete($Path, $true) }
+        [IO.Directory]::CreateDirectory("$Path.target") | Out-Null
+        $null = New-Item -ItemType Junction -Path $Path -Target "$Path.target"
+        [IO.Directory]::Delete("$Path.target")
+        try { Assert-Stops $Action $Case }
+        finally { [IO.Directory]::Delete($Path) }
+    }
+    function New-ClosedSlot([string]$Name) {
+        $slot = Join-Path $base "closed-$Name/slot-0"
+        foreach ($folder in @('.fingerprint', 'deps')) {
+            [IO.Directory]::CreateDirectory((Join-Path $slot "x86_64-pc-windows-msvc/release/$folder")) | Out-Null
+        }
+        $slot
+    }
+    $package = [pscustomobject]@{ name = 'vantare-w'; binaries = @('vantare-w') }
+
+    $closed = New-ClosedSlot 'root'
+    Assert-StopsBroken $closed { Get-VantareBuildLayouts -Target $closed } 'ranura ilegible'
+
+    $closed = New-ClosedSlot 'triple'
+    Assert-StopsBroken (Join-Path $closed 'x86_64-pc-windows-msvc') {
+        Get-VantareBuildLayouts -Target $closed } 'carpeta de triple ilegible'
+
+    $closed = New-ClosedSlot 'check'
+    $release = Join-Path $closed 'x86_64-pc-windows-msvc/release'
+    $layout = [pscustomobject]@{ triple = 'x86_64-pc-windows-msvc'; profile = 'release'; path = $release; label = 'prueba' }
+    Assert-StopsBroken (Join-Path $release '.fingerprint') {
+        Assert-VantareNoFingerprints -Layouts @($layout) -Names @('vantare-w') } 'comprobación ilegible'
+
+    $closed = New-ClosedSlot 'deps'
+    Assert-StopsBroken (Join-Path $closed 'x86_64-pc-windows-msvc/release/deps') {
+        Remove-VantareForeignArtifacts -Target $closed -Packages @($package) } 'deps ilegible'
+
+    $closed = New-ClosedSlot 'locked'
+    $locked = Join-Path $closed 'x86_64-pc-windows-msvc/release/vantare-w.exe'
+    [IO.File]::WriteAllText($locked, 'en uso')
+    $handle = [IO.File]::Open($locked, 'Open', 'Read', 'None')
+    try { Assert-Stops { Remove-VantareForeignArtifacts -Target $closed -Packages @($package) } 'ejecutable en uso' }
+    finally { $handle.Dispose() }
+    # --- fin fallo cerrado ---
+
+    'PASS: sello de contenido, perfiles, dependiente, sin seguimiento, externo, parcial, git, sello ausente, --target, workspace aparte, sello antiguo y fallo cerrado.'
 } finally {
     if (Test-Path -LiteralPath $base) { Remove-Item -LiteralPath $base -Recurse -Force }
 }

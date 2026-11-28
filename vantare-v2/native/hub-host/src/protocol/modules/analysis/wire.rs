@@ -51,6 +51,12 @@ pub enum Reply {
         finished: bool,
         attempted: String,
         total: String,
+        // Bloques perdidos por carga en medio de la grabación (#2883).
+        #[serde(rename = "lostBlocks")]
+        lost_blocks: String,
+        // Bloques del final perdidos por carga: nunca llegaron a la base.
+        #[serde(rename = "lostTailBlocks")]
+        lost_tail_blocks: String,
         laps: Vec<crate::analysis::catalog::AnalysisLap>,
         sessions: Vec<crate::analysis::catalog::AnalysisSessionSummary>,
     },

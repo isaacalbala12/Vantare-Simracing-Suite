@@ -323,6 +323,8 @@ it("closes a late open token after unmount", async () => {
     watermark: "0",
     attempted: "0",
     total: "0",
+    lostBlocks: "0",
+    lostTailBlocks: "0",
     finished: true,
     laps: [],
     sessions: [],

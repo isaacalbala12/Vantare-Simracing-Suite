@@ -179,6 +179,8 @@ pub(crate) fn corpus() -> serde_json::Value {
             finished: true,
             attempted: u64::MAX.to_string(),
             total: u64::MAX.to_string(),
+            lost_blocks: u64::MAX.to_string(),
+            lost_tail_blocks: u64::MAX.to_string(),
             laps: vec![AnalysisLap {
                 index: 0,
                 lap: 1,
@@ -208,6 +210,8 @@ pub(crate) fn corpus() -> serde_json::Value {
         finished: false,
         attempted: "0".into(),
         total: "0".into(),
+        lost_blocks: "0".into(),
+        lost_tail_blocks: "0".into(),
         laps: vec![],
         sessions: vec![],
     }));

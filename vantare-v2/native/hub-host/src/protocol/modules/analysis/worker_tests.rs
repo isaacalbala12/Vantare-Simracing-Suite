@@ -20,6 +20,19 @@ fn fixture_with_metadata(
     commands: &[serde_json::Value],
     legacy: bool,
 ) -> (PathBuf, Option<(Reader, Cancel)>) {
+    fixture_with_lost_tail(ids, chunks, count, gap, commands, legacy, 0)
+}
+
+/// `tail`: bloques del final que el Core intentó y nunca llegaron (#2883).
+fn fixture_with_lost_tail(
+    ids: &[(u64, u64, u32)],
+    chunks: u32,
+    count: u32,
+    gap: bool,
+    commands: &[serde_json::Value],
+    legacy: bool,
+    tail: usize,
+) -> (PathBuf, Option<(Reader, Cancel)>) {
     let helper = std::env::current_exe()
         .unwrap()
         .parent()
@@ -107,7 +120,7 @@ fn fixture_with_metadata(
     finish_writer(
         &mut writer,
         &mut output,
-        ids.len() * usize::try_from(chunks).unwrap(),
+        ids.len() * usize::try_from(chunks).unwrap() + tail,
     );
     let cancel = Arc::new(AtomicBool::new(false));
     let mut reader = Reader::open(&helper, &db, cancel.clone()).unwrap();
@@ -261,6 +274,61 @@ fn metadata_commands() -> Vec<serde_json::Value> {
         "lapsCompleted":1,"bestLapMs":90_125,"endReason":"sessionChanged"}]),
     );
     commands
+}
+
+#[test]
+fn inspect_and_open_say_incomplete_when_the_end_was_lost_under_load() {
+    // #2883: con `finished` confirmado pero la cola final perdida, ni la lista
+    // ni la grabación abierta dicen «Completa».
+    for (tail, state) in [
+        (0, AnalysisState::Complete),
+        (3, AnalysisState::Unconfirmed),
+    ] {
+        let (root, reader) =
+            fixture_with_lost_tail(&[(1, 3, 7)], 2, 4, false, &[], false, tail);
+        drop(reader);
+        let exe = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("vantare-storage.exe");
+        let path = root.join("recording.duckdb");
+        let created = stamp(&path).unwrap().created;
+        let (mut current, mut cache) = (None, BTreeMap::new());
+        let mut request = job(0, 0);
+        request.operation = Operation::Inspect {
+            id: "id".into(),
+            path: path.clone(),
+            created,
+        };
+        let Reply::AnalysisInspect { state: found, .. } =
+            execute(&exe, &request, &mut current, &mut cache).unwrap()
+        else {
+            panic!("inspect")
+        };
+        assert_eq!(found, state, "cola perdida: {tail}");
+        request.operation = Operation::Open {
+            path,
+            created,
+            token: "token".into(),
+        };
+        let Reply::AnalysisOpen {
+            finished,
+            lost_blocks,
+            lost_tail_blocks,
+            ..
+        } = execute(&exe, &request, &mut current, &mut cache).unwrap()
+        else {
+            panic!("open")
+        };
+        assert!(finished);
+        assert_eq!(
+            (lost_blocks.as_str(), lost_tail_blocks),
+            ("0", tail.to_string())
+        );
+    }
 }
 
 #[test]

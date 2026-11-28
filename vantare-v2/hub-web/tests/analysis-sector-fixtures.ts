@@ -60,6 +60,8 @@ export function stateOf(
       finished: true,
       attempted: "1",
       total: String(laps.length),
+      lostBlocks: "0",
+      lostTailBlocks: "0",
       laps,
       sessions,
     },

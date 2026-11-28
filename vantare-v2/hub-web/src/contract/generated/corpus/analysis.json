@@ -67,6 +67,8 @@
             }
           }
         ],
+        "lostBlocks": "18446744073709551615",
+        "lostTailBlocks": "18446744073709551615",
         "method": "analysis.open",
         "session": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "sessions": [
@@ -113,6 +115,8 @@
         "attempted": "0",
         "finished": false,
         "laps": [],
+        "lostBlocks": "0",
+        "lostTailBlocks": "0",
         "method": "analysis.open",
         "session": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
         "sessions": [],

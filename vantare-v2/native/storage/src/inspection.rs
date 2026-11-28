@@ -50,12 +50,16 @@ pub(super) fn summaries(store: &Store) -> Result<Value> {
     let mut analysis = SeriesAnalysis::new(255)?;
     let mut after = 0;
     let mut total = 0_u64;
+    // #2883: bloques que el Core descartó (cola llena) antes de uno guardado.
+    // La cola final descartada no está aquí: es `attempted − watermark`.
+    let mut lost = 0_u64;
     loop {
         let chunks = store.page(after, MAX_PAGE_CHUNKS)?;
         if chunks.is_empty() {
             break;
         }
         for chunk in chunks {
+            lost = lost.saturating_add(chunk.lost_before);
             analysis.consume(&chunk)?;
             if analysis
                 .find_lap((&chunk.block).into())
@@ -78,7 +82,7 @@ pub(super) fn summaries(store: &Store) -> Result<Value> {
             value
         })
         .collect();
-    Ok(json!(["summaries", ANALYSIS_VERSION, total, values]))
+    Ok(json!(["summaries", ANALYSIS_VERSION, total, values, lost]))
 }
 
 pub(super) fn page(store: &Store, after: u64, limit: usize) -> Result<Value> {

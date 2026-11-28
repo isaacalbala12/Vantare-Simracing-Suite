@@ -85,6 +85,29 @@ describe("analysis contract", () => {
       }),
     ).toBe(false);
   });
+  it("requires decimal lost block counts in an opened recording (#2883)", () => {
+    const opened = {
+      method: "analysis.open",
+      session: "a".repeat(64),
+      watermark: "1",
+      attempted: "1",
+      total: "0",
+      lostBlocks: "0",
+      lostTailBlocks: "0",
+      finished: true,
+      laps: [],
+      sessions: [],
+    };
+    expect(isReply(opened)).toBe(true);
+    for (const bad of [
+      { lostBlocks: 1 },
+      { lostTailBlocks: "-1" },
+      { lostBlocks: undefined },
+    ])
+      expect(isReply({ ...opened, ...bad })).toBe(false);
+    const { lostTailBlocks: _, ...missing } = opened;
+    expect(isReply(missing)).toBe(false);
+  });
   it("requires a boolean recording flag independently of numeric validation", () => {
     const row = {
       id: "a".repeat(64),

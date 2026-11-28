@@ -209,6 +209,72 @@ mod real {
         drop(child.stdin.take());
         assert!(child.wait().unwrap().success());
     }
+    /// #2883: bloque 1, `lost` bloques descartados en medio, el bloque
+    /// siguiente con `lost_before`, y `finish` con `tail` bloques más
+    /// intentados que nunca llegaron (la cola final descartada).
+    fn lossy(db: &Path, lost: u64, tail: u64) {
+        let mut child = writer(db);
+        let mut out = BufReader::new(child.stdout.take().unwrap());
+        let mut line = String::new();
+        out.read_line(&mut line).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "ready");
+        let second = 2 + lost;
+        for (index, lost_before, offset) in [(1, 0, 0), (second, lost, 1 + lost)] {
+            let elapsed = f64::from(u32::try_from(offset).unwrap());
+            let sample = json!([
+                index,
+                [1, elapsed],
+                [1, elapsed],
+                [1, 50.0],
+                [2, 0.5],
+                [0, null]
+            ]);
+            let chunk = json!([
+                "vantare.series-chunk.v1",
+                index,
+                lost_before,
+                offset,
+                ["vantare.player-lap.v1", 1, 3, 7, 5, null, false, [sample]]
+            ]);
+            writeln!(
+                child.stdin.as_mut().unwrap(),
+                "{}",
+                json!(["append", chunk])
+            )
+            .unwrap();
+            line.clear();
+            out.read_line(&mut line).unwrap();
+            assert_eq!(
+                serde_json::from_str::<Value>(&line).unwrap()[0],
+                "ack",
+                "{line}"
+            );
+        }
+        writeln!(
+            child.stdin.as_mut().unwrap(),
+            "{}",
+            json!(["finish", second + tail])
+        )
+        .unwrap();
+        line.clear();
+        out.read_line(&mut line).unwrap();
+        assert_eq!(serde_json::from_str::<Value>(&line).unwrap()[0], "finished");
+        drop(child.stdin.take());
+        assert!(child.wait().unwrap().success());
+    }
+    #[test]
+    fn a_recording_that_lost_blocks_under_load_is_never_complete() {
+        // (perdidos en medio, cola final perdida) -> lo que dice el resumen.
+        for (lost, tail) in [(0, 0), (2, 0), (0, 3), (2, 3)] {
+            let dir = Directory::new();
+            lossy(&dir.db(), lost, tail);
+            let mut reader = Reader::open(&exe(), &dir.db(), cancel()).unwrap();
+            let summary = reader.summaries().unwrap();
+            assert!(summary.finished);
+            assert_eq!((summary.lost, summary.lost_tail()), (lost, tail));
+            assert_eq!(summary.complete(), lost == 0 && tail == 0, "{lost} {tail}");
+        }
+    }
     #[test]
     fn opens_summarizes_and_reads_bounded_pages_with_null_quality() {
         let dir = Directory::new();
@@ -869,3 +935,22 @@ mod real {
 #[cfg(windows)]
 #[path = "session_tests.rs"]
 mod session_tests;
+
+#[test]
+fn complete_needs_finished_and_no_lost_block_in_the_middle_or_at_the_end() {
+    let summary = |finished, attempted, lost| Summary {
+        watermark: 10,
+        finished,
+        attempted,
+        total: 1,
+        laps: vec![],
+        lost,
+    };
+    assert!(summary(true, 10, 0).complete());
+    // La cola final solo se conoce con `finished`.
+    assert_eq!(summary(true, 13, 0).lost_tail(), 3);
+    assert!(!summary(true, 13, 0).complete());
+    assert!(!summary(true, 10, 2).complete());
+    assert_eq!(summary(false, 0, 0).lost_tail(), 0);
+    assert!(!summary(false, 0, 0).complete());
+}

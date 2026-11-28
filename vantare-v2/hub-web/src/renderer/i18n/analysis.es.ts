@@ -51,6 +51,14 @@ export const analysisText = {
     ]
       .map(unbroken)
       .join(" "),
+  lost: "Se perdió",
+  // Copy nuevo (issue 2883), pendiente de aprobación de la raíz.
+  // Cada tramo entero: solo se parte tras la coma.
+  lostToLoad: {
+    part: `${unbroken("una parte,")} ${unbroken("el PC iba muy cargado")}`,
+    end: `${unbroken("el final,")} ${unbroken("el PC iba muy cargado")}`,
+    both: `${unbroken("una parte y el final,")} ${unbroken("el PC iba muy cargado")}`,
+  },
   locked: "Abierta por otro programa",
   incompatible: "De otra versión",
   unreadable: "No se puede leer",

@@ -91,6 +91,11 @@ fn historical_replay_preserves_loss_and_rejects_unknown_database_versions() {
         value.block.sealed_at = Some(5);
         store.append(&value).unwrap();
     }
+    // #2883: `summaries` cuenta los bloques descartados en medio (2 antes del 4).
+    assert_eq!(
+        inspection::summaries(&Store::open(&db.0, true).unwrap()).unwrap()[4],
+        2
+    );
     {
         let store = Store::open(&db.0, true).unwrap();
         let mut replay = SeriesAnalysis::new(1).unwrap();
@@ -161,6 +166,7 @@ fn hub_inspection_uses_canonical_summary_and_read_only_pages() {
         .collect();
     assert_eq!(frames[1][0], "summaries");
     assert_eq!(frames[1][2], 1);
+    assert_eq!(frames[1][4], 0, "sin bloques perdidos");
     assert_eq!(frames[1][3][0]["speed"]["mean"], 50.0);
     assert_eq!(frames[1][3][0]["throttle"]["estimated"], 1);
     assert_eq!(frames[1][3][0]["sealed"], true);

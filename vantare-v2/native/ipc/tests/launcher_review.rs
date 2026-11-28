@@ -1,5 +1,5 @@
 use vantare_ipc::launcher::review::{
-    ReviewError, authorization_current, can_trust, frame_pages, review_pages,
+    BlockedReason, ReviewError, authorization_current, can_trust, frame_pages, review_pages,
 };
 
 #[test]
@@ -378,11 +378,11 @@ fn a_whole_lookalike_name_in_a_latin_path_is_marked() {
     }
 }
 
-fn assert_blocked(path: &str) {
+fn assert_blocked(path: &str, reason: BlockedReason) {
     let input = input_with_path(path);
     assert_eq!(
         review_pages(&input.to_string()),
-        Err(ReviewError::Blocked),
+        Err(ReviewError::Blocked(reason)),
         "{path}"
     );
 }
@@ -390,7 +390,8 @@ fn assert_blocked(path: &str) {
 #[test]
 fn a_program_extension_that_is_not_ascii_blocks_the_review() {
     // Regla de la raíz: extensión del último segmento con algo que no es ASCII
-    // alfanumérico. Casos medidos por el revisor, con y sin letras propias.
+    // alfanumérico. Casos medidos por el revisor, con y sin letras propias. El
+    // motivo (#2881) es el mismo con carpetas latinas y con carpetas en ruso.
     let games = "\u{418}\u{433}\u{440}\u{44b}";
     let exe = "\u{435}\u{445}\u{435}";
     for name in [
@@ -407,15 +408,27 @@ fn a_program_extension_that_is_not_ascii_blocks_the_review() {
         format!("steam.{exe}\u{3000}"),
         format!("steam.{exe}\u{a0}"),
         format!("steam.{exe} ."),
-        "steam.exe\u{200b}".into(),
-        "steam.ex e".into(),
-        ".\u{435}\u{445}\u{435}".into(),
-        "game.caf\u{e9}".into(),
-        "\u{438}\u{433}\u{440}\u{44b}.\u{440}\u{444}".into(),
     ] {
-        assert_blocked(&format!("C:\\Games\\{name}"));
-        assert_blocked(&format!("C:/{games}/{name}"));
+        for path in [format!("C:\\Games\\{name}"), format!("C:/{games}/{name}")] {
+            assert_blocked(&path, BlockedReason::Lookalike);
+        }
     }
+    // Extensiones raras sin ninguna letra que imite: no se acusa de disfraz.
+    for name in [
+        "steam.exe\u{200b}",
+        "steam.ex e",
+        "game.caf\u{e9}",
+        "\u{438}\u{433}\u{440}\u{44b}.\u{440}\u{444}",
+        "app.appref-ms",
+    ] {
+        for path in [format!("C:\\Games\\{name}"), format!("C:/{games}/{name}")] {
+            assert_blocked(&path, BlockedReason::UnusualPath);
+        }
+    }
+    // «.ехе» sin nombre: dentro de una ruta latina imita; entre carpetas en ruso
+    // y sin nada latino en el nombre, solo tiene una forma rara.
+    assert_blocked(&format!("C:\\Games\\.{exe}"), BlockedReason::Lookalike);
+    assert_blocked(&format!("C:/{games}/.{exe}"), BlockedReason::UnusualPath);
     // Sin falsos bloqueos: extensión ASCII, carpetas no ASCII o con punto y punto
     // inicial.
     for path in [
@@ -441,7 +454,10 @@ fn a_program_without_an_ascii_extension_blocks_the_review() {
     for dot in [
         '\u{b7}', '\u{387}', '\u{2027}', '\u{22c5}', '\u{ff61}', '\u{3002}', '\u{30fb}', '\u{323}',
     ] {
-        assert_blocked(&format!("C:\\Program Files (x86)\\Steam\\steam{dot}exe"));
+        assert_blocked(
+            &format!("C:\\Program Files (x86)\\Steam\\steam{dot}exe"),
+            BlockedReason::UnusualPath,
+        );
     }
     for path in [
         "C:\\Games\\steam".to_owned(),
@@ -457,7 +473,7 @@ fn a_program_without_an_ascii_extension_blocks_the_review() {
         "\\\\server\\share".into(),
         "\\\\server\\share\\".into(),
     ] {
-        assert_blocked(&path);
+        assert_blocked(&path, BlockedReason::UnusualPath);
     }
     // Un nombre con «・» y extensión ASCII, y la unidad sin barra, pasan.
     for path in [
@@ -540,19 +556,65 @@ fn a_disguised_program_path_blocks_the_review() {
         blocked.push(format!("C:\\Games{sign}steam.exe"));
     }
     for path in &blocked {
-        let input = input_with_path(path);
-        assert_eq!(
-            review_pages(&input.to_string()),
-            Err(ReviewError::Blocked),
-            "{path}"
-        );
+        assert_blocked(path, BlockedReason::Lookalike);
         // En otro paso que no sea el primero, también.
         let mut later = corto();
         later["steps"][2]["path"] = path.as_str().into();
         assert_eq!(
             review_pages(&later.to_string()),
-            Err(ReviewError::Blocked),
+            Err(ReviewError::Blocked(BlockedReason::Lookalike)),
             "{path}"
+        );
+    }
+}
+
+#[test]
+fn only_a_lookalike_sign_or_a_letter_in_the_file_name_means_lookalike() {
+    // #2881: el motivo no cambia qué se bloquea. Aquí todo se bloquea.
+    let games = "\u{418}\u{433}\u{440}\u{44b}";
+    let acc = "\u{410}\u{421}\u{421}";
+    let exe = "\u{435}\u{445}\u{435}";
+    let ivan = "\u{418}\u{432}\u{430}\u{43d}";
+    for path in [
+        // Un punto o una barra que imitan, en cualquier parte de la ruta.
+        "C:\\Games\u{2215}steam".to_owned(),
+        "C:\\\u{2024}\\steam.exe".into(),
+        // Una letra del nombre que solo se delata dentro de su ruta…
+        format!("C:\\Games\\{acc}"),
+        // …o solo mirando el nombre, porque la carpeta está en ruso.
+        format!("C:\\Users\\{ivan}\\steam.{exe}"),
+    ] {
+        assert_blocked(&path, BlockedReason::Lookalike);
+    }
+    for path in [
+        // La letra imita, pero está en una carpeta y no en el nombre.
+        "C:\\\u{420}rogram\\app.appref-ms".to_owned(),
+        format!("C:\\Games\\{acc}\\steam"),
+        // Un guion que imita no es un punto, una barra ni una letra.
+        "C:\\Games\\obs\u{2010}studio".into(),
+        // Nombres escritos en su alfabeto: no imitan a nadie.
+        format!("C:\\{games}\\{games}"),
+        "C:\\Games\\\u{43d}\u{430}\u{441}\u{442}\u{440}\u{43e}\u{439}\u{43a}\u{438}.\u{43a}\u{43e}\u{43d}\u{444}".into(),
+        "C:\\Games\\\u{421}\u{435}\u{437}\u{43e}\u{43d} 1.\u{42d}\u{442}\u{430}\u{43f} 2".into(),
+    ] {
+        assert_blocked(&path, BlockedReason::UnusualPath);
+    }
+}
+
+#[test]
+fn the_first_failing_step_decides_the_reason() {
+    let unusual = "C:\\Games\\app.appref-ms";
+    let lookalike = "C:\\Games\\steam\u{2024}exe";
+    for (first, later, reason) in [
+        (unusual, lookalike, BlockedReason::UnusualPath),
+        (lookalike, unusual, BlockedReason::Lookalike),
+    ] {
+        let mut input = input_with_path(first);
+        input["steps"][2]["path"] = later.into();
+        assert_eq!(
+            review_pages(&input.to_string()),
+            Err(ReviewError::Blocked(reason)),
+            "{first}"
         );
     }
 }
@@ -662,7 +724,7 @@ fn hostile_text_does_not_panic() {
         let message = input_with_path(&path).to_string();
         let result = review_pages(&message);
         assert!(
-            result.is_ok() || matches!(result, Err(ReviewError::TooLong | ReviewError::Blocked)),
+            result.is_ok() || matches!(result, Err(ReviewError::TooLong | ReviewError::Blocked(_))),
             "{result:?}"
         );
     }
@@ -679,21 +741,20 @@ fn a_program_path_that_windows_would_trim_is_blocked() {
         format!("C:\\{games}\\steam.{exe}."),
         format!("C:\\{games}\\steam.{exe}::$DATA"),
         format!("C:\\Games\\steam.{exe} "),
-        "C:\\Games\\steam.exe ".to_owned(),
-        "C:\\Games\\steam.exe.".into(),
-        "C:\\Games\\steam.exe\u{a0}".into(),
-        // Sin extensión, solo B1 los para: NBSP y U+3000 son blancos también.
-        "C:\\Games\\steam\u{a0}".into(),
-        "C:\\Games\\steam\u{3000}".into(),
-        "C:\\Games\\steam.exe:stream".into(),
-        "\\\\?\\C:\\Games\\steam.exe::$DATA".into(),
     ] {
-        let input = input_with_path(&path);
-        assert_eq!(
-            review_pages(&input.to_string()),
-            Err(ReviewError::Blocked),
-            "{path}"
-        );
+        assert_blocked(&path, BlockedReason::Lookalike);
+    }
+    for path in [
+        "C:\\Games\\steam.exe ",
+        "C:\\Games\\steam.exe.",
+        "C:\\Games\\steam.exe\u{a0}",
+        // Sin extensión, solo B1 los para: NBSP y U+3000 son blancos también.
+        "C:\\Games\\steam\u{a0}",
+        "C:\\Games\\steam\u{3000}",
+        "C:\\Games\\steam.exe:stream",
+        "\\\\?\\C:\\Games\\steam.exe::$DATA",
+    ] {
+        assert_blocked(path, BlockedReason::UnusualPath);
     }
     // Unidad normal, ruta larga de Windows y ruta relativa: siguen limpias.
     for path in [

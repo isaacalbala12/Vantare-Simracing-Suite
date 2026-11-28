@@ -431,6 +431,33 @@ fn ready_confirms_only_after_a_compatible_hello() {
 }
 
 #[test]
+fn a_v72_ui_is_refused_when_it_says_hello() {
+    // #2881: a v72 UI does not know the blocked review reasons, so it must never
+    // reach a reply that carries one.
+    let root = Root::new();
+    let (mut server, mut client, _listener) = connected();
+    let mut session = confirming_session(&root.path, "0123456789abcdef0123456789abcdef");
+    let refused = session.receive(&mut server, &UiToHost::Hello { version: 72 });
+    assert!(matches!(refused, Err(error) if error.kind() == io::ErrorKind::InvalidData));
+    let mut reader = frame::Reader::default();
+    let answer = loop {
+        if let Some(value) = reader.next::<HostToUi>(&mut client).expect("answer") {
+            break value;
+        }
+    };
+    assert!(matches!(
+        answer,
+        HostToUi::Failure {
+            id: 0,
+            error: HostError::Incompatible {
+                expected: protocol::VERSION,
+                found: 72
+            }
+        }
+    ));
+}
+
+#[test]
 fn owner_already_in_a_job_can_spawn_a_nested_ui_job() {
     let root = Root::new();
     let done = Signal::new().expect("stop");

@@ -1,4 +1,5 @@
 import {
+  type ResidentReview,
   residentActionLabels,
   residentActions,
   residentAnswerRejections,
@@ -23,11 +24,24 @@ import { isReply as isShortcutsReply } from "./shortcuts";
 
 export { launcher_residentMethods as methods } from "../generated/launcher_resident";
 
+// Cerrado: los valores que emite el anfitrión y ninguno más. El tipo obliga a
+// tocar esta lista si Rust añade uno.
+const residentReviews: Record<ResidentReview, true> = {
+  available: true,
+  unavailable: true,
+  "too-long": true,
+  "blocked-lookalike": true,
+  "blocked-unusual-path": true,
+};
+export function isResidentReview(value: unknown): value is ResidentReview {
+  return typeof value === "string" && Object.hasOwn(residentReviews, value);
+}
+
 function question(value: unknown): boolean {
   return (
     record(value) &&
     exact(value, ["id", "kind", "actions", "review"]) &&
-    oneOf(value.review, ["available", "unavailable", "too-long"]) &&
+    isResidentReview(value.review) &&
     typeof value.id === "string" &&
     value.id.length <= residentIdLimit &&
     new RegExp(residentIdPattern).test(value.id) &&

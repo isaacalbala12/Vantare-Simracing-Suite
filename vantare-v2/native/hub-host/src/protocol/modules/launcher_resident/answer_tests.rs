@@ -609,36 +609,50 @@ fn a_too_long_question_cannot_issue_a_ticket() {
     );
 }
 
+fn path_message(path: &str) -> String {
+    let mut message: serde_json::Value =
+        serde_json::from_str(&review_message("--private")).unwrap();
+    message["steps"][0]["path"] = path.into();
+    message.to_string()
+}
+
 #[test]
 fn a_disguised_program_path_cannot_be_trusted_or_issue_a_ticket() {
     // #2579: extensión que parece latina («.ехе» cirílica) o punto que imita «.».
+    // #2881: el motivo viaja como una de dos cadenas cerradas, sin la ruta.
     use super::super::{ResidentReview, State, review::Review};
-    for path in [
-        "QA/private.\u{435}\u{445}\u{435}",
-        "QA/private\u{2024}exe",
-        "QA/private.exe::$DATA",
-        "QA/private.\u{435}\u{445}\u{435} ",
-        "QA/private.\u{a4f0}\u{a4eb}\u{a4f0}",
-        "QA/private.exe\u{200b}",
-        "QA/private\u{b7}exe",
-        "QA/private",
+    let lookalike = (ResidentReview::BlockedLookalike, "blocked-lookalike");
+    let unusual = (ResidentReview::BlockedUnusualPath, "blocked-unusual-path");
+    for (path, (reason, wire)) in [
+        ("QA/private.\u{435}\u{445}\u{435}", lookalike),
+        ("QA/private\u{2024}exe", lookalike),
+        ("QA/private.exe::$DATA", unusual),
+        ("QA/private.\u{435}\u{445}\u{435} ", lookalike),
+        ("QA/private.\u{a4f0}\u{a4eb}\u{a4f0}", lookalike),
+        ("QA/private.exe\u{200b}", unusual),
+        ("QA/private\u{b7}exe", unusual),
+        ("QA/private.appref-ms", unusual),
+        ("QA/private", unusual),
     ] {
         let (mut f, allowed, target) = review_fixture();
-        let mut message: serde_json::Value =
-            serde_json::from_str(&review_message("--private")).unwrap();
-        message["steps"][0]["path"] = path.into();
-        f.status.decision.as_mut().unwrap().message = message.to_string();
+        f.status.decision.as_mut().unwrap().message = path_message(path);
         f.save();
         let mut state = State::new(f.path.clone());
-        assert_eq!(
-            state
-                .view_for_account(Some(&allowed))
-                .decision
-                .unwrap()
-                .review,
-            ResidentReview::Unavailable,
-            "{path}"
-        );
+        let view = state.view_for_account(Some(&allowed));
+        assert_eq!(view.decision.as_ref().unwrap().review, reason, "{path}");
+        let json = serde_json::to_value(&view).unwrap();
+        assert_eq!(json["decision"]["review"], wire, "{path}");
+        assert!(!json.to_string().contains("QA/private"), "{path}");
+        // Sin cuenta o sin permiso no se mira la ruta: sigue «no disponible».
+        let mut denied = allowed.clone();
+        denied.policy.state = AccessState::Revoked;
+        for account in [None, Some(&denied)] {
+            assert_eq!(
+                state.view_for_account(account).decision.unwrap().review,
+                ResidentReview::Unavailable,
+                "{path}"
+            );
+        }
         assert_eq!(
             checked_review(&f.path, Some(&allowed), &target).err(),
             Some(rejected(AnswerRejection::Unavailable)),
@@ -648,6 +662,37 @@ fn a_disguised_program_path_cannot_be_trusted_or_issue_a_ticket() {
             Review::default()
                 .open(&f.path, Some(&allowed), &target)
                 .is_err()
+        );
+        assert!(!native::request_path(&f.path).exists(), "{path}");
+    }
+}
+
+#[test]
+fn a_ticket_cannot_trust_a_question_that_became_blocked() {
+    use super::super::{ReviewChoice, ReviewDecision, ReviewFailure, review::Review};
+    use std::time::Instant;
+    for path in ["QA/private\u{2024}exe", "QA/private.appref-ms"] {
+        let (mut f, allowed, target) = review_fixture();
+        let mut review = Review::default();
+        let now = Instant::now();
+        let ticket = review
+            .open(&f.path, Some(&allowed), &target)
+            .unwrap()
+            .ticket;
+        review
+            .content(&f.path, Some(&allowed), &ticket, now)
+            .unwrap();
+        f.status.decision.as_mut().unwrap().message = path_message(path);
+        f.save();
+        let trust = ReviewDecision {
+            ticket,
+            decision: ReviewChoice::Trust,
+            issued_ms: Some(1_000),
+        };
+        assert_eq!(
+            review.decide(&f.path, Some(&allowed), &trust, now, Some(1_000)),
+            Err(ReviewFailure::Unavailable),
+            "{path}"
         );
         assert!(!native::request_path(&f.path).exists(), "{path}");
     }

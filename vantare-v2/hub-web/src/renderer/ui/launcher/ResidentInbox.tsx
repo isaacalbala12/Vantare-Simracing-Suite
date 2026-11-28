@@ -101,7 +101,10 @@ export function ResidentInbox({
       reviewState === undefined ||
       reviewState === "question" ||
       reviewState === "reviewing" ||
-      reviewState === "too-long"
+      reviewState === "too-long" ||
+      // Sin botón «Revisar» que enfocar, como en «too-long».
+      reviewState === "blocked-lookalike" ||
+      reviewState === "blocked-unusual-path"
     )
       return;
     if (!open) reopen.current?.focus();

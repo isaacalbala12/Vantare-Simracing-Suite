@@ -22,6 +22,9 @@ pub enum ResidentReview {
     #[default]
     Unavailable,
     TooLong,
+    /// #2881: bloqueado a propósito; el motivo viaja cerrado y nunca la ruta.
+    BlockedLookalike,
+    BlockedUnusualPath,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

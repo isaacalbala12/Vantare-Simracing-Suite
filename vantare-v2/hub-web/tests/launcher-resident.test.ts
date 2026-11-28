@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { ResidentView } from "../src/contract/generated/contract";
+import corpus from "../src/contract/generated/corpus.json";
 import { residentActionLabels } from "../src/contract/generated/launcher_resident";
-import { isResident } from "../src/contract/modules/launcher_resident";
+import {
+  isResident,
+  isResidentReview,
+} from "../src/contract/modules/launcher_resident";
 import { isHostMessage, isUiMessage } from "../src/contract/validation";
 import { createMockHost } from "../src/mock/host";
 
@@ -75,6 +79,75 @@ describe("read-only resident mailbox", () => {
         event: { topic: "launcherResident", value: view },
       }),
     ).toBe(true);
+  });
+  it("admits only the closed review values, with both blocked reasons", () => {
+    const decision = view.decision as NonNullable<ResidentView["decision"]>;
+    const wire = (review: unknown) => ({
+      kind: "event",
+      event: {
+        topic: "launcherResident",
+        value: { ...view, decision: { ...decision, review } },
+      },
+    });
+    for (const review of [
+      "available",
+      "unavailable",
+      "too-long",
+      "blocked-lookalike",
+      "blocked-unusual-path",
+    ]) {
+      expect(isResidentReview(review), review).toBe(true);
+      expect(isHostMessage(wire(review)), review).toBe(true);
+    }
+    for (const review of [
+      "blocked",
+      "blocked-",
+      "blocked-other",
+      "lookalike",
+      "unusual-path",
+      "Blocked-lookalike",
+      "blocked_lookalike",
+      "blocked-lookalike ",
+      "toString",
+      "__proto__",
+      "",
+      { blocked: "lookalike" },
+      { kind: "blocked", reason: "blocked-lookalike" },
+      ["blocked-lookalike"],
+      null,
+      undefined,
+      1,
+    ]) {
+      expect(isResidentReview(review), JSON.stringify(review)).toBe(false);
+      expect(isHostMessage(wire(review)), JSON.stringify(review)).toBe(false);
+    }
+    // El motivo no admite campos añadidos, tampoco la ruta.
+    for (const extra of [{ reason: "lookalike" }, { path: "C:\\x.exe" }])
+      expect(
+        isResident({
+          ...view,
+          decision: { ...decision, review: "blocked-lookalike", ...extra },
+        }),
+      ).toBe(false);
+  });
+  it("receives both blocked reasons from the Rust corpus and the QA scenes", () => {
+    const sent = corpus.host.flatMap((message) => {
+      const decision = (
+        message as { event?: { value?: { decision?: { review?: string } } } }
+      ).event?.value?.decision;
+      return decision?.review ? [decision.review] : [];
+    });
+    for (const review of ["blocked-lookalike", "blocked-unusual-path"]) {
+      expect(sent).toContain(review);
+      const host = createMockHost(`visual-dark:launcher-review-${review}`);
+      expect(
+        host({
+          kind: "request",
+          id: 1,
+          request: { method: "launcher.resident.get" },
+        }),
+      ).toMatchObject({ result: { value: { decision: { review } } } });
+    }
   });
   it("requires the existing closed shortcut registration states", () => {
     const registration = {

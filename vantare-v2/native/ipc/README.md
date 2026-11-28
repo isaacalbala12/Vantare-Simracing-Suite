@@ -249,8 +249,8 @@ calculan igual, así que su hash coincide. Los invisibles y las letras o signos 
 imitan a los latinos se muestran como `[U+XXXX]`, con un aviso en la cabecera.
 El marcado vive en `review/confusables.rs`, con tablas cortas y sin dependencias.
 
-`review_pages` devuelve `Err(ReviewError::Blocked)` y no se ofrece «Confiar» si la
-ruta del programa:
+`review_pages` devuelve `Err(ReviewError::Blocked(motivo))` y no se ofrece
+«Confiar» si la ruta del programa:
 
 - no tiene una **extensión ASCII alfanumérica**. La extensión es lo que va tras el
   último punto ASCII del **último segmento** (tras el último `\` o `/`). Bloquea si
@@ -280,8 +280,28 @@ Consecuencias:
   U+200B es otro archivo, que Windows ejecuta igual, y bloquea porque su extensión
   no es ASCII.
 
-El perfil no se borra ni cambia. Hoy el Hub muestra la revisión como no
-disponible; el motivo en pantalla llega con #2881.
+### Motivo del bloqueo (#2881)
+
+El error dice por qué, con una lista cerrada (`BlockedReason`):
+
+| Motivo | Cuándo | Ejemplos |
+|---|---|---|
+| `Lookalike` | La ruta lleva un punto o una barra que imitan a los normales, en cualquier parte, o el **nombre del archivo** (el último segmento) tiene una letra marcada como imitación. | `steam․exe` (U+2024), `C:\Juegos∕steam.exe`, `steam.ехе` |
+| `UnusualPath` | Todo lo demás que bloquea. | `steam`, `app.appref-ms`, `game.café`, `игры.рф`, `steam·exe`, espacio o punto final, `::$DATA`, barra final |
+
+- La letra del nombre se mira dos veces: dentro de la ruta y con el nombre solo.
+  Así `C:\Users\Иван\steam.ехе` sigue siendo una imitación aunque la carpeta esté
+  en ruso, y `C:\Games\АСС` también, porque el texto latino de la ruta la delata.
+  La contrapartida: un nombre hecho entero de letras que imitan junto a algo
+  latino («хор.appref-ms») cuenta como imitación aunque la carpeta esté en ruso.
+- Una letra que imita en una carpeta, con un nombre limpio, no basta. Un guion que
+  imita no es un punto, una barra ni una letra. `steam·exe` (U+00B7) no está en las
+  tablas de imitación y queda como forma rara.
+- Si varios pasos se bloquean, decide el primero. Un paso demasiado largo o sin
+  ruta conserva su propio error, como antes.
+- El motivo **no cambia** qué se bloquea, las páginas, el hash que se firma ni el
+  residente, que rechaza la confianza ante cualquier error. El perfil no se borra
+  ni cambia.
 
 ## Documento y fotos de overlays — ADR 0110, PR 3 (#2333)
 

@@ -23,13 +23,13 @@
 //! alfanumérica (`steam.ехе`, `steam·exe`, `steam`), si lleva un punto o una
 //! barra que imitan a los ASCII, o si termina en espacio o punto o lleva `:`
 //! fuera de la unidad: Windows recorta lo último y `::$DATA` abre el mismo
-//! archivo.
+//! archivo. El motivo (#2881) no cambia qué se bloquea, solo qué se explica.
 //!
 //! Sin tablas Unicode completas: NFC y NFD dan el mismo veredicto porque las
 //! letras precompuestas de la lista ([`COMPOSED`]) se pliegan a su letra base y
 //! los acentos combinables ([`combining`]) cuentan como parte de la palabra.
 
-use super::invisible;
+use super::{BlockedReason, invisible};
 
 /// Letras de otro alfabeto que se confunden con una latina. Lo que no está aquí
 /// (ni es lisu, cherokee o de estilo latino, que se confunden siempre) es una
@@ -228,6 +228,14 @@ fn runs(chars: &[char], keep: fn(char) -> bool) -> Vec<(usize, usize)> {
     spans
 }
 
+/// Dónde empieza el último segmento: tras el último `\` o `/`.
+fn file_name_start(chars: &[char]) -> usize {
+    chars
+        .iter()
+        .rposition(|&c| matches!(c, '\\' | '/'))
+        .map_or(0, |i| i + 1)
+}
+
 /// El programa no tiene una extensión ASCII: la parte tras el último punto del
 /// ÚLTIMO segmento (tras el último `\` o `/`) falta, está vacía o tiene algo
 /// que no es ASCII alfanumérico. Ningún ejecutable legítimo de Windows está así,
@@ -238,10 +246,7 @@ fn runs(chars: &[char], keep: fn(char) -> bool) -> Vec<(usize, usize)> {
 /// No se recorta nada por el final: un invisible que quede en la extensión no
 /// es ASCII y la bloquea (`steam.exe` + U+200B es otro archivo).
 fn lacks_ascii_extension(chars: &[char]) -> bool {
-    let segment = chars
-        .iter()
-        .rposition(|&c| matches!(c, '\\' | '/'))
-        .map_or(chars, |i| &chars[i + 1..]);
+    let segment = &chars[file_name_start(chars)..];
     segment.iter().rposition(|&c| c == '.').is_none_or(|dot| {
         let ext = &segment[dot + 1..];
         ext.is_empty() || ext.iter().any(|c| !c.is_ascii_alphanumeric())
@@ -311,13 +316,33 @@ pub(super) fn marked(text: &str) -> Vec<bool> {
     mark(&text.chars().collect::<Vec<_>>())
 }
 
-/// La ruta del programa se disfraza: no tiene extensión ASCII, tiene un punto o
-/// una barra que imitan a los ASCII, o Windows la recorta. Bloquea la confianza.
-pub(super) fn disguised_path(text: &str) -> bool {
+/// El nombre del archivo tiene una letra marcada como imitación, mirado dentro
+/// de su ruta o él solo: una carpeta escrita en cirílico no convierte
+/// `steam.ехе` en un nombre propio.
+fn imitating_name(chars: &[char]) -> bool {
+    let start = file_name_start(chars);
+    let name = &chars[start..];
+    let in_path = mark(chars);
+    let alone = mark(name);
+    name.iter()
+        .zip(in_path[start..].iter().zip(alone))
+        .any(|(c, (&in_path, alone))| c.is_alphabetic() && (in_path || alone))
+}
+
+/// La confianza se bloquea si la ruta del programa no tiene extensión ASCII,
+/// tiene un punto o una barra que imitan a los ASCII, o Windows la recorta. El
+/// motivo (#2881) no cambia qué se bloquea, solo qué se explica.
+pub(super) fn blocked_path(text: &str) -> Option<BlockedReason> {
     let chars: Vec<char> = text.chars().collect();
-    chars.iter().any(|c| PATH_PUNCTUATION.contains(c))
-        || lacks_ascii_extension(&chars)
-        || trimmed_by_windows(&chars)
+    let sign = chars.iter().any(|c| PATH_PUNCTUATION.contains(c));
+    if !(sign || lacks_ascii_extension(&chars) || trimmed_by_windows(&chars)) {
+        return None;
+    }
+    Some(if sign || imitating_name(&chars) {
+        BlockedReason::Lookalike
+    } else {
+        BlockedReason::UnusualPath
+    })
 }
 
 #[cfg(test)]

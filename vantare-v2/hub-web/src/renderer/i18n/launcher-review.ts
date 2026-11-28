@@ -1,3 +1,9 @@
+// Textos aprobados para la revisión bloqueada (issue 2881): iguales en los dos
+// motivos salvo la frase.
+const blockedTitle = "Bloqueado por seguridad";
+const blockedLive =
+  "Perfil bloqueado por seguridad. No se ha abierto ninguna aplicación.";
+
 export const residentReviewText = {
   description:
     "Este perfil viene de fuera de Vantare. Antes de abrir nada, revisa qué hará.",
@@ -56,6 +62,16 @@ export const residentReviewText = {
       title: "Demasiado largo para revisarlo aquí",
       text: "Este perfil tiene más pasos o argumentos más largos de los que caben en la revisión. Vantare no te deja confiar en algo que no puedes ver entero.",
     },
+    "blocked-lookalike": {
+      tone: "warn",
+      title: blockedTitle,
+      text: "Vantare no abrirá este perfil: la ruta de uno de sus programas usa letras o signos que imitan a los normales para parecer otro programa.",
+    },
+    "blocked-unusual-path": {
+      tone: "warn",
+      title: blockedTitle,
+      text: "Vantare no abrirá este perfil: la ruta de uno de sus programas no tiene la forma de un programa normal de Windows.",
+    },
   },
   live: {
     question: "",
@@ -69,5 +85,7 @@ export const residentReviewText = {
     expired: "La revisión ha caducado. No se ha confiado en nada.",
     unavailable: "La revisión no está disponible. No se ha confiado en nada.",
     "too-long": "Este perfil es demasiado largo para revisarlo aquí.",
+    "blocked-lookalike": blockedLive,
+    "blocked-unusual-path": blockedLive,
   },
 } as const;

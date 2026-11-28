@@ -280,11 +280,17 @@ impl State {
             })
             && let Some(question) = &status.decision
         {
-            use mailbox::review::{ReviewError, can_trust, review_pages};
+            use mailbox::review::{BlockedReason, ReviewError, can_trust, review_pages};
             projected.review = match review_pages(&question.message) {
                 Ok(pages) if can_trust(&pages) => ResidentReview::Available,
+                Ok(_) | Err(ReviewError::Unavailable) => ResidentReview::Unavailable,
                 Err(ReviewError::TooLong) => ResidentReview::TooLong,
-                _ => ResidentReview::Unavailable,
+                Err(ReviewError::Blocked(BlockedReason::Lookalike)) => {
+                    ResidentReview::BlockedLookalike
+                }
+                Err(ReviewError::Blocked(BlockedReason::UnusualPath)) => {
+                    ResidentReview::BlockedUnusualPath
+                }
             };
         }
         view.review_outcome = self.review.outcome(status.as_ref(), account, monotonic_now);

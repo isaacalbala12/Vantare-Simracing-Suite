@@ -36,6 +36,39 @@ atribuye un porcentaje ni se reutiliza una referencia contraída como si lo fuer
 Este flag no admite `--current`, porque necesita una instancia real. Como en el
 resto de capturas, adquirir antes el cerrojo global y no compilar simultáneamente.
 
+## Barra lateral abierta y «⋯» en Ajustes (issue 2896)
+
+Desde la issue 2896, con la barra lateral abierta a 1440×900 las 8 pestañas de
+Ajustes no caben y aparece «⋯» con las que faltan. El Hub GPUI no tiene «⋯»:
+su referencia ya no es el aspecto esperado en ese caso. Decisión de la raíz: el
+Hub GPUI está congelado y aquí no manda.
+
+Cómo se generan las referencias (no están en Git):
+
+- `capture-gpui-bank.ps1` abre el ejecutable GPUI congelado del banco QA
+  (`gpui-capture-bank.md`) y guarda cada PNG con su recibo `.capture.json`.
+- `sweep-references.ps1` repite esa captura por escena y tema con la barra
+  plegada (`<escena>-collapsed.png`) y abierta (`<escena>-expanded.png`).
+- Regenerarlas exige capturas gráficas reales del Hub GPUI. El banco es
+  inmutable y no se sustituye una referencia sin revisar sus datos.
+
+Qué se compara con la barra abierta:
+
+- `visual-diff.ts` compara solo `current.png` (barra plegada) con su
+  referencia. `sidebar-expanded.png` y `expanded-sidebar.png` se guardan sin
+  comparación, así que su porcentaje no cambia con «⋯».
+- `frame-parity-report.ts` compara `ajustes-aplicacion-expanded.png` del
+  barrido con la captura de Electron. En su recorte M02 (pestañas, raíl
+  abierto) «⋯» es una diferencia intencionada, no un fallo de paridad.
+- La referencia automática de ese caso es `frame-parity-check.ts`
+  (`VANTARE_HUB_FRAME_ASSERT=1`). Ahora exige «⋯» visible con la barra abierta
+  y oculto con la barra plegada. El recorte de pestañas enteras se mide con 1 px
+  de margen, como `SectionChrome`.
+
+Los PNG GPUI no se tocan. Si un día se quiere una referencia de imagen para la
+barra abierta, debe ser una captura de Electron QA a 1440×900 con su recibo, en
+un PC con permiso para capturas gráficas.
+
 ## Cierre de la ventana de captura
 
 El cierre se hace con el botón real de la ventana. El helper espera la respuesta

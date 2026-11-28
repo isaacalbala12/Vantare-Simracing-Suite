@@ -5382,6 +5382,31 @@ fn a_cut_clean_install_with_empty_data_still_names_its_version() {
     assert_eq!(children(&fixture.data()), 0);
 }
 
+/// Una generación sin `data/` no es una copia de datos: su manifiesto, aunque
+/// sea posterior, no bloquea ni se toca.
+#[test]
+fn a_newer_manifest_without_data_is_not_a_copy_and_blocks_nothing() {
+    for older_copy in [false, true] {
+        let fixture = stateless_root();
+        let bare = fixture.root.join("generations").join("a".repeat(32));
+        fs::create_dir_all(&bare).expect("generation without data");
+        fs::write(bare.join("manifest.json"), declared("2.0.0")).expect("manifest");
+        if older_copy {
+            loose_copy(&fixture, "b", Some("1.0.0"), Some(b"older"));
+        }
+        fixture
+            .install(&fixture.package("1.0.0"), Mode::Auto, false, false)
+            .unwrap_or_else(|error| panic!("copy={older_copy}: {error}"));
+        if older_copy {
+            assert_eq!(read(&fixture.data().join("opaque.bin")), b"older");
+        } else {
+            assert_eq!(children(&fixture.data()), 0);
+        }
+        assert_eq!(read(&bare.join("manifest.json")), declared("2.0.0"));
+        assert!(!bare.join("data").exists());
+    }
+}
+
 /// Sin estado, la versión anunciada se lee antes de tocar nada; y anunciar una
 /// mayor que la del ZIP autenticado tampoco adopta.
 #[test]
@@ -5454,6 +5479,34 @@ fn an_older_setup_over_a_pending_cleanup_keeps_the_uninstaller_and_its_marker() 
                 "{why}"
             );
         }
+    }
+}
+
+/// Con la limpieza ya terminada (sin desinstalador ni marcador), un Setup
+/// anterior a los datos de `retained-data.json` también se niega antes de
+/// `prepare()` y deja la carpeta igual.
+#[test]
+fn an_older_setup_over_newer_retained_data_changes_nothing_without_a_pending_cleanup() {
+    for channel in ["beta", "nightly"] {
+        let fixture = Fixture::new();
+        let shell = retained_residue_of(&fixture, channel, "2.0.0");
+        for name in ["Uninstall.exe", "installer-cleanup.json"] {
+            fs::remove_file(fixture.root.join(name)).expect("finished cleanup");
+        }
+        refused_as_newer(&fixture, &fixture.package_for(channel, "1.0.0"), channel);
+        fixture
+            .setup(
+                &shell,
+                &fixture.package_for(channel, "2.0.0"),
+                Mode::Auto,
+                None,
+            )
+            .unwrap_or_else(|error| panic!("{channel}: {error}"));
+        assert_eq!(
+            read(&fixture.data().join("opaque.bin")),
+            b"opaque\0user\xffbytes",
+            "{channel}"
+        );
     }
 }
 

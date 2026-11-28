@@ -25,6 +25,7 @@ ENV = re.compile(r'env!\((?:[^()]|\([^()]*\))*\)')
 OUT_DIR = re.compile(r'env!\(\s*"OUT_DIR"\s*\)')
 MANIFEST_DIR = re.compile(r'env!\(\s*"CARGO_MANIFEST_DIR"\s*\)')
 PACKAGE = re.compile(r'^\s*\[package\]\s*$', re.MULTILINE)
+WORKSPACE = re.compile(r'^\s*\[workspace\]\s*$', re.MULTILINE)
 
 
 def parse_argument(text: str, start: int) -> str:
@@ -91,15 +92,37 @@ def inside(path: Path, roots: list[Path]) -> bool:
     return any(path == root or root in path.parents for root in roots)
 
 
+def undeclared_workspaces(repo: Path, native: Path, config: dict) -> list[str]:
+    """Workspaces other than the native one must be declared: their packages are
+    built into the shared slot and `cargo clean` on the native manifest cannot
+    name them. `vendor/` is covered by `externalPackages`."""
+    declared = {(repo / item).resolve() for item in config.get('workspaces', [])}
+    found = []
+    for manifest in sorted(native.rglob('Cargo.toml')):
+        root = manifest.parent
+        relative = root.relative_to(native)
+        if not relative.parts or relative.parts[0] == 'vendor' or 'target' in relative.parts:
+            continue
+        if WORKSPACE.search(manifest.read_text(encoding='utf-8', errors='replace')) and root.resolve() not in declared:
+            found.append(root.relative_to(repo).as_posix())
+    return found
+
+
 def main() -> int:
     native = Path(__file__).resolve().parents[1]
     repo = Path(git('rev-parse', '--show-toplevel', cwd=native).strip())
     config = json.loads((native / 'scripts/slot-inputs.json').read_text(encoding='utf-8'))
     external_paths = config.get('external', []) + config.get('rootFiles', [])
     external = [(repo / item).resolve() for item in external_paths]
-    missing = [item for item in external if not item.exists()]
+    workspaces = [(repo / item).resolve() for item in config.get('workspaces', [])]
+    missing = [item for item in external + workspaces if not item.exists()]
     if missing:
         print('Rutas externas declaradas que no existen:', *(str(item.relative_to(repo)) for item in missing), sep='\n  ')
+        return 1
+    undeclared = undeclared_workspaces(repo, native, config)
+    if undeclared:
+        print('Workspaces de native/ que la cola no invalida (añadir a "workspaces" en slot-inputs.json):',
+              *undeclared, sep='\n  ')
         return 1
     packages: set[Path] = set()
     errors: list[str] = []

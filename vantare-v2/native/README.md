@@ -583,14 +583,21 @@ la de las entradas externas declaradas en `native/scripts/slot-inputs.json`
 (cualquier `include_str!`/`include_bytes!`/`include!` que salga de **su** paquete,
 aunque esté en otro paquete, más `Cargo.toml`, `Cargo.lock`, `clippy.toml`,
 `.cargo/config.toml`, `rust-toolchain` y `vendor`). Solo los paquetes cuya huella
-cambió se limpian con `cargo clean -p` en todos los perfiles presentes; si cambia
-una entrada externa se limpian todos. La limpieza es persistente: un build
-parcial que no compile un paquete limpiado no puede dejar un artefacto obsoleto.
-El sello se escribe tras limpiar y antes de compilar, y tras limpiar se verifica
-que no quedan fingerprints del paquete. Los targets explícitos (mediciones, QA y
-empaquetado) no pasan por este control. `include_inputs.py` recorre los
-`include_*!` y falla si una ruta queda fuera de la lista; no sigue `#[path]` ni
-`fs::read`, y un include dentro de un comentario falla a propósito.
+cambió se limpian con `cargo clean -p` en todos los perfiles presentes, tanto en
+`<perfil>/` como en `<triple>/<perfil>/` (builds con `--target`, incluido el
+candidato; #2887); si cambia una entrada externa se limpian todos. Los otros
+workspaces de `native/` (`workspaces` en `slot-inputs.json`: Rune y sus pruebas)
+se huellan enteros y, si cambian, se retiran sus fingerprints y ejecutables. La
+limpieza es persistente: un build parcial que no compile un paquete limpiado no
+puede dejar un artefacto obsoleto. El sello (`schema` 2; uno anterior obliga a
+limpiar todo una vez) se escribe tras limpiar y antes de compilar, y tras limpiar
+se verifica que no quedan fingerprints del paquete. No cubre: targets explícitos
+(mediciones, QA y empaquetado en carpeta propia), carpetas de build anidadas
+dentro de la ranura (se avisa si aparecen en el primer nivel) ni un segundo
+checkout compilado dentro de la misma reserva. `include_inputs.py` recorre los
+`include_*!` y falla si una ruta queda fuera de la lista, o si un workspace no
+está declarado; no sigue `#[path]` ni `fs::read`, y un include dentro de un
+comentario falla a propósito.
 
 El target `ci` (`VANTARE_CI_TARGET=1`) no usa sello ni invalidación: solo es
 seguro con un `RUNNER_TEMP` nuevo por job (GitHub-hosted). No reutilizar `ci`

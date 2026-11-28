@@ -142,6 +142,52 @@ function Initialize-VantareCargoTag {
         "Signature: 8a477f597d28d172789f06886806bc55`n# Cache directory tag created by the Vantare queue.")
 }
 
+# Every directory of a slot where Cargo leaves reusable units: `<perfil>/` (host
+# builds, build scripts and proc-macros) and `<triple>/<perfil>/` (anything built
+# with `--target`, which is how the product candidate is compiled).
+function Get-VantareBuildLayouts {
+    param([Parameter(Mandatory)][string]$Target)
+    $triples = $null
+    foreach ($directory in @(Get-ChildItem -LiteralPath $Target -Directory -Force)) {
+        if (Test-Path -LiteralPath (Join-Path $directory.FullName '.fingerprint')) {
+            [pscustomobject]@{ triple = $null; profile = $directory.Name; path = $directory.FullName; label = $directory.Name }
+            continue
+        }
+        $profileDirectories = @(Get-ChildItem -LiteralPath $directory.FullName -Directory -Force | Where-Object {
+                Test-Path -LiteralPath (Join-Path $_.FullName '.fingerprint')
+            })
+        if (-not $profileDirectories.Count) { continue }
+        if ($null -eq $triples) {
+            $triples = @(& rustc --print target-list)
+            if ($LASTEXITCODE) { throw 'No se pudo leer la lista de targets de rustc.' }
+        }
+        if ($directory.Name -cnotin $triples) {
+            Write-Host "[cola] AVISO: $($directory.Name)/ contiene artefactos que la invalidación no cubre."
+            continue
+        }
+        foreach ($profileDirectory in $profileDirectories) {
+            [pscustomobject]@{ triple = $directory.Name; profile = $profileDirectory.Name
+                path = $profileDirectory.FullName; label = "$($directory.Name)/$($profileDirectory.Name)" }
+        }
+    }
+}
+
+function Assert-VantareNoFingerprints {
+    param([object[]]$Layouts = @(), [Parameter(Mandatory)][string[]]$Names)
+    foreach ($layout in $Layouts) {
+        $fingerprints = Join-Path $layout.path '.fingerprint'
+        foreach ($name in $Names) {
+            $pattern = '^' + [regex]::Escape($name) + '-[0-9a-f]+$'
+            $left = @(Get-ChildItem -LiteralPath $fingerprints -Force -ErrorAction SilentlyContinue | Where-Object {
+                    $_.Name -match $pattern
+                })
+            if ($left.Count) {
+                throw "Quedan artefactos de $name en $($layout.label)/.fingerprint tras la limpieza."
+            }
+        }
+    }
+}
+
 function Invoke-VantareCleanPackages {
     param(
         [string[]]$Names = @(),
@@ -153,29 +199,54 @@ function Invoke-VantareCleanPackages {
     if (-not (Test-Path -LiteralPath (Join-Path $Target 'CACHEDIR.TAG'))) {
         throw 'Target sin CACHEDIR.TAG; no se pueden invalidar paquetes.'
     }
-    $profileDirectories = @(Get-ChildItem -LiteralPath $Target -Directory -ErrorAction SilentlyContinue | Where-Object {
-        Test-Path -LiteralPath (Join-Path $_.FullName '.fingerprint')
-    })
-    foreach ($directory in $profileDirectories) {
+    $layouts = @(Get-VantareBuildLayouts -Target $Target)
+    foreach ($layout in $layouts) {
         # Cargo's dev profile lives in `debug`; custom profiles keep their name.
-        $profile = if ($directory.Name -eq 'debug') { 'dev' } else { $directory.Name }
-        $arguments = @('clean', '--manifest-path', $Manifest, '--target-dir', $Target, '--locked', '--offline', '--profile', $profile)
+        $cargoProfile = if ($layout.profile -eq 'debug') { 'dev' } else { $layout.profile }
+        $arguments = @('clean', '--manifest-path', $Manifest, '--target-dir', $Target, '--locked', '--offline', '--profile', $cargoProfile)
+        # Without --target, `cargo clean` leaves `<triple>/<perfil>/` untouched.
+        if ($layout.triple) { $arguments += @('--target', $layout.triple) }
         foreach ($name in $Names) { $arguments += @('-p', $name) }
         & cargo @arguments
-        if ($LASTEXITCODE) { throw "No se pudieron limpiar los paquetes en el perfil ${profile}: $($Names -join ', ')." }
+        if ($LASTEXITCODE) { throw "No se pudieron limpiar los paquetes en $($layout.label): $($Names -join ', ')." }
     }
-    foreach ($directory in $profileDirectories) {
-        $fingerprints = Join-Path $directory.FullName '.fingerprint'
-        foreach ($name in $Names) {
-            $pattern = '^' + [regex]::Escape($name) + '-[0-9a-f]+$'
-            $left = @(Get-ChildItem -LiteralPath $fingerprints -Force -ErrorAction SilentlyContinue | Where-Object {
-                $_.Name -match $pattern
-            })
-            if ($left.Count) {
-                throw "Quedan artefactos de $name en $($directory.Name)/.fingerprint tras la limpieza."
+    Assert-VantareNoFingerprints -Layouts $layouts -Names $Names
+}
+
+# Packages of the workspaces under `native/` that are not members of the native
+# one (Rune). `cargo clean -p` cannot name them from the native manifest, and
+# resolving their lock would need their private CARGO_HOME. Removing their
+# fingerprints makes Cargo rebuild them; their executables go too, so that no
+# partial build can leave a stale one behind.
+function Remove-VantareForeignArtifacts {
+    param([Parameter(Mandatory)][string]$Target, [object[]]$Packages = @())
+    if (-not @($Packages).Count) { return }
+    $layouts = @(Get-VantareBuildLayouts -Target $Target)
+    foreach ($layout in $layouts) {
+        foreach ($package in $Packages) {
+            $unit = '^' + [regex]::Escape($package.name) + '-[0-9a-f]+$'
+            $found = @(foreach ($folder in @('.fingerprint', 'build')) {
+                    Get-ChildItem -LiteralPath (Join-Path $layout.path $folder) -Force -ErrorAction SilentlyContinue |
+                        Where-Object { $_.Name -match $unit }
+                })
+            foreach ($binary in $package.binaries) {
+                $names = (@($binary, $binary.Replace('-', '_')) | ForEach-Object { [regex]::Escape($_) }) -join '|'
+                $file = "^($names)(-[0-9a-f]+)?(\.(exe|pdb|d))?$"
+                $found += @(foreach ($folder in @($layout.path, (Join-Path $layout.path 'deps'))) {
+                        Get-ChildItem -LiteralPath $folder -File -Force -ErrorAction SilentlyContinue |
+                            Where-Object { $_.Name -match $file }
+                    })
+            }
+            foreach ($item in $found) {
+                # Never follow a junction out of the slot.
+                if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                    throw "Hay un enlace en $($layout.label); no se invalidan paquetes."
+                }
+                Remove-Item -LiteralPath $item.FullName -Recurse -Force
             }
         }
     }
+    Assert-VantareNoFingerprints -Layouts $layouts -Names @($Packages | ForEach-Object { $_.name })
 }
 
 function Set-VantareSlotWorkspace {
@@ -207,16 +278,23 @@ function Set-VantareSlotWorkspace {
                     path = [IO.Path]::GetRelativePath($repo, (Split-Path $_.manifest_path)).Replace('\', '/')
                 }
             })
-        $hashes = Get-VantareInputHashes -RepoRoot $repo -Packages $packages -ExternalPaths $externalPaths
+        # Separate workspaces (Rune) are hashed as a whole, one entry each.
+        $foreign = @(if ($inputs.PSObject.Properties['workspaces']) {
+                foreach ($path in $inputs.workspaces) { [pscustomobject]@{ name = "workspace:$path"; path = $path } }
+            })
+        $hashes = Get-VantareInputHashes -RepoRoot $repo -Packages ($packages + $foreign) -ExternalPaths $externalPaths
 
         $stampPath = Join-Path $target '.vantare-workspace'
         $previous = $null
         if (Test-Path -LiteralPath $stampPath) {
             try { $previous = Get-Content -LiteralPath $stampPath -Raw | ConvertFrom-Json } catch { $previous = $null }
         }
+        # Stamps written before schema 2 claim packages were cleaned while their
+        # `--target` artifacts survived: distrust them once.
+        if ($previous -and (-not $previous.PSObject.Properties['schema'] -or $previous.schema -ne 2)) { $previous = $null }
         $changed = @()
         $externalChanged = -not $previous -or -not $previous.PSObject.Properties['external'] -or $previous.external -ne $hashes.external
-        foreach ($package in $packages) {
+        foreach ($package in $packages + $foreign) {
             $old = $null
             if ($previous -and $previous.PSObject.Properties['packages']) {
                 $property = $previous.packages.PSObject.Properties[$package.name]
@@ -224,17 +302,35 @@ function Set-VantareSlotWorkspace {
             }
             if ($old -ne $hashes.packages[$package.name]) { $changed += $package.name }
         }
-        $names = @($changed)
+        $names = @($changed | Where-Object { $_ -notin @($foreign | ForEach-Object { $_.name }) })
         if ($externalChanged) {
             $names = @($packages | ForEach-Object { $_.name })
             foreach ($name in @($inputs.externalPackages)) { if ($name) { $names += $name } }
         }
         $names = @($names | Select-Object -Unique)
         Invoke-VantareCleanPackages -Names $names -Target $target -Manifest $manifest
-        if (@($names).Count) { Write-Host "[cola] paquetes invalidados: $($names -join ', ')" }
+
+        $foreignPackages = @(foreach ($workspace in $foreign) {
+                if (-not $externalChanged -and $workspace.name -notin $changed) { continue }
+                $foreignManifest = Join-Path $repo "$($workspace.path)/Cargo.toml"
+                if (-not (Test-Path -LiteralPath $foreignManifest)) { throw "Falta el workspace declarado: $($workspace.path)." }
+                # --no-deps neither resolves the lock nor needs its dependencies.
+                $foreignJson = & cargo metadata --manifest-path $foreignManifest --no-deps --offline --format-version 1
+                if ($LASTEXITCODE) { throw "No se pudo identificar el workspace $($workspace.path)." }
+                foreach ($package in ($foreignJson | ConvertFrom-Json).packages) {
+                    [pscustomobject]@{
+                        name = $package.name
+                        binaries = @($package.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name })
+                    }
+                }
+            })
+        Remove-VantareForeignArtifacts -Target $target -Packages $foreignPackages
+        $invalidated = @($names + @($foreignPackages | ForEach-Object { $_.name }) | Select-Object -Unique)
+        if ($invalidated.Count) { Write-Host "[cola] paquetes invalidados: $($invalidated -join ', ')" }
 
         # Safe before the build: cleaned packages have no artifact left.
         [ordered]@{
+            schema = 2
             packages = $hashes.packages
             external = $hashes.external
         } | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath $stampPath -Encoding utf8

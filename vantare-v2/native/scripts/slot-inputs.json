@@ -34,5 +34,9 @@
   ],
   "externalPackages": [
     "gpui_windows"
+  ],
+  "workspaces": [
+    "vantare-v2/native/overlays-rune",
+    "vantare-v2/native/pruebas-rune"
   ]
 }

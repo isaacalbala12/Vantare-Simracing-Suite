@@ -270,7 +270,12 @@ fn a_fixed_timeout_ends_at_the_same_time_whatever_the_progress() {
 #[test]
 fn the_deadline_alone_counts_from_the_close_request_and_the_last_progress() {
     let start = Instant::now();
-    let mut deadline = Deadline::new(CloseLimits::PRODUCT, start, 0);
+    // Lejos del tope: aquí solo cuenta el margen sin progreso (10 s).
+    let roomy = CloseLimits {
+        stall: CloseLimits::PRODUCT.stall,
+        cap: 60 * SECOND,
+    };
+    let mut deadline = Deadline::new(roomy, start, 0);
     assert!(deadline.check(start + 9 * SECOND, 0).is_ok());
     assert!(deadline.check(start + 9 * SECOND, 1).is_ok());
     assert!(deadline.check(start + 18 * SECOND, 1).is_ok());

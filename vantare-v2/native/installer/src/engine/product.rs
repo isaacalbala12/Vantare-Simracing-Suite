@@ -52,6 +52,9 @@ pub const NIGHTLY: Product = Product {
     label: "nightly",
 };
 
+/// Todos los productos instalables.
+pub const ALL: [&Product; 2] = [&BETA, &NIGHTLY];
+
 /// Producto del canal de un paquete o de una instalación; `None` si ese canal
 /// no tiene instalador (testers, master o una build sin canal).
 pub fn for_channel(channel: &str) -> Option<&'static Product> {

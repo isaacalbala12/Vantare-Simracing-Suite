@@ -4354,6 +4354,362 @@ fn another_channel_is_rejected_before_anything_changes() {
     );
 }
 
+/// The folder, then each registration value of both products.
+type Everything = (BTreeMap<String, Vec<u8>>, Vec<Option<Vec<u8>>>);
+/// #2817 (D): un producto instalado y su carpeta vaciada a mano, y el otro
+/// producto en el mismo usuario simulado.
+struct Claimed {
+    fixture: Fixture,
+    owner: Shell,
+    intruder: Shell,
+    channels: [&'static str; 2],
+    keys: [&'static str; 2],
+    location: String,
+}
+impl Claimed {
+    fn new(owner: &'static str, intruder: &'static str) -> Self {
+        let key = |channel| {
+            if channel == "beta" {
+                BETA_KEY
+            } else {
+                NIGHTLY_KEY
+            }
+        };
+        let fixture = Fixture::new();
+        let (folders, registry) = (fixture.path.join("shell"), hive());
+        let owner_shell = fixture.shell_with(owner, folders.clone(), registry.clone());
+        let intruder_shell = fixture.shell_with(intruder, folders, registry);
+        fixture
+            .setup(
+                &owner_shell,
+                &fixture.package_for(owner, "1.0.0"),
+                Mode::Auto,
+                None,
+            )
+            .expect("owner installs");
+        let location = registered(&owner_shell, key(owner), "InstallLocation").expect("registered");
+        fs::remove_dir_all(&fixture.root).expect("emptied by hand");
+        fs::create_dir(&fixture.root).expect("empty folder");
+        Self {
+            fixture,
+            owner: owner_shell,
+            intruder: intruder_shell,
+            channels: [owner, intruder],
+            keys: [key(owner), key(intruder)],
+            location,
+        }
+    }
+    fn hive(&self) -> windows_registry::Key {
+        windows_registry::CURRENT_USER
+            .create(format!("{}\\{}", self.owner.registry, self.keys[0]))
+            .expect("owner key")
+    }
+    fn set(&self, value: &str) {
+        self.hive()
+            .set_string("InstallLocation", value)
+            .expect("InstallLocation");
+    }
+    /// The folder and both products' registrations, byte for byte.
+    fn everything(&self) -> Everything {
+        let values = [&self.owner, &self.intruder]
+            .into_iter()
+            .zip(self.keys)
+            .flat_map(|(shell, key)| {
+                REGISTRATION.map(|name| {
+                    windows_registry::CURRENT_USER
+                        .open(format!("{}\\{key}", shell.registry))
+                        .and_then(|hive| hive.get_value(name))
+                        .ok()
+                        .map(|value| value.to_vec())
+                })
+            })
+            .collect();
+        (root_tree(&self.fixture), values)
+    }
+    /// The other product's Setup stops with `message` and nothing changes.
+    fn refused(&self, why: &str, message: &str) {
+        let before = self.everything();
+        let package = self.fixture.package_for(self.channels[1], "1.0.0");
+        let error = self
+            .fixture
+            .setup(&self.intruder, &package, Mode::Auto, None)
+            .expect_err("the other product is refused");
+        let intruder = self.channels[1];
+        assert_eq!(error.code, 1, "{intruder} over {why}: {error}");
+        assert!(
+            error.to_string().contains(message),
+            "{intruder} over {why}: {error}"
+        );
+        assert_eq!(self.everything(), before, "{intruder} over {why}");
+    }
+    fn request(&self, operation: engine::Operation) -> engine::Request {
+        let arguments = Args {
+            root: Some(disk::path(&self.fixture.root).expect("root")),
+            uninstall: operation == engine::Operation::Uninstall,
+            ..Args::default()
+        };
+        engine::Request::new(&arguments, operation)
+    }
+}
+const CLAIMED: &str = "Esta carpeta es de otra instalación de Vantare";
+
+/// #2817 (D): la carpeta registrada por otro producto no se usa, ni vaciada a
+/// mano ni borrada, ni una carpeta dentro de ella o que la contenga, se escriba
+/// como se escriba en su registro. Tampoco la usan su desinstalador ni la
+/// limpieza. No cambia nada: ni la carpeta ni el registro de nadie.
+#[test]
+fn a_root_registered_by_another_product_is_refused_even_when_empty() {
+    for (owner, intruder) in [("beta", "nightly"), ("nightly", "beta")] {
+        let claimed = Claimed::new(owner, intruder);
+        let (root, location) = (&claimed.fixture.root, &claimed.location);
+        // `mklink` toma una ruta con `/` por una opción: rutas normalizadas.
+        let link = disk::path(&claimed.fixture.path.join("enlace")).unwrap();
+        junction(&link, &disk::path(root).unwrap());
+        let name = root.file_name().unwrap().to_string_lossy();
+        let parent = Path::new(location).parent().unwrap().to_string_lossy();
+        let spellings = [
+            location.clone(),
+            location.to_uppercase(),
+            location.replace('\\', "/"),
+            format!("{location}\\"),
+            format!("{location}."),
+            format!("{location} "),
+            format!("\\\\?\\{location}"),
+            format!("{parent}\\.\\{name}"),
+            format!("{location}\\..\\{name}"),
+            // La del otro dentro de esta, y esta dentro de la del otro.
+            format!("{location}\\dentro"),
+            parent.clone().into_owned(),
+            link.to_string_lossy().into_owned(),
+        ];
+        for removed in [false, true] {
+            if removed {
+                fs::remove_dir(root).unwrap();
+            }
+            // Un enlace a una carpeta que ya no existe no lleva a ninguna parte.
+            for spelling in spellings
+                .iter()
+                .take(spellings.len() - usize::from(removed))
+            {
+                claimed.set(spelling);
+                claimed.refused(spelling, CLAIMED);
+                assert_eq!(root.exists(), !removed, "{spelling}");
+            }
+        }
+        claimed.set(location);
+        for operation in [engine::Operation::Uninstall, engine::Operation::Cleanup] {
+            let error = claimed
+                .intruder
+                .context
+                .resolve_root(&claimed.request(operation))
+                .unwrap_err();
+            assert!(
+                error.to_string().contains(CLAIMED),
+                "{operation:?}: {error}"
+            );
+        }
+    }
+}
+
+/// #2817 (D): un registro del otro producto que no se puede leer (otro tipo de
+/// valor o `REG_EXPAND_SZ`) falla cerrado y lo nombra. Una ruta que no es esta
+/// carpeta (un enlace a otra, vacía, de red) no la bloquea. El propio producto
+/// vuelve a instalar en la carpeta que registró.
+#[test]
+fn another_product_registry_fails_closed_only_when_it_cannot_be_read() {
+    for (owner, intruder) in [("beta", "nightly"), ("nightly", "beta")] {
+        let claimed = Claimed::new(owner, intruder);
+        let display = engine::product::for_channel(owner).unwrap().display_name;
+        let unreadable = format!(
+            "No se puede leer la carpeta registrada de otra instalación de Vantare ({display})"
+        );
+        let hive = claimed.hive();
+        hive.set_u32("InstallLocation", 7).unwrap();
+        claimed.refused("REG_DWORD", &unreadable);
+        hive.set_bytes("InstallLocation", windows_registry::Type::Bytes, b"D:\\x")
+            .unwrap();
+        claimed.refused("REG_BINARY", &unreadable);
+        hive.set_multi_string("InstallLocation", &[claimed.location.as_str()])
+            .unwrap();
+        claimed.refused("REG_MULTI_SZ", &unreadable);
+        hive.set_expand_string("InstallLocation", &claimed.location)
+            .unwrap();
+        claimed.refused("REG_EXPAND_SZ", &unreadable);
+        let elsewhere = disk::path(&claimed.fixture.path.join("otra")).unwrap();
+        fs::create_dir(&elsewhere).unwrap();
+        let other_link = disk::path(&claimed.fixture.path.join("enlace-otra")).unwrap();
+        junction(&other_link, &elsewhere);
+        let root = disk::path(&claimed.fixture.root).unwrap();
+        for unrelated in [
+            other_link.to_string_lossy().into_owned(),
+            String::new(),
+            r"\\servidor\recurso\Vantare".to_owned(),
+        ] {
+            claimed.set(&unrelated);
+            let request = claimed.request(engine::Operation::Install);
+            assert_eq!(
+                claimed.intruder.context.resolve_root(&request).unwrap(),
+                root,
+                "{unrelated}"
+            );
+        }
+        claimed.set(&claimed.location);
+        claimed
+            .fixture
+            .setup(
+                &claimed.owner,
+                &claimed.fixture.package_for(owner, "1.0.0"),
+                Mode::Auto,
+                None,
+            )
+            .unwrap();
+        assert_eq!(channel_of(&claimed.fixture), owner);
+    }
+}
+
+/// #2817 (D): antes de #2817 nightly podía instalarse en la carpeta vaciada de
+/// beta, y las dos claves apuntan ahí. Esa carpeta tiene el `state.json` de
+/// nightly: es suya, así que nightly repara y desinstala como siempre. Beta
+/// sigue fuera y nada suyo cambia.
+#[test]
+fn a_root_with_this_product_state_stays_its_own_whatever_the_other_registry_says() {
+    let fixture = Fixture::new();
+    let (folders, registry) = (fixture.path.join("shell"), hive());
+    let beta = fixture.shell_with("beta", folders.clone(), registry.clone());
+    let nightly = fixture.shell_with("nightly", folders, registry);
+    let package = fixture.package_for("nightly", "1.0.0");
+    fixture.setup(&nightly, &package, Mode::Auto, None).unwrap();
+    fixture.write_data();
+    let location = registered(&nightly, NIGHTLY_KEY, "InstallLocation").unwrap();
+    windows_registry::CURRENT_USER
+        .create(format!("{}\\{BETA_KEY}", beta.registry))
+        .and_then(|key| key.set_string("InstallLocation", &location))
+        .unwrap();
+    let beta_values = || REGISTRATION.map(|name| registered(&beta, BETA_KEY, name));
+    let beta_before = beta_values();
+    fixture
+        .setup(&nightly, &package, Mode::Repair, None)
+        .unwrap();
+    let before = root_tree(&fixture);
+    let error = fixture
+        .setup(&beta, &fixture.package("1.0.0"), Mode::Auto, None)
+        .unwrap_err();
+    assert!(error.to_string().contains(CLAIMED), "{error}");
+    let arguments = Args {
+        root: Some(disk::path(&fixture.root).unwrap()),
+        uninstall: true,
+        ..Args::default()
+    };
+    let uninstall = engine::Request::new(&arguments, engine::Operation::Uninstall);
+    let error = beta.context.resolve_root(&uninstall).unwrap_err();
+    assert!(error.to_string().contains(CLAIMED), "{error}");
+    assert_eq!(root_tree(&fixture), before);
+    assert_eq!(
+        nightly.context.resolve_root(&uninstall).unwrap(),
+        disk::path(&fixture.root).unwrap()
+    );
+    fixture.remove(&nightly).unwrap();
+    assert_eq!(registered(&nightly, NIGHTLY_KEY, "InstallLocation"), None);
+    assert!(fixture.root.join("retained-data.json").is_file());
+    assert_eq!(beta_values(), beta_before);
+    // Sin estado, sus datos conservados dicen que es de nightly: la limpieza
+    // del desinstalador (`schedule_cleanup`) vuelve a elegir esta raíz.
+    let cleanup = engine::Request::new(&arguments, engine::Operation::Cleanup);
+    assert_eq!(
+        nightly.context.resolve_root(&cleanup).unwrap(),
+        disk::path(&fixture.root).unwrap()
+    );
+    // Los datos conservados de nightly no hacen suya la carpeta para beta.
+    windows_registry::CURRENT_USER
+        .create(format!("{}\\{NIGHTLY_KEY}", nightly.registry))
+        .and_then(|key| key.set_string("InstallLocation", &location))
+        .unwrap();
+    let error = beta.context.resolve_root(&cleanup).unwrap_err();
+    assert!(error.to_string().contains(CLAIMED), "{error}");
+    assert_eq!(beta_values(), beta_before);
+}
+
+/// #2817 (D): una carpeta solo es «tuya» frente al registro del otro producto
+/// si es la MISMA carpeta y lo prueba un `state.json` legible de tu canal o,
+/// sin estado, un `retained-data.json` legible de tu canal (sin canal es de
+/// beta). Uno roto, el de otro canal, o una carpeta dentro de la del otro o que
+/// la contiene, nunca valen.
+#[test]
+fn only_the_same_folder_with_readable_proof_of_this_channel_is_its_own() {
+    let fixture = Fixture::new();
+    let (folders, registry) = (fixture.path.join("shell"), hive());
+    let beta = fixture.shell_with("beta", folders.clone(), registry.clone());
+    let nightly = fixture.shell_with("nightly", folders, registry);
+    fixture
+        .setup(&beta, &fixture.package("1.0.0"), Mode::Auto, None)
+        .unwrap();
+    let root = disk::path(&fixture.root).unwrap();
+    let register = |shell: &Shell, key: &str, value: &Path| {
+        windows_registry::CURRENT_USER
+            .create(format!("{}\\{key}", shell.registry))
+            .and_then(|hive| hive.set_string("InstallLocation", value.to_string_lossy()))
+            .unwrap();
+    };
+    let resolve = |shell: &Shell, folder: &Path| {
+        let arguments = Args {
+            root: Some(folder.to_path_buf()),
+            ..Args::default()
+        };
+        shell.context.resolve_root(&engine::Request::new(
+            &arguments,
+            engine::Operation::Install,
+        ))
+    };
+    let refused = |shell: &Shell, folder: &Path, why: &str| {
+        let error = resolve(shell, folder).expect_err(why);
+        assert!(error.to_string().contains(CLAIMED), "{why}: {error}");
+    };
+    let retained = |folder: &Path, channel: Option<&str>| {
+        let mut saved = json!({
+            "schema": 1,
+            "generation": "0123456789abcdef0123456789abcdef",
+            "version": "1.0.0"
+        });
+        if let Some(channel) = channel {
+            saved["channel"] = channel.into();
+        }
+        fs::create_dir_all(folder).unwrap();
+        fs::write(folder.join("retained-data.json"), saved.to_string()).unwrap();
+    };
+    // (d) Datos conservados de nightly junto al `state.json` de beta.
+    retained(&root, Some("nightly"));
+    refused(&nightly, &root, "nightly retained beside the beta state");
+    // (e) Con prueba propia, pero dentro de la carpeta de beta…
+    let inside = root.join("nightly");
+    retained(&inside, Some("nightly"));
+    refused(&nightly, &inside, "own retained inside the beta root");
+    // …o conteniéndola.
+    fs::remove_file(root.join("state.json")).unwrap();
+    register(&beta, BETA_KEY, &root.join("beta-dentro"));
+    refused(&nightly, &root, "own retained around the beta root");
+    // La misma carpeta con sus datos conservados sí es de nightly (N1).
+    register(&beta, BETA_KEY, &root);
+    assert_eq!(resolve(&nightly, &root).unwrap(), root);
+    // (b) Datos conservados ilegibles no prueban nada.
+    fs::write(root.join("retained-data.json"), b"{roto").unwrap();
+    refused(&nightly, &root, "unreadable retained");
+    // (a) Ni un `state.json` ilegible, aunque los datos conservados sean de nightly.
+    retained(&root, Some("nightly"));
+    fs::write(root.join("state.json"), b"{roto").unwrap();
+    refused(&nightly, &root, "unreadable state");
+    fs::remove_file(root.join("state.json")).unwrap();
+    // (c) Sin canal, los datos conservados son de beta, no de nightly.
+    retained(&root, None);
+    refused(&nightly, &root, "undeclared retained");
+    // Con solo la clave vieja de nightly nombrándola, beta sí la usa.
+    windows_registry::CURRENT_USER
+        .create(format!("{}\\{BETA_KEY}", beta.registry))
+        .and_then(|hive| hive.remove_value("InstallLocation"))
+        .unwrap();
+    register(&nightly, NIGHTLY_KEY, &root);
+    assert_eq!(resolve(&beta, &root).unwrap(), root);
+}
+
 #[test]
 fn testers_and_master_have_no_installer_yet() {
     for channel in ["testers", "master"] {

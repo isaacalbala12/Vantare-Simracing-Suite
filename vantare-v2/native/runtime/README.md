@@ -247,7 +247,12 @@ error, hace flush y finish manteniendo Core vivo. El cierre espera por progreso
 (#2871): cada respuesta del helper reinicia el margen; solo se le mata tras 10 s
 sin avanzar o a los 15 s en total (el supervisor da 16 s al Core, #2873). Con `finished` confirmado, el estado se
 publica en ese momento y sin causa, aunque luego haya que matar al helper al
-cerrar la base. Sin confirmar, solo el prefijo ACK es conocido durable y el
+cerrar la base. Si el helper ya ha salido al ir a enviarle `stop`, el fallo
+solo se anota por stderr y la grabación cuenta como terminada: `finished`
+estaba en disco y `stop` no guarda nada (#2884). Hueco aceptado: si el helper
+muere entre guardar `finished` y responder (microsegundos), el Core no puede
+saberlo y el estado dice «writer caído» aunque la base esté finalizada.
+Sin confirmar, solo el prefijo ACK es conocido durable y el
 estado lo dice. EOF al morir Core cierra stdin del helper y su conexión;
 apagar o cerrar la sesión de Windows puede terminar al Core antes de esos
 plazos (ver `series_close.rs`). No modifica el journal `--recording`.

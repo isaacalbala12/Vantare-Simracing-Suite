@@ -4,6 +4,7 @@ use crate::flows::{
     CloseLimits, Closed, SeriesClose, SeriesStorageState, SeriesWorker, SessionTracker,
 };
 use std::path::Path;
+use std::sync::Mutex;
 use std::sync::atomic::AtomicBool;
 use vantare_domain::Adapter;
 mod prune;
@@ -210,31 +211,9 @@ impl SeriesRecording {
             if self.failed {
                 drop(worker);
             } else {
-                let status = &mut self.status;
-                let mut publish = |state: &SeriesStorageState| {
-                    // `finished` ya está en disco: se publica antes de esperar
-                    // el cierre de la base, por si el cierre de la app mata al Core.
-                    if let Some(status) = status.as_mut() {
-                        confirmed(status, state);
-                        status.file = file();
-                        status.state = "stopped";
-                        status.write_with_gate(gate.as_deref());
-                    }
-                    written = true;
-                };
-                let close = close(worker, attempted, &mut publish);
-                match &close.closed {
-                    Closed::Clean(_) => {}
-                    Closed::ConfirmedUnclosed(_, error) => {
-                        eprintln!("cierre de grabación de series: datos confirmados; {error}");
-                    }
-                    Closed::Unconfirmed(error) => {
-                        eprintln!("cierre de grabación de series: {error}");
-                    }
-                }
-                if let Some(status) = self.status.as_mut() {
-                    settle(status, &close);
-                }
+                written = close_and_publish(&mut self.status, gate.as_deref(), file, |publish| {
+                    close(worker, attempted, publish)
+                });
             }
             if let Some(status) = self.status.as_mut() {
                 status.file = file();
@@ -245,6 +224,41 @@ impl SeriesRecording {
             status.write_with_gate(gate.as_deref());
         }
     }
+}
+
+/// Cierra con `close`, que llama a lo que recibe en cuanto `finished` está en
+/// disco. `true`: el estado de la grabación terminada ya se escribió.
+fn close_and_publish(
+    status: &mut Option<Status>,
+    gate: Option<&Mutex<bool>>,
+    file: impl Fn() -> Option<String>,
+    close: impl FnOnce(&mut dyn FnMut(&SeriesStorageState)) -> SeriesClose,
+) -> bool {
+    let mut written = false;
+    let close = close(&mut |state: &SeriesStorageState| {
+        // `finished` ya está en disco: se publica antes de esperar el cierre
+        // de la base, por si el cierre de la app mata al Core.
+        if let Some(status) = status.as_mut() {
+            confirmed(status, state);
+            status.file = file();
+            status.state = "stopped";
+            status.write_with_gate(gate);
+        }
+        written = true;
+    });
+    match &close.closed {
+        Closed::Clean(_) => {}
+        Closed::ConfirmedUnclosed(_, error) => {
+            eprintln!("cierre de grabación de series: datos confirmados; {error}");
+        }
+        Closed::Unconfirmed(error) => {
+            eprintln!("cierre de grabación de series: {error}");
+        }
+    }
+    if let Some(status) = status.as_mut() {
+        settle(status, &close);
+    }
+    written
 }
 
 /// Lo que storage confirmó al terminar: el prefijo final y los intentos.
@@ -416,6 +430,87 @@ mod tests {
         settle(&mut status, &close(Closed::Unconfirmed(broken), 0));
         assert_eq!(status.cause, Some("writer caído"));
         assert_eq!(status.durable_watermark.as_deref(), Some("0"));
+    }
+
+    /// Cierra contra un storage en memoria por el mismo camino que
+    /// `finish_with`. Devuelve el estado en memoria, si ya se publicó y lo que
+    /// quedó en el archivo.
+    fn close_with_fake_storage(
+        name: &str,
+        storage: crate::flows::FakeStorage,
+    ) -> (Status, bool, Option<serde_json::Value>) {
+        let directory =
+            std::env::temp_dir().join(format!("series-stop-{name}-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let mut status = Status::new(&directory, 1, prune::PruneReport::default());
+        // Lo anotado antes de cerrar: todavía sin ningún ACK.
+        status.attempted = Some("3".into());
+        status.durable_watermark = Some("0".into());
+        let mut status = Some(status);
+        let written = close_and_publish(
+            &mut status,
+            None,
+            || Some("series-1.duckdb".into()),
+            |publish| crate::flows::close_against(storage, publish),
+        );
+        let published = std::fs::read(directory.join("recording-status.json"))
+            .ok()
+            .map(|bytes| serde_json::from_slice(&bytes).unwrap());
+        std::fs::remove_dir_all(directory).unwrap();
+        (status.unwrap(), written, published)
+    }
+
+    #[test]
+    fn storage_gone_before_stop_publishes_a_finished_recording_without_cause() {
+        // #2884, caso B: salga limpio o con error, `finished` ya estaba en disco.
+        for (name, exits_with_error) in [("exit-ok", false), ("exit-error", true)] {
+            let (status, written, published) = close_with_fake_storage(
+                name,
+                crate::flows::FakeStorage {
+                    // ACK 2 y `finished` 3: se ve de dónde sale cada número.
+                    answers: concat!(r#"["ack",2]"#, "\n", r#"["finished",3,true,4]"#, "\n"),
+                    dies_on: Some("stop"),
+                    exits_with_error,
+                },
+            );
+            assert!(written, "{name}");
+            let published = published.expect("estado publicado");
+            assert_eq!(published["state"], "stopped", "{name}");
+            assert!(published["cause"].is_null(), "{name}: {published}");
+            assert_eq!(published["durableWatermark"], "3", "{name}");
+            assert_eq!(published["attempted"], "4", "{name}");
+            assert_eq!(published["file"], "series-1.duckdb", "{name}");
+            // Tras el cierre nadie añade una causa.
+            assert_eq!(status.cause, None, "{name}");
+            assert_eq!(status.durable_watermark.as_deref(), Some("3"), "{name}");
+        }
+    }
+
+    #[test]
+    fn storage_gone_without_a_valid_finished_is_still_a_dead_writer() {
+        for (name, answers, dies_on) in [
+            ("on-finish", concat!(r#"["ack",2]"#, "\n"), "finish"),
+            ("no-answer", concat!(r#"["ack",2]"#, "\n"), "stop"),
+            (
+                "not-finished",
+                concat!(r#"["ack",2]"#, "\n", r#"["finished",3,false,3]"#, "\n"),
+                "stop",
+            ),
+        ] {
+            let (status, written, published) = close_with_fake_storage(
+                name,
+                crate::flows::FakeStorage {
+                    answers,
+                    dies_on: Some(dies_on),
+                    exits_with_error: true,
+                },
+            );
+            assert!(!written, "{name}");
+            // Se publica al final de `finish_with`, ya con la causa.
+            assert!(published.is_none(), "{name}");
+            assert_eq!(status.cause, Some("writer caído"), "{name}");
+            assert_eq!(status.durable_watermark.as_deref(), Some("2"), "{name}");
+        }
     }
 
     #[test]

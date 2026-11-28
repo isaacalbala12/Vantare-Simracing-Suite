@@ -26,6 +26,8 @@ pub use series::{MAX_LAP_SAMPLES, Series};
 pub use series_close::{CloseLimits, Closed};
 pub use series_feed::{MAX_QUEUED_CHUNKS, PublicationStatus};
 pub use series_session::{SessionEvent, SessionTracker};
+#[cfg(test)]
+pub(crate) use series_worker::stop_tests::{FakeStorage, close_against};
 pub use series_worker::{
     MAX_STORAGE_PAGE_CHUNKS, RecordedSeriesSummary, SeriesClose, SeriesReader, SeriesStorageState,
     SeriesWorker,

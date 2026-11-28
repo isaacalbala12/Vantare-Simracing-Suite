@@ -38,7 +38,7 @@ impl SessionPump {
         }
     }
 
-    fn drain(&mut self, pipe: &mut Pipe) -> io::Result<()> {
+    fn drain(&mut self, pipe: &mut Pipe<impl Write, impl BufRead>) -> io::Result<()> {
         self.warn_loss();
         for _ in 0..SESSION_QUEUE {
             let Ok(event) = self.receiver.try_recv() else {
@@ -112,14 +112,16 @@ fn publish_analysis(
     }));
 }
 
-struct Pipe {
-    input: ChildStdin,
-    output: BufReader<ChildStdout>,
+/// Las tuberías con storage. Genéricas solo para probar el pump con un storage
+/// en memoria; en producto son las del proceso.
+struct Pipe<W = ChildStdin, R = BufReader<ChildStdout>> {
+    input: W,
+    output: R,
     /// Respuestas completas leídas: el progreso que mira el cierre (#2871).
     progress: Arc<AtomicU64>,
 }
 
-impl Pipe {
+impl<W: Write, R: BufRead> Pipe<W, R> {
     fn send(&mut self, command: &Value) -> io::Result<()> {
         let bytes = serde_json::to_vec(command)?;
         if bytes.len() > MAX_CHUNK_BYTES + 127 {
@@ -387,6 +389,7 @@ impl SeriesWorker {
                         &summaries,
                         ready?,
                         &mut sessions,
+                        &mut io::stderr(),
                     )
                 })();
                 sessions.warn_loss();
@@ -579,12 +582,13 @@ impl Drop for SeriesWorker {
 }
 
 fn pump(
-    pipe: &mut Pipe,
+    pipe: &mut Pipe<impl Write, impl BufRead>,
     receiver: &mpsc::Receiver<SeriesChunk>,
     control: &mpsc::Receiver<Option<u64>>,
     latest: &ArcSwap<RecordedSeriesSummary>,
     ready: SeriesStorageState,
     sessions: &mut SessionPump,
+    log: &mut impl Write,
 ) -> io::Result<SeriesStorageState> {
     let mut analysis = SeriesAnalysis::new(MAX_ANALYZED_LAPS)?;
     let mut watermark = 0;
@@ -614,7 +618,17 @@ fn pump(
                 }
                 pipe.send(&json!(["finish", attempted]))?;
                 let state = pipe.state("finished")?;
-                pipe.send(&json!(["stop"]))?;
+                // `finished` ya está en disco (storage guarda antes de
+                // responder) y `stop` no guarda nada: si storage salió sin
+                // recibirlo, la grabación está terminada y solo se anota (#2884).
+                match pipe.send(&json!(["stop"])) {
+                    Err(error) if state.finished => {
+                        // Si el registro tampoco se puede escribir, no queda
+                        // otro sitio donde avisar.
+                        writeln!(log, "cierre de grabación: stop no enviado: {error}").ok();
+                    }
+                    sent => sent?,
+                }
                 return Ok(state);
             }
             Ok(None) | Err(mpsc::TryRecvError::Disconnected) => {
@@ -850,3 +864,6 @@ mod poison_tests {
 #[cfg(all(test, windows))]
 #[path = "series_session_transport_tests.rs"]
 mod session_transport_tests;
+#[cfg(test)]
+#[path = "series_stop_tests.rs"]
+pub(super) mod stop_tests;

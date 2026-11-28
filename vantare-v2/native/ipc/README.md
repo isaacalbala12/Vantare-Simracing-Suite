@@ -252,9 +252,13 @@ El marcado vive en `review/confusables.rs`, con tablas cortas y sin dependencias
 `review_pages` devuelve `Err(ReviewError::Blocked)` y no se ofrece «Confiar» si la
 ruta del programa:
 
-- tiene una **extensión** con algo que no es ASCII alfanumérico. La extensión es lo
-  que va tras el último punto del **último segmento** (tras el último `\` o `/`).
-  Un segmento sin punto no tiene extensión, y `.exe`, con punto inicial, sí la tiene;
+- no tiene una **extensión ASCII alfanumérica**. La extensión es lo que va tras el
+  último punto ASCII del **último segmento** (tras el último `\` o `/`). Bloquea si
+  falta (`steam·exe`, `steam。exe`, `steam`), si está vacía o si tiene algo que no
+  es ASCII alfanumérico (`steam.ехе`). `.exe`, con punto inicial, sí es extensión.
+  Una barra final deja el segmento vacío, así que también bloquea. Lo mismo pasa
+  con una unidad o un recurso compartido sin archivo (`C:`, `C:\`, `D:x`,
+  `\\servidor\carpeta`). Una ruta vacía sigue siendo «no disponible»;
 - lleva un punto o una barra que imitan a los ASCII;
 - termina en espacio (cualquier blanco Unicode) o en punto, o lleva `:` fuera de la
   unidad (`C:`, `\\?\C:`). Windows recorta lo primero y `::$DATA` abre el mismo
@@ -262,9 +266,13 @@ ruta del programa:
 
 Consecuencias:
 
-- Un programa con extensión no ASCII o con símbolos bloquea siempre, también uno
-  legítimo: `игры.рф`, `game.café`, `app.appref-ms` o «Сезон 1.Этап 2» como último
-  segmento.
+- Un programa sin extensión, o con extensión no ASCII o con símbolos, bloquea
+  siempre, también uno legítimo: `игры.рф`, `game.café`, `app.appref-ms` o
+  «Сезон 1.Этап 2» como último segmento.
+- `CreateProcess` ejecuta un programa se llame como se llame. Por eso no basta con
+  marcar: `steam·exe` (U+00B7) se ve como `steam.exe` y no tiene extensión.
+- Un nombre corto 8.3 (`STEAM~1.EXE`) pasa, aunque sea el alias de un nombre largo
+  que sí bloquearía.
 - Las carpetas con nombre no ASCII o con punto no bloquean (`C:\Игры\game.exe`,
   `C:\Games\café.v2\x.exe`).
 - No se recorta nada por el final antes de mirar la extensión: recortar nunca

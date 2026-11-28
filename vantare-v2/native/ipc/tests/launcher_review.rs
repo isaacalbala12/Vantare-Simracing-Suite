@@ -391,7 +391,7 @@ fn a_disguised_program_path_blocks_the_review() {
     for sign in [
         '\u{2024}', '\u{ff0e}', '\u{fe52}', '\u{a4f8}', '\u{701}', '\u{702}', '\u{2215}',
         '\u{2044}', '\u{29f5}', '\u{29f8}', '\u{29f9}', '\u{2216}', '\u{ff0f}', '\u{ff3c}',
-        '\u{fe68}',
+        '\u{fe68}', '\u{660}', '\u{6f0}', '\u{2571}', '\u{2572}',
     ] {
         blocked.push(format!("C:\\Games\\steam{sign}exe"));
         blocked.push(format!("C:\\Games{sign}steam.exe"));
@@ -519,8 +519,81 @@ fn hostile_text_does_not_panic() {
         let message = input_with_path(&path).to_string();
         let result = review_pages(&message);
         assert!(
-            result.is_ok() || result == Err(ReviewError::TooLong),
+            result.is_ok() || matches!(result, Err(ReviewError::TooLong | ReviewError::Blocked)),
             "{result:?}"
         );
     }
+}
+
+#[test]
+fn a_program_path_that_windows_would_trim_is_blocked() {
+    // B1: Windows quita el espacio o el punto final y `::$DATA` abre el mismo
+    // archivo, así que estas rutas ejecutarían `steam.ехе`.
+    let games = "\u{418}\u{433}\u{440}\u{44b}";
+    let exe = "\u{435}\u{445}\u{435}";
+    for path in [
+        format!("C:\\{games}\\steam.{exe} "),
+        format!("C:\\{games}\\steam.{exe}."),
+        format!("C:\\{games}\\steam.{exe}::$DATA"),
+        format!("C:\\Games\\steam.{exe} "),
+        "C:\\Games\\steam.exe ".to_owned(),
+        "C:\\Games\\steam.exe.".into(),
+        "C:\\Games\\steam.exe\u{a0}".into(),
+        "C:\\Games\\steam.exe:stream".into(),
+        "\\\\?\\C:\\Games\\steam.exe::$DATA".into(),
+    ] {
+        let input = input_with_path(&path);
+        assert_eq!(
+            review_pages(&input.to_string()),
+            Err(ReviewError::Blocked),
+            "{path}"
+        );
+    }
+    // Unidad normal, ruta larga de Windows y ruta relativa: siguen limpias.
+    for path in [
+        "C:\\Games\\steam.exe",
+        "C:/Games/steam.exe",
+        "\\\\?\\C:\\Games\\steam.exe",
+        "//?/C:/Games/steam.exe",
+        "\\\\.\\D:\\Games\\steam.exe",
+        "D:steam.exe",
+        "Games\\steam.exe",
+    ] {
+        let pages = review_pages(&input_with_path(path).to_string()).expect("limpia");
+        assert!(can_trust(&pages), "{path}");
+    }
+}
+
+#[test]
+fn lookalike_words_are_judged_against_their_own_alphabet() {
+    // N1: una letra propia de OTRO alfabeto (katakana «ー», CJK «一») no apaga
+    // la regla del texto latino para una palabra cirílica.
+    let acc = "\u{410}\u{421}\u{421}";
+    let acc_marked = "[U+0410][U+0421][U+0421]";
+    for path in [
+        format!("C:\\Steam\\common\\{acc}\u{30fc}2024\\acc.exe"),
+        format!("C:\\Games\\{acc} \u{4e00} 2024\\acc.exe"),
+    ] {
+        let pages = with_path(&path);
+        assert!(
+            pages.contains(acc_marked) && pages.contains(NOTICE),
+            "{pages}"
+        );
+    }
+    // N3 y dígitos: el ancho completo junto a kana o CJK y los números de estilo
+    // latino no se marcan. Una extensión no cruza «\» ni «/».
+    for path in [
+        "C:\\\u{ff30}\u{ff23}\u{30b2}\u{30fc}\u{30e0}\\x.exe",
+        "C:\\\u{7b2c}\u{ff12}\u{7ae0}\\x.exe",
+        "C:\\\u{418}\u{433}\u{440}\u{430}\u{ff12}\\x.exe",
+        "C:\\Games\\F1 \u{2153}\\x.exe",
+        "C:/\u{418}\u{433}\u{440}\u{44b}/x.\u{435}\u{445}/ru",
+        "C:\\\u{418}\u{433}\u{440}\u{44b}\\x.\u{435}\u{445}\\ru",
+    ] {
+        let pages = with_path(path);
+        assert!(pages.contains(path), "{path}");
+        assert!(!pages.contains("[U+") && !pages.contains(NOTICE), "{path}");
+    }
+    // Junto a latín, el ancho completo sí se marca.
+    assert!(with_path("C:\\Games\\obs\u{ff16}\u{ff14}.exe").contains("obs[U+FF16][U+FF14]"));
 }

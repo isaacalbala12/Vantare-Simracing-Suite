@@ -6,16 +6,23 @@
 //! - (B) en una palabra con alguna letra latina o de estilo latino, toda letra
 //!   de un bloque de riesgo (cirílico, griego, armenio, cherokee, lisu, IPA,
 //!   anchos completos…): «Stеam», «obs６４»;
-//! - (C) si el texto entero tiene latín y ninguna letra propia de otro
-//!   alfabeto, toda letra de riesgo: `C:\common\АСС\асс.exe`, `C:\СССР.exe`;
+//! - (C) en una palabra hecha de letras de un solo alfabeto de riesgo y sin
+//!   latín, sus letras de riesgo si el texto tiene latín y ninguna letra propia
+//!   de ESE alfabeto: `C:\common\АСС\асс.exe`, `C:\СССР.exe`, `АССー2024`;
 //! - en una palabra que mezcla dos alfabetos de riesgo («Ѕκуре»: cirílico y
 //!   griego), todas sus letras de riesgo;
 //! - (A) en la ruta del programa, la extensión que parece latina sin serlo
 //!   (`steam.ехе`), aunque el resto de la ruta tenga letras propias.
 //!
-//! No se toca un texto con letras propias de su alfabeto
+//! No se toca un texto con letras propias del mismo alfabeto
 //! (`C:\Users\Иван\Игры\хор.exe`, «Касперский», «Παιχνίδι») salvo sus palabras
-//! mezcladas con latín. CJK, kana y hangul no son de riesgo («PCゲーム»).
+//! mezcladas con latín. CJK, kana y hangul no son de riesgo («PCゲーム»), y el
+//! ancho completo junto a ellos tampoco («ＰＣゲーム», «第２章»). Los dígitos y
+//! números de estilo latino no cuentan como letras («Игра２», «F1 ⅓»).
+//!
+//! La ruta del programa se bloquea si termina en espacio o punto o lleva `:`
+//! fuera de la unidad: Windows recorta lo primero y `::$DATA` abre el mismo
+//! archivo, así que esconderían una extensión disfrazada.
 //!
 //! Sin tablas Unicode completas: NFC y NFD dan el mismo veredicto porque las
 //! letras precompuestas de la lista ([`COMPOSED`]) se pliegan a su letra base y
@@ -70,10 +77,11 @@ const LOOKALIKE_BASES: [char; 2] = ['\u{0423}', '\u{0443}'];
 /// Puntos y barras que imitan `.`, `\` y `/`: se marcan siempre y, en la ruta
 /// del programa, bloquean la confianza.
 #[rustfmt::skip]
-const PATH_PUNCTUATION: [char; 15] = [
+const PATH_PUNCTUATION: [char; 19] = [
     '\u{2024}', '\u{FF0E}', '\u{FE52}', '\u{A4F8}', '\u{0701}', '\u{0702}',
+    '\u{0660}', '\u{06F0}',
     '\u{2215}', '\u{2044}', '\u{29F5}', '\u{29F8}', '\u{29F9}', '\u{2216}',
-    '\u{FF0F}', '\u{FF3C}', '\u{FE68}',
+    '\u{FF0F}', '\u{FF3C}', '\u{FE68}', '\u{2571}', '\u{2572}',
 ];
 
 /// Guiones que imitan `-` y el `;` griego: se marcan siempre.
@@ -158,6 +166,20 @@ fn in_word(c: char) -> bool {
     c.is_alphanumeric() || combining(c) || (invisible(c) && !c.is_whitespace())
 }
 
+/// Kana, CJK y hangul: junto a ellos el ancho completo es la forma normal.
+fn cjk(c: char) -> bool {
+    matches!(
+        c,
+        '\u{1100}'..='\u{11FF}' | '\u{3040}'..='\u{30FF}' | '\u{3130}'..='\u{318F}'
+            | '\u{31F0}'..='\u{31FF}' | '\u{3400}'..='\u{4DBF}' | '\u{4E00}'..='\u{9FFF}'
+            | '\u{AC00}'..='\u{D7AF}' | '\u{F900}'..='\u{FAFF}' | '\u{FF66}'..='\u{FF9F}'
+    )
+}
+
+fn full_width(c: char) -> bool {
+    matches!(c, '\u{FF10}'..='\u{FF19}' | '\u{FF21}'..='\u{FF3A}' | '\u{FF41}'..='\u{FF5A}')
+}
+
 /// Letras del turco junto a las que la «ı» sin punto es legítima («Işık»).
 fn turkish(c: char) -> bool {
     matches!(
@@ -196,42 +218,64 @@ fn runs(chars: &[char], keep: fn(char) -> bool) -> Vec<(usize, usize)> {
     spans
 }
 
-/// (A) Extensión del último segmento de la ruta (tras el último punto, con algo
-/// delante y de 1 a 5 caracteres de palabra) con alguna letra de riesgo y
+/// (A) Extensión: tras el último punto, de 1 a 5 caracteres de palabra (así no
+/// cruza `\` ni `/` y es la del último segmento), con alguna letra de riesgo y
 /// ninguna propia: «.ехе» sí; «.рф», «.конф» o «.café» no.
 fn latin_looking_extension(chars: &[char]) -> Option<usize> {
-    let segment = chars
-        .iter()
-        .rposition(|&c| matches!(c, '\\' | '/'))
-        .map_or(0, |i| i + 1);
-    let dot = segment + chars[segment..].iter().rposition(|&c| c == '.')?;
+    let dot = chars.iter().rposition(|&c| c == '.')?;
     let ext = &chars[dot + 1..];
-    (dot > segment
-        && (1..=5).contains(&ext.len())
+    ((1..=5).contains(&ext.len())
         && ext.iter().all(|&c| in_word(c))
         && ext.iter().any(|&c| script(c).is_some())
         && !ext.iter().any(|&c| own_letter(c)))
     .then_some(dot + 1)
 }
 
+/// Windows recorta el espacio o el punto final y `:` fuera de la unidad abre un
+/// flujo del mismo archivo (`steam.ехе::$DATA`). Nada legítimo lo necesita.
+fn trimmed_by_windows(chars: &[char]) -> bool {
+    let device = chars.len() >= 4
+        && matches!(chars[0], '\\' | '/')
+        && matches!(chars[1], '\\' | '/')
+        && matches!(chars[2], '?' | '.')
+        && matches!(chars[3], '\\' | '/');
+    let drive = if device { 4 } else { 0 };
+    chars.last().is_some_and(|&c| c == '.' || c.is_whitespace())
+        || chars
+            .iter()
+            .enumerate()
+            .any(|(i, &c)| c == ':' && !(i == drive + 1 && chars[drive].is_ascii_alphabetic()))
+}
+
 fn mark(chars: &[char]) -> Vec<bool> {
     let mut marks = vec![false; chars.len()];
-    let latin_text = chars.iter().any(|&c| is_latin(c)) && !chars.iter().any(|&c| own_letter(c));
+    let latin_text = chars.iter().any(|&c| is_latin(c));
+    let own_in = |script_of: Script| {
+        chars
+            .iter()
+            .any(|&c| own_letter(c) && script(c) == Some(script_of))
+    };
     for (start, end) in runs(chars, in_word) {
         let word = &chars[start..end];
         let turkish_word = word.iter().any(|&c| turkish(c));
-        let risky = |c: char| script(c).is_some() && !(c == '\u{131}' && turkish_word);
+        let cjk_word = word.iter().any(|&c| cjk(c));
+        let risky = |c: char| {
+            script(c).is_some() && !(c == '\u{131}' && turkish_word) && !(full_width(c) && cjk_word)
+        };
+        // Solo las letras deciden: un dígito o un número de estilo latino no.
+        let letter = |c: char| risky(c) && c.is_alphabetic();
         let mut scripts = word
             .iter()
             .copied()
-            .filter(|&c| risky(c))
+            .filter(|&c| letter(c))
             .filter_map(script);
         let first = scripts.next();
         let two_scripts = scripts.any(|other| Some(other) != first);
         let latin = word
             .iter()
-            .any(|&c| is_latin(c) || (risky(c) && script(c) == Some(Script::LatinLike)));
-        if latin_text || two_scripts || latin {
+            .any(|&c| is_latin(c) || (letter(c) && script(c) == Some(Script::LatinLike)));
+        let lookalike_word = first.is_some_and(|only| latin_text && !own_in(only));
+        if two_scripts || latin || lookalike_word {
             for i in start..end {
                 marks[i] = risky(chars[i]) || (i > start && marks[i - 1] && combining(chars[i]));
             }
@@ -261,11 +305,14 @@ pub(super) fn marked_path(text: &str) -> Vec<bool> {
     marks
 }
 
-/// La ruta del programa se disfraza: su extensión parece latina sin serlo, o
-/// tiene un punto o una barra que imitan a los ASCII. Bloquea la confianza.
+/// La ruta del programa se disfraza: su extensión parece latina sin serlo,
+/// tiene un punto o una barra que imitan a los ASCII, o Windows la recorta.
+/// Bloquea la confianza.
 pub(super) fn disguised_path(text: &str) -> bool {
     let chars: Vec<char> = text.chars().collect();
-    chars.iter().any(|c| PATH_PUNCTUATION.contains(c)) || latin_looking_extension(&chars).is_some()
+    chars.iter().any(|c| PATH_PUNCTUATION.contains(c))
+        || latin_looking_extension(&chars).is_some()
+        || trimmed_by_windows(&chars)
 }
 
 #[cfg(test)]

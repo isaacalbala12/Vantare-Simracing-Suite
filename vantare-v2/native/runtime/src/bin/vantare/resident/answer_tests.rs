@@ -347,7 +347,12 @@ fn a_disguised_program_path_rejects_trust_even_with_a_proof() {
     let pages_digest = vantare_services::content_hash(&frame_pages(
         &review_pages(&profile("QA/app.exe")).unwrap(),
     ));
-    for path in ["QA/app.\u{435}\u{445}\u{435}", "QA/app\u{2024}exe"] {
+    for path in [
+        "QA/app.\u{435}\u{445}\u{435}",
+        "QA/app\u{2024}exe",
+        "QA/app.exe::$DATA",
+        "QA/app.\u{435}\u{445}\u{435}.",
+    ] {
         let mut f = fixture();
         let question = f.owner.status.decision.as_mut().unwrap();
         question.actions.push(Action::Trust);

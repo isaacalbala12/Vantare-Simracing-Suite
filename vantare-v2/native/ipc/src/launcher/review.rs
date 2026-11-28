@@ -2,15 +2,23 @@
 use serde::Deserialize;
 use std::fmt::Write as _;
 
+mod confusables;
+
 const WRAP: usize = 76;
 const BUDGET: usize = 26;
 const MAX_PAGES: usize = 3;
 pub const AUTHORIZATION_MS: u64 = 10_000;
+/// Texto fijado por la raíz (#2579). Cabe en una línea de la página.
+const CONFUSABLE_NOTICE: &str =
+    "\nAtención: letras o signos que imitan a los normales, marcados así: [U+…].";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ReviewError {
     Unavailable,
     TooLong,
+    /// La ruta de un programa se disfraza con letras o signos que imitan a los
+    /// latinos (#2579): no se ofrece «Confiar». El perfil no cambia.
+    Blocked,
 }
 
 #[derive(Deserialize)]
@@ -46,24 +54,43 @@ fn invisible(c: char) -> bool {
     )
 }
 
-fn visible(text: &str) -> String {
-    let mut output = String::new();
-    for c in text.chars() {
-        if invisible(c) {
-            write!(output, "[U+{:04X}]", u32::from(c)).expect("write to String");
-        } else {
-            output.push(c);
-        }
-    }
-    output
+/// Lo que se muestra de cada carácter: él mismo, o `[U+XXXX]` si es invisible o
+/// imita a uno latino.
+fn shown(text: &str, marks: Vec<bool>) -> Vec<String> {
+    text.chars()
+        .zip(marks)
+        .map(|(c, marked)| {
+            if marked || invisible(c) {
+                format!("[U+{:04X}]", u32::from(c))
+            } else {
+                c.to_string()
+            }
+        })
+        .collect()
 }
 
+fn visible(text: &str) -> String {
+    shown(text, confusables::marked(text)).concat()
+}
+
+/// Recorta sin partir un `[U+XXXX]`.
 fn label(text: &str, limit: usize) -> String {
-    let text = visible(text);
-    if text.chars().count() > limit {
-        return text.chars().take(limit - 1).chain(['…']).collect();
+    let parts = shown(text, confusables::marked(text));
+    if parts.iter().map(|part| part.chars().count()).sum::<usize>() <= limit {
+        return parts.concat();
     }
-    text
+    let mut output = String::new();
+    let mut used = 0;
+    for part in parts {
+        let width = part.chars().count();
+        if used + width > limit - 1 {
+            break;
+        }
+        output.push_str(&part);
+        used += width;
+    }
+    output.push('…');
+    output
 }
 
 fn argument(value: &str) -> String {
@@ -82,7 +109,9 @@ fn lines(text: &str) -> usize {
 }
 
 impl Step {
-    fn format(&self, number: usize) -> Result<String, ReviewError> {
+    /// Demasiado largo y sin ruta van antes que el bloqueo: los tres impiden
+    /// confiar, pero así cada uno conserva su motivo.
+    fn check(&self) -> Result<(), ReviewError> {
         if self.path.chars().count() > 260 || self.args.iter().any(|arg| arg.chars().count() > 200)
         {
             return Err(ReviewError::TooLong);
@@ -90,6 +119,13 @@ impl Step {
         if self.path.is_empty() {
             return Err(ReviewError::Unavailable);
         }
+        if confusables::disguised_path(&self.path) {
+            return Err(ReviewError::Blocked);
+        }
+        Ok(())
+    }
+
+    fn format(&self, number: usize) -> String {
         let mut output = format!("{number}. {}", label(&self.app, 40));
         if self.steam {
             output.push_str(" (se abre con Steam)");
@@ -119,7 +155,7 @@ impl Step {
             }
             write!(output, "\n     {line}").expect("write to String");
         }
-        Ok(output)
+        output
     }
 }
 
@@ -129,18 +165,24 @@ impl Profile {
             "Perfil: «{}»\nOrigen: importado. Vantare no sabe quién lo creó y no puede comprobar que sea fiable.",
             label(&self.name, 60)
         );
-        if [&self.name, &self.hotkey]
+        let texts: Vec<&String> = [&self.name, &self.hotkey]
             .into_iter()
             .chain(
                 self.steps
                     .iter()
                     .flat_map(|step| [&step.app, &step.path].into_iter().chain(&step.args)),
             )
-            .any(|text| text.chars().any(invisible))
-        {
+            .collect();
+        if texts.iter().any(|text| text.chars().any(invisible)) {
             header.push_str(
                 "\nAtención: contiene caracteres invisibles; aquí se muestran como [U+…].",
             );
+        }
+        if texts
+            .iter()
+            .any(|text| confusables::marked(text).contains(&true))
+        {
+            header.push_str(CONFUSABLE_NOTICE);
         }
         header
     }
@@ -185,6 +227,9 @@ pub fn review_pages(message: &str) -> Result<Vec<String>, ReviewError> {
         return Err(ReviewError::TooLong);
     }
     let profile: Profile = serde_json::from_str(message).map_err(|_| ReviewError::Unavailable)?;
+    for step in &profile.steps {
+        step.check()?;
+    }
     let header = profile.header();
     if profile.steps.is_empty() {
         return Ok(vec![format!(
@@ -199,7 +244,7 @@ pub fn review_pages(message: &str) -> Result<Vec<String>, ReviewError> {
     let mut used = 0;
     let total = profile.steps.len();
     for (index, step) in profile.steps.iter().enumerate() {
-        let block = step.format(index + 1)?;
+        let block = step.format(index + 1);
         let needed = lines(&block);
         if needed > available {
             return Err(ReviewError::TooLong);

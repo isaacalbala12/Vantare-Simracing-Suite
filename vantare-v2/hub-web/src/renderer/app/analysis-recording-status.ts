@@ -34,6 +34,19 @@ export function recordingUsage(
   };
 }
 
+/** Issue 2884: why recording `rowId` was not saved whole. Only the indicator
+ * knows it, and it describes the latest recording: nothing is said about any
+ * other one. */
+export function saveFailure(
+  status: AnalysisRecordingStatus | null | undefined,
+  rowId: string,
+) {
+  if (status?.rowId !== rowId) return undefined;
+  return status.cause === "writerDown" || status.cause === "finishTimeout"
+    ? status.cause
+    : undefined;
+}
+
 /** Only the host reports this pair: the recordings folder is a link, a
  * junction or a file, and the session records nothing whatever the choice. */
 export const folderUnusable = (

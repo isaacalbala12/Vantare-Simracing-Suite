@@ -16,7 +16,10 @@ import {
   recordingBestTime,
   savedLaps,
 } from "../../app/analysis-laps";
-import { folderUnusable } from "../../app/analysis-recording-status";
+import {
+  folderUnusable,
+  saveFailure,
+} from "../../app/analysis-recording-status";
 import { Icon, type IconName } from "../../assets/icons/Icon";
 import {
   date,
@@ -52,6 +55,9 @@ export function AnalysisRail({
   // Issue 2883: «Completa» solo si se confirmó el final y no se perdió nada.
   const lost = opened && lostToLoad(opened);
   const complete = !!opened?.finished && !lost;
+  // Issue 2884: el motivo va justo bajo «Estado», que es lo que explica.
+  const failure =
+    row && !complete ? saveFailure(state?.recordingStatus, row.id) : undefined;
   return (
     <>
       {row && opened && (
@@ -69,6 +75,7 @@ export function AnalysisRail({
                   {complete ? t.complete : t.unconfirmed}
                 </Badge>,
               ],
+              ...(failure ? [[t.reason, t.saveFailure[failure]]] : []),
               ...(saved
                 ? [[t.saved, t.savedUntil(saved.complete, saved.partial)]]
                 : []),

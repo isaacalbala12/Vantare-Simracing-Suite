@@ -42,6 +42,12 @@ export const analysisText = {
   state: "Estado",
   complete: "Completa",
   unconfirmed: "Incompleta",
+  reason: "Motivo",
+  // Issue 2884: sin coma, así que cada motivo se lee entero.
+  saveFailure: {
+    writerDown: unbroken("falló al guardar"),
+    finishTimeout: unbroken("el guardado no terminó a tiempo"),
+  },
   saved: "Se guardó",
   // Cada tramo se lee entero: el texto solo puede partirse antes de «·».
   savedUntil: (complete: number, partial?: number) =>

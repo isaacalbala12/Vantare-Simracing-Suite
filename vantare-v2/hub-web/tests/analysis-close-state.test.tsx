@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
-import type { AnalysisLap } from "../src/contract/generated/analysis";
+import {
+  type AnalysisLap,
+  type AnalysisRecordingStatus,
+  analysisRecordingCauses,
+} from "../src/contract/generated/analysis";
 import type { Opened } from "../src/renderer/app/AnalysisController";
 import { unbroken } from "../src/renderer/i18n/analysis.es";
-import { AnalysisRail } from "../src/renderer/ui/analysis/Analysis";
+import {
+  AnalysisCatalog,
+  AnalysisRail,
+} from "../src/renderer/ui/analysis/Analysis";
 
 afterEach(cleanup);
 
@@ -44,7 +51,10 @@ const opened = (finished: boolean, laps: AnalysisLap[]): Opened => ({
   laps,
   sessions: [],
 });
-const rail = (value: Opened) =>
+const rail = (
+  value: Opened,
+  recordingStatus?: AnalysisRecordingStatus | null,
+) =>
   render(
     <AnalysisRail
       state={{
@@ -55,6 +65,7 @@ const rail = (value: Opened) =>
         opening: false,
         selected: row,
         opened: value,
+        recordingStatus,
       }}
       clock={() => 2}
       timeZone="Europe/Madrid"
@@ -116,4 +127,144 @@ it("a finished recording that lost blocks under load is not complete and says wh
   rail(opened(true, [lap(1, 4)]));
   expect(screen.getByText("Completa")).toBeTruthy();
   expect(screen.queryByText("Se perdió")).toBeNull();
+});
+
+const indicator = (
+  cause: AnalysisRecordingStatus["cause"],
+  rowId: string | null = row.id,
+  state: AnalysisRecordingStatus["state"] = "stopped",
+): AnalysisRecordingStatus => ({
+  state,
+  cause,
+  rowId,
+  startedAtMs: 1,
+  durableWatermark: null,
+  attempted: null,
+  limits: { maxRecordings: 200, maxBytes: 5_000_000_000 },
+  lastPrune: { atMs: 1, items: [] },
+});
+const labels = () =>
+  [...document.querySelectorAll("dt")].map((dt) => dt.textContent);
+const common = ["Fecha", "Circuito", "Coche", "Vueltas", "Tamaño", "Estado"];
+const anyReason = /Motivo|falló\sal\sguardar|el\sguardado\sno\sterminó/;
+
+it("an incomplete recording of the indicator says why, under its state (#2884)", () => {
+  // Textos aprobados y enteros: sin coma, todos sus espacios son U+00A0.
+  const writer = "falló\u00a0al\u00a0guardar";
+  const timeout = "el\u00a0guardado\u00a0no\u00a0terminó\u00a0a\u00a0tiempo";
+  for (const [cause, state, text] of [
+    ["writerDown", "stopped", writer],
+    ["writerDown", "degraded", writer],
+    ["finishTimeout", "stopped", timeout],
+    ["finishTimeout", "degraded", timeout],
+  ] as const) {
+    rail(
+      opened(false, [lap(1, 8), lap(2, 9, false)]),
+      indicator(cause, row.id, state),
+    );
+    expect(labels()).toEqual([...common, "Motivo", "Se guardó"]);
+    const label = screen.getByText("Motivo");
+    expect(label.tagName).toBe("DT");
+    expect(label.nextElementSibling?.tagName).toBe("DD");
+    expect(label.nextElementSibling?.textContent).toBe(text);
+    cleanup();
+  }
+});
+it("the reason also shows when a loss under load is what makes it incomplete", () => {
+  rail(
+    { ...opened(true, [lap(1, 4)]), lostBlocks: "3" },
+    indicator("writerDown"),
+  );
+  expect(screen.getByText("Incompleta")).toBeTruthy();
+  expect(labels()).toEqual([...common, "Motivo", "Se perdió"]);
+});
+it("a complete recording never shows a reason, whatever the indicator says", () => {
+  for (const cause of ["writerDown", "finishTimeout"] as const) {
+    rail(opened(true, [lap(1, 4)]), indicator(cause));
+    expect(screen.getByText("Completa")).toBeTruthy();
+    expect(labels()).toEqual(common);
+    expect(document.body.textContent).not.toMatch(anyReason);
+    cleanup();
+  }
+});
+it("nothing is said about a recording that is not the indicator's", () => {
+  for (const status of [
+    indicator("writerDown", "2"),
+    indicator("finishTimeout", "2"),
+    indicator("writerDown", null),
+    indicator("finishTimeout", null),
+    null,
+    undefined,
+  ]) {
+    rail(opened(false, [lap(1, 4)]), status);
+    expect(labels()).toEqual([...common, "Se guardó"]);
+    expect(document.body.textContent).not.toMatch(anyReason);
+    cleanup();
+  }
+});
+it("the reason leaves when the indicator moves on to another recording", () => {
+  const view = (recordingStatus: AnalysisRecordingStatus) => (
+    <AnalysisRail
+      state={{
+        rows: [row],
+        inspections: {},
+        rowErrors: {},
+        loading: false,
+        opening: false,
+        selected: row,
+        opened: opened(false, [lap(1, 4)]),
+        recordingStatus,
+      }}
+      clock={() => 2}
+      timeZone="Europe/Madrid"
+    />
+  );
+  const { rerender } = render(view(indicator("writerDown")));
+  expect(screen.getByText("Motivo")).toBeTruthy();
+  rerender(view(indicator(null, "2", "recording")));
+  expect(document.body.textContent).not.toMatch(anyReason);
+});
+it("no other cause, nor the lack of one, gives a reason", () => {
+  const others = analysisRecordingCauses.filter(
+    (cause) => cause !== "writerDown" && cause !== "finishTimeout",
+  );
+  expect(others.length).toBeGreaterThan(0);
+  for (const cause of [...others, null])
+    for (const state of ["recording", "degraded", "stopped"] as const) {
+      rail(opened(false, [lap(1, 4)]), indicator(cause, row.id, state));
+      expect(labels()).toEqual([...common, "Se guardó"]);
+      expect(document.body.textContent).not.toMatch(anyReason);
+      cleanup();
+    }
+});
+it("the list never shows the reason: it would change with the next recording", () => {
+  for (const cause of ["writerDown", "finishTimeout"] as const) {
+    render(
+      <AnalysisCatalog
+        state={{
+          rows: [row],
+          inspections: {
+            [row.id]: {
+              method: "analysis.inspect",
+              state: "unconfirmed",
+              laps: 1,
+              sessions: [],
+              bestLapApproxMs: null,
+            },
+          },
+          rowErrors: {},
+          loading: false,
+          opening: false,
+          recordingStatus: indicator(cause),
+        }}
+        enabled
+        settings={() => undefined}
+        clock={() => 2}
+        timeZone="Europe/Madrid"
+      />,
+    );
+    expect(screen.getByText("Incompleta")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(anyReason);
+    cleanup();
+  }
 });

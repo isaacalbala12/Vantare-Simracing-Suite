@@ -23,9 +23,9 @@ pub mod wire;
 pub use event::{Event, Fact, FactKind, FlagSignal};
 pub use journal::{Consumer, Cursor, Delivery, GapReason, Journal, PitEvent, RecordingStatus};
 pub use series::{MAX_LAP_SAMPLES, Series};
+pub use series_close::{CloseLimits, Closed};
 pub use series_feed::{MAX_QUEUED_CHUNKS, PublicationStatus};
 pub use series_session::{SessionEvent, SessionTracker};
-pub use series_close::{CloseLimits, Closed};
 pub use series_worker::{
     MAX_STORAGE_PAGE_CHUNKS, RecordedSeriesSummary, SeriesClose, SeriesReader, SeriesStorageState,
     SeriesWorker,

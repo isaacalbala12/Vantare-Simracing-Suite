@@ -12,7 +12,7 @@
 //! estos límites. Entonces el estado se queda en `recording` y el anfitrión lo
 //! muestra parado y sin causa; storage recibe EOF, termina el COMMIT en curso y
 //! cierra la base. Si el job del supervisor lo mata a mitad del checkpoint,
-//! DuckDB conserva lo confirmado en el `.wal` y lo reaplica al abrir. Solo se
+//! `DuckDB` conserva lo confirmado en el `.wal` y lo reaplica al abrir. Solo se
 //! pierde lo que seguía en la cola del Core, y la base queda sin `finished`.
 
 use std::io;
@@ -36,6 +36,7 @@ impl CloseLimits {
     };
 
     /// Plazo fijo: el mismo margen para todo el cierre, avance o no.
+    #[must_use]
     pub const fn fixed(timeout: Duration) -> Self {
         Self {
             stall: timeout,

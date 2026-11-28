@@ -471,7 +471,8 @@ impl SeriesWorker {
 
     /// Cierre por progreso (#2871): `on_confirmed` corre en cuanto `finished`
     /// está en disco. Si hay que dejar de esperar, `Drop` mata a storage: lo
-    /// confirmado por ACK sigue en la base (DuckDB lo conserva en su WAL).
+    /// confirmado por ACK sigue en la base (`DuckDB` lo conserva en su WAL).
+    #[must_use]
     pub fn close(
         mut self,
         attempted: u64,

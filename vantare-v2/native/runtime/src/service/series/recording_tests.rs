@@ -5,7 +5,8 @@ use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::time::{Instant, SystemTime};
+use std::time::Duration;
+use std::time::{Duration, Instant, SystemTime};
 
 pub(super) struct Directory(pub(super) PathBuf);
 impl Directory {

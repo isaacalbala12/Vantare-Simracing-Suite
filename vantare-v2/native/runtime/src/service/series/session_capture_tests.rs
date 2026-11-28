@@ -6,6 +6,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::atomic::Ordering;
+use std::time::Duration;
 use vantare_domain::{AdapterError, Observation};
 
 #[path = "../../../tests/support/session_frames.rs"]

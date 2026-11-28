@@ -99,10 +99,11 @@ it("without a sealed lap the saved row does not appear", () => {
 });
 
 it("a finished recording that lost blocks under load is not complete and says what (#2883)", () => {
+  const load = unbroken("el PC iba muy cargado");
   for (const [lostBlocks, lostTailBlocks, text] of [
-    ["3", "0", "una parte, el PC iba muy cargado"],
-    ["0", "2", "el final, el PC iba muy cargado"],
-    ["3", "2", "una parte y el final, el PC iba muy cargado"],
+    ["3", "0", `${unbroken("una parte,")} ${load}`],
+    ["0", "2", `${unbroken("el final,")} ${load}`],
+    ["3", "2", `${unbroken("una parte y el final,")} ${load}`],
   ] as const) {
     rail({ ...opened(true, [lap(1, 4)]), lostBlocks, lostTailBlocks });
     expect(screen.getByText("Incompleta")).toBeTruthy();

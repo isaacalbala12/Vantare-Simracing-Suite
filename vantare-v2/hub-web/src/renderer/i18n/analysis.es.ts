@@ -53,10 +53,11 @@ export const analysisText = {
       .join(" "),
   lost: "Se perdió",
   // Copy nuevo (issue 2883), pendiente de aprobación de la raíz.
+  // Cada tramo entero: solo se parte tras la coma.
   lostToLoad: {
-    part: "una parte, el PC iba muy cargado",
-    end: "el final, el PC iba muy cargado",
-    both: "una parte y el final, el PC iba muy cargado",
+    part: `${unbroken("una parte,")} ${unbroken("el PC iba muy cargado")}`,
+    end: `${unbroken("el final,")} ${unbroken("el PC iba muy cargado")}`,
+    both: `${unbroken("una parte y el final,")} ${unbroken("el PC iba muy cargado")}`,
   },
   locked: "Abierta por otro programa",
   incompatible: "De otra versión",

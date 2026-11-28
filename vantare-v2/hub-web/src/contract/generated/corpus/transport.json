@@ -30,8 +30,8 @@
     },
     {
       "error": {
-        "expected": 72,
-        "found": 73,
+        "expected": 73,
+        "found": 74,
         "kind": "incompatible"
       },
       "id": 1,
@@ -39,8 +39,8 @@
     },
     {
       "error": {
-        "expected": 72,
-        "found": 71,
+        "expected": 73,
+        "found": 72,
         "kind": "incompatible"
       },
       "id": 0,
@@ -78,7 +78,7 @@
         "text1": "#faf7f7",
         "window": "#161314"
       },
-      "version": 72,
+      "version": 73,
       "window": {
         "height": 900,
         "minimized": false,
@@ -262,7 +262,7 @@
     },
     {
       "kind": "hello",
-      "version": 72
+      "version": 73
     },
     {
       "kind": "ready"

@@ -86,6 +86,7 @@ function Get-PackageCapacityReport([object]$Capacity,[string]$Name) {
 }
 function Assert-PackageCapacity([string]$Verifier,[string]$Archive) {
     $archive=Assert-BuildPath $Archive
+    if(-not (Test-Path -LiteralPath $archive -PathType Leaf) -or -not $Verifier -or -not (Test-Path -LiteralPath $Verifier -PathType Leaf)){throw 'Gate de capacidad (#2863): falta el paquete o el verificador real'}
     $raw=Invoke-BuildProcess $Verifier @('--capacity',$archive) $null 120000
     $report=Get-PackageCapacityReport ($raw|ConvertFrom-Json) ([IO.Path]::GetFileName($archive))
     $report.Line

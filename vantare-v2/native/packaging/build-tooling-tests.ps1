@@ -213,7 +213,8 @@ Assert-PackageRejected compression $method 'Compresión ZIP no compatible'
 $short=New-FixturePackage declared-short
 Set-ZipHeader $short 'bin/fixture.txt' 22 ([BitConverter]::GetBytes([uint32]1)) -Local
 Set-ZipHeader $short 'bin/fixture.txt' 24 ([BitConverter]::GetBytes([uint32]1))
-Assert-PackageRejected declared-short $short 'Tamaño ZIP extraído incorrecto'
+# #2863: el tamaño del directorio debe ser el del manifiesto firmado, antes de escribir.
+Assert-PackageRejected declared-short $short 'Tamaño ZIP distinto del manifiesto'
 # #2863: el gate de capacidad lee los topes de package.rs a través del verificador.
 if($PackageVerifier){
     $capacity=(Invoke-BuildProcess $PackageVerifier @('--capacity',$zipPath) $null 120000)|ConvertFrom-Json
@@ -244,6 +245,15 @@ if($PackageVerifier){
         }
         if($failed -ne $case[2]){throw "Gate de capacidad incorrecto: $($case[0])"}
         if(-not $failed -and -not @($output|Where-Object {$_.StartsWith('::warning::')}).Count){throw 'Tope exacto sin aviso'}
+    }
+    # Sin paquete o sin verificador no se mide: el gate falla, no se salta.
+    foreach($case in @(@($PackageVerifier,(Join-Path $root 'missing.zip')),@((Join-Path $root 'missing-verifier.exe'),$zipPath))){
+        $failed=$false
+        try{Assert-PackageCapacity $case[0] $case[1]|Out-Null}catch{
+            if($_.Exception.Message -cne 'Gate de capacidad (#2863): falta el paquete o el verificador real'){throw}
+            $failed=$true
+        }
+        if(-not $failed){throw "Gate de capacidad sin paquete o verificador aceptado: $($case -join ' ')"}
     }
 }
 "PASS build-tooling: stdin=$stdinBytes; inventario, sidecars, manifiesto y firma QA"

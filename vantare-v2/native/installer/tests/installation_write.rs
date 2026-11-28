@@ -1089,8 +1089,11 @@ fn zip_links_duplicates_traversal_and_uncompressed_limits_are_rejected_before_ac
             "unix-link" => bytes[directory + 38..directory + 42]
                 .copy_from_slice(&0xa000_0000_u32.to_le_bytes()),
             "traversal" => bytes[directory + 46..directory + 49].copy_from_slice(b"../"),
-            "member-limit" => bytes[directory + 24..directory + 28]
-                .copy_from_slice(&(256_u32 * 1024 * 1024 + 1).to_le_bytes()),
+            "member-limit" => bytes[directory + 24..directory + 28].copy_from_slice(
+                &u32::try_from(engine::package::MEMBER_LIMIT + 1)
+                    .expect("limit without ZIP64")
+                    .to_le_bytes(),
+            ),
             "total-limit" => {
                 let mut offset = directory;
                 for _ in 0..4 {
@@ -1151,29 +1154,71 @@ fn zip_links_duplicates_traversal_and_uncompressed_limits_are_rejected_before_ac
     }
 }
 
-/// Repacks `package` with Deflate and makes both headers of its first member
-/// declare `size` bytes. The external SHA is recomputed, so `expand` reaches
-/// the size checks; no payload of that size is ever created.
-fn declared_first_member(
-    fixture: &Fixture,
-    package: &Package,
-    tag: &str,
-    size: u32,
-) -> (PathBuf, String) {
+const MIB: u64 = 1024 * 1024;
+
+/// How `forge_first_member` rewrites the first member of a fixture package.
+struct Forge<'a> {
+    tag: &'a str,
+    /// Size written to the local and central headers.
+    declared: u64,
+    /// The signed manifest also lists `declared`; otherwise it keeps the real size.
+    signed: bool,
+    /// A real Deflate stream copied verbatim instead of the fixture bytes.
+    stream: Option<&'a Path>,
+    /// Carry the size in a ZIP64 extra field, as sizes above u32 require.
+    zip64: bool,
+}
+
+/// Repacks `package` with Deflate and forges the declared size of its first
+/// member. The external SHA is recomputed, so `expand` reaches the size checks;
+/// no payload of the declared size is ever created.
+fn forge_first_member(fixture: &Fixture, package: &Package, forge: &Forge) -> (PathBuf, String) {
     let mut source = zip::ZipArchive::new(fs::File::open(&package.path).expect("source ZIP"))
         .expect("source directory");
-    let path = fixture.path.join(format!("{tag}.zip"));
+    let first = source
+        .by_index_raw(0)
+        .expect("first member")
+        .name()
+        .to_owned();
+    let mut stream = forge.stream.map(|path| {
+        zip::ZipArchive::new(fs::File::open(path).expect("stream ZIP")).expect("stream directory")
+    });
+    let path = fixture.path.join(format!("{}.zip", forge.tag));
     let mut writer = zip::ZipWriter::new(fs::File::create(&path).expect("deflated ZIP"));
+    let deflated = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
     for index in 0..source.len() {
-        let mut member = source.by_index(index).expect("source member");
+        let name = source
+            .by_index_raw(index)
+            .expect("source member")
+            .name()
+            .to_owned();
+        if index == 0
+            && let Some(stream) = stream.as_mut()
+        {
+            writer
+                .raw_copy_file_rename(stream.by_index_raw(0).expect("stream member"), name)
+                .expect("raw stream");
+            continue;
+        }
         writer
-            .start_file(
-                member.name().to_owned(),
-                zip::write::SimpleFileOptions::default()
-                    .compression_method(zip::CompressionMethod::Deflated),
-            )
+            .start_file(name.clone(), deflated.large_file(forge.zip64 && index == 0))
             .expect("deflated member");
-        std::io::copy(&mut member, &mut writer).expect("repack fixture");
+        let mut member = source.by_index(index).expect("source member");
+        if name == "manifest.json" && forge.signed {
+            let mut manifest: serde_json::Value =
+                serde_json::from_reader(&mut member).expect("manifest");
+            for file in manifest["files"].as_array_mut().expect("manifest files") {
+                if file["path"] == first.as_str() {
+                    file["size"] = json!(forge.declared);
+                }
+            }
+            writer
+                .write_all(&serde_json::to_vec(&manifest).expect("manifest bytes"))
+                .expect("signed manifest");
+        } else {
+            std::io::copy(&mut member, &mut writer).expect("repack fixture");
+        }
     }
     writer.finish().expect("ZIP finish");
     let mut bytes = fs::read(&path).expect("deflated bytes");
@@ -1188,20 +1233,76 @@ fn declared_first_member(
     ))
     .expect("directory position");
     assert_eq!(&bytes[..4], b"PK\x03\x04");
-    bytes[22..26].copy_from_slice(&size.to_le_bytes());
-    bytes[directory + 24..directory + 28].copy_from_slice(&size.to_le_bytes());
+    if forge.zip64 {
+        // large_file: both headers say 0xFFFFFFFF and carry the same ZIP64 block,
+        // [tag 0x0001, length 16, uncompressed u64, compressed u64].
+        for extra in [30 + first.len(), directory + 46 + first.len()] {
+            assert_eq!(&bytes[extra..extra + 4], &[1, 0, 16, 0], "ZIP64 block");
+            bytes[extra + 4..extra + 12].copy_from_slice(&forge.declared.to_le_bytes());
+        }
+    } else {
+        let declared = u32::try_from(forge.declared).expect("declared without ZIP64");
+        bytes[22..26].copy_from_slice(&declared.to_le_bytes());
+        bytes[directory + 24..directory + 28].copy_from_slice(&declared.to_le_bytes());
+    }
     fs::write(&path, &bytes).expect("isolated malformed ZIP");
     let sha = format!("{:x}", Sha256::digest(&bytes));
     (path, sha)
+}
+
+/// A real Deflate bomb: `size` zero bytes in a stream of a few hundred KiB.
+fn zero_stream(fixture: &Fixture, size: u64) -> PathBuf {
+    let path = fixture.path.join("zero-stream.zip");
+    let mut writer = zip::ZipWriter::new(fs::File::create(&path).expect("stream ZIP"));
+    writer
+        .start_file(
+            "zeros",
+            zip::write::SimpleFileOptions::default()
+                .compression_method(zip::CompressionMethod::Deflated)
+                .compression_level(Some(6)),
+        )
+        .expect("stream member");
+    let block = vec![0_u8; 1024 * 1024];
+    let mut left = size;
+    while left > 0 {
+        let chunk = usize::try_from(left.min(MIB)).expect("chunk");
+        writer.write_all(&block[..chunk]).expect("zeros");
+        left -= MIB.min(left);
+    }
+    writer.finish().expect("stream finish");
+    path
+}
+
+fn first_member_size(package: &Package) -> u64 {
+    zip::ZipArchive::new(fs::File::open(&package.path).expect("source ZIP"))
+        .expect("source directory")
+        .by_index_raw(0)
+        .expect("first member")
+        .size()
+}
+
+fn rejected_before_any_write(path: &Path, sha: &str, destination: &Path) {
+    assert!(engine::package::expand(path, sha, destination, "beta").is_err());
+    assert!(
+        !destination.exists(),
+        "a rejected member reached extraction"
+    );
 }
 
 #[test]
 fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
     let fixture = Fixture::new();
     let package = fixture.package("1.0.0");
-    // Both headers agree on one byte; the real Deflate stream contains an inert
-    // PE fixture. The external SHA is valid, so this tests the extraction bound.
-    let (path, sha) = declared_first_member(&fixture, &package, "understated-deflate", 1);
+    // Directory and signed manifest agree on one byte; the real Deflate stream
+    // contains an inert PE fixture. This tests the extraction bound itself.
+    let forge = Forge {
+        tag: "understated-deflate",
+        declared: 1,
+        signed: true,
+        stream: None,
+        zip64: false,
+    };
+    let (path, sha) = forge_first_member(&fixture, &package, &forge);
     let destination = fixture.path.join("partial");
     assert!(engine::package::expand(&path, &sha, &destination, "beta").is_err());
     let written = fs::metadata(destination.join(&test_members()[0])).expect("streaming started");
@@ -1213,15 +1314,42 @@ fn zip_uncompressed_size_is_a_streaming_limit_even_if_the_directory_lies() {
 }
 
 #[test]
+fn a_directory_size_that_differs_from_the_signed_manifest_is_rejected_before_any_write() {
+    let fixture = Fixture::new();
+    let package = fixture.package("1.0.0");
+    let real = first_member_size(&package);
+    for (tag, declared) in [("directory-short", 1), ("directory-long", real + 1)] {
+        let forge = Forge {
+            tag,
+            declared,
+            signed: false,
+            stream: None,
+            zip64: false,
+        };
+        let (path, sha) = forge_first_member(&fixture, &package, &forge);
+        let capacity = engine::package::Capacity::read(&path).expect("declared sizes");
+        assert!(capacity.check().is_ok(), "{tag} is within every limit");
+        rejected_before_any_write(&path, &sha, &fixture.path.join(tag));
+    }
+}
+
+#[test]
 fn member_limit_is_inclusive_on_the_declared_size_and_a_lying_size_still_fails() {
     let fixture = Fixture::new();
     let package = fixture.package("1.0.0");
     let limit = engine::package::MEMBER_LIMIT;
     let first = &test_members()[0];
-    // Exactly at the limit: accepted before extraction, so the member starts
-    // streaming and only the overstated size (a forged ZIP-bomb header) fails.
-    let at = u32::try_from(limit).expect("limit without ZIP64");
-    let (path, sha) = declared_first_member(&fixture, &package, "member-at-limit", at);
+    // Exactly at the limit, signed too: accepted before extraction, so the
+    // member starts streaming and only the overstated size (a forged
+    // ZIP-bomb header) fails.
+    let at = Forge {
+        tag: "member-at-limit",
+        declared: limit,
+        signed: true,
+        stream: None,
+        zip64: false,
+    };
+    let (path, sha) = forge_first_member(&fixture, &package, &at);
     let capacity = engine::package::Capacity::read(&path).expect("declared sizes");
     assert_eq!(capacity.largest, limit);
     assert!(capacity.check().is_ok());
@@ -1232,16 +1360,72 @@ fn member_limit_is_inclusive_on_the_declared_size_and_a_lying_size_still_fails()
         .len();
     assert!(written < limit, "declared {limit}, wrote {written} bytes");
     // One byte more: rejected from the declared size alone, before any write.
-    let (path, sha) = declared_first_member(&fixture, &package, "member-over-limit", at + 1);
+    let over = Forge {
+        tag: "member-over-limit",
+        declared: limit + 1,
+        ..at
+    };
+    let (path, sha) = forge_first_member(&fixture, &package, &over);
     let capacity = engine::package::Capacity::read(&path).expect("declared sizes");
     assert_eq!(capacity.largest, limit + 1);
     assert!(capacity.check().is_err());
-    let destination = fixture.path.join("over-limit");
-    assert!(engine::package::expand(&path, &sha, &destination, "beta").is_err());
-    assert!(
-        !destination.exists(),
-        "an oversized member reached extraction"
+    rejected_before_any_write(&path, &sha, &fixture.path.join("over-limit"));
+}
+
+#[test]
+fn a_zip64_member_above_u32_is_rejected_before_any_write() {
+    let fixture = Fixture::new();
+    let package = fixture.package("1.0.0");
+    let declared = 5 * 1024 * MIB;
+    let forge = Forge {
+        tag: "zip64-member",
+        declared,
+        signed: true,
+        stream: None,
+        zip64: true,
+    };
+    let (path, sha) = forge_first_member(&fixture, &package, &forge);
+    let capacity = engine::package::Capacity::read(&path).expect("ZIP64 sizes");
+    assert_eq!(capacity.largest, declared);
+    assert!(capacity.check().is_err());
+    rejected_before_any_write(&path, &sha, &fixture.path.join("zip64"));
+}
+
+#[test]
+fn a_real_deflate_bomb_is_bounded_whether_its_size_is_signed_or_forged() {
+    let fixture = Fixture::new();
+    let package = fixture.package("1.0.0");
+    let real = engine::package::MEMBER_LIMIT + 16 * MIB;
+    let stream = zero_stream(&fixture, real);
+    let compressed = fs::metadata(&stream).expect("stream size").len();
+    assert!(real / compressed > 500, "ratio {}", real / compressed);
+    eprintln!(
+        "bomba: {real} B en {compressed} B (ratio {})",
+        real / compressed
     );
+    // Honest sizes, signed: the member limit rejects it from the directory alone.
+    let honest = Forge {
+        tag: "honest-bomb",
+        declared: real,
+        signed: true,
+        stream: Some(&stream),
+        zip64: false,
+    };
+    let (path, sha) = forge_first_member(&fixture, &package, &honest);
+    rejected_before_any_write(&path, &sha, &fixture.path.join("honest"));
+    // A small forged size, signed as well: extraction stops one byte past it.
+    let forged = Forge {
+        tag: "forged-bomb",
+        declared: 4096,
+        ..honest
+    };
+    let (path, sha) = forge_first_member(&fixture, &package, &forged);
+    let destination = fixture.path.join("forged");
+    assert!(engine::package::expand(&path, &sha, &destination, "beta").is_err());
+    let written = fs::metadata(destination.join(&test_members()[0]))
+        .expect("streaming started")
+        .len();
+    assert!(written <= 4097, "declared 4096, wrote {written} bytes");
 }
 
 /// The feed update of `package` in an owned child that exits abruptly at

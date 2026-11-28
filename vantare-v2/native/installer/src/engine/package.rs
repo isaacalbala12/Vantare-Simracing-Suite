@@ -75,6 +75,16 @@ impl Capacity {
     }
 }
 
+// The directory size must be the one the authenticated manifest signs, checked
+// before anything is written (#2863). manifest.json has its own 64 KiB bound.
+fn signed_size(manifest: &super::Manifest, name: &str, size: u64) -> bool {
+    name == "manifest.json"
+        || manifest
+            .files
+            .iter()
+            .any(|file| file.path == name && file.size == size)
+}
+
 pub fn expand(
     zip_path: &Path,
     expected_sha: &str,
@@ -148,6 +158,10 @@ pub fn expand(
             .checked_add(member.size())
             .ok_or_else(|| super::WriteError::new(1, "Tamaño ZIP fuera de rango"))?;
         expanded_capacity(member.size(), total)?;
+        ensure(
+            signed_size(&manifest, member.name(), member.size()),
+            "Tamaño ZIP distinto del manifiesto",
+        )?;
         // Exact names forbid traversal, ADS, directory entries and .env.
         let mode = member.unix_mode().unwrap_or_default();
         ensure(

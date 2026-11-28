@@ -274,6 +274,11 @@ pub fn safe_member(path: &str) -> bool {
         })
 }
 
+/// `retained-data.json` dice de quién son los datos conservados. Si no se puede
+/// leer, nadie los adopta ni limpia restos a su lado (#2817): se dice así, sin
+/// tocar nada, en el Setup, el desinstalador y el registro de la limpieza.
+pub(super) const RETAINED_UNREADABLE: &str = "No se puede leer retained-data.json, el archivo que dice de quién son los datos guardados en esta carpeta. No se ha borrado nada y tus datos siguen ahí. Instala en otra carpeta o escribe a soporte";
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(super) struct Retained {
@@ -448,14 +453,14 @@ impl Installation {
             let path = root.join("retained-data.json");
             if path.try_exists()? {
                 let mut saved: Retained = serde_json::from_slice(utf8(&bytes(&path)?))
-                    .map_err(|_| ReadError::Invalid("Referencia de datos conservados inválida"))?;
-                saved.version_parts = version(&saved.version)
-                    .map_err(|_| ReadError::Invalid("Versión conservada inválida"))?;
+                    .map_err(|_| ReadError::Invalid(RETAINED_UNREADABLE))?;
+                saved.version_parts =
+                    version(&saved.version).map_err(|_| ReadError::Invalid(RETAINED_UNREADABLE))?;
                 require(
                     saved.schema == 1
                         && hex(&saved.generation, 32)
                         && saved.channel.as_deref().is_none_or(channel),
-                    "Referencia de datos conservados inválida",
+                    RETAINED_UNREADABLE,
                 )?;
                 view.data_path = root
                     .join("generations")

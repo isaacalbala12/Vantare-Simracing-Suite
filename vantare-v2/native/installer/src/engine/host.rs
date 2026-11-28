@@ -987,4 +987,57 @@ exit EXIT_CODE
         assert_eq!(error.code, 2);
         assert_eq!(stale.tree(), before);
     }
+
+    /// #2817 (E): con `retained-data.json` ilegible no se sabe de quién son los
+    /// restos. Ni la recuperación del Setup ni la limpieza del desinstalador
+    /// retiran nada, y el mensaje dice qué pasa y que los datos siguen ahí.
+    #[test]
+    fn an_unreadable_retained_data_keeps_every_residue_and_says_why() {
+        let damaged: [&[u8]; 3] = [
+            b"{roto",
+            br#"{"schema":2,"generation":"x","version":"1.0.0"}"#,
+            br#"{"schema":1,"generation":"00000000000000000000000000000000","version":"uno"}"#,
+        ];
+        for content in damaged {
+            let stale = Stale::new();
+            fs::write(stale.install.join("retained-data.json"), content).expect("damaged");
+            // El candado que toma la limpieza ya existe: el árbol no cambia por él.
+            fs::write(stale.install.join("beta-session.lock"), []).expect("lock file");
+            let before = stale.tree();
+            let says_why = |error: &disk::WriteError| {
+                assert_eq!(error.code, 1, "{error}");
+                assert!(
+                    error
+                        .to_string()
+                        .contains("No se puede leer retained-data.json")
+                        && error.to_string().contains("No se ha borrado nada"),
+                    "{error}"
+                );
+            };
+            for channel in ["beta", "nightly"] {
+                says_why(&stale.prepare(channel).expect_err("unreadable"));
+                assert_eq!(stale.tree(), before, "{channel}");
+                let session = Session {
+                    directory: stale.root.join(format!("write-engine-{channel}")),
+                    context: stale.context(channel),
+                    transferred: true,
+                };
+                fs::create_dir_all(&session.directory).expect("owned transport");
+                let request = Request::new(
+                    &Args {
+                        root: Some(stale.install.clone()),
+                        ..Args::default()
+                    },
+                    crate::engine::Operation::Cleanup,
+                );
+                says_why(
+                    &session
+                        .cleanup_contract(&stale.install, &request)
+                        .expect_err("unreadable"),
+                );
+                assert!(!session.directory.join("shell.json").exists());
+                assert_eq!(stale.tree(), before, "{channel}");
+            }
+        }
+    }
 }

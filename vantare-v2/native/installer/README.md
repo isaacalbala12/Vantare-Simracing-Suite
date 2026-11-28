@@ -745,3 +745,15 @@ este cambio) solo las adopta beta. Terminar una desinstalación a medias o
 ejecutar la limpieza del desinstalador exige también que los restos sean del
 mismo canal (`operations::residue_owned`). Si la sonda del Setup falla, la
 carpeta que propone «Reintentar» es la de su producto, nunca la de beta.
+
+**`retained-data.json` ilegible (#2817).** Si ese archivo está roto (JSON
+inválido, esquema, generación o versión que no valen), no se sabe de quién son
+los datos ni los restos de su lado. Se mantiene el fallo cerrado: el Setup de
+cualquier producto, el desinstalador, la recuperación de una limpieza que no
+terminó (#2829) y la limpieza programada se detienen sin tocar nada, y dejan
+`Uninstall.exe` y su marcador donde estaban. Seguir con solo el marcador no
+basta: el marcador guarda el hash del desinstalador, no su canal, y el Setup
+siguiente se pararía igual al leer ese archivo. Lo que cambia es el mensaje,
+el mismo en todos esos pasos: «No se puede leer retained-data.json, el archivo
+que dice de quién son los datos guardados en esta carpeta. No se ha borrado
+nada y tus datos siguen ahí. Instala en otra carpeta o escribe a soporte».

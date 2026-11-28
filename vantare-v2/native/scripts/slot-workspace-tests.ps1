@@ -371,14 +371,14 @@ try {
         foreach ($line in $lines) {
             try { $message = $line | ConvertFrom-Json } catch { continue }
             if ($message.reason -ne 'compiler-artifact') { continue }
-            $built[$message.target.name] = [pscustomobject]@{ fresh = [bool]$message.fresh
+            $built[$message.target.name.Replace('-', '_')] = [pscustomobject]@{ fresh = [bool]$message.fresh
                 output = if ($message.executable) { [string](& $message.executable) } else { '' } }
         }
         $built
     }
 
     function Assert-Rune($Built, [string]$Expected, [bool]$Fresh, [string]$Case) {
-        $item = $Built['vantare-w']
+        $item = $Built['vantare_w']
         if ($item.output -cne $Expected) { throw "${Case}: Rune dice '$($item.output)'; esperado '$Expected' (artefacto de otro checkout)." }
         if ($item.fresh -ne $Fresh) { throw "${Case}: Rune fresh=$($item.fresh); esperado $Fresh." }
     }
@@ -399,8 +399,8 @@ try {
 
     Set-Library 'a2'
     $log = Switch-Rune 'a'
-    if (Test-Path -LiteralPath (Join-Path $runeTarget "$triple/release/vantare-w.exe")) {
-        throw 'rune, cambia el crate nativo: queda el ejecutable de Rune tras la invalidación.'
+    if (@(Get-ChildItem -LiteralPath (Join-Path $runeTarget "$triple/release/.fingerprint") -Filter 'vantare-x-*' -Force).Count) {
+        throw 'rune, cambia el crate nativo: quedan huellas de vantare-x tras la invalidación.'
     }
     if ($log -match 'rune/ contiene artefactos') { throw 'rune: la invalidación avisa de que no cubre rune/.' }
     Assert-Rune (Build-Rune) 'w-a-a2' $false 'rune, cambia el crate nativo'
@@ -411,6 +411,9 @@ try {
     # Only the separate workspace changes: the native path dependency is reused.
     Set-Older 'w/src/main.rs' "fn main() { println!(`"w-w2-{}`", vantare_x::version()); }"
     $null = Switch-Rune 'a'
+    if (Test-Path -LiteralPath (Join-Path $runeTarget "$triple/release/vantare-w.exe")) {
+        throw 'rune, solo cambia su workspace: queda el ejecutable de Rune tras la invalidación.'
+    }
     $built = Build-Rune
     Assert-Rune $built 'w-w2-a2' $false 'rune, solo cambia su workspace'
     if (-not $built['vantare_x'].fresh) { throw 'rune, solo cambia su workspace: se recompiló vantare-x sin cambios.' }

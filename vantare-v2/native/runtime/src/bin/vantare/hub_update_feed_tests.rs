@@ -490,6 +490,11 @@ mod qa_transport {
             format!("http://api.github.com/repos/{REPO}/releases?per_page=100"),
             format!("https://api.github.com/repos/{REPO}/releases?per_page=100#x"),
             "https://api.github.com/repos/other/Vantare-Downloads/releases?per_page=100".to_owned(),
+            // #2820: cada dimensión del prefijo por separado (esquema, host, repo).
+            format!("https://api.evil.example/repos/{REPO}/releases?per_page=100"),
+            download.replace("https://", "http://") + "hub-beta-v0.0.990/vantare-hub-beta.json",
+            download.replace("github.com", "evil.example")
+                + "hub-beta-v0.0.990/vantare-native-amd64-package.zip",
             format!("{download}native-beta-v0.0.990/vantare-hub-beta.json"),
             format!("{download}hub-beta-v0.0.990/other.zip"),
             format!("{download}hub-beta-v0.0.990/vantare-hub-beta.json/x"),

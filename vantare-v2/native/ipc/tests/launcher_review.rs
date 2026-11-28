@@ -96,6 +96,9 @@ fn discloses_invisible_unicode_in_every_requested_group() {
     }
 }
 
+// #2579: letras de otros alfabetos que se parecen a las latinas. Los textos
+// usan escapes `\u{…}` a propósito: en el código fuente un homoglifo no se ve.
+
 fn corto() -> serde_json::Value {
     let examples: serde_json::Value =
         serde_json::from_str(include_str!("launcher_review_opus.json")).unwrap();
@@ -106,70 +109,183 @@ fn shown(input: &serde_json::Value) -> String {
     review_pages(&input.to_string()).unwrap().join("\n")
 }
 
-const NOTICE: &str = "Atención: letras de otro alfabeto";
+fn with_path(path: &str) -> String {
+    let mut input = corto();
+    input["steps"][0]["path"] = path.into();
+    shown(&input)
+}
+
+const NOTICE: &str = "Atención: contiene letras que imitan a las latinas";
 
 #[test]
-fn marks_a_confusable_inside_a_latin_word_in_every_field() {
-    // «е» y «О» cirílicas, «ο» griega: se parecen a la «e» y la «o» latinas.
-    for (field, value, marked) in [
-        ("name", "St\u{435}am", "St[U+0435]am"),
-        ("hotkey", "Ctrl + L\u{41e}L", "Ctrl + L[U+041E]L"),
-    ] {
+fn marks_a_lookalike_letter_in_every_field() {
+    let top = [
+        (
+            "name",
+            "Creador de C\u{43e}ntenido",
+            "Creador de C[U+043E]ntenido",
+        ),
+        ("hotkey", "Ctrl + \u{410}lt + L", "Ctrl + [U+0410]lt + L"),
+    ];
+    let step = [
+        ("app", "St\u{435}am", "St[U+0435]am"),
+        ("path", "C:\\Games\\g\u{3bf}me\\game.exe", "g[U+03BF]me"),
+    ];
+    let args = [
+        ("-\u{430}pplaunch", "-[U+0430]pplaunch"),
+        ("--profile=g\u{43e}\u{43e}d", "--profile=g[U+043E][U+043E]d"),
+    ];
+    let mut cases = Vec::new();
+    for (field, value, marked) in top {
         let mut input = corto();
         input[field] = value.into();
-        let pages = shown(&input);
-        assert!(pages.contains(marked), "{field}");
-        assert!(pages.contains(NOTICE), "{field}");
-        assert!(!pages.contains(['\u{435}', '\u{41e}']), "{field}");
+        cases.push((field, input, value, marked));
     }
-    for (field, value, marked) in [
-        ("app", "St\u{435}am", "St[U+0435]am"),
-        ("path", "C:\Games\g\u{3bf}me\game.exe", "g[U+03BF]me"),
-    ] {
+    for (field, value, marked) in step {
         let mut input = corto();
         input["steps"][0][field] = value.into();
-        let pages = shown(&input);
-        assert!(pages.contains(marked), "{field}");
-        assert!(pages.contains(NOTICE), "{field}");
+        cases.push((field, input, value, marked));
     }
-    let mut input = corto();
-    input["steps"][0]["args"] = serde_json::json!(["-launch=g\u{43e}\u{43e}d"]);
-    let pages = shown(&input);
-    assert!(pages.contains("-launch=g[U+043E][U+043E]d"));
-    assert!(pages.contains(NOTICE));
+    for (value, marked) in args {
+        let mut input = corto();
+        input["steps"][1]["args"] = serde_json::json!(["--minimize-to-tray", value]);
+        cases.push(("args", input, value, marked));
+    }
+    for (field, input, value, marked) in cases {
+        let pages = shown(&input);
+        assert!(pages.contains(marked), "{field}: {pages}");
+        assert!(pages.contains(NOTICE), "{field}");
+        assert!(!pages.contains(value), "{field}");
+    }
 }
 
 #[test]
-fn leaves_words_in_other_alphabets_alone() {
-    for path in [
-        "C:\Juegos\\u{418}\u{433}\u{440}\u{430}\juego.exe",
-        "C:\\u{3a0}\u{3b1}\u{3b9}\u{3c7}\u{3bd}\u{3af}\u{3b4}\u{3b9}\a.exe",
-        "C:\Users\Jos\u{e9}\caf\u{e9}.exe",
-        // Separadores: la palabra cirílica no se mezcla con la latina.
-        "C:\\u{418}\u{433}\u{440}\u{430}\game.exe",
-        "C:\\u{418}\u{433}\u{440}\u{430}-game\\u{418}\u{433}\u{440}\u{430} game.exe",
-    ] {
-        let mut input = corto();
-        input["steps"][0]["path"] = path.into();
-        let pages = shown(&input);
+fn marks_the_corpus_of_lookalike_attacks() {
+    let attacks = [
+        // (A) extensión no ASCII.
+        (
+            "C:\\Program Files (x86)\\Steam\\steam.\u{435}\u{445}\u{435}",
+            "steam.[U+0435][U+0445][U+0435]",
+        ),
+        (
+            "C:\\Games\\steam.\u{415}\u{425}\u{415}",
+            "steam.[U+0415][U+0425][U+0415]",
+        ),
+        // (B) mezcla dentro de una palabra.
+        (
+            "C:\\Program Files (x86)\\St\u{435}am\\steam.exe",
+            "St[U+0435]am\\steam.exe",
+        ),
+        (
+            "C:\\Program Files\\obs-studi\u{43e}\\bin\\obs64.exe",
+            "obs-studi[U+043E]\\bin",
+        ),
+        ("C:\\Games\\\u{405}team\\x.exe", "\\[U+0405]team\\"),
+        (
+            "C:\\Users\\isaac\\Sp\u{3bf}tify\\Spotify.exe",
+            "Sp[U+03BF]tify\\",
+        ),
+        ("C:\\Games\\\u{39a}art.exe", "[U+039A]art.exe"),
+        ("C:\\Games\\Spot\u{131}fy.exe", "Spot[U+0131]fy.exe"),
+        (
+            "C:\\Games\\\u{ff53}\u{ff54}\u{ff45}\u{ff41}\u{ff4d}.exe",
+            "[U+FF53][U+FF54][U+FF45][U+FF41][U+FF4D].exe",
+        ),
+        ("C:\\Games\\\u{1d69c}team.exe", "[U+1D69C]team.exe"),
+        (
+            "C:\\Games\\st\u{435}\u{200d}am.exe",
+            "st[U+0435][U+200D]am.exe",
+        ),
+        (
+            "C:\\Games\\St\u{301}\u{435}\u{301}am.exe",
+            "St\u{301}[U+0435][U+0301]am.exe",
+        ),
+        // Formas precompuestas (NFC) y descompuestas (NFD).
+        ("C:\\Games\\M\u{4e7}torsport.exe", "M[U+04E7]torsport.exe"),
+        (
+            "C:\\Games\\M\u{43e}\u{308}torsport.exe",
+            "M[U+043E][U+0308]torsport.exe",
+        ),
+        ("C:\\Games\\Sp\u{3cc}tify.exe", "Sp[U+03CC]tify.exe"),
+        // (C) palabra solo de letras de la lista junto a latín en el segmento.
+        (
+            "C:\\Games\\Game_\u{410}\u{420}\u{420}\\run.exe",
+            "Game_[U+0410][U+0420][U+0420]\\",
+        ),
+        (
+            "C:\\Games\\game-\u{435}\u{445}\u{435}\\x.exe",
+            "game-[U+0435][U+0445][U+0435]\\",
+        ),
+    ];
+    assert!(attacks.len() >= 15);
+    for (path, marked) in attacks {
+        let pages = with_path(path);
+        assert!(pages.contains(marked), "{marked}: {pages}");
+        assert!(pages.contains(NOTICE), "{marked}");
+        assert!(!pages.contains(path), "{marked}");
+    }
+}
+
+#[test]
+fn leaves_names_written_in_their_own_alphabet_alone() {
+    let legit = [
+        // Ruso: muchas palabras corrientes son solo letras de la lista.
+        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{445}\u{43e}\u{440}.exe",
+        "C:\\Users\\\u{41e}\u{43b}\u{435}\u{433}\\\u{441}\u{43e}\u{43a}.bat",
+        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{43a}\u{430}\u{43a}.exe",
+        "C:\\\u{418}\u{433}\u{440}\u{44b}\\\u{432}\u{441}\u{435}",
+        "C:\\\u{421}\u{421}\u{421}\u{420}.exe",
+        "C:\\\u{422}\u{435}\u{441}\u{442} \u{438}\u{433}\u{440}\u{44b}\\\u{43e}\u{43d}\u{430}.exe",
+        "C:\\Users\\\u{421}\u{435}\u{440}\u{433}\u{435}\u{439}\\\u{420}\u{41e}\u{421}\u{421}\u{418}\u{42f}.bat",
+        // Ucraniano y búlgaro.
+        "C:\\\u{41a}\u{438}\u{457}\u{432}\\\u{406}\u{433}\u{440}\u{438}\\\u{433}\u{440}\u{430}.exe",
+        "C:\\\u{407}\u{436}\u{430}\u{43a}.bat",
+        "C:\\\u{418}\u{433}\u{440}\u{438}\\\u{421}\u{44a}\u{441}\u{442}\u{435}\u{437}\u{430}\u{43d}\u{438}\u{435}.exe",
+        "C:\\\u{415}\u{445}\u{43e}.exe",
+        // Griego.
+        "C:\\\u{3a0}\u{3b1}\u{3b9}\u{3c7}\u{3bd}\u{3af}\u{3b4}\u{3b9}.exe",
+        "C:\\\u{39f}\u{3a7}\u{399}.bat",
+        "C:\\\u{39a}\u{3bf}\u{3ba}\u{3cc}.exe",
+        "C:\\\u{391}\u{3b3}\u{3ce}\u{3bd}\u{3b1}\u{3c2}\\a.exe",
+        // Mezcla legítima separada: cada palabra en su alfabeto.
+        "C:\\\u{418}\u{433}\u{440}\u{430}\\game.exe",
+        "C:\\\u{418}\u{433}\u{440}\u{430}_v2.exe",
+        "C:\\\u{418}\u{433}\u{440}\u{430}-2024.bat",
+        // Latín con tildes (NFC y NFD), japonés.
+        "C:\\Users\\Jos\u{e9}\\caf\u{e9}.exe",
+        "C:\\Users\\Jose\u{301}\\Fa\u{e7}ade.exe",
+        "C:\\\u{d1}and\u{fa}\\M\u{f6}torsport.exe",
+        "C:\\\u{30b2}\u{30fc}\u{30e0}\\\u{30ec}\u{30fc}\u{30b9}.exe",
+    ];
+    assert!(legit.len() >= 15);
+    for path in legit {
+        let pages = with_path(path);
         assert!(pages.contains(path), "{path}");
         assert!(!pages.contains(NOTICE), "{path}");
         assert!(!pages.contains("[U+"), "{path}");
     }
-}
-
-#[test]
-fn a_word_made_only_of_confusables_is_a_known_limit_and_is_not_marked() {
-    // «арр» toda cirílica (а, р, р). Seguimiento si la raíz lo pide (#2579).
     let mut input = corto();
-    input["steps"][0]["path"] = "C:\\u{430}\u{440}\u{440}\a.exe".into();
+    input["steps"][0]["args"] =
+        serde_json::json!(["--\u{438}\u{43c}\u{44f}=\u{445}\u{43e}\u{440}"]);
+    input["name"] = "\u{418}\u{433}\u{440}\u{44b} \u{445}\u{43e}\u{440}".into();
     let pages = shown(&input);
-    assert!(pages.contains("\u{430}\u{440}\u{440}"));
-    assert!(!pages.contains(NOTICE));
+    assert!(!pages.contains("[U+") && !pages.contains(NOTICE), "{pages}");
 }
 
 #[test]
-fn confusables_and_invisibles_are_both_announced() {
+fn precomposed_and_decomposed_forms_get_the_same_verdict() {
+    for (path, lookalike) in [
+        ("C:\\M\u{4e7}tor.exe", true),
+        ("C:\\M\u{43e}\u{308}tor.exe", true),
+        ("C:\\M\u{f6}tor.exe", false),
+        ("C:\\Mo\u{308}tor.exe", false),
+    ] {
+        assert_eq!(with_path(path).contains(NOTICE), lookalike, "{path}");
+    }
+}
+
+#[test]
+fn lookalikes_and_invisibles_are_both_announced() {
     let mut input = corto();
     input["steps"][0]["app"] = "St\u{435}am\u{200b}".into();
     let pages = shown(&input);
@@ -179,20 +295,45 @@ fn confusables_and_invisibles_are_both_announced() {
 }
 
 #[test]
-fn a_mixed_word_never_inherits_the_trust_of_the_clean_profile() {
+fn a_lookalike_never_inherits_the_trust_of_the_clean_profile() {
     let clean = review_pages(&corto().to_string()).unwrap();
     let mut forged = corto();
-    forged["steps"][0]["path"] = "C:\Program Files (x86)\St\u{435}am\steam.exe".into();
+    forged["steps"][0]["path"] = "C:\\Program Files (x86)\\St\u{435}am\\steam.exe".into();
     let forged = review_pages(&forged.to_string()).unwrap();
     assert!(can_trust(&forged));
     assert_ne!(frame_pages(&clean), frame_pages(&forged));
-    // Sin palabras mixtas la revisión no cambia ni un byte (los ejemplos de Opus
-    // lo comprueban en exacto): una palabra cirílica entera sale tal cual.
-    let mut cyrillic = corto();
-    cyrillic["steps"][0]["path"] = "C:\Program Files (x86)\\u{418}\u{433}\u{440}\u{430}\steam.exe".into();
-    let plain = review_pages(&cyrillic.to_string()).unwrap();
-    assert_eq!(
-        plain[0].replace("\u{418}\u{433}\u{440}\u{430}", "Steam"),
-        clean[0]
-    );
+    // Una palabra entera en cirílico sale tal cual, sin aviso ni marcas.
+    let cyrillic = "\u{418}\u{433}\u{440}\u{430}";
+    let mut own = corto();
+    own["steps"][0]["path"] = format!("C:\\Program Files (x86)\\{cyrillic}\\steam.exe").into();
+    let own = review_pages(&own.to_string()).unwrap();
+    assert_eq!(own[0].replace(cyrillic, "Steam"), clean[0]);
+}
+
+#[test]
+fn marks_count_against_the_page_budget() {
+    let mut input = corto();
+    input["steps"][0]["args"] = serde_json::json!([format!("x{}", "o".repeat(199))]);
+    assert!(review_pages(&input.to_string()).is_ok());
+    input["steps"][0]["args"] = serde_json::json!([format!("x{}", "\u{43e}".repeat(199))]);
+    assert_eq!(review_pages(&input.to_string()), Err(ReviewError::TooLong));
+}
+
+#[test]
+fn hostile_text_does_not_panic() {
+    let weird = [
+        "\u{301}".repeat(20_000),
+        format!("x{}", "\u{43e}\u{308}".repeat(10_000)),
+        ".".repeat(30_000),
+        format!("a.{}", "\u{435}".repeat(20_000)),
+        "\u{10ffff}\u{e000}\u{fffd}\u{1d400}\u{ff21}.\u{301}".repeat(3_000),
+        "\\=/,;\" \u{3000}\u{2028}".repeat(5_000),
+    ];
+    for name in weird {
+        let mut input = corto();
+        input["name"] = name.into();
+        let message = input.to_string();
+        let result = review_pages(&message);
+        assert!(message.len() > 64 * 1024 || result.is_ok(), "{result:?}");
+    }
 }

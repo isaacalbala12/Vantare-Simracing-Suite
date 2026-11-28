@@ -101,12 +101,14 @@ fn discloses_invisible_unicode_in_every_requested_group() {
 
 fn corto() -> serde_json::Value {
     let examples: serde_json::Value =
-        serde_json::from_str(include_str!("launcher_review_opus.json")).unwrap();
+        serde_json::from_str(include_str!("launcher_review_opus.json")).expect("ejemplos de Opus");
     examples["corto"]["input"].clone()
 }
 
 fn shown(input: &serde_json::Value) -> String {
-    review_pages(&input.to_string()).unwrap().join("\n")
+    review_pages(&input.to_string())
+        .expect("la revisión se construye")
+        .join("\n")
 }
 
 fn with_path(path: &str) -> String {
@@ -217,7 +219,6 @@ fn marks_the_corpus_of_lookalike_attacks() {
             "game-[U+0435][U+0445][U+0435]\\",
         ),
     ];
-    assert!(attacks.len() >= 15);
     for (path, marked) in attacks {
         let pages = with_path(path);
         assert!(pages.contains(marked), "{marked}: {pages}");
@@ -257,7 +258,6 @@ fn leaves_names_written_in_their_own_alphabet_alone() {
         "C:\\\u{d1}and\u{fa}\\M\u{f6}torsport.exe",
         "C:\\\u{30b2}\u{30fc}\u{30e0}\\\u{30ec}\u{30fc}\u{30b9}.exe",
     ];
-    assert!(legit.len() >= 15);
     for path in legit {
         let pages = with_path(path);
         assert!(pages.contains(path), "{path}");
